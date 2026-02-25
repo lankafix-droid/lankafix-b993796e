@@ -1,27 +1,126 @@
-import { Link } from "react-router-dom";
-import { mockQuote } from "@/data/mockData";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useBookingStore } from "@/store/bookingStore";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck, FileText } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, ShieldCheck, FileText, Clock } from "lucide-react";
+import { useState, useMemo } from "react";
+import type { QuoteData, QuoteItem } from "@/types/booking";
+
+// Generate a mock quote for demo
+function generateMockQuote(): QuoteData {
+  return {
+    laborItems: [
+      { description: "Site inspection & assessment", amount: 3000 },
+      { description: "Installation / repair labor", amount: 8000 },
+      { description: "Configuration & testing", amount: 2000 },
+    ],
+    partsItems: [
+      { description: "Primary component (Genuine)", amount: 15000, partQuality: "genuine" },
+      { description: "Wiring & connectors", amount: 2500, partQuality: "oem_grade" },
+    ],
+    addOns: [
+      { description: "Extended warranty (6 months)", amount: 3000 },
+    ],
+    totals: { labor: 13000, parts: 17500, addOns: 3000, total: 33500 },
+    warranty: { labor: "90 days", parts: "Manufacturer warranty" },
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
 
 const QuoteApproval = () => {
-  const q = mockQuote;
-  const [decided, setDecided] = useState<"approved" | "rejected" | null>(null);
+  const { jobId } = useParams<{ jobId: string }>();
+  const navigate = useNavigate();
+  const { getBooking, updateBookingStatus, setBookingQuote } = useBookingStore();
+
+  const [decided, setDecided] = useState<"approved" | null>(null);
+  const [showRejectOptions, setShowRejectOptions] = useState(false);
+
+  const booking = getBooking(jobId || "");
+
+  // Auto-seed a quote if none exists
+  const quote = useMemo(() => {
+    if (!booking) return null;
+    if (booking.quote) return booking.quote;
+    const q = generateMockQuote();
+    setBookingQuote(booking.jobId, q);
+    return q;
+  }, [booking?.jobId, booking?.quote]);
+
+  const expiresIn = useMemo(() => {
+    if (!quote) return "";
+    const diff = new Date(quote.expiresAt).getTime() - Date.now();
+    if (diff <= 0) return "Expired";
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${mins}m`;
+  }, [quote?.expiresAt]);
+
+  if (!booking || !quote) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-foreground mb-2">Booking Not Found</h1>
+            <p className="text-muted-foreground mb-4">No booking found for this job ID.</p>
+            <Button asChild variant="outline"><Link to="/track">Track a Job</Link></Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const handleApprove = () => {
+    updateBookingStatus(booking.jobId, "quote_approved");
+    setDecided("approved");
+  };
+
+  const handleRejectOption = (reason: string) => {
+    if (reason === "reschedule") {
+      navigate(`/precheck/${booking.categoryCode}/${booking.serviceCode}`);
+      return;
+    }
+    if (reason === "cancel") {
+      navigate(`/tracker/${booking.jobId}`);
+      return;
+    }
+    updateBookingStatus(booking.jobId, "quote_rejected");
+    navigate(`/tracker/${booking.jobId}`);
+  };
+
+  const renderItems = (items: QuoteItem[], title: string) => (
+    <div className="bg-card rounded-xl border p-5 mb-4">
+      <h3 className="text-sm font-semibold text-foreground mb-3">{title}</h3>
+      <div className="space-y-2">
+        {items.map((item, i) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{item.description}</span>
+            <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 bg-background">
         <div className="container py-8 max-w-2xl">
-          <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Back
+          <Link to={`/tracker/${booking.jobId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Tracker
           </Link>
 
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-2">
             <FileText className="w-5 h-5 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">Quote Approval</h1>
+          </div>
+
+          <div className="flex items-center gap-2 mb-6">
+            <Clock className="w-4 h-4 text-warning" />
+            <span className="text-sm text-warning font-medium">Expires in {expiresIn}</span>
           </div>
 
           {/* Header Info */}
@@ -29,78 +128,41 @@ const QuoteApproval = () => {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Job ID</span>
-                <p className="font-semibold text-foreground">{q.jobId}</p>
+                <p className="font-semibold text-foreground">{booking.jobId}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Service</span>
+                <p className="font-semibold text-foreground">{booking.serviceName}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Technician</span>
-                <p className="font-semibold text-foreground">{q.technicianName}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Submitted</span>
-                <p className="font-semibold text-foreground">{q.submittedDate}</p>
+                <p className="font-semibold text-foreground">{booking.technician?.name || "—"}</p>
               </div>
             </div>
           </div>
 
-          {/* Labor */}
-          <div className="bg-card rounded-xl border p-5 mb-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Labor</h3>
-            <div className="space-y-2">
-              {q.laborItems.map((item, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{item.description}</span>
-                  <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Parts */}
-          <div className="bg-card rounded-xl border p-5 mb-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Parts</h3>
-            <div className="space-y-2">
-              {q.partsItems.map((item, i) => (
-                <div key={i} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{item.description}</span>
-                  <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Add-ons */}
-          {q.addOns.length > 0 && (
-            <div className="bg-card rounded-xl border p-5 mb-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Add-Ons</h3>
-              <div className="space-y-2">
-                {q.addOns.map((item, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{item.description}</span>
-                    <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {renderItems(quote.laborItems, "Labor")}
+          {renderItems(quote.partsItems, "Parts")}
+          {quote.addOns.length > 0 && renderItems(quote.addOns, "Add-Ons")}
 
           {/* Totals */}
           <div className="bg-primary/5 rounded-xl border border-primary/20 p-5 mb-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Labor Total</span>
-                <span className="text-foreground">LKR {q.totals.labor.toLocaleString()}</span>
+                <span className="text-muted-foreground">Labor</span>
+                <span className="text-foreground">LKR {quote.totals.labor.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Parts Total</span>
-                <span className="text-foreground">LKR {q.totals.parts.toLocaleString()}</span>
+                <span className="text-muted-foreground">Parts</span>
+                <span className="text-foreground">LKR {quote.totals.parts.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Add-Ons</span>
-                <span className="text-foreground">LKR {q.totals.addOns.toLocaleString()}</span>
+                <span className="text-foreground">LKR {quote.totals.addOns.toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2">
                 <span className="text-foreground">Total</span>
-                <span className="text-primary">LKR {q.totals.total.toLocaleString()}</span>
+                <span className="text-primary">LKR {quote.totals.total.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -110,29 +172,45 @@ const QuoteApproval = () => {
             <ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-foreground">Warranty Terms</p>
-              <p className="text-xs text-muted-foreground mt-1">Labor: {q.warranty.labor}</p>
-              <p className="text-xs text-muted-foreground">Parts: {q.warranty.parts}</p>
+              <p className="text-xs text-muted-foreground mt-1">Labor: {quote.warranty.labor}</p>
+              <p className="text-xs text-muted-foreground">Parts: {quote.warranty.parts}</p>
             </div>
           </div>
 
           {/* Actions */}
-          {decided === null ? (
-            <div className="flex gap-3">
-              <Button variant="hero" size="xl" className="flex-1" onClick={() => setDecided("approved")}>
-                Approve Quote
-              </Button>
-              <Button variant="outline" size="xl" className="flex-1" onClick={() => setDecided("rejected")}>
-                Reject Quote
+          {decided === "approved" ? (
+            <div className="rounded-xl p-5 text-center bg-success/10 border border-success/20">
+              <p className="font-semibold text-foreground">✓ Quote Approved</p>
+              <p className="text-xs text-muted-foreground mt-1">Work will begin as scheduled.</p>
+              <Button variant="outline" size="sm" className="mt-3" asChild>
+                <Link to={`/tracker/${booking.jobId}`}>Back to Tracker</Link>
               </Button>
             </div>
+          ) : showRejectOptions ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-foreground">What would you like to do?</p>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("cheaper")}>
+                Request cheaper option (Compatible parts)
+              </Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("alternative")}>
+                Ask for alternative parts
+              </Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("reschedule")}>
+                Reschedule inspection
+              </Button>
+              <Button variant="outline" className="w-full justify-start text-destructive" onClick={() => handleRejectOption("cancel")}>
+                Cancel booking
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowRejectOptions(false)}>Back</Button>
+            </div>
           ) : (
-            <div className={`rounded-xl p-5 text-center ${decided === "approved" ? "bg-success/10 border border-success/20" : "bg-destructive/10 border border-destructive/20"}`}>
-              <p className="font-semibold text-foreground">
-                {decided === "approved" ? "✓ Quote Approved" : "✗ Quote Rejected"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {decided === "approved" ? "Work will begin as scheduled." : "Your technician has been notified."}
-              </p>
+            <div className="flex gap-3">
+              <Button variant="hero" size="xl" className="flex-1" onClick={handleApprove}>
+                Approve Quote
+              </Button>
+              <Button variant="outline" size="xl" className="flex-1" onClick={() => setShowRejectOptions(true)}>
+                Not Happy?
+              </Button>
             </div>
           )}
         </div>
