@@ -1,5 +1,6 @@
+import { Link } from "react-router-dom";
+import { COLOMBO_AREAS_DISPLAY } from "@/data/colomboZones";
 import { MapPin } from "lucide-react";
-import { colomboAreas } from "@/data/mockData";
 
 const GeoStrip = () => {
   return (
@@ -8,14 +9,12 @@ const GeoStrip = () => {
         <MapPin className="w-4 h-4 shrink-0" />
         <span className="font-semibold">Now serving: Greater Colombo</span>
         <span className="hidden sm:inline text-primary-foreground/60">|</span>
-        <span className="text-primary-foreground/80 text-center">
-          {colomboAreas.join(" • ")}
-        </span>
+        <span className="text-primary-foreground/80 text-center">{COLOMBO_AREAS_DISPLAY.join(" • ")}</span>
       </div>
       <div className="container text-center mt-1">
-        <button className="text-xs text-primary-foreground/60 underline hover:text-primary-foreground/80 transition-colors">
+        <Link to="/waitlist" className="text-xs text-primary-foreground/60 underline hover:text-primary-foreground/80 transition-colors">
           Outside Colombo? Join the waiting list
-        </button>
+        </Link>
       </div>
     </section>
   );
