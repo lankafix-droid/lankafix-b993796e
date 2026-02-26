@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SUPPORT_WHATSAPP, SUPPORT_PHONE, SUPPORT_EMAIL, whatsappLink } from "@/config/contact";
+import LankaFixLogo from "@/components/brand/LankaFixLogo";
 
 const Footer = () => {
   return (
@@ -8,11 +9,11 @@ const Footer = () => {
       <div className="container">
         <div className="grid md:grid-cols-3 gap-8">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center"><span className="text-primary-foreground font-bold text-xs">LF</span></div>
-              <span className="font-bold text-lg text-background">Lanka<span className="text-primary">Fix</span></span>
+            <div className="mb-3">
+              <LankaFixLogo size="md" variant="light" />
             </div>
-            <p className="text-sm leading-relaxed">Sri Lanka's structured smart service ecosystem. Verified technicians, transparent pricing, warranty-backed jobs.</p>
+            <p className="text-sm leading-relaxed mt-2">Verified Tech. Fixed Fast.</p>
+            <p className="text-xs leading-relaxed mt-1 opacity-70">Sri Lanka's structured smart service ecosystem.</p>
           </div>
           <div>
             <h4 className="font-semibold text-background mb-3 text-sm">Quick Links</h4>

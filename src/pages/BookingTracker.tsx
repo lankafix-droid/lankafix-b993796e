@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Phone, MessageCircle, Star, Upload,
   CheckCircle2, Circle, Clock, MapPin, Calendar,
-  XCircle, FileText, ShieldCheck,
+  XCircle, FileText, ShieldCheck, AlertTriangle, KeyRound,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -16,7 +16,12 @@ import {
   BOOKING_TIMELINE_STEPS, QUOTE_TIMELINE_STEPS,
   CANCELLABLE_STATUSES, SERVICE_MODE_LABELS,
 } from "@/types/booking";
-import type { BookingStatus } from "@/types/booking";
+import MascotIcon from "@/components/brand/MascotIcon";
+import LankaFixLogo from "@/components/brand/LankaFixLogo";
+import OtpVerifyModal from "@/components/modals/OtpVerifyModal";
+import SosModal from "@/components/modals/SosModal";
+import type { MascotState } from "@/components/brand/MascotIcon";
+import { toast } from "sonner";
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -26,16 +31,31 @@ const CANCEL_REASONS = [
   "Other",
 ];
 
+const statusToMascot: Record<string, MascotState> = {
+  requested: "default",
+  scheduled: "default",
+  assigned: "verified",
+  tech_en_route: "on_the_way",
+  in_progress: "in_progress",
+  quote_submitted: "verified",
+  quote_approved: "verified",
+  completed: "completed",
+  rated: "completed",
+  cancelled: "default",
+};
+
 const BookingTracker = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
-  const { getBooking, cancelBooking, setBookingRating } = useBookingStore();
+  const { getBooking, cancelBooking, setBookingRating, verifyOtp } = useBookingStore();
 
   const booking = getBooking(jobId || "");
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [rating, setRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const [showOtp, setShowOtp] = useState<"start" | "completion" | null>(null);
+  const [showSos, setShowSos] = useState(false);
 
   if (!booking) {
     return (
@@ -43,6 +63,7 @@ const BookingTracker = () => {
         <Header />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
+            <MascotIcon state="default" size="lg" className="mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-foreground mb-2">Booking Not Found</h1>
             <p className="text-muted-foreground mb-4">No booking found for "{jobId}"</p>
             <Button asChild variant="outline"><Link to="/track">Track a Job</Link></Button>
@@ -56,10 +77,9 @@ const BookingTracker = () => {
   const canCancel = CANCELLABLE_STATUSES.includes(booking.status);
   const isQuoteFlow = booking.pricing.quoteRequired;
   const timelineSteps = isQuoteFlow ? QUOTE_TIMELINE_STEPS : BOOKING_TIMELINE_STEPS;
-
-  // Derive completed steps from current status
   const statusOrder = timelineSteps.map((s) => s.status);
   const currentIdx = statusOrder.indexOf(booking.status);
+  const mascotState = statusToMascot[booking.status] || "default";
 
   const handleCancel = () => {
     if (!cancelReason) return;
@@ -74,6 +94,14 @@ const BookingTracker = () => {
     }
   };
 
+  const handleOtpVerify = (otp: string) => {
+    if (showOtp) {
+      verifyOtp(booking.jobId, showOtp);
+      toast.success(`${showOtp === "start" ? "Job start" : "Completion"} OTP verified`);
+      setShowOtp(null);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -83,19 +111,26 @@ const BookingTracker = () => {
             <ArrowLeft className="w-4 h-4" /> Home
           </Link>
 
-          {/* Header */}
+          {/* Header with mascot */}
           <div className="flex items-start justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">{booking.jobId}</h1>
-              <p className="text-sm text-muted-foreground">{booking.categoryName} • {booking.serviceName}</p>
+            <div className="flex items-center gap-3">
+              <MascotIcon state={mascotState} badge={booking.isEmergency ? "emergency" : "verified"} size="md" />
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">{booking.jobId}</h1>
+                <p className="text-sm text-muted-foreground">{booking.categoryName} • {booking.serviceName}</p>
+              </div>
             </div>
             <Badge className={BOOKING_STATUS_COLORS[booking.status] || "bg-muted text-muted-foreground"}>
               {BOOKING_STATUS_LABELS[booking.status] || booking.status}
             </Badge>
           </div>
 
-          {/* Booking Info */}
+          {/* Booking confirmation card with logo */}
           <div className="bg-card rounded-xl border p-5 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <LankaFixLogo size="sm" />
+              <span className="text-xs text-muted-foreground">Booking Confirmation</span>
+            </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-primary" />
@@ -122,6 +157,35 @@ const BookingTracker = () => {
             )}
             <p className="text-xs text-muted-foreground mt-1">Created: {new Date(booking.createdAt).toLocaleString()}</p>
           </div>
+
+          {/* OTP Controls */}
+          {(booking.status === "assigned" || booking.status === "tech_en_route" || booking.status === "in_progress") && (
+            <div className="bg-card rounded-xl border p-4 mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-primary" /> Job Verification
+              </h3>
+              <div className="flex gap-2">
+                <Button
+                  variant={booking.startOtpVerifiedAt ? "outline" : "hero"}
+                  size="sm"
+                  className="flex-1"
+                  disabled={!!booking.startOtpVerifiedAt}
+                  onClick={() => setShowOtp("start")}
+                >
+                  {booking.startOtpVerifiedAt ? "✓ Start Verified" : "Verify Start OTP"}
+                </Button>
+                <Button
+                  variant={booking.completionOtpVerifiedAt ? "outline" : "hero"}
+                  size="sm"
+                  className="flex-1"
+                  disabled={!!booking.completionOtpVerifiedAt}
+                  onClick={() => setShowOtp("completion")}
+                >
+                  {booking.completionOtpVerifiedAt ? "✓ Completion Verified" : "Verify Completion OTP"}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Timeline */}
           <div className="bg-card rounded-xl border p-5 mb-4">
@@ -153,7 +217,7 @@ const BookingTracker = () => {
             </div>
           </div>
 
-          {/* Quote Link (for quote-required jobs) */}
+          {/* Quote Link */}
           {isQuoteFlow && (booking.status === "quote_submitted" || booking.status === "quote_approved" || booking.status === "quote_rejected") && (
             <Button variant="outline" className="w-full mb-4" asChild>
               <Link to={`/quote/${booking.jobId}`}>
@@ -168,11 +232,18 @@ const BookingTracker = () => {
             <div className="bg-card rounded-xl border p-5 mb-4">
               <h3 className="text-sm font-semibold text-foreground mb-3">Assigned Technician</h3>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg relative">
                   {booking.technician.name.split(" ").map((n) => n[0]).join("")}
+                  {/* Verified badge */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-success flex items-center justify-center border-2 border-card">
+                    <ShieldCheck className="w-3 h-3 text-white" />
+                  </div>
                 </div>
                 <div className="flex-1">
-                  <p className="font-semibold text-foreground">{booking.technician.name}</p>
+                  <p className="font-semibold text-foreground flex items-center gap-1.5">
+                    {booking.technician.name}
+                    <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20">Verified</Badge>
+                  </p>
                   <p className="text-xs text-muted-foreground">{booking.technician.partnerName}</p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
                     <Star className="w-3.5 h-3.5 text-warning fill-warning" />
@@ -199,6 +270,18 @@ const BookingTracker = () => {
             </div>
           )}
 
+          {/* SOS Button */}
+          {booking.status !== "cancelled" && booking.status !== "completed" && booking.status !== "rated" && (
+            <Button
+              variant="outline"
+              className="w-full mb-4 border-destructive/30 text-destructive hover:bg-destructive/5"
+              onClick={() => setShowSos(true)}
+            >
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              SOS — Emergency Support
+            </Button>
+          )}
+
           {/* Evidence */}
           <div className="bg-card rounded-xl border p-5 mb-4">
             <h3 className="text-sm font-semibold text-foreground mb-3">Evidence & Photos</h3>
@@ -216,7 +299,10 @@ const BookingTracker = () => {
           {/* Completion / Rating */}
           {(booking.status === "completed" || booking.status === "rated") && (
             <div className="bg-card rounded-xl border p-5 mb-4">
-              <h3 className="text-sm font-semibold text-foreground mb-2">Completion</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <MascotIcon state="completed" size="sm" />
+                <h3 className="text-sm font-semibold text-foreground">Completion</h3>
+              </div>
               {booking.status === "rated" || ratingSubmitted ? (
                 <div className="text-center py-2">
                   <p className="text-sm text-success font-medium">✓ Thank you for your rating!</p>
@@ -236,9 +322,7 @@ const BookingTracker = () => {
                       </button>
                     ))}
                   </div>
-                  <Button variant="success" size="sm" onClick={handleRate} disabled={rating === 0}>
-                    Submit Rating
-                  </Button>
+                  <Button variant="success" size="sm" onClick={handleRate} disabled={rating === 0}>Submit Rating</Button>
                 </div>
               )}
             </div>
@@ -289,7 +373,7 @@ const BookingTracker = () => {
             </div>
           )}
 
-          {/* Warranty Claim Placeholder */}
+          {/* Warranty Claim */}
           {(booking.status === "completed" || booking.status === "rated") && (
             <Button variant="outline" className="w-full" disabled>
               <ShieldCheck className="w-4 h-4 mr-2" /> Warranty Claim (Coming Soon)
@@ -298,6 +382,21 @@ const BookingTracker = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Modals */}
+      <OtpVerifyModal
+        open={showOtp !== null}
+        onClose={() => setShowOtp(null)}
+        onVerify={handleOtpVerify}
+        type={showOtp || "start"}
+        jobId={booking.jobId}
+      />
+      <SosModal
+        open={showSos}
+        onClose={() => setShowSos(false)}
+        jobId={booking.jobId}
+        technicianName={booking.technician?.name}
+      />
     </div>
   );
 };

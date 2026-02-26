@@ -3,13 +3,17 @@ import { useBookingStore } from "@/store/bookingStore";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ShieldCheck, FileText, Clock } from "lucide-react";
-import { useState, useMemo } from "react";
-import type { QuoteData, QuoteItem } from "@/types/booking";
+import { useState, useMemo, useEffect } from "react";
+import type { QuoteData, QuoteOption } from "@/types/booking";
+import MascotIcon from "@/components/brand/MascotIcon";
+import LankaFixLogo from "@/components/brand/LankaFixLogo";
 
-// Generate a mock quote for demo
 function generateMockQuote(): QuoteData {
-  return {
+  const optionA: QuoteOption = {
+    id: "A",
+    label: "Option A — Genuine Parts",
     laborItems: [
       { description: "Site inspection & assessment", amount: 3000 },
       { description: "Installation / repair labor", amount: 8000 },
@@ -17,16 +21,67 @@ function generateMockQuote(): QuoteData {
     ],
     partsItems: [
       { description: "Primary component (Genuine)", amount: 15000, partQuality: "genuine" },
-      { description: "Wiring & connectors", amount: 2500, partQuality: "oem_grade" },
+      { description: "Wiring & connectors", amount: 2500, partQuality: "genuine" },
     ],
-    addOns: [
-      { description: "Extended warranty (6 months)", amount: 3000 },
-    ],
+    addOns: [{ description: "Extended warranty (6 months)", amount: 3000 }],
     totals: { labor: 13000, parts: 17500, addOns: 3000, total: 33500 },
-    warranty: { labor: "90 days", parts: "Manufacturer warranty" },
+    warranty: { labor: "90 days", parts: "Manufacturer warranty (12 months)" },
+    partQuality: "genuine",
+  };
+
+  const optionB: QuoteOption = {
+    id: "B",
+    label: "Option B — OEM Grade Parts",
+    laborItems: [
+      { description: "Site inspection & assessment", amount: 3000 },
+      { description: "Installation / repair labor", amount: 8000 },
+      { description: "Configuration & testing", amount: 2000 },
+    ],
+    partsItems: [
+      { description: "Primary component (OEM Grade)", amount: 10000, partQuality: "oem_grade" },
+      { description: "Wiring & connectors", amount: 2000, partQuality: "oem_grade" },
+    ],
+    addOns: [{ description: "Extended warranty (3 months)", amount: 1500 }],
+    totals: { labor: 13000, parts: 12000, addOns: 1500, total: 26500 },
+    warranty: { labor: "90 days", parts: "OEM warranty (6 months)" },
+    partQuality: "oem_grade",
+  };
+
+  const optionC: QuoteOption = {
+    id: "C",
+    label: "Option C — Compatible Parts",
+    laborItems: [
+      { description: "Site inspection & assessment", amount: 3000 },
+      { description: "Installation / repair labor", amount: 8000 },
+      { description: "Configuration & testing", amount: 2000 },
+    ],
+    partsItems: [
+      { description: "Primary component (Compatible)", amount: 6000, partQuality: "compatible" },
+      { description: "Wiring & connectors", amount: 1500, partQuality: "compatible" },
+    ],
+    addOns: [],
+    totals: { labor: 13000, parts: 7500, addOns: 0, total: 20500 },
+    warranty: { labor: "90 days", parts: "LankaFix warranty (3 months)" },
+    partQuality: "compatible",
+  };
+
+  return {
+    options: [optionA, optionB, optionC],
+    selectedOptionId: null,
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    laborItems: optionA.laborItems,
+    partsItems: optionA.partsItems,
+    addOns: optionA.addOns,
+    totals: optionA.totals,
+    warranty: optionA.warranty,
   };
 }
+
+const QUALITY_BADGES: Record<string, { label: string; color: string }> = {
+  genuine: { label: "Genuine", color: "bg-success/10 text-success border-success/20" },
+  oem_grade: { label: "OEM Grade", color: "bg-primary/10 text-primary border-primary/20" },
+  compatible: { label: "Compatible", color: "bg-warning/10 text-warning border-warning/20" },
+};
 
 const QuoteApproval = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -35,17 +90,18 @@ const QuoteApproval = () => {
 
   const [decided, setDecided] = useState<"approved" | null>(null);
   const [showRejectOptions, setShowRejectOptions] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string>("A");
 
   const booking = getBooking(jobId || "");
 
-  // Auto-seed a quote if none exists
-  const quote = useMemo(() => {
-    if (!booking) return null;
-    if (booking.quote) return booking.quote;
-    const q = generateMockQuote();
-    setBookingQuote(booking.jobId, q);
-    return q;
+  // Seed quote on mount if needed
+  useEffect(() => {
+    if (booking && !booking.quote) {
+      setBookingQuote(booking.jobId, generateMockQuote());
+    }
   }, [booking?.jobId, booking?.quote]);
+
+  const quote = booking?.quote || null;
 
   const expiresIn = useMemo(() => {
     if (!quote) return "";
@@ -63,7 +119,6 @@ const QuoteApproval = () => {
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-2">Booking Not Found</h1>
-            <p className="text-muted-foreground mb-4">No booking found for this job ID.</p>
             <Button asChild variant="outline"><Link to="/track">Track a Job</Link></Button>
           </div>
         </main>
@@ -71,6 +126,8 @@ const QuoteApproval = () => {
       </div>
     );
   }
+
+  const activeOption = quote.options?.find((o) => o.id === selectedOption) || null;
 
   const handleApprove = () => {
     updateBookingStatus(booking.jobId, "quote_approved");
@@ -90,20 +147,6 @@ const QuoteApproval = () => {
     navigate(`/tracker/${booking.jobId}`);
   };
 
-  const renderItems = (items: QuoteItem[], title: string) => (
-    <div className="bg-card rounded-xl border p-5 mb-4">
-      <h3 className="text-sm font-semibold text-foreground mb-3">{title}</h3>
-      <div className="space-y-2">
-        {items.map((item, i) => (
-          <div key={i} className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{item.description}</span>
-            <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -113,23 +156,25 @@ const QuoteApproval = () => {
             <ArrowLeft className="w-4 h-4" /> Back to Tracker
           </Link>
 
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-5 h-5 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Quote Approval</h1>
-          </div>
-
-          <div className="flex items-center gap-2 mb-6">
-            <Clock className="w-4 h-4 text-warning" />
-            <span className="text-sm text-warning font-medium">Expires in {expiresIn}</span>
-          </div>
-
-          {/* Header Info */}
-          <div className="bg-card rounded-xl border p-5 mb-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Job ID</span>
-                <p className="font-semibold text-foreground">{booking.jobId}</p>
+          {/* Header with mascot */}
+          <div className="flex items-center gap-3 mb-2">
+            <MascotIcon state="verified" badge="verified" size="sm" />
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Quote Approval</h1>
+              <div className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-warning" />
+                <span className="text-sm text-warning font-medium">Expires in {expiresIn}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Job Info */}
+          <div className="bg-card rounded-xl border p-5 mb-4 mt-4">
+            <div className="flex items-center justify-between mb-3">
+              <LankaFixLogo size="sm" />
+              <Badge variant="outline" className="text-xs">Quote #{booking.jobId}</Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Service</span>
                 <p className="font-semibold text-foreground">{booking.serviceName}</p>
@@ -141,46 +186,99 @@ const QuoteApproval = () => {
             </div>
           </div>
 
-          {renderItems(quote.laborItems, "Labor")}
-          {renderItems(quote.partsItems, "Parts")}
-          {quote.addOns.length > 0 && renderItems(quote.addOns, "Add-Ons")}
-
-          {/* Totals */}
-          <div className="bg-primary/5 rounded-xl border border-primary/20 p-5 mb-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Labor</span>
-                <span className="text-foreground">LKR {quote.totals.labor.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Parts</span>
-                <span className="text-foreground">LKR {quote.totals.parts.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Add-Ons</span>
-                <span className="text-foreground">LKR {quote.totals.addOns.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2">
-                <span className="text-foreground">Total</span>
-                <span className="text-primary">LKR {quote.totals.total.toLocaleString()}</span>
-              </div>
+          {/* Option Tabs */}
+          {quote.options && quote.options.length > 0 && (
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+              {quote.options.map((opt) => {
+                const qb = QUALITY_BADGES[opt.partQuality];
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => setSelectedOption(opt.id)}
+                    className={`flex-1 min-w-0 rounded-xl border p-3 text-left transition-all ${
+                      selectedOption === opt.id
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border bg-card hover:border-primary/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-bold text-foreground">Option {opt.id}</span>
+                      <Badge variant="outline" className={`text-[10px] ${qb?.color || ""}`}>{qb?.label}</Badge>
+                    </div>
+                    <p className="text-lg font-bold text-foreground">LKR {opt.totals.total.toLocaleString()}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Parts: {opt.warranty.parts}</p>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          )}
 
-          {/* Warranty */}
-          <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-8 flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Warranty Terms</p>
-              <p className="text-xs text-muted-foreground mt-1">Labor: {quote.warranty.labor}</p>
-              <p className="text-xs text-muted-foreground">Parts: {quote.warranty.parts}</p>
-            </div>
-          </div>
+          {/* Active option detail */}
+          {activeOption && (
+            <>
+              <div className="bg-card rounded-xl border p-5 mb-3">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Labor</h3>
+                <div className="space-y-2">
+                  {activeOption.laborItems.map((item, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{item.description}</span>
+                      <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-card rounded-xl border p-5 mb-3">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Parts</h3>
+                <div className="space-y-2">
+                  {activeOption.partsItems.map((item, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{item.description}</span>
+                      <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {activeOption.addOns.length > 0 && (
+                <div className="bg-card rounded-xl border p-5 mb-3">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">Add-Ons</h3>
+                  <div className="space-y-2">
+                    {activeOption.addOns.map((item, i) => (
+                      <div key={i} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{item.description}</span>
+                        <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Totals */}
+              <div className="bg-primary/5 rounded-xl border border-primary/20 p-5 mb-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor</span><span className="text-foreground">LKR {activeOption.totals.labor.toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Parts</span><span className="text-foreground">LKR {activeOption.totals.parts.toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Add-Ons</span><span className="text-foreground">LKR {activeOption.totals.addOns.toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2"><span className="text-foreground">Total</span><span className="text-primary">LKR {activeOption.totals.total.toLocaleString()}</span></div>
+                </div>
+              </div>
+
+              {/* Warranty */}
+              <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-8 flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Warranty Terms</p>
+                  <p className="text-xs text-muted-foreground mt-1">Labor: {activeOption.warranty.labor}</p>
+                  <p className="text-xs text-muted-foreground">Parts: {activeOption.warranty.parts}</p>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Actions */}
           {decided === "approved" ? (
             <div className="rounded-xl p-5 text-center bg-success/10 border border-success/20">
-              <p className="font-semibold text-foreground">✓ Quote Approved</p>
+              <MascotIcon state="completed" size="sm" className="mx-auto mb-2" />
+              <p className="font-semibold text-foreground">✓ Quote Approved (Option {selectedOption})</p>
               <p className="text-xs text-muted-foreground mt-1">Work will begin as scheduled.</p>
               <Button variant="outline" size="sm" className="mt-3" asChild>
                 <Link to={`/tracker/${booking.jobId}`}>Back to Tracker</Link>
@@ -189,24 +287,16 @@ const QuoteApproval = () => {
           ) : showRejectOptions ? (
             <div className="space-y-3">
               <p className="text-sm font-medium text-foreground">What would you like to do?</p>
-              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("cheaper")}>
-                Request cheaper option (Compatible parts)
-              </Button>
-              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("alternative")}>
-                Ask for alternative parts
-              </Button>
-              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("reschedule")}>
-                Reschedule inspection
-              </Button>
-              <Button variant="outline" className="w-full justify-start text-destructive" onClick={() => handleRejectOption("cancel")}>
-                Cancel booking
-              </Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("cheaper")}>Request cheaper option (Compatible parts)</Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("alternative")}>Ask for alternative parts</Button>
+              <Button variant="outline" className="w-full justify-start" onClick={() => handleRejectOption("reschedule")}>Reschedule inspection</Button>
+              <Button variant="outline" className="w-full justify-start text-destructive" onClick={() => handleRejectOption("cancel")}>Cancel booking</Button>
               <Button variant="ghost" size="sm" onClick={() => setShowRejectOptions(false)}>Back</Button>
             </div>
           ) : (
             <div className="flex gap-3">
               <Button variant="hero" size="xl" className="flex-1" onClick={handleApprove}>
-                Approve Quote
+                Approve Option {selectedOption}
               </Button>
               <Button variant="outline" size="xl" className="flex-1" onClick={() => setShowRejectOptions(true)}>
                 Not Happy?

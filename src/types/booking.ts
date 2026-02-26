@@ -53,7 +53,6 @@ export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
-// Timeline steps derived from status
 export const BOOKING_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = [
   { status: "requested", label: "Service Requested" },
   { status: "scheduled", label: "Scheduled" },
@@ -104,19 +103,35 @@ export interface Category {
   services: Service[];
 }
 
+export type PartQuality = "genuine" | "oem_grade" | "compatible";
+
 export interface QuoteItem {
   description: string;
   amount: number;
-  partQuality?: "genuine" | "oem_grade" | "compatible";
+  partQuality?: PartQuality;
 }
 
-export interface QuoteData {
+export interface QuoteOption {
+  id: string;
+  label: string; // "Option A", "Option B", etc.
   laborItems: QuoteItem[];
   partsItems: QuoteItem[];
   addOns: QuoteItem[];
   totals: { labor: number; parts: number; addOns: number; total: number };
   warranty: { labor: string; parts: string };
+  partQuality: PartQuality;
+}
+
+export interface QuoteData {
+  options: QuoteOption[];
+  selectedOptionId: string | null;
   expiresAt: string;
+  // Legacy flat fields for backward compat
+  laborItems: QuoteItem[];
+  partsItems: QuoteItem[];
+  addOns: QuoteItem[];
+  totals: { labor: number; parts: number; addOns: number; total: number };
+  warranty: { labor: string; parts: string };
 }
 
 export interface TechnicianInfo {
@@ -137,6 +152,18 @@ export interface PricingBreakdown {
   depositAmount: number;
   partsSeparate: boolean;
   quoteRequired: boolean;
+}
+
+export type PaymentMethod = "cash" | "bank_transfer" | "card";
+export type PaymentStatus = "pending" | "paid" | "refund_initiated" | "refunded" | "failed";
+
+export interface PaymentIntent {
+  type: "deposit" | "completion";
+  amount: number;
+  method: PaymentMethod | null;
+  status: PaymentStatus;
+  refundableAmount: number;
+  refundStatus: "none" | "partial" | "full";
 }
 
 export interface BookingState {
@@ -161,6 +188,13 @@ export interface BookingState {
   quote: QuoteData | null;
   rating: number | null;
   cancelReason: string | null;
+  // OTP fields
+  startOtpRequired: boolean;
+  completionOtpRequired: boolean;
+  startOtpVerifiedAt: string | null;
+  completionOtpVerifiedAt: string | null;
+  // Payment
+  payments: PaymentIntent[];
 }
 
 export const CANCELLABLE_STATUSES: BookingStatus[] = [
