@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MapPin, Menu, X } from "lucide-react";
 import { useState } from "react";
+import LankaFixLogo from "@/components/brand/LankaFixLogo";
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -10,10 +11,7 @@ const Header = () => {
     <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-lg border-b">
       <div className="container flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">LF</span>
-          </div>
-          <span className="font-bold text-xl text-foreground">Lanka<span className="text-primary">Fix</span></span>
+          <LankaFixLogo size="md" />
         </Link>
         <div className="hidden md:flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="w-3.5 h-3.5 text-primary" /><span>Greater Colombo</span>

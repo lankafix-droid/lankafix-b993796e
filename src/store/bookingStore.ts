@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { BookingState, BookingStatus, CategoryCode, PricingBreakdown, QuoteData, ServiceMode, TechnicianInfo } from "@/types/booking";
+import type { BookingState, BookingStatus, CategoryCode, PricingBreakdown, QuoteData, ServiceMode, TechnicianInfo, PaymentIntent } from "@/types/booking";
 
 interface BookingDraft {
   categoryCode: CategoryCode | null;
@@ -19,13 +19,9 @@ interface BookingDraft {
 }
 
 interface BookingStore {
-  // Current draft (in-progress booking flow)
   draft: BookingDraft;
-
-  // All confirmed bookings
   bookings: BookingState[];
 
-  // Draft actions
   setDraftCategory: (code: CategoryCode, name: string) => void;
   setDraftService: (code: string, name: string) => void;
   setDraftMode: (mode: ServiceMode) => void;
@@ -35,13 +31,14 @@ interface BookingStore {
   setDraftLocation: (zone: string, address: string) => void;
   resetDraft: () => void;
 
-  // Booking actions
-  confirmBooking: (pricing: PricingBreakdown, quoteRequired: boolean) => string; // returns jobId
+  confirmBooking: (pricing: PricingBreakdown, quoteRequired: boolean) => string;
   updateBookingStatus: (jobId: string, status: BookingStatus) => void;
   setBookingQuote: (jobId: string, quote: QuoteData) => void;
   setBookingTechnician: (jobId: string, tech: TechnicianInfo) => void;
   setBookingRating: (jobId: string, rating: number) => void;
   cancelBooking: (jobId: string, reason: string) => void;
+  verifyOtp: (jobId: string, type: "start" | "completion") => void;
+  addPayment: (jobId: string, payment: PaymentIntent) => void;
   getBooking: (jobId: string) => BookingState | undefined;
   getRecentBookings: () => BookingState[];
 }
@@ -144,6 +141,13 @@ export const useBookingStore = create<BookingStore>()(
           quote: null,
           rating: null,
           cancelReason: null,
+          startOtpRequired: true,
+          completionOtpRequired: true,
+          startOtpVerifiedAt: null,
+          completionOtpVerifiedAt: null,
+          payments: pricing.depositRequired
+            ? [{ type: "deposit", amount: pricing.depositAmount, method: null, status: "pending", refundableAmount: pricing.depositAmount, refundStatus: "none" }]
+            : [],
         };
         set((s) => ({
           bookings: [booking, ...s.bookings],
@@ -180,6 +184,25 @@ export const useBookingStore = create<BookingStore>()(
         set((s) => ({
           bookings: s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, status: "cancelled" as BookingStatus, cancelReason: reason } : b
+          ),
+        })),
+
+      verifyOtp: (jobId, type) =>
+        set((s) => ({
+          bookings: s.bookings.map((b) =>
+            b.jobId === jobId
+              ? {
+                  ...b,
+                  ...(type === "start" ? { startOtpVerifiedAt: new Date().toISOString() } : { completionOtpVerifiedAt: new Date().toISOString() }),
+                }
+              : b
+          ),
+        })),
+
+      addPayment: (jobId, payment) =>
+        set((s) => ({
+          bookings: s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, payments: [...b.payments, payment] } : b
           ),
         })),
 

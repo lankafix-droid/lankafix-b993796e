@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Shield, ArrowRight } from "lucide-react";
 import heroImage from "@/assets/hero-technician.jpg";
+import LankaFixLogo from "@/components/brand/LankaFixLogo";
+import MascotIcon from "@/components/brand/MascotIcon";
 
 const HeroSection = () => {
   return (
@@ -39,6 +41,10 @@ const HeroSection = () => {
               alt="LankaFix verified technician working on AC unit in Colombo"
               className="w-full h-80 md:h-[420px] object-cover"
             />
+          </div>
+          {/* Floating mascot badge */}
+          <div className="absolute -top-3 -right-3">
+            <MascotIcon state="verified" badge="verified" size="sm" />
           </div>
           <div className="absolute -bottom-4 -left-4 bg-card rounded-xl shadow-lg p-3 border flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
