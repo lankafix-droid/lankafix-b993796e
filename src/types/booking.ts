@@ -113,7 +113,7 @@ export interface QuoteItem {
 
 export interface QuoteOption {
   id: string;
-  label: string; // "Option A", "Option B", etc.
+  label: string;
   laborItems: QuoteItem[];
   partsItems: QuoteItem[];
   addOns: QuoteItem[];
@@ -125,6 +125,10 @@ export interface QuoteOption {
 export interface QuoteData {
   options: QuoteOption[];
   selectedOptionId: string | null;
+  recommendedOptionId: string;
+  scopeIncludes: string[];
+  scopeExcludes: string[];
+  notes: string;
   expiresAt: string;
   // Legacy flat fields for backward compat
   laborItems: QuoteItem[];
@@ -140,6 +144,8 @@ export interface TechnicianInfo {
   eta: string;
   partnerName: string;
   jobsCompleted: number;
+  verifiedSince: string;
+  specializations: string[];
 }
 
 export interface PricingBreakdown {
@@ -164,6 +170,20 @@ export interface PaymentIntent {
   status: PaymentStatus;
   refundableAmount: number;
   refundStatus: "none" | "partial" | "full";
+}
+
+export type TimelineActor = "system" | "technician" | "customer";
+
+export interface TimelineEvent {
+  timestamp: string;
+  title: string;
+  description?: string;
+  actor: TimelineActor;
+}
+
+export interface BookingPayments {
+  deposit?: PaymentIntent;
+  completion?: PaymentIntent;
 }
 
 export interface BookingState {
@@ -193,8 +213,10 @@ export interface BookingState {
   completionOtpRequired: boolean;
   startOtpVerifiedAt: string | null;
   completionOtpVerifiedAt: string | null;
-  // Payment
-  payments: PaymentIntent[];
+  // Payment (refactored to structured object)
+  payments: BookingPayments;
+  // Timeline event log
+  timelineEvents: TimelineEvent[];
 }
 
 export const CANCELLABLE_STATUSES: BookingStatus[] = [
@@ -203,3 +225,13 @@ export const CANCELLABLE_STATUSES: BookingStatus[] = [
   "assigned",
   "tech_en_route",
 ];
+
+// SOS escalation reasons
+export const SOS_REASONS = [
+  { value: "delay", label: "Technician Delay" },
+  { value: "misconduct", label: "Technician Misconduct" },
+  { value: "billing", label: "Billing Issue" },
+  { value: "safety", label: "Safety Concern" },
+] as const;
+
+export type SosReason = typeof SOS_REASONS[number]["value"];
