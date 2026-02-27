@@ -1,14 +1,13 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useBookingStore } from "@/store/bookingStore";
-import { whatsappLink, SUPPORT_WHATSAPP, TECHNICIAN_WHATSAPP } from "@/config/contact";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, Phone, MessageCircle, Star, Upload,
+  ArrowLeft, Star, Upload,
   CheckCircle2, Circle, Clock, MapPin, Calendar,
-  XCircle, FileText, ShieldCheck, AlertTriangle, KeyRound,
+  XCircle, FileText, AlertTriangle, KeyRound,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -20,6 +19,11 @@ import MascotIcon from "@/components/brand/MascotIcon";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 import OtpVerifyModal from "@/components/modals/OtpVerifyModal";
 import SosModal from "@/components/modals/SosModal";
+import TrustStackCard from "@/components/tracker/TrustStackCard";
+import TimelineEventLog from "@/components/tracker/TimelineEventLog";
+import WarrantyCard from "@/components/tracker/WarrantyCard";
+import ZoneIntelligenceCard from "@/components/tracker/ZoneIntelligenceCard";
+import TechnicianConfidenceCard from "@/components/tracker/TechnicianConfidenceCard";
 import type { MascotState } from "@/components/brand/MascotIcon";
 import { toast } from "sonner";
 
@@ -80,6 +84,8 @@ const BookingTracker = () => {
   const statusOrder = timelineSteps.map((s) => s.status);
   const currentIdx = statusOrder.indexOf(booking.status);
   const mascotState = statusToMascot[booking.status] || "default";
+  const isCompleted = booking.status === "completed" || booking.status === "rated";
+  const depositPaid = booking.payments.deposit?.status === "paid";
 
   const handleCancel = () => {
     if (!cancelReason) return;
@@ -125,8 +131,15 @@ const BookingTracker = () => {
             </Badge>
           </div>
 
-          {/* Booking confirmation card with logo */}
-          <div className="bg-card rounded-xl border p-5 mb-4">
+          {/* Zone Intelligence */}
+          {booking.zone && (
+            <div className="mb-4">
+              <ZoneIntelligenceCard zone={booking.zone} />
+            </div>
+          )}
+
+          {/* Booking confirmation card */}
+          <div className="bg-card rounded-xl border p-5 mb-4 animate-fade-in">
             <div className="flex items-center justify-between mb-3">
               <LankaFixLogo size="sm" />
               <span className="text-xs text-muted-foreground">Booking Confirmation</span>
@@ -155,12 +168,19 @@ const BookingTracker = () => {
             {booking.address && (
               <p className="text-xs text-muted-foreground mt-2 border-t pt-2">{booking.address}</p>
             )}
+            {/* Deposit status */}
+            {booking.payments.deposit && (
+              <div className={`mt-2 pt-2 border-t text-xs flex items-center gap-1.5 ${depositPaid ? "text-success" : "text-warning"}`}>
+                {depositPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                Deposit: LKR {booking.payments.deposit.amount.toLocaleString()} — {depositPaid ? "Paid" : "Pending"}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground mt-1">Created: {new Date(booking.createdAt).toLocaleString()}</p>
           </div>
 
           {/* OTP Controls */}
           {(booking.status === "assigned" || booking.status === "tech_en_route" || booking.status === "in_progress") && (
-            <div className="bg-card rounded-xl border p-4 mb-4">
+            <div className="bg-card rounded-xl border p-4 mb-4 animate-fade-in">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-primary" /> Job Verification
               </h3>
@@ -187,27 +207,27 @@ const BookingTracker = () => {
             </div>
           )}
 
-          {/* Timeline */}
-          <div className="bg-card rounded-xl border p-5 mb-4">
+          {/* Status Timeline */}
+          <div className="bg-card rounded-xl border p-5 mb-4 animate-fade-in">
             <h3 className="text-sm font-semibold text-foreground mb-4">Status Timeline</h3>
             <div className="space-y-0">
               {timelineSteps.map((step, i) => {
-                const isCompleted = currentIdx >= i;
+                const stepCompleted = currentIdx >= i;
                 const isCurrent = statusOrder[i] === booking.status;
                 return (
                   <div key={step.status} className="flex gap-3">
                     <div className="flex flex-col items-center">
-                      {isCompleted ? (
+                      {stepCompleted ? (
                         <CheckCircle2 className={`w-5 h-5 shrink-0 ${isCurrent ? "text-primary" : "text-success"}`} />
                       ) : (
                         <Circle className="w-5 h-5 text-muted-foreground/30 shrink-0" />
                       )}
                       {i < timelineSteps.length - 1 && (
-                        <div className={`w-0.5 h-8 ${isCompleted ? "bg-success/30" : "bg-border"}`} />
+                        <div className={`w-0.5 h-8 ${stepCompleted ? "bg-success/30" : "bg-border"}`} />
                       )}
                     </div>
                     <div className="pb-6">
-                      <p className={`text-sm font-medium ${isCompleted ? "text-foreground" : "text-muted-foreground"}`}>
+                      <p className={`text-sm font-medium ${stepCompleted ? "text-foreground" : "text-muted-foreground"}`}>
                         {step.label}
                       </p>
                     </div>
@@ -216,6 +236,13 @@ const BookingTracker = () => {
               })}
             </div>
           </div>
+
+          {/* Timeline Event Log */}
+          {booking.timelineEvents && booking.timelineEvents.length > 0 && (
+            <div className="mb-4">
+              <TimelineEventLog events={booking.timelineEvents} />
+            </div>
+          )}
 
           {/* Quote Link */}
           {isQuoteFlow && (booking.status === "quote_submitted" || booking.status === "quote_approved" || booking.status === "quote_rejected") && (
@@ -227,51 +254,20 @@ const BookingTracker = () => {
             </Button>
           )}
 
-          {/* Technician Card */}
+          {/* Technician Confidence Card */}
           {booking.technician && (
-            <div className="bg-card rounded-xl border p-5 mb-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Assigned Technician</h3>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg relative">
-                  {booking.technician.name.split(" ").map((n) => n[0]).join("")}
-                  {/* Verified badge */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-success flex items-center justify-center border-2 border-card">
-                    <ShieldCheck className="w-3 h-3 text-white" />
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground flex items-center gap-1.5">
-                    {booking.technician.name}
-                    <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20">Verified</Badge>
-                  </p>
-                  <p className="text-xs text-muted-foreground">{booking.technician.partnerName}</p>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
-                    <Star className="w-3.5 h-3.5 text-warning fill-warning" />
-                    <span>{booking.technician.rating}</span>
-                    <span>•</span>
-                    <span>{booking.technician.jobsCompleted} jobs</span>
-                    <span>•</span>
-                    <span>ETA: {booking.technician.eta}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2 mt-3">
-                <Button variant="outline" size="sm" className="flex-1" asChild>
-                  <a href={whatsappLink(TECHNICIAN_WHATSAPP, `Hi, regarding job ${booking.jobId}`)} target="_blank" rel="noopener noreferrer">
-                    <MessageCircle className="w-4 h-4 mr-1" /> WhatsApp Tech
-                  </a>
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1" asChild>
-                  <a href={whatsappLink(SUPPORT_WHATSAPP, `Support for job ${booking.jobId}`)} target="_blank" rel="noopener noreferrer">
-                    <Phone className="w-4 h-4 mr-1" /> WhatsApp Support
-                  </a>
-                </Button>
-              </div>
+            <div className="mb-4">
+              <TechnicianConfidenceCard technician={booking.technician} jobId={booking.jobId} />
             </div>
           )}
 
+          {/* Trust Stack */}
+          <div className="mb-4">
+            <TrustStackCard booking={booking} />
+          </div>
+
           {/* SOS Button */}
-          {booking.status !== "cancelled" && booking.status !== "completed" && booking.status !== "rated" && (
+          {booking.status !== "cancelled" && !isCompleted && (
             <Button
               variant="outline"
               className="w-full mb-4 border-destructive/30 text-destructive hover:bg-destructive/5"
@@ -283,7 +279,7 @@ const BookingTracker = () => {
           )}
 
           {/* Evidence */}
-          <div className="bg-card rounded-xl border p-5 mb-4">
+          <div className="bg-card rounded-xl border p-5 mb-4 animate-fade-in">
             <h3 className="text-sm font-semibold text-foreground mb-3">Evidence & Photos</h3>
             <div className="grid grid-cols-3 gap-2">
               <div className="aspect-square rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
@@ -296,9 +292,16 @@ const BookingTracker = () => {
             <p className="text-xs text-muted-foreground mt-2">Upload before/after photos for your records</p>
           </div>
 
+          {/* Warranty Card (when completed) */}
+          {isCompleted && (
+            <div className="mb-4">
+              <WarrantyCard completedAt={booking.createdAt} jobId={booking.jobId} />
+            </div>
+          )}
+
           {/* Completion / Rating */}
-          {(booking.status === "completed" || booking.status === "rated") && (
-            <div className="bg-card rounded-xl border p-5 mb-4">
+          {isCompleted && (
+            <div className="bg-card rounded-xl border p-5 mb-4 animate-fade-in">
               <div className="flex items-center gap-2 mb-2">
                 <MascotIcon state="completed" size="sm" />
                 <h3 className="text-sm font-semibold text-foreground">Completion</h3>
@@ -332,7 +335,7 @@ const BookingTracker = () => {
           {canCancel && booking.status !== "cancelled" && (
             <>
               {showCancel ? (
-                <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-5 mb-4">
+                <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-5 mb-4 animate-fade-in">
                   <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
                     <XCircle className="w-4 h-4 text-destructive" /> Cancel Booking
                   </h3>
@@ -367,17 +370,10 @@ const BookingTracker = () => {
           )}
 
           {booking.status === "cancelled" && (
-            <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-5 mb-4 text-center">
+            <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-5 mb-4 text-center animate-fade-in">
               <p className="font-semibold text-destructive">Booking Cancelled</p>
               {booking.cancelReason && <p className="text-xs text-muted-foreground mt-1">Reason: {booking.cancelReason}</p>}
             </div>
-          )}
-
-          {/* Warranty Claim */}
-          {(booking.status === "completed" || booking.status === "rated") && (
-            <Button variant="outline" className="w-full" disabled>
-              <ShieldCheck className="w-4 h-4 mr-2" /> Warranty Claim (Coming Soon)
-            </Button>
           )}
         </div>
       </main>

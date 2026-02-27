@@ -68,6 +68,19 @@ function generateMockQuote(): QuoteData {
   return {
     options: [optionA, optionB, optionC],
     selectedOptionId: null,
+    recommendedOptionId: "B",
+    scopeIncludes: [
+      "Full site inspection and assessment",
+      "Component replacement and installation",
+      "Post-installation testing and calibration",
+      "Clean-up and disposal of old parts",
+    ],
+    scopeExcludes: [
+      "Structural modifications to walls or ceilings",
+      "Electrical rewiring beyond connection points",
+      "Additional units not listed in quote",
+    ],
+    notes: "Quote valid for the listed scope only. Any additional work discovered during service will require a revised quote. Parts availability may affect timeline by 1–3 business days.",
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     laborItems: optionA.laborItems,
     partsItems: optionA.partsItems,
@@ -191,16 +204,20 @@ const QuoteApproval = () => {
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
               {quote.options.map((opt) => {
                 const qb = QUALITY_BADGES[opt.partQuality];
+                const isRecommended = opt.id === quote.recommendedOptionId;
                 return (
                   <button
                     key={opt.id}
                     onClick={() => setSelectedOption(opt.id)}
-                    className={`flex-1 min-w-0 rounded-xl border p-3 text-left transition-all ${
+                    className={`flex-1 min-w-0 rounded-xl border p-3 text-left transition-all relative ${
                       selectedOption === opt.id
                         ? "border-primary bg-primary/5 shadow-sm"
                         : "border-border bg-card hover:border-primary/30"
                     }`}
                   >
+                    {isRecommended && (
+                      <Badge className="absolute -top-2 left-2 text-[9px] bg-primary text-primary-foreground px-1.5 py-0">Recommended</Badge>
+                    )}
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-foreground">Option {opt.id}</span>
                       <Badge variant="outline" className={`text-[10px] ${qb?.color || ""}`}>{qb?.label}</Badge>
@@ -263,7 +280,7 @@ const QuoteApproval = () => {
               </div>
 
               {/* Warranty */}
-              <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-8 flex items-start gap-3">
+              <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-4 flex items-start gap-3">
                 <ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Warranty Terms</p>
@@ -273,6 +290,45 @@ const QuoteApproval = () => {
               </div>
             </>
           )}
+
+          {/* Scope & Assumptions */}
+          {quote.scopeIncludes.length > 0 && (
+            <div className="bg-card rounded-xl border p-5 mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Scope & Assumptions</h3>
+              <div className="mb-3">
+                <p className="text-xs font-medium text-success mb-1.5">✓ Includes</p>
+                <ul className="space-y-1">
+                  {quote.scopeIncludes.map((item, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                      <span className="text-success mt-0.5">•</span> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {quote.scopeExcludes.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-destructive mb-1.5">✗ Excludes</p>
+                  <ul className="space-y-1">
+                    {quote.scopeExcludes.map((item, i) => (
+                      <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                        <span className="text-destructive mt-0.5">•</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Risk Notes */}
+          {quote.notes && (
+            <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 mb-8 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">⚠ Important Notes</p>
+              <p>{quote.notes}</p>
+            </div>
+          )}
+
+
 
           {/* Actions */}
           {decided === "approved" ? (

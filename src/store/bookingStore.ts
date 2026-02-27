@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { BookingState, BookingStatus, CategoryCode, PricingBreakdown, QuoteData, ServiceMode, TechnicianInfo, PaymentIntent } from "@/types/booking";
+import type {
+  BookingState, BookingStatus, CategoryCode, PricingBreakdown,
+  QuoteData, ServiceMode, TechnicianInfo, PaymentIntent,
+  TimelineEvent, BookingPayments,
+} from "@/types/booking";
 
 interface BookingDraft {
   categoryCode: CategoryCode | null;
@@ -38,7 +42,8 @@ interface BookingStore {
   setBookingRating: (jobId: string, rating: number) => void;
   cancelBooking: (jobId: string, reason: string) => void;
   verifyOtp: (jobId: string, type: "start" | "completion") => void;
-  addPayment: (jobId: string, payment: PaymentIntent) => void;
+  setPayment: (jobId: string, key: "deposit" | "completion", payment: PaymentIntent) => void;
+  addTimelineEvent: (jobId: string, event: TimelineEvent) => void;
   getBooking: (jobId: string) => BookingState | undefined;
   getRecentBookings: () => BookingState[];
 }
@@ -68,23 +73,35 @@ function generateJobId(): string {
   return id;
 }
 
-const TECH_NAMES = [
-  { name: "Kasun Perera", partner: "ColomboTech Solutions", rating: 4.8, jobs: 342 },
-  { name: "Nadeesha Silva", partner: "Lanka Service Pro", rating: 4.9, jobs: 567 },
-  { name: "Ruwan Fernando", partner: "QuickFix Colombo", rating: 4.7, jobs: 218 },
-  { name: "Dinesh Jayawardena", partner: "ProTech Lanka", rating: 4.6, jobs: 189 },
-  { name: "Chaminda Bandara", partner: "SmartFix Pvt Ltd", rating: 4.9, jobs: 412 },
+const TECH_POOL = [
+  { name: "Kasun Perera", partner: "ColomboTech Solutions", rating: 4.8, jobs: 342, specs: ["AC", "HVAC"] },
+  { name: "Nadeesha Silva", partner: "Lanka Service Pro", rating: 4.9, jobs: 567, specs: ["CCTV", "Smart Home"] },
+  { name: "Ruwan Fernando", partner: "QuickFix Colombo", rating: 4.7, jobs: 218, specs: ["Mobile", "Electronics"] },
+  { name: "Dinesh Jayawardena", partner: "ProTech Lanka", rating: 4.6, jobs: 189, specs: ["IT", "Networking"] },
+  { name: "Chaminda Bandara", partner: "SmartFix Pvt Ltd", rating: 4.9, jobs: 412, specs: ["Solar", "Electrical"] },
 ];
 
 function seedTechnician(): TechnicianInfo {
-  const t = TECH_NAMES[Math.floor(Math.random() * TECH_NAMES.length)];
+  const t = TECH_POOL[Math.floor(Math.random() * TECH_POOL.length)];
   return {
     name: t.name,
     rating: t.rating,
     eta: `${15 + Math.floor(Math.random() * 30)} mins`,
     partnerName: t.partner,
     jobsCompleted: t.jobs,
+    verifiedSince: "2024-03-15",
+    specializations: t.specs,
   };
+}
+
+function createInitialTimeline(quoteRequired: boolean): TimelineEvent[] {
+  return [
+    { timestamp: new Date().toISOString(), title: "Booking Created", description: "Service request submitted by customer", actor: "system" },
+    { timestamp: new Date(Date.now() + 60000).toISOString(), title: "Technician Assigned", description: "Verified technician matched to your job", actor: "system" },
+    ...(quoteRequired
+      ? [{ timestamp: new Date(Date.now() + 120000).toISOString(), title: "Inspection Scheduled", description: "Technician will inspect and provide a detailed quote", actor: "system" as const }]
+      : []),
+  ];
 }
 
 export const useBookingStore = create<BookingStore>()(
@@ -119,6 +136,10 @@ export const useBookingStore = create<BookingStore>()(
       confirmBooking: (pricing, quoteRequired) => {
         const { draft } = get();
         const jobId = generateJobId();
+        const depositPayment: PaymentIntent | undefined = pricing.depositRequired
+          ? { type: "deposit", amount: pricing.depositAmount, method: null, status: "pending", refundableAmount: pricing.depositAmount, refundStatus: "none" }
+          : undefined;
+
         const booking: BookingState = {
           jobId,
           categoryCode: draft.categoryCode!,
@@ -145,9 +166,8 @@ export const useBookingStore = create<BookingStore>()(
           completionOtpRequired: true,
           startOtpVerifiedAt: null,
           completionOtpVerifiedAt: null,
-          payments: pricing.depositRequired
-            ? [{ type: "deposit", amount: pricing.depositAmount, method: null, status: "pending", refundableAmount: pricing.depositAmount, refundStatus: "none" }]
-            : [],
+          payments: { deposit: depositPayment },
+          timelineEvents: createInitialTimeline(quoteRequired),
         };
         set((s) => ({
           bookings: [booking, ...s.bookings],
@@ -164,7 +184,17 @@ export const useBookingStore = create<BookingStore>()(
       setBookingQuote: (jobId, quote) =>
         set((s) => ({
           bookings: s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, quote, status: "quote_submitted" as BookingStatus } : b
+            b.jobId === jobId
+              ? {
+                  ...b,
+                  quote,
+                  status: "quote_submitted" as BookingStatus,
+                  timelineEvents: [
+                    ...b.timelineEvents,
+                    { timestamp: new Date().toISOString(), title: "Quote Submitted", description: "Detailed quote ready for your review", actor: "technician" as const },
+                  ],
+                }
+              : b
           ),
         })),
 
@@ -176,14 +206,34 @@ export const useBookingStore = create<BookingStore>()(
       setBookingRating: (jobId, rating) =>
         set((s) => ({
           bookings: s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, rating, status: "rated" as BookingStatus } : b
+            b.jobId === jobId
+              ? {
+                  ...b,
+                  rating,
+                  status: "rated" as BookingStatus,
+                  timelineEvents: [
+                    ...b.timelineEvents,
+                    { timestamp: new Date().toISOString(), title: "Rating Submitted", description: `Customer rated ${rating}/5 stars`, actor: "customer" as const },
+                  ],
+                }
+              : b
           ),
         })),
 
       cancelBooking: (jobId, reason) =>
         set((s) => ({
           bookings: s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, status: "cancelled" as BookingStatus, cancelReason: reason } : b
+            b.jobId === jobId
+              ? {
+                  ...b,
+                  status: "cancelled" as BookingStatus,
+                  cancelReason: reason,
+                  timelineEvents: [
+                    ...b.timelineEvents,
+                    { timestamp: new Date().toISOString(), title: "Booking Cancelled", description: `Reason: ${reason}`, actor: "customer" as const },
+                  ],
+                }
+              : b
           ),
         })),
 
@@ -193,16 +243,45 @@ export const useBookingStore = create<BookingStore>()(
             b.jobId === jobId
               ? {
                   ...b,
-                  ...(type === "start" ? { startOtpVerifiedAt: new Date().toISOString() } : { completionOtpVerifiedAt: new Date().toISOString() }),
+                  ...(type === "start"
+                    ? { startOtpVerifiedAt: new Date().toISOString() }
+                    : { completionOtpVerifiedAt: new Date().toISOString() }),
+                  timelineEvents: [
+                    ...b.timelineEvents,
+                    {
+                      timestamp: new Date().toISOString(),
+                      title: type === "start" ? "Job Start Verified" : "Completion Verified",
+                      description: `OTP verified by customer`,
+                      actor: "customer" as const,
+                    },
+                  ],
                 }
               : b
           ),
         })),
 
-      addPayment: (jobId, payment) =>
+      setPayment: (jobId, key, payment) =>
         set((s) => ({
           bookings: s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, payments: [...b.payments, payment] } : b
+            b.jobId === jobId
+              ? {
+                  ...b,
+                  payments: { ...b.payments, [key]: payment },
+                  timelineEvents: [
+                    ...b.timelineEvents,
+                    { timestamp: new Date().toISOString(), title: `Payment ${payment.status === "paid" ? "Received" : "Updated"}`, description: `${key} — LKR ${payment.amount.toLocaleString()}`, actor: "system" as const },
+                  ],
+                }
+              : b
+          ),
+        })),
+
+      addTimelineEvent: (jobId, event) =>
+        set((s) => ({
+          bookings: s.bookings.map((b) =>
+            b.jobId === jobId
+              ? { ...b, timelineEvents: [...b.timelineEvents, event] }
+              : b
           ),
         })),
 
