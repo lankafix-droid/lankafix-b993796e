@@ -24,8 +24,8 @@ import TimelineEventLog from "@/components/tracker/TimelineEventLog";
 import WarrantyCard from "@/components/tracker/WarrantyCard";
 import ZoneIntelligenceCard from "@/components/tracker/ZoneIntelligenceCard";
 import TechnicianConfidenceCard from "@/components/tracker/TechnicianConfidenceCard";
-import type { MascotState } from "@/components/brand/MascotIcon";
 import { toast } from "sonner";
+import { statusToMascotState } from "@/brand/trustSystem";
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -34,19 +34,6 @@ const CANCEL_REASONS = [
   "Scheduling conflict",
   "Other",
 ];
-
-const statusToMascot: Record<string, MascotState> = {
-  requested: "default",
-  scheduled: "default",
-  assigned: "verified",
-  tech_en_route: "on_the_way",
-  in_progress: "in_progress",
-  quote_submitted: "verified",
-  quote_approved: "verified",
-  completed: "completed",
-  rated: "completed",
-  cancelled: "default",
-};
 
 const BookingTracker = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -83,7 +70,7 @@ const BookingTracker = () => {
   const timelineSteps = isQuoteFlow ? QUOTE_TIMELINE_STEPS : BOOKING_TIMELINE_STEPS;
   const statusOrder = timelineSteps.map((s) => s.status);
   const currentIdx = statusOrder.indexOf(booking.status);
-  const mascotState = statusToMascot[booking.status] || "default";
+  const mascotState = statusToMascotState[booking.status] || "default";
   const isCompleted = booking.status === "completed" || booking.status === "rated";
   const depositPaid = booking.payments.deposit?.status === "paid";
 
@@ -295,7 +282,7 @@ const BookingTracker = () => {
           {/* Warranty Card (when completed) */}
           {isCompleted && (
             <div className="mb-4">
-              <WarrantyCard completedAt={booking.createdAt} jobId={booking.jobId} />
+              <WarrantyCard booking={booking} />
             </div>
           )}
 

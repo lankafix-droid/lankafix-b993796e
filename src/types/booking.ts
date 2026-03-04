@@ -111,6 +111,13 @@ export interface QuoteItem {
   partQuality?: PartQuality;
 }
 
+export interface WarrantyTerms {
+  labor: string;
+  parts: string;
+  laborDays: number;
+  partsDays: number;
+}
+
 export interface QuoteOption {
   id: string;
   label: string;
@@ -118,7 +125,7 @@ export interface QuoteOption {
   partsItems: QuoteItem[];
   addOns: QuoteItem[];
   totals: { labor: number; parts: number; addOns: number; total: number };
-  warranty: { labor: string; parts: string };
+  warranty: WarrantyTerms;
   partQuality: PartQuality;
 }
 
@@ -126,16 +133,18 @@ export interface QuoteData {
   options: QuoteOption[];
   selectedOptionId: string | null;
   recommendedOptionId: string;
+  recommendedReason: string;
   scopeIncludes: string[];
   scopeExcludes: string[];
   notes: string;
   expiresAt: string;
+  inspectionFindings: string[];
   // Legacy flat fields for backward compat
   laborItems: QuoteItem[];
   partsItems: QuoteItem[];
   addOns: QuoteItem[];
   totals: { labor: number; parts: number; addOns: number; total: number };
-  warranty: { labor: string; parts: string };
+  warranty: WarrantyTerms;
 }
 
 export interface TechnicianInfo {
@@ -170,6 +179,9 @@ export interface PaymentIntent {
   status: PaymentStatus;
   refundableAmount: number;
   refundStatus: "none" | "partial" | "full";
+  paidAt?: string;
+  reference?: string;
+  provider?: "manual" | "gateway";
 }
 
 export type TimelineActor = "system" | "technician" | "customer";
@@ -186,6 +198,12 @@ export interface BookingPayments {
   completion?: PaymentIntent;
 }
 
+export interface BookingPhoto {
+  url: string;
+  type: "before" | "after" | "issue" | "invoice";
+  uploadedAt: string;
+}
+
 export interface BookingState {
   jobId: string;
   categoryCode: CategoryCode;
@@ -195,7 +213,7 @@ export interface BookingState {
   serviceMode: ServiceMode;
   isEmergency: boolean;
   precheckAnswers: Record<string, string | boolean>;
-  photos: string[];
+  photos: BookingPhoto[];
   zone: string;
   address: string;
   scheduledDate: string;
@@ -208,14 +226,11 @@ export interface BookingState {
   quote: QuoteData | null;
   rating: number | null;
   cancelReason: string | null;
-  // OTP fields
   startOtpRequired: boolean;
   completionOtpRequired: boolean;
   startOtpVerifiedAt: string | null;
   completionOtpVerifiedAt: string | null;
-  // Payment (refactored to structured object)
   payments: BookingPayments;
-  // Timeline event log
   timelineEvents: TimelineEvent[];
 }
 
@@ -226,7 +241,6 @@ export const CANCELLABLE_STATUSES: BookingStatus[] = [
   "tech_en_route",
 ];
 
-// SOS escalation reasons
 export const SOS_REASONS = [
   { value: "delay", label: "Technician Delay" },
   { value: "misconduct", label: "Technician Misconduct" },

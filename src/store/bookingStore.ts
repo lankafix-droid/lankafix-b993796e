@@ -3,8 +3,9 @@ import { persist } from "zustand/middleware";
 import type {
   BookingState, BookingStatus, CategoryCode, PricingBreakdown,
   QuoteData, ServiceMode, TechnicianInfo, PaymentIntent,
-  TimelineEvent, BookingPayments,
+  TimelineEvent, BookingPayments, TimelineActor, BookingPhoto,
 } from "@/types/booking";
+import { canTransition } from "@/brand/trustSystem";
 
 interface BookingDraft {
   categoryCode: CategoryCode | null;
@@ -14,7 +15,7 @@ interface BookingDraft {
   serviceMode: ServiceMode;
   isEmergency: boolean;
   precheckAnswers: Record<string, string | boolean>;
-  photos: string[];
+  photos: BookingPhoto[];
   zone: string;
   address: string;
   scheduledDate: string;
@@ -94,6 +95,27 @@ function seedTechnician(): TechnicianInfo {
   };
 }
 
+// Centralized timeline logger helper
+function logEvent(
+  bookings: BookingState[],
+  jobId: string,
+  title: string,
+  description: string | undefined,
+  actor: TimelineActor
+): BookingState[] {
+  const event: TimelineEvent = {
+    timestamp: new Date().toISOString(),
+    title,
+    description,
+    actor,
+  };
+  return bookings.map((b) =>
+    b.jobId === jobId
+      ? { ...b, timelineEvents: [...b.timelineEvents, event] }
+      : b
+  );
+}
+
 function createInitialTimeline(quoteRequired: boolean): TimelineEvent[] {
   return [
     { timestamp: new Date().toISOString(), title: "Booking Created", description: "Service request submitted by customer", actor: "system" },
@@ -149,7 +171,7 @@ export const useBookingStore = create<BookingStore>()(
           serviceMode: draft.serviceMode,
           isEmergency: draft.isEmergency,
           precheckAnswers: { ...draft.precheckAnswers },
-          photos: [...draft.photos],
+          photos: [],
           zone: draft.zone,
           address: draft.address,
           scheduledDate: draft.scheduledDate,
@@ -177,26 +199,28 @@ export const useBookingStore = create<BookingStore>()(
       },
 
       updateBookingStatus: (jobId, status) =>
-        set((s) => ({
-          bookings: s.bookings.map((b) => (b.jobId === jobId ? { ...b, status } : b)),
-        })),
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          if (!canTransition(booking.status, status)) {
+            console.warn(`[LankaFix] Invalid transition: ${booking.status} → ${status}`);
+            return s;
+          }
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status } : b
+          );
+          updated = logEvent(updated, jobId, `Status: ${status}`, `Transitioned from ${booking.status}`, "system");
+          return { bookings: updated };
+        }),
 
       setBookingQuote: (jobId, quote) =>
-        set((s) => ({
-          bookings: s.bookings.map((b) =>
-            b.jobId === jobId
-              ? {
-                  ...b,
-                  quote,
-                  status: "quote_submitted" as BookingStatus,
-                  timelineEvents: [
-                    ...b.timelineEvents,
-                    { timestamp: new Date().toISOString(), title: "Quote Submitted", description: "Detailed quote ready for your review", actor: "technician" as const },
-                  ],
-                }
-              : b
-          ),
-        })),
+        set((s) => {
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, quote, status: "quote_submitted" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Quote Submitted", "Detailed quote ready for your review", "technician");
+          return { bookings: updated };
+        }),
 
       setBookingTechnician: (jobId, tech) =>
         set((s) => ({
@@ -204,85 +228,89 @@ export const useBookingStore = create<BookingStore>()(
         })),
 
       setBookingRating: (jobId, rating) =>
-        set((s) => ({
-          bookings: s.bookings.map((b) =>
-            b.jobId === jobId
-              ? {
-                  ...b,
-                  rating,
-                  status: "rated" as BookingStatus,
-                  timelineEvents: [
-                    ...b.timelineEvents,
-                    { timestamp: new Date().toISOString(), title: "Rating Submitted", description: `Customer rated ${rating}/5 stars`, actor: "customer" as const },
-                  ],
-                }
-              : b
-          ),
-        })),
+        set((s) => {
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, rating, status: "rated" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Rating Submitted", `Customer rated ${rating}/5 stars`, "customer");
+          return { bookings: updated };
+        }),
 
       cancelBooking: (jobId, reason) =>
-        set((s) => ({
-          bookings: s.bookings.map((b) =>
-            b.jobId === jobId
-              ? {
-                  ...b,
-                  status: "cancelled" as BookingStatus,
-                  cancelReason: reason,
-                  timelineEvents: [
-                    ...b.timelineEvents,
-                    { timestamp: new Date().toISOString(), title: "Booking Cancelled", description: `Reason: ${reason}`, actor: "customer" as const },
-                  ],
-                }
-              : b
-          ),
-        })),
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking || !canTransition(booking.status, "cancelled")) {
+            console.warn(`[LankaFix] Cannot cancel from status: ${booking?.status}`);
+            return s;
+          }
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: "cancelled" as BookingStatus, cancelReason: reason } : b
+          );
+          updated = logEvent(updated, jobId, "Booking Cancelled", `Reason: ${reason}`, "customer");
+          return { bookings: updated };
+        }),
 
       verifyOtp: (jobId, type) =>
-        set((s) => ({
-          bookings: s.bookings.map((b) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+
+          const now = new Date().toISOString();
+          let newStatus = booking.status;
+
+          // Auto-transition on OTP verify
+          if (type === "start" && (booking.status === "assigned" || booking.status === "tech_en_route")) {
+            newStatus = "in_progress";
+          }
+          if (type === "completion" && (booking.status === "in_progress" || booking.status === "quote_approved")) {
+            newStatus = "completed";
+          }
+
+          let updated = s.bookings.map((b) =>
             b.jobId === jobId
               ? {
                   ...b,
-                  ...(type === "start"
-                    ? { startOtpVerifiedAt: new Date().toISOString() }
-                    : { completionOtpVerifiedAt: new Date().toISOString() }),
-                  timelineEvents: [
-                    ...b.timelineEvents,
-                    {
-                      timestamp: new Date().toISOString(),
-                      title: type === "start" ? "Job Start Verified" : "Completion Verified",
-                      description: `OTP verified by customer`,
-                      actor: "customer" as const,
-                    },
-                  ],
+                  ...(type === "start" ? { startOtpVerifiedAt: now } : { completionOtpVerifiedAt: now }),
+                  status: newStatus,
                 }
               : b
-          ),
-        })),
+          );
+          updated = logEvent(updated, jobId, type === "start" ? "Job Start Verified" : "Completion Verified", "OTP verified by customer", "customer");
+          if (newStatus !== booking.status) {
+            updated = logEvent(updated, jobId, `Auto-transition: ${newStatus}`, `Status updated after OTP ${type} verification`, "system");
+          }
+          return { bookings: updated };
+        }),
 
       setPayment: (jobId, key, payment) =>
-        set((s) => ({
-          bookings: s.bookings.map((b) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+
+          let newStatus = booking.status;
+          // Auto-transition on payment
+          if (key === "deposit" && payment.status === "paid" && booking.status === "requested") {
+            newStatus = "scheduled";
+          }
+
+          let updated = s.bookings.map((b) =>
             b.jobId === jobId
-              ? {
-                  ...b,
-                  payments: { ...b.payments, [key]: payment },
-                  timelineEvents: [
-                    ...b.timelineEvents,
-                    { timestamp: new Date().toISOString(), title: `Payment ${payment.status === "paid" ? "Received" : "Updated"}`, description: `${key} — LKR ${payment.amount.toLocaleString()}`, actor: "system" as const },
-                  ],
-                }
+              ? { ...b, payments: { ...b.payments, [key]: payment }, status: newStatus }
               : b
-          ),
-        })),
+          );
+          updated = logEvent(
+            updated,
+            jobId,
+            `Payment ${payment.status === "paid" ? "Received" : "Updated"}`,
+            `${key} — LKR ${payment.amount.toLocaleString()}`,
+            "system"
+          );
+          return { bookings: updated };
+        }),
 
       addTimelineEvent: (jobId, event) =>
         set((s) => ({
-          bookings: s.bookings.map((b) =>
-            b.jobId === jobId
-              ? { ...b, timelineEvents: [...b.timelineEvents, event] }
-              : b
-          ),
+          bookings: logEvent(s.bookings, jobId, event.title, event.description, event.actor),
         })),
 
       getBooking: (jobId) => get().bookings.find((b) => b.jobId === jobId),
