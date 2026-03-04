@@ -5,6 +5,8 @@ import MascotIcon from "@/components/brand/MascotIcon";
 import { toast } from "sonner";
 import { SOS_REASONS, type SosReason } from "@/types/booking";
 import { useState } from "react";
+import { SOS_SEVERITY_CONFIG, type SosSeverity } from "@/brand/trustSystem";
+import { useBookingStore } from "@/store/bookingStore";
 
 interface SosModalProps {
   open: boolean;
@@ -15,11 +17,13 @@ interface SosModalProps {
 
 const SosModal = ({ open, onClose, jobId, technicianName }: SosModalProps) => {
   const [selectedReason, setSelectedReason] = useState<SosReason | null>(null);
+  const [severity, setSeverity] = useState<SosSeverity>("medium");
   const [escalated, setEscalated] = useState(false);
+  const { addTimelineEvent } = useBookingStore();
 
   if (!open) return null;
 
-  const snapshot = `LankaFix SOS\nJob: ${jobId}\nTechnician: ${technicianName || "N/A"}\nReason: ${selectedReason || "Not specified"}\nTime: ${new Date().toLocaleString()}`;
+  const snapshot = `LankaFix SOS\nJob: ${jobId}\nTechnician: ${technicianName || "N/A"}\nReason: ${selectedReason || "Not specified"}\nSeverity: ${severity}\nTime: ${new Date().toLocaleString()}`;
 
   const copyJobDetails = () => {
     navigator.clipboard.writeText(snapshot);
@@ -27,13 +31,20 @@ const SosModal = ({ open, onClose, jobId, technicianName }: SosModalProps) => {
   };
 
   const handleEscalate = () => {
-    // API contract: POST /api/sos/escalate { jobId, reason, snapshot }
+    // API contract: POST /api/sos/escalate { jobId, reason, severity, snapshot }
+    addTimelineEvent(jobId, {
+      timestamp: new Date().toISOString(),
+      title: "SOS Escalation",
+      description: `Reason: ${selectedReason || "N/A"} — Severity: ${severity}`,
+      actor: "customer",
+    });
     setEscalated(true);
     toast.success("Escalation submitted — our team will contact you shortly");
   };
 
   const handleClose = () => {
     setSelectedReason(null);
+    setSeverity("medium");
     setEscalated(false);
     onClose();
   };
@@ -51,24 +62,43 @@ const SosModal = ({ open, onClose, jobId, technicianName }: SosModalProps) => {
             {escalated ? "Escalation submitted successfully." : "Select a reason and contact our support team."}
           </p>
 
-          {/* Reason selector */}
           {!escalated && (
-            <div className="w-full space-y-1.5 mb-4">
-              {SOS_REASONS.map((r) => (
-                <button
-                  key={r.value}
-                  onClick={() => setSelectedReason(r.value)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm flex items-center justify-between transition-all ${
-                    selectedReason === r.value
-                      ? "bg-warning/10 border-warning/30 text-foreground font-medium"
-                      : "bg-card text-foreground hover:border-warning/20"
-                  }`}
-                >
-                  {r.label}
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
-              ))}
-            </div>
+            <>
+              {/* Severity selector */}
+              <div className="flex gap-2 w-full mb-3">
+                {(Object.keys(SOS_SEVERITY_CONFIG) as SosSeverity[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSeverity(s)}
+                    className={`flex-1 text-xs py-1.5 rounded-lg border transition-all font-medium ${
+                      severity === s
+                        ? SOS_SEVERITY_CONFIG[s].color + " border-current"
+                        : "bg-card text-muted-foreground border-border"
+                    }`}
+                  >
+                    {SOS_SEVERITY_CONFIG[s].label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Reason selector */}
+              <div className="w-full space-y-1.5 mb-4">
+                {SOS_REASONS.map((r) => (
+                  <button
+                    key={r.value}
+                    onClick={() => setSelectedReason(r.value)}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm flex items-center justify-between transition-all ${
+                      selectedReason === r.value
+                        ? "bg-warning/10 border-warning/30 text-foreground font-medium"
+                        : "bg-card text-foreground hover:border-warning/20"
+                    }`}
+                  >
+                    {r.label}
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
           <div className="w-full space-y-2 mb-4">
@@ -104,6 +134,7 @@ const SosModal = ({ open, onClose, jobId, technicianName }: SosModalProps) => {
             <p className="font-medium text-foreground mb-1">Job: {jobId}</p>
             {technicianName && <p>Technician: {technicianName}</p>}
             {selectedReason && <p>Reason: {SOS_REASONS.find(r => r.value === selectedReason)?.label}</p>}
+            <p>Severity: {SOS_SEVERITY_CONFIG[severity].label}</p>
             <p>Time: {new Date().toLocaleString()}</p>
           </div>
 

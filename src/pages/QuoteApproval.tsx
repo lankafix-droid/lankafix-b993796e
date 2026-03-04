@@ -25,7 +25,7 @@ function generateMockQuote(): QuoteData {
     ],
     addOns: [{ description: "Extended warranty (6 months)", amount: 3000 }],
     totals: { labor: 13000, parts: 17500, addOns: 3000, total: 33500 },
-    warranty: { labor: "90 days", parts: "Manufacturer warranty (12 months)" },
+    warranty: { labor: "90 days", parts: "Manufacturer warranty (12 months)", laborDays: 90, partsDays: 365 },
     partQuality: "genuine",
   };
 
@@ -43,7 +43,7 @@ function generateMockQuote(): QuoteData {
     ],
     addOns: [{ description: "Extended warranty (3 months)", amount: 1500 }],
     totals: { labor: 13000, parts: 12000, addOns: 1500, total: 26500 },
-    warranty: { labor: "90 days", parts: "OEM warranty (6 months)" },
+    warranty: { labor: "90 days", parts: "OEM warranty (6 months)", laborDays: 90, partsDays: 180 },
     partQuality: "oem_grade",
   };
 
@@ -61,7 +61,7 @@ function generateMockQuote(): QuoteData {
     ],
     addOns: [],
     totals: { labor: 13000, parts: 7500, addOns: 0, total: 20500 },
-    warranty: { labor: "90 days", parts: "LankaFix warranty (3 months)" },
+    warranty: { labor: "90 days", parts: "LankaFix warranty (3 months)", laborDays: 90, partsDays: 90 },
     partQuality: "compatible",
   };
 
@@ -69,6 +69,7 @@ function generateMockQuote(): QuoteData {
     options: [optionA, optionB, optionC],
     selectedOptionId: null,
     recommendedOptionId: "B",
+    recommendedReason: "Best balance of quality, warranty coverage, and price for this service type.",
     scopeIncludes: [
       "Full site inspection and assessment",
       "Component replacement and installation",
@@ -82,6 +83,11 @@ function generateMockQuote(): QuoteData {
     ],
     notes: "Quote valid for the listed scope only. Any additional work discovered during service will require a revised quote. Parts availability may affect timeline by 1–3 business days.",
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    inspectionFindings: [
+      "Existing unit shows signs of refrigerant leak at the indoor coil",
+      "Outdoor unit drainage partially blocked",
+      "Electrical connections in good condition",
+    ],
     laborItems: optionA.laborItems,
     partsItems: optionA.partsItems,
     addOns: optionA.addOns,
@@ -90,11 +96,8 @@ function generateMockQuote(): QuoteData {
   };
 }
 
-const QUALITY_BADGES: Record<string, { label: string; color: string }> = {
-  genuine: { label: "Genuine", color: "bg-success/10 text-success border-success/20" },
-  oem_grade: { label: "OEM Grade", color: "bg-primary/10 text-primary border-primary/20" },
-  compatible: { label: "Compatible", color: "bg-warning/10 text-warning border-warning/20" },
-};
+import { QUALITY_BADGES } from "@/brand/trustSystem";
+
 
 const QuoteApproval = () => {
   const { jobId } = useParams<{ jobId: string }>();
@@ -289,6 +292,28 @@ const QuoteApproval = () => {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Inspection Findings */}
+          {quote.inspectionFindings && quote.inspectionFindings.length > 0 && (
+            <div className="bg-card rounded-xl border p-5 mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Inspection Findings</h3>
+              <ul className="space-y-1.5">
+                {quote.inspectionFindings.map((finding, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                    <span className="text-primary mt-0.5">•</span> {finding}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommended Reason */}
+          {quote.recommendedReason && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-4 text-xs">
+              <p className="font-medium text-foreground mb-1">💡 Why we recommend Option {quote.recommendedOptionId}</p>
+              <p className="text-muted-foreground">{quote.recommendedReason}</p>
+            </div>
           )}
 
           {/* Scope & Assumptions */}

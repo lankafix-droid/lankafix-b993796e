@@ -1,15 +1,23 @@
 import { Shield, Calendar, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MascotIcon from "@/components/brand/MascotIcon";
+import type { BookingState } from "@/types/booking";
 
 interface WarrantyCardProps {
-  completedAt: string;
-  jobId: string;
+  booking: BookingState;
 }
 
-const WarrantyCard = ({ completedAt, jobId }: WarrantyCardProps) => {
+const WarrantyCard = ({ booking }: WarrantyCardProps) => {
+  const completedAt = booking.completionOtpVerifiedAt || booking.createdAt;
   const completionDate = new Date(completedAt);
-  const warrantyEnd = new Date(completionDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  // Use quote warranty days if available, fallback to 30
+  const selectedOption = booking.quote?.options?.find(
+    (o) => o.id === (booking.quote?.selectedOptionId || booking.quote?.recommendedOptionId)
+  );
+  const laborDays = selectedOption?.warranty?.laborDays ?? 30;
+
+  const warrantyEnd = new Date(completionDate.getTime() + laborDays * 24 * 60 * 60 * 1000);
   const isActive = warrantyEnd.getTime() > Date.now();
   const daysLeft = Math.max(0, Math.ceil((warrantyEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
 
@@ -22,7 +30,7 @@ const WarrantyCard = ({ completedAt, jobId }: WarrantyCardProps) => {
             <Shield className="w-4 h-4 text-success" />
             {isActive ? "Warranty Active" : "Warranty Expired"}
           </h3>
-          <p className="text-xs text-muted-foreground">{jobId}</p>
+          <p className="text-xs text-muted-foreground">{booking.jobId}</p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
