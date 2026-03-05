@@ -34,6 +34,7 @@ interface BookingStore {
   draft: BookingDraft;
   bookings: BookingState[];
   lastMatchResult: MatchResult | null;
+  techAvailability: Record<string, import("@/types/booking").TechnicianAvailability>;
 
   setDraftCategory: (code: CategoryCode, name: string) => void;
   setDraftService: (code: string, name: string) => void;
@@ -68,6 +69,23 @@ interface BookingStore {
   addBookingPhoto: (jobId: string, photo: BookingPhoto) => void;
   getBooking: (jobId: string) => BookingState | undefined;
   getRecentBookings: () => BookingState[];
+
+  // Supply-side actions
+  acceptJob: (jobId: string, technicianId: string) => void;
+  rejectJob: (jobId: string, reason: import("@/types/booking").TechRejectionReason) => void;
+  confirmPartnerAssignment: (jobId: string) => void;
+  reassignTechnician: (jobId: string, tech: TechnicianInfo) => void;
+  startInspection: (jobId: string) => void;
+  startRepair: (jobId: string) => void;
+  markCompleted: (jobId: string) => void;
+  updateTechnicianAvailability: (techId: string, status: import("@/types/booking").TechnicianAvailability) => void;
+  attachTechnicianPhoto: (jobId: string, type: "before" | "after", url: string) => void;
+  setInternalNote: (jobId: string, noteType: "partner" | "technician", note: string) => void;
+
+  // Ops hooks
+  opsAssignTechnician: (jobId: string, technicianId: string) => void;
+  opsEscalateJob: (jobId: string, reason: string) => void;
+  opsMoveToManualQueue: (jobId: string) => void;
 }
 
 const initialDraft: BookingDraft = {
