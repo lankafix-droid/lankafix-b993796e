@@ -412,8 +412,13 @@ const TrackerPage = () => {
 
             {/* Demo dispatch/arrival/inspection/repair */}
             {booking.status === "assigned" && booking.dispatchStatus === "pending" && (
-              <Button variant="outline" size="sm" className="w-full" onClick={() => { markDispatched(booking.jobId); updateBookingStatus(booking.jobId, "tech_en_route"); }}>
-                <Play className="w-4 h-4 mr-2" /> Dispatch Technician (Demo)
+              <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                const techGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
+                const custGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
+                startTravel(booking.jobId, techGeo.lat, techGeo.lng, custGeo.lat, custGeo.lng);
+                toast.success("Technician is on the way! 🚗");
+              }}>
+                <Play className="w-4 h-4 mr-2" /> Start Live Tracking (Demo)
               </Button>
             )}
             {booking.status === "tech_en_route" && (
