@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
-import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight } from "lucide-react";
+import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import SLAChip from "@/components/ui/SLAChip";
+import { track } from "@/lib/analytics";
 
 const iconMap: Record<string, React.ReactNode> = {
   Snowflake: <Snowflake className="w-6 h-6" />,
@@ -18,7 +19,7 @@ const iconMap: Record<string, React.ReactNode> = {
 
 /** Derive standardized availability chip from category data */
 function getAvailabilityChip(cat: typeof categories[number]): { label: string; color: string } | null {
-  const hasEmergency = cat.services.some((s) => s.slaMinutesEmergency);
+  const hasEmergency = cat.tags.includes("Emergency") || cat.services.some((s) => s.slaMinutesEmergency);
   const hasSameDay = cat.tags.includes("Same Day");
   const hasRemote = cat.tags.includes("Remote Available") || cat.services.some((s) => s.allowedModes.includes("remote"));
   const hasDelivery = cat.tags.includes("Delivery") || cat.tags.includes("Store");
@@ -43,7 +44,17 @@ function getPricingChip(cat: typeof categories[number]): { label: string; color:
   return { label: "Fixed Price", color: "border-success/30 text-success bg-success/5" };
 }
 
+function getSelectedArea(): string {
+  try {
+    return localStorage.getItem("lankafix_area") || "Greater Colombo";
+  } catch {
+    return "Greater Colombo";
+  }
+}
+
 const CategoryGrid = () => {
+  const selectedArea = getSelectedArea();
+
   const getMinSla = (cat: typeof categories[number]) => {
     const slas = cat.services.map((s) => s.slaMinutesNormal).filter((s): s is number => !!s);
     return slas.length > 0 ? Math.min(...slas) : undefined;
@@ -57,7 +68,11 @@ const CategoryGrid = () => {
           <p className="text-muted-foreground mt-3 max-w-lg mx-auto">
             Choose from our verified service categories — each backed by trained professionals
           </p>
-          <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto">
+          <div className="inline-flex items-center gap-1.5 mt-2 text-xs text-muted-foreground">
+            <MapPin className="w-3 h-3" />
+            Pricing & availability shown for: <span className="font-semibold text-foreground">{selectedArea}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto">
             From price = base service within your zone. Parts, extra work & long-distance travel only after approval.
           </p>
         </div>
@@ -71,6 +86,8 @@ const CategoryGrid = () => {
               <Link
                 key={cat.code}
                 to={`/category/${cat.code}`}
+                aria-label={`View ${cat.name} services`}
+                onClick={() => track("category_card_click", { category: cat.code })}
                 className="group bg-card rounded-xl border p-5 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300"
               >
                 <div className="flex items-start justify-between mb-3">
