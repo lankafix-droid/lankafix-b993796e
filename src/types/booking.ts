@@ -69,23 +69,26 @@ export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
 };
 
 export const BOOKING_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = [
-  { status: "requested", label: "Service Requested" },
-  { status: "scheduled", label: "Scheduled" },
+  { status: "requested", label: "Booking Created" },
+  { status: "matching", label: "Matching Technician" },
   { status: "assigned", label: "Technician Assigned" },
-  { status: "tech_en_route", label: "Technician On The Way" },
+  { status: "tech_en_route", label: "Technician En Route" },
+  { status: "arrived", label: "Technician Arrived" },
   { status: "in_progress", label: "Work In Progress" },
-  { status: "completed", label: "Job Completed" },
+  { status: "completed", label: "Service Completed" },
 ];
 
 export const QUOTE_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = [
-  { status: "requested", label: "Inspection Requested" },
-  { status: "scheduled", label: "Inspection Scheduled" },
+  { status: "requested", label: "Booking Created" },
+  { status: "matching", label: "Matching Technician" },
   { status: "assigned", label: "Technician Assigned" },
-  { status: "tech_en_route", label: "Technician On The Way" },
-  { status: "in_progress", label: "Inspection In Progress" },
+  { status: "tech_en_route", label: "Technician En Route" },
+  { status: "arrived", label: "Technician Arrived" },
+  { status: "inspection_started", label: "Inspection Started" },
   { status: "quote_submitted", label: "Quote Submitted" },
   { status: "quote_approved", label: "Quote Approved" },
-  { status: "completed", label: "Job Completed" },
+  { status: "repair_started", label: "Repair Started" },
+  { status: "completed", label: "Service Completed" },
 ];
 
 // ============================================================
