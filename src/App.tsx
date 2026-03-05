@@ -72,7 +72,8 @@ const App = () => (
           {/* Ops routes */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="/ops/finance" element={<FinanceBoardPage />} />
-          <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
+            <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
+            <Route path="/ops/diagnose-analytics" element={<DiagnoseAnalyticsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
