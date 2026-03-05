@@ -53,6 +53,8 @@ const App = () => (
           <Route path="/technician" element={<TechnicianDashboardPage />} />
           <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
           <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
+          {/* Ops routes */}
+          <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

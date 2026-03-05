@@ -435,6 +435,9 @@ export interface BookingState {
   technicianInternalNote?: string;
   requiresPartnerQuoteReview?: boolean;
   rejectionReason?: TechRejectionReason;
+  jobOutcome?: JobOutcome;
+  chatMessages?: ChatMessage[];
+  dispatchScore?: number;
 }
 
 // ============================================================
