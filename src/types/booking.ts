@@ -438,6 +438,15 @@ export const PARTNER_QUOTE_REVIEW_CATEGORIES: CategoryCode[] = [
   "CCTV", "SOLAR", "COPIER", "SMART_HOME_OFFICE",
 ];
 
+export interface WarrantyRecord {
+  providerId: string;
+  jobId: string;
+  category: CategoryCode;
+  serviceType: string;
+  startDate: string;
+  expiryDate: string;
+}
+
 export interface BookingState {
   jobId: string;
   categoryCode: CategoryCode;
@@ -486,6 +495,10 @@ export interface BookingState {
   dispatchScore?: number;
   /** Live tracking */
   trackingData?: import("@/lib/trackingEngine").TrackingData;
+  /** Stage 8: Warranty record */
+  warranty?: WarrantyRecord;
+  /** Stage 8: Communication relay */
+  communicationRelay?: boolean;
 }
 
 // ============================================================
