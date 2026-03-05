@@ -1,4 +1,4 @@
-import { Monitor, Wrench, User } from "lucide-react";
+import { Monitor, Wrench, User, Building2, Settings } from "lucide-react";
 import { TRUST_ICONS } from "@/brand/trustSystem";
 import type { TimelineEvent, TimelineActor } from "@/types/booking";
 
@@ -6,6 +6,8 @@ const actorConfig: Record<TimelineActor, { icon: React.ReactNode; color: string 
   system: { icon: <Monitor className="w-3 h-3" />, color: "bg-primary/10 text-primary" },
   technician: { icon: <Wrench className="w-3 h-3" />, color: "bg-warning/10 text-warning" },
   customer: { icon: <User className="w-3 h-3" />, color: "bg-success/10 text-success" },
+  partner: { icon: <Building2 className="w-3 h-3" />, color: "bg-primary/10 text-primary" },
+  ops: { icon: <Settings className="w-3 h-3" />, color: "bg-destructive/10 text-destructive" },
 };
 
 interface TimelineEventLogProps {
