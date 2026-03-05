@@ -49,7 +49,9 @@ interface BookingStore {
   verifyOtp: (jobId: string, type: "start" | "completion") => void;
   setPayment: (jobId: string, key: "deposit" | "completion", payment: PaymentIntent) => void;
   markArrived: (jobId: string) => void;
+  markDispatched: (jobId: string) => void;
   addTimelineEvent: (jobId: string, event: TimelineEvent) => void;
+  addBookingPhoto: (jobId: string, photo: BookingPhoto) => void;
   getBooking: (jobId: string) => BookingState | undefined;
   getRecentBookings: () => BookingState[];
 }
