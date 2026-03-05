@@ -4,11 +4,12 @@ import type {
   BookingState, BookingStatus, CategoryCode, PricingBreakdown,
   QuoteData, ServiceMode, TechnicianInfo, PaymentIntent,
   TimelineEvent, TimelineActor, BookingPhoto, TimelineEventMeta,
+  JobOutcome, ChatMessage,
 } from "@/types/booking";
 import { BOOKING_STATUS_LABELS } from "@/types/booking";
 import { canTransition } from "@/brand/trustSystem";
-import { matchTechnician } from "@/engines/matchingEngine";
-import type { MatchResult } from "@/engines/matchingEngine";
+import { runDispatch } from "@/lib/dispatchEngine";
+import type { DispatchResult } from "@/lib/dispatchEngine";
 import { getZoneByLabel } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 
