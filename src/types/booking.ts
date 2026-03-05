@@ -438,6 +438,8 @@ export interface BookingState {
   jobOutcome?: JobOutcome;
   chatMessages?: ChatMessage[];
   dispatchScore?: number;
+  /** Live tracking */
+  trackingData?: import("@/lib/trackingEngine").TrackingData;
 }
 
 // ============================================================
