@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useBookingStore } from "@/store/bookingStore";
 import type { QuoteData, QuoteOption, QuoteItem, PartQuality, CategoryCode } from "@/types/booking";
 import { PARTNER_QUOTE_REVIEW_CATEGORIES } from "@/types/booking";
 import { track } from "@/lib/analytics";
-import { Plus, X, Send } from "lucide-react";
+import { Plus, X, Send, Clock } from "lucide-react";
 
 interface QuoteBuilderProps {
   jobId: string;
@@ -53,14 +54,17 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
   const [scopeIncludes, setScopeIncludes] = useState("Labor, diagnostics, standard parts");
   const [scopeExcludes, setScopeExcludes] = useState("Additional parts if discovered during repair");
   const [recommended, setRecommended] = useState("A");
+  const [estimatedMinutes, setEstimatedMinutes] = useState(60);
+  const [awaitingParts, setAwaitingParts] = useState(false);
+  const [awaitingPartsEta, setAwaitingPartsEta] = useState("");
 
   const needsPartnerReview = PARTNER_QUOTE_REVIEW_CATEGORIES.includes(categoryCode);
 
-  const updateItem = (optIdx: number, listKey: "laborItems" | "partsItems" | "addOns", itemIdx: number, field: keyof QuoteItem, value: string | number) => {
+  const updateItem = (optIdx: number, listKey: "laborItems" | "partsItems" | "addOns", itemIdx: number, field: keyof QuoteItem, value: string | number | boolean) => {
     setOptions((prev) => prev.map((opt, i) => {
       if (i !== optIdx) return opt;
       const list = [...opt[listKey]];
-      list[itemIdx] = { ...list[itemIdx], [field]: field === "amount" ? Number(value) || 0 : value };
+      list[itemIdx] = { ...list[itemIdx], [field]: field === "amount" || field === "warrantyDays" || field === "quantity" || field === "unitPrice" ? Number(value) || 0 : field === "optional" ? Boolean(value) : value };
       return computeTotals({ ...opt, [listKey]: list });
     }));
   };
@@ -73,7 +77,7 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
   };
 
   const handleSubmit = () => {
-    const computed = options.map(computeTotals);
+    const computed = options.map((o) => ({ ...computeTotals(o), estimatedCompletionMinutes: estimatedMinutes }));
     const recOpt = computed.find((o) => o.id === recommended) || computed[0];
     const quote: QuoteData = {
       options: computed,
@@ -83,8 +87,11 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
       scopeIncludes: scopeIncludes.split(",").map((s) => s.trim()).filter(Boolean),
       scopeExcludes: scopeExcludes.split(",").map((s) => s.trim()).filter(Boolean),
       notes,
-      expiresAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       inspectionFindings: findings.split("\n").filter(Boolean),
+      quoteStatus: "quote_sent",
+      awaitingParts,
+      awaitingPartsEta: awaitingParts ? awaitingPartsEta : undefined,
       laborItems: recOpt.laborItems,
       partsItems: recOpt.partsItems,
       addOns: recOpt.addOns,
@@ -92,7 +99,8 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
       warranty: recOpt.warranty,
     };
     setBookingQuote(jobId, quote);
-    track("technician_quote_submit", { jobId, optionCount: computed.length, recommended, needsPartnerReview });
+    track("technician_quote_submit", { jobId, optionCount: computed.length, recommended, needsPartnerReview, awaitingParts });
+    track("quote_sent", { jobId });
     onClose();
   };
 
@@ -129,18 +137,27 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
 
             <p className="text-[10px] text-muted-foreground font-medium">Labor</p>
             {opt.laborItems.map((item, i) => (
-              <div key={i} className="flex gap-2">
+              <div key={i} className="flex gap-2 items-center">
                 <Input value={item.description} onChange={(e) => updateItem(optIdx, "laborItems", i, "description", e.target.value)} placeholder="Description" className="text-xs h-8 flex-1" />
                 <Input type="number" value={item.amount || ""} onChange={(e) => updateItem(optIdx, "laborItems", i, "amount", e.target.value)} placeholder="LKR" className="text-xs h-8 w-24" />
+                <label className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
+                  <input type="checkbox" checked={item.optional || false} onChange={(e) => updateItem(optIdx, "laborItems", i, "optional", e.target.checked)} className="w-3 h-3" />
+                  Opt
+                </label>
               </div>
             ))}
             <Button variant="ghost" size="sm" className="text-[10px] h-6" onClick={() => addItem(optIdx, "laborItems")}><Plus className="w-3 h-3 mr-1" /> Add Labor</Button>
 
             <p className="text-[10px] text-muted-foreground font-medium">Parts</p>
             {opt.partsItems.map((item, i) => (
-              <div key={i} className="flex gap-2">
+              <div key={i} className="flex gap-2 items-center">
                 <Input value={item.description} onChange={(e) => updateItem(optIdx, "partsItems", i, "description", e.target.value)} placeholder="Part name" className="text-xs h-8 flex-1" />
                 <Input type="number" value={item.amount || ""} onChange={(e) => updateItem(optIdx, "partsItems", i, "amount", e.target.value)} placeholder="LKR" className="text-xs h-8 w-24" />
+                <Input type="number" value={item.warrantyDays || ""} onChange={(e) => updateItem(optIdx, "partsItems", i, "warrantyDays", e.target.value)} placeholder="Warranty days" className="text-xs h-8 w-20" />
+                <label className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
+                  <input type="checkbox" checked={item.optional || false} onChange={(e) => updateItem(optIdx, "partsItems", i, "optional", e.target.checked)} className="w-3 h-3" />
+                  Opt
+                </label>
               </div>
             ))}
             <Button variant="ghost" size="sm" className="text-[10px] h-6" onClick={() => addItem(optIdx, "partsItems")}><Plus className="w-3 h-3 mr-1" /> Add Part</Button>
@@ -156,6 +173,23 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
             onClick={() => setOptions([...options, emptyOption("C", "compatible")])}>
             <Plus className="w-3 h-3 mr-1" /> Add Option C
           </Button>
+        )}
+
+        {/* Estimated completion */}
+        <div>
+          <label className="text-xs font-medium flex items-center gap-1">
+            <Clock className="w-3 h-3" /> Estimated Completion (minutes)
+          </label>
+          <Input type="number" value={estimatedMinutes} onChange={(e) => setEstimatedMinutes(Number(e.target.value) || 60)} className="text-xs h-8 mt-1 w-32" />
+        </div>
+
+        {/* Awaiting parts */}
+        <div className="flex items-center gap-3">
+          <Switch checked={awaitingParts} onCheckedChange={setAwaitingParts} />
+          <label className="text-xs font-medium text-foreground">Parts need to be sourced</label>
+        </div>
+        {awaitingParts && (
+          <Input value={awaitingPartsEta} onChange={(e) => setAwaitingPartsEta(e.target.value)} placeholder="e.g. 2-3 business days" className="text-xs h-8" />
         )}
 
         {/* Scope */}
