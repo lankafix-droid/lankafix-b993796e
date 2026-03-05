@@ -72,6 +72,7 @@ export default function TechnicianJobDetailPage() {
 
   const canAccept = ["matching", "awaiting_partner_confirmation", "assigned"].includes(status);
   const canDispatch = status === "assigned";
+  const canStartTravel = status === "assigned" && !booking.trackingData?.isTracking;
   const canArrive = status === "tech_en_route";
   const canInspect = status === "arrived";
   const canSubmitQuote = ["inspection_started", "in_progress"].includes(status) && booking.pricing.quoteRequired;
