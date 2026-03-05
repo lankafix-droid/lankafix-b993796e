@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft } from "lucide-react";
 import MascotIcon from "@/components/brand/MascotIcon";
@@ -11,6 +10,8 @@ import DiagnoseStepProblem from "@/components/diagnose/DiagnoseStepProblem";
 import DiagnoseStepUrgency from "@/components/diagnose/DiagnoseStepUrgency";
 import DiagnoseStepArea from "@/components/diagnose/DiagnoseStepArea";
 import DiagnoseResult from "@/components/diagnose/DiagnoseResult";
+import DiagnosePhotoUpload from "@/components/diagnose/DiagnosePhotoUpload";
+import DiagnoseVoiceInput from "@/components/diagnose/DiagnoseVoiceInput";
 import { getDiagnoseRecommendation } from "@/engines/diagnoseEngine";
 import { track } from "@/lib/analytics";
 import type { CategoryCode } from "@/types/booking";
@@ -25,7 +26,7 @@ const STEP_TITLES = [
 
 const MASCOT_COPY = [
   "Choose what needs help",
-  "Tell us what's wrong",
+  "Tell us what's wrong — you can also speak or upload photos",
   "How soon do you need help?",
   "Let's check service availability in your area",
 ];
@@ -38,17 +39,37 @@ const DiagnosePage = () => {
   const [selectedUrgency, setSelectedUrgency] = useState<string | null>(null);
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [result, setResult] = useState<DiagnoseRecommendation | null>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [voiceTranscript, setVoiceTranscript] = useState<string>("");
+
+  // Session tracking
+  const [sessionId] = useState(() => `SES-${Date.now().toString(36).toUpperCase()}`);
 
   // Load persisted area
   useEffect(() => {
-    track("diagnose_start", {});
+    track("diagnose_start", { sessionId });
     const saved = localStorage.getItem("lankafix_area");
     if (saved) setSelectedArea(saved);
   }, []);
 
   useEffect(() => {
-    track("diagnose_step_view", { step });
+    track("diagnose_step_view", { step, sessionId });
   }, [step]);
+
+  // Abandoned booking detection — 5 min inactivity
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (step > 0 && step < 4 && !result) {
+        track("diagnose_abandoned", {
+          sessionId,
+          category: selectedCategory,
+          problem: selectedProblem,
+          step,
+        });
+      }
+    }, 5 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [step, selectedCategory, selectedProblem, result]);
 
   const totalSteps = 4;
   const showResult = step === 4;
@@ -65,35 +86,44 @@ const DiagnosePage = () => {
 
   const handleCategorySelect = (code: CategoryCode) => {
     setSelectedCategory(code);
-    setSelectedProblem(null); // reset downstream
-    track("diagnose_category_select", { category: code });
+    setSelectedProblem(null);
+    track("diagnose_category_select", { category: code, sessionId });
     setTimeout(() => setStep(1), 200);
   };
 
   const handleProblemSelect = (key: string) => {
     setSelectedProblem(key);
-    track("diagnose_problem_select", { problem: key });
+    track("diagnose_problem_select", { problem: key, sessionId });
     setTimeout(() => setStep(2), 200);
   };
 
   const handleUrgencySelect = (key: string) => {
     setSelectedUrgency(key);
-    track("diagnose_urgency_select", { urgency: key });
+    track("diagnose_urgency_select", { urgency: key, sessionId });
     setTimeout(() => setStep(3), 200);
   };
 
   const handleAreaSelect = (area: string) => {
     setSelectedArea(area);
     localStorage.setItem("lankafix_area", area);
-    track("diagnose_area_select", { area });
+    track("diagnose_area_select", { area, sessionId });
 
-    // Compute result
     if (selectedCategory && selectedProblem) {
       const rec = getDiagnoseRecommendation(selectedCategory, selectedProblem, selectedUrgency ?? "flexible", area);
       setResult(rec);
-      track("diagnose_result_view", { ...rec });
+      track("diagnose_result_view", {
+        ...rec,
+        sessionId,
+        photoCount: photos.length,
+        hasVoiceInput: !!voiceTranscript,
+      });
       setTimeout(() => setStep(4), 200);
     }
+  };
+
+  const handleVoiceTranscript = (text: string) => {
+    setVoiceTranscript(text);
+    track("diagnose_voice_transcript", { text, sessionId });
   };
 
   const handleRestart = () => {
@@ -102,6 +132,8 @@ const DiagnosePage = () => {
     setSelectedProblem(null);
     setSelectedUrgency(null);
     setResult(null);
+    setPhotos([]);
+    setVoiceTranscript("");
   };
 
   return (
@@ -145,7 +177,19 @@ const DiagnosePage = () => {
               <DiagnoseStepCategory onSelect={handleCategorySelect} selected={selectedCategory} />
             )}
             {step === 1 && selectedCategory && (
-              <DiagnoseStepProblem categoryCode={selectedCategory} onSelect={handleProblemSelect} selected={selectedProblem} />
+              <div className="space-y-6">
+                <DiagnoseStepProblem categoryCode={selectedCategory} onSelect={handleProblemSelect} selected={selectedProblem} />
+
+                {/* Voice input */}
+                <div className="border-t pt-4">
+                  <DiagnoseVoiceInput onTranscript={handleVoiceTranscript} />
+                </div>
+
+                {/* Photo upload */}
+                <div className="border-t pt-4">
+                  <DiagnosePhotoUpload photos={photos} onPhotosChange={setPhotos} />
+                </div>
+              </div>
             )}
             {step === 2 && selectedCategory && (
               <DiagnoseStepUrgency categoryCode={selectedCategory} onSelect={handleUrgencySelect} selected={selectedUrgency} />

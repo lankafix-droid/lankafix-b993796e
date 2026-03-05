@@ -31,6 +31,7 @@ import SubscribePage from "./pages/care/SubscribePage";
 import CareDashboardPage from "./pages/care/CareDashboardPage";
 import DeviceTimelinePage from "./pages/care/DeviceTimelinePage";
 import SubscriptionAnalyticsPage from "./pages/ops/SubscriptionAnalyticsPage";
+import DiagnoseAnalyticsPage from "./pages/ops/DiagnoseAnalyticsPage";
 
 const queryClient = new QueryClient();
 
@@ -71,7 +72,8 @@ const App = () => (
           {/* Ops routes */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="/ops/finance" element={<FinanceBoardPage />} />
-          <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
+            <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
+            <Route path="/ops/diagnose-analytics" element={<DiagnoseAnalyticsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
