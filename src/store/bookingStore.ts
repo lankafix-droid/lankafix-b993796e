@@ -293,6 +293,7 @@ export const useBookingStore = create<BookingStore>()(
           dispatchStatus: "pending",
           etaMinutes: matchedTech ? parseInt(matchedTech.eta) || undefined : undefined,
           dispatchScore: dispatchResult.bestMatch?.totalScore,
+          communicationRelay: true,
         };
 
         set((s) => ({
