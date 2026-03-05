@@ -14,6 +14,7 @@ import TrackJob from "./pages/TrackJob";
 import WaitlistPage from "./pages/WaitlistPage";
 import DiagnosePage from "./pages/DiagnosePage";
 import NotFound from "./pages/NotFound";
+import DispatchBoardPage from "./pages/ops/DispatchBoardPage";
 import PartnerDashboardPage from "./pages/partner/PartnerDashboardPage";
 import PartnerJobsPage from "./pages/partner/PartnerJobsPage";
 import PartnerJobDetailPage from "./pages/partner/PartnerJobDetailPage";
