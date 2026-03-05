@@ -162,7 +162,7 @@ const PaymentCard = ({ booking }: PaymentCardProps) => {
           {/* Receipt */}
           {(paymentStatus === "deposit_paid" || paymentStatus === "fully_paid" || paymentStatus === "settled") && (
             <div className="flex gap-2">
-              {paymentStatus !== "unpaid" && (finance?.depositAmount || 0) > 0 && (
+              {(finance?.depositAmount || 0) > 0 && (
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewReceipt("deposit")}>
                   <FileText className="w-3.5 h-3.5 mr-1" /> Deposit Receipt
                 </Button>
