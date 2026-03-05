@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useBookingStore } from "@/store/bookingStore";
 import { MOCK_PARTNERS, getTechniciansByPartner } from "@/data/mockPartnerData";
+import { getTechPerformanceMetrics } from "@/lib/dispatchEngine";
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
 import {
