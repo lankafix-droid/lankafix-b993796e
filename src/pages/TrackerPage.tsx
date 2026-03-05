@@ -78,7 +78,7 @@ const TrackerPage = () => {
   const {
     getBooking, cancelBooking, setBookingRating, verifyOtp,
     setPayment, markDispatched, markArrived, updateBookingStatus,
-    setBookingQuote, lastMatchResult,
+    setBookingQuote, lastMatchResult, updateTracking,
   } = useBookingStore();
 
   const booking = getBooking(jobId || "");
@@ -88,6 +88,50 @@ const TrackerPage = () => {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [showOtp, setShowOtp] = useState<"start" | "completion" | null>(null);
   const [showSos, setShowSos] = useState(false);
+  const [simulation, setSimulation] = useState<TrackingSimulation | null>(null);
+  const simRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auto-start tracking simulation when tech is en route and tracking data exists
+  useEffect(() => {
+    if (!booking) return;
+    const isEnRoute = booking.status === "tech_en_route";
+    const hasTracking = booking.trackingData?.isTracking;
+
+    if (isEnRoute && hasTracking && !simulation) {
+      // Create simulation from tracking data
+      const td = booking.trackingData!;
+      if (td.technicianLocation && td.customerLocation) {
+        const sim = createSimulation(
+          booking.jobId,
+          td.technicianLocation.lat, td.technicianLocation.lng,
+          td.customerLocation.lat, td.customerLocation.lng,
+          15
+        );
+        setSimulation(sim);
+      }
+    }
+  }, [booking?.status, booking?.trackingData?.isTracking]);
+
+  // Run simulation interval
+  useEffect(() => {
+    if (!simulation?.isRunning || !booking) return;
+
+    simRef.current = setInterval(() => {
+      setSimulation((prev) => {
+        if (!prev || !prev.isRunning) return prev;
+        const next = advanceSimulation(prev);
+        updateTracking(booking.jobId, next.tracking);
+
+        if (!next.isRunning && next.tracking.arrivedAt) {
+          markArrived(booking.jobId);
+          toast.success("Technician has arrived! 📍");
+        }
+        return next;
+      });
+    }, 2000); // 2s intervals for demo speed
+
+    return () => { if (simRef.current) clearInterval(simRef.current); };
+  }, [simulation?.isRunning]);
 
   if (!booking) {
     return (
