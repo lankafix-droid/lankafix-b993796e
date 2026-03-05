@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { COLOMBO_AREAS_DISPLAY } from "@/data/colomboZones";
 import { MapPin, ChevronDown, ChevronUp, MapPinned } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { track } from "@/lib/analytics";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+const STORAGE_KEY = "lankafix_area";
 
 const AVAILABLE_AREAS = [
   "Colombo 1–15", "Nugegoda", "Rajagiriya", "Battaramulla",
@@ -22,11 +26,28 @@ const COMING_SOON_AREAS = [
   "Negombo", "Kandy", "Galle", "Matara", "Kurunegala", "Kalutara",
 ];
 
+function loadArea(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEY) || "Greater Colombo";
+  } catch {
+    return "Greater Colombo";
+  }
+}
+
 const GeoStrip = () => {
   const [expanded, setExpanded] = useState(false);
-  const [selectedArea, setSelectedArea] = useState("Greater Colombo");
+  const [selectedArea, setSelectedArea] = useState(loadArea);
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, selectedArea); } catch { /* noop */ }
+  }, [selectedArea]);
 
   const visibleAreas = expanded ? COLOMBO_AREAS_DISPLAY : COLOMBO_AREAS_DISPLAY.slice(0, 5);
+
+  const handleComingSoon = (area: string) => {
+    track("zone_coming_soon_tap", { area });
+    toast.info(`Service launching soon in ${area}. Join our waiting list!`);
+  };
 
   return (
     <section className="bg-primary text-primary-foreground py-3">
@@ -36,12 +57,12 @@ const GeoStrip = () => {
           <MapPin className="w-4 h-4 shrink-0" />
           <span className="font-semibold">Now serving: {selectedArea}</span>
 
-          {/* Switch area */}
           <Dialog>
             <DialogTrigger asChild>
               <button
                 className="text-xs bg-primary-foreground/10 hover:bg-primary-foreground/20 px-2 py-0.5 rounded-full transition-colors flex items-center gap-1"
-                onClick={() => console.log("[analytics] zone_switch_open")}
+                aria-label="Switch service area"
+                onClick={() => track("zone_switch_open")}
               >
                 <MapPinned className="w-3 h-3" />
                 Switch area
@@ -58,9 +79,10 @@ const GeoStrip = () => {
                     {AVAILABLE_AREAS.map((area) => (
                       <button
                         key={area}
+                        aria-label={`Select ${area}`}
                         onClick={() => {
                           setSelectedArea(area);
-                          console.log("[analytics] zone_change", area);
+                          track("zone_change", { area });
                         }}
                         className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                           selectedArea === area
@@ -77,12 +99,14 @@ const GeoStrip = () => {
                   <p className="text-xs font-medium text-muted-foreground mb-2">Coming soon</p>
                   <div className="flex flex-wrap gap-1.5">
                     {COMING_SOON_AREAS.map((area) => (
-                      <span
+                      <button
                         key={area}
-                        className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground bg-muted opacity-60"
+                        aria-label={`${area} — coming soon`}
+                        onClick={() => handleComingSoon(area)}
+                        className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground bg-muted opacity-60 cursor-pointer hover:opacity-80 transition-opacity"
                       >
                         {area}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -101,6 +125,7 @@ const GeoStrip = () => {
           {COLOMBO_AREAS_DISPLAY.length > 5 && (
             <button
               onClick={() => setExpanded(!expanded)}
+              aria-label={expanded ? "Show fewer areas" : "Show more areas"}
               className="inline-flex items-center gap-0.5 text-primary-foreground/50 hover:text-primary-foreground/80 transition-colors ml-1"
             >
               {expanded ? (
@@ -120,7 +145,7 @@ const GeoStrip = () => {
             className="text-xs h-7 bg-transparent border-primary-foreground/20 text-primary-foreground/70 hover:bg-primary-foreground/10 hover:text-primary-foreground"
             asChild
           >
-            <Link to="/waitlist" onClick={() => console.log("[analytics] waitlist_click")}>
+            <Link to="/waitlist" aria-label="Join waiting list" onClick={() => track("waitlist_click")}>
               Outside Colombo? Join the waiting list
             </Link>
           </Button>
