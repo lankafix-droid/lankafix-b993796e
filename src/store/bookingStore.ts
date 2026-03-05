@@ -4,7 +4,7 @@ import type {
   BookingState, BookingStatus, CategoryCode, PricingBreakdown,
   QuoteData, ServiceMode, TechnicianInfo, PaymentIntent,
   TimelineEvent, TimelineActor, BookingPhoto, TimelineEventMeta,
-  JobOutcome, ChatMessage,
+  JobOutcome, ChatMessage, WarrantyRecord,
 } from "@/types/booking";
 import { BOOKING_STATUS_LABELS } from "@/types/booking";
 import { canTransition } from "@/brand/trustSystem";
