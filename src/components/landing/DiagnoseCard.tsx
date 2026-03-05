@@ -1,19 +1,27 @@
 import { Link } from "react-router-dom";
-import { Stethoscope, ArrowRight } from "lucide-react";
+import { Stethoscope, ArrowRight, HelpCircle } from "lucide-react";
 import MascotIcon from "@/components/brand/MascotIcon";
 
 const DiagnoseCard = () => (
   <Link
     to="/diagnose"
-    className="group bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border border-primary/20 p-5 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300 flex items-center gap-4"
+    onClick={() => console.log("[analytics] diagnose_card_click")}
+    className="group bg-gradient-to-br from-primary/5 via-primary/8 to-primary/12 rounded-2xl border border-primary/20 p-6 hover:shadow-xl hover:shadow-primary/10 transition-all duration-300 flex items-center gap-5"
   >
-    <MascotIcon state="default" size="sm" />
+    <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+      <Stethoscope className="w-7 h-7 text-primary" />
+    </div>
     <div className="flex-1 min-w-0">
-      <h3 className="font-semibold text-foreground flex items-center gap-2">
-        <Stethoscope className="w-4 h-4 text-primary" />
+      <h3 className="font-bold text-foreground text-base flex items-center gap-2">
         Diagnose My Problem
+        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
       </h3>
-      <p className="text-xs text-muted-foreground mt-0.5">Not sure what service you need? Let us help you find the right fix.</p>
+      <p className="text-sm text-muted-foreground mt-1">
+        Answer 4 questions • Get the right service
+      </p>
+      <p className="text-xs text-primary mt-1.5 font-medium">
+        Quick guided wizard — takes 30 seconds
+      </p>
     </div>
     <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
   </Link>
