@@ -234,6 +234,30 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export type ProviderTier = "verified" | "pro" | "elite" | "enterprise";
+
+export const PROVIDER_TIER_LABELS: Record<ProviderTier, string> = {
+  verified: "Verified",
+  pro: "Pro",
+  elite: "Elite",
+  enterprise: "Enterprise Partner",
+};
+
+export const PROVIDER_TIER_COLORS: Record<ProviderTier, string> = {
+  verified: "bg-primary/10 text-primary border-primary/20",
+  pro: "bg-success/10 text-success border-success/20",
+  elite: "bg-warning/10 text-warning border-warning/20",
+  enterprise: "bg-accent/10 text-accent-foreground border-accent/20",
+};
+
+/** Tier priority for dispatch scoring bonus */
+export const PROVIDER_TIER_PRIORITY: Record<ProviderTier, number> = {
+  verified: 0,
+  pro: 3,
+  elite: 6,
+  enterprise: 10,
+};
+
 export interface Partner {
   id: string;
   name: string;
@@ -247,6 +271,7 @@ export interface Partner {
   categories: CategoryCode[];
   serviceCodes: string[];
   responseSlaByCategory: Partial<Record<CategoryCode, number>>;
+  tier: ProviderTier;
 }
 
 // ============================================================
