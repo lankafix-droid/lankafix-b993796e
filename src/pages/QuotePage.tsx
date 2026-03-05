@@ -438,6 +438,39 @@ const QuotePage = () => {
                 </div>
               </div>
 
+              {/* Stage 10: Post-approval payment summary */}
+              {activeOption && (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Payment Summary</h3>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Approved Total</span>
+                      <span className="font-bold text-foreground">LKR {computeAdjustedTotal(activeOption).toLocaleString("en-LK")}</span>
+                    </div>
+                    {booking.pricing.depositRequired && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Deposit Due Now</span>
+                        <span className="font-medium text-warning">LKR {booking.pricing.depositAmount.toLocaleString("en-LK")}</span>
+                      </div>
+                    )}
+                    {!booking.pricing.depositRequired && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Upfront Payment</span>
+                        <span className="font-medium text-success">No upfront payment</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Balance Due</span>
+                      <span className="font-medium text-foreground">After completion</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-2 border-t flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <ShieldCheck className="w-3 h-3 text-success shrink-0" />
+                    Approving the quote does not reveal direct provider contact. LankaFix coordinates the full service flow.
+                  </div>
+                </div>
+              )}
+
               {/* Invoice */}
               {showInvoice && activeOption && (
                 <div className="bg-card rounded-xl border p-6 space-y-4">
