@@ -92,6 +92,11 @@ interface BookingStore {
   // Chat & outcomes
   addChatMessage: (jobId: string, msg: ChatMessage) => void;
   setJobOutcome: (jobId: string, outcome: JobOutcome) => void;
+
+  // Tracking
+  startTravel: (jobId: string, techLat: number, techLng: number, custLat: number, custLng: number) => void;
+  updateTracking: (jobId: string, tracking: TrackingData) => void;
+  stopJobTracking: (jobId: string) => void;
 }
 
 const initialDraft: BookingDraft = {
