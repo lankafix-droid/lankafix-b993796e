@@ -36,6 +36,7 @@ export default function TechnicianJobDetailPage() {
   const updateBookingStatus = useBookingStore((s) => s.updateBookingStatus);
   const addChatMessage = useBookingStore((s) => s.addChatMessage);
   const setJobOutcome = useBookingStore((s) => s.setJobOutcome);
+  const startTravel = useBookingStore((s) => s.startTravel);
 
   const [showRejectReasons, setShowRejectReasons] = useState(false);
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
