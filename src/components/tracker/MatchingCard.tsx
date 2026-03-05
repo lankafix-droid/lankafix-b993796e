@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Users, Clock, Loader2 } from "lucide-react";
+import { MessageCircle, Users, Clock, Loader2, ShieldCheck, Lock } from "lucide-react";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { track } from "@/lib/analytics";
 
@@ -56,6 +56,18 @@ const MatchingCard = ({ nearbyTechCount, avgResponseMinutes, zone, extendedCover
           Nearby zone technician may be assigned
         </Badge>
       )}
+
+      {/* Anti-bypass: provider identity hidden */}
+      <div className="bg-muted/30 rounded-xl p-3 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <ShieldCheck className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <p className="text-xs font-medium text-foreground">Verified LankaFix Technician</p>
+          <p className="text-[10px] text-muted-foreground">Identity revealed after booking confirmation</p>
+        </div>
+        <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+      </div>
 
       <p className="text-xs text-muted-foreground text-center">
         Our support team may assign manually if required

@@ -293,6 +293,7 @@ const TrackerPage = () => {
                 extendedCoverage={lastMatchResult?.extendedCoverage}
                 confidenceScore={lastMatchResult?.bestMatch?.totalScore}
                 serviceMode={booking.serviceMode}
+                bookingConfirmed={true}
               />
             </div>
           )}

@@ -2,7 +2,8 @@
  * LankaFix Smart Dispatch Engine
  * Weighted scoring, capability filtering, and zone-aware technician assignment.
  */
-import type { CategoryCode, TechnicianInfo, BookingState } from "@/types/booking";
+import type { CategoryCode, TechnicianInfo, BookingState, ProviderTier } from "@/types/booking";
+import { PROVIDER_TIER_PRIORITY } from "@/types/booking";
 import { MOCK_PARTNERS, MOCK_TECHNICIANS } from "@/data/mockPartnerData";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { calculateDistance, scoreDistance, DISPATCH_DEFAULTS } from "@/lib/locationUtils";
@@ -177,6 +178,10 @@ export function calculateTechnicianScore(
   };
 
   let totalScore = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
+
+  // Tier priority bonus
+  const techTier: ProviderTier = (tech as any).tier || "verified";
+  totalScore += PROVIDER_TIER_PRIORITY[techTier] || 0;
 
   // Emergency boost for nearby available techs
   if (isEmergency && tech.availabilityStatus === "available" && distanceKm < 5) {

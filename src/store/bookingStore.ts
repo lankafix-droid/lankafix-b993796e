@@ -4,7 +4,7 @@ import type {
   BookingState, BookingStatus, CategoryCode, PricingBreakdown,
   QuoteData, ServiceMode, TechnicianInfo, PaymentIntent,
   TimelineEvent, TimelineActor, BookingPhoto, TimelineEventMeta,
-  JobOutcome, ChatMessage,
+  JobOutcome, ChatMessage, WarrantyRecord,
 } from "@/types/booking";
 import { BOOKING_STATUS_LABELS } from "@/types/booking";
 import { canTransition } from "@/brand/trustSystem";
@@ -97,6 +97,9 @@ interface BookingStore {
   startTravel: (jobId: string, techLat: number, techLng: number, custLat: number, custLng: number) => void;
   updateTracking: (jobId: string, tracking: TrackingData) => void;
   stopJobTracking: (jobId: string) => void;
+
+  // Stage 8: Repeat service detection
+  getRepeatBooking: (categoryCode: CategoryCode) => BookingState | undefined;
 }
 
 const initialDraft: BookingDraft = {
@@ -290,6 +293,7 @@ export const useBookingStore = create<BookingStore>()(
           dispatchStatus: "pending",
           etaMinutes: matchedTech ? parseInt(matchedTech.eta) || undefined : undefined,
           dispatchScore: dispatchResult.bestMatch?.totalScore,
+          communicationRelay: true,
         };
 
         set((s) => ({
@@ -444,6 +448,18 @@ export const useBookingStore = create<BookingStore>()(
               `Auto-transition after OTP ${type} verification`, "system");
           }
           if (newStatus === "completed") {
+            track("warranty_activated", { jobId });
+            const warrantyRecord: WarrantyRecord = {
+              providerId: booking.technician?.partnerId || "",
+              jobId: booking.jobId,
+              category: booking.categoryCode,
+              serviceType: booking.serviceCode,
+              startDate: now,
+              expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            };
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, warranty: warrantyRecord } : b
+            );
             updated = logEvent(updated, jobId, "Warranty Activated", "Labor warranty now active from this date", "system");
           }
           return { bookings: updated };
@@ -738,6 +754,17 @@ export const useBookingStore = create<BookingStore>()(
           );
           return { bookings: updated };
         }),
+
+      // Stage 8: Repeat service detection (within 6 months)
+      getRepeatBooking: (categoryCode) => {
+        const sixMonthsAgo = Date.now() - 180 * 24 * 60 * 60 * 1000;
+        return get().bookings.find(
+          (b) =>
+            b.categoryCode === categoryCode &&
+            (b.status === "completed" || b.status === "rated") &&
+            new Date(b.createdAt).getTime() > sixMonthsAgo
+        );
+      },
     }),
     { name: "lankafix-bookings" }
   )

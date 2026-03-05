@@ -1,4 +1,4 @@
-import type { Partner, TechnicianInfo, CategoryCode } from "@/types/booking";
+import type { Partner, TechnicianInfo, CategoryCode, ProviderTier } from "@/types/booking";
 
 export const MOCK_PARTNERS: Partner[] = [
   {
@@ -8,7 +8,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["col_03", "col_04", "col_05", "col_06", "col_07", "col_08", "nugegoda", "maharagama"],
     categories: ["AC", "CONSUMER_ELEC"] as CategoryCode[],
     serviceCodes: ["AC_GAS_TOPUP", "AC_FULL_SERVICE", "AC_REPAIR", "AC_INSTALL", "CE_TV_REPAIR", "CE_APPLIANCE_REPAIR"],
-    responseSlaByCategory: { AC: 60, CONSUMER_ELEC: 90 },
+    responseSlaByCategory: { AC: 60, CONSUMER_ELEC: 90 }, tier: "elite" as ProviderTier,
   },
   {
     id: "P002", name: "Lanka Service Pro", companyName: "Lanka Service Pro (Pvt) Ltd",
@@ -17,7 +17,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["rajagiriya", "battaramulla", "nawala", "kotte", "col_07"],
     categories: ["CCTV", "SMART_HOME_OFFICE", "IT"] as CategoryCode[],
     serviceCodes: ["CCTV_INSTALL", "CCTV_REPAIR", "CCTV_MAINTENANCE", "IT_ONSITE", "IT_NETWORK", "SH_SETUP"],
-    responseSlaByCategory: { CCTV: 120, SMART_HOME_OFFICE: 120, IT: 90 },
+    responseSlaByCategory: { CCTV: 120, SMART_HOME_OFFICE: 120, IT: 90 }, tier: "enterprise" as ProviderTier,
   },
   {
     id: "P003", name: "QuickFix Colombo", companyName: "QuickFix Colombo",
@@ -26,7 +26,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["col_01", "col_02", "col_03", "col_10", "col_11", "nugegoda"],
     categories: ["MOBILE", "CONSUMER_ELEC", "COPIER", "PRINT_SUPPLIES"] as CategoryCode[],
     serviceCodes: ["MOBILE_SCREEN", "MOBILE_BATTERY", "MOBILE_GENERAL", "COPIER_REPAIR", "COPIER_MAINTENANCE"],
-    responseSlaByCategory: { MOBILE: 60, COPIER: 120 },
+    responseSlaByCategory: { MOBILE: 60, COPIER: 120 }, tier: "pro" as ProviderTier,
   },
   {
     id: "P005", name: "SmartFix Pvt Ltd", companyName: "SmartFix (Pvt) Ltd",
@@ -35,7 +35,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["battaramulla", "kotte", "rajagiriya", "nawala", "thalawathugoda", "malabe"],
     categories: ["SOLAR", "SMART_HOME_OFFICE"] as CategoryCode[],
     serviceCodes: ["SOLAR_INSTALL", "SOLAR_MAINTENANCE", "SOLAR_INVERTER", "SH_SETUP", "SH_INTERCOM"],
-    responseSlaByCategory: { SOLAR: 240, SMART_HOME_OFFICE: 120 },
+    responseSlaByCategory: { SOLAR: 240, SMART_HOME_OFFICE: 120 }, tier: "elite" as ProviderTier,
   },
 ];
 

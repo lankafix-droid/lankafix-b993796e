@@ -200,6 +200,27 @@ export interface TechnicianInfo {
   currentZoneId?: string;
   availabilityStatus?: TechnicianAvailability;
   activeJobsCount?: number;
+  tier?: ProviderTier;
+}
+
+// ============================================================
+// Identity Masking Helpers
+// ============================================================
+
+/** Mask technician name to first name + last initial */
+export function maskTechnicianName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length <= 1) return fullName;
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+}
+
+/** Get masked technician display for pre-booking (no identity) */
+export function getPreBookingTechDisplay(rating?: number, jobsCompleted?: number) {
+  return {
+    name: "Verified LankaFix Technician",
+    ratingBand: rating ? (rating >= 4.5 ? "⭐ Top Rated" : rating >= 4.0 ? "⭐ Highly Rated" : "⭐ Rated") : "⭐ Rated",
+    experienceLevel: jobsCompleted ? (jobsCompleted >= 500 ? "Expert" : jobsCompleted >= 200 ? "Experienced" : "Qualified") : "Qualified",
+  };
 }
 
 // ============================================================
@@ -234,6 +255,30 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export type ProviderTier = "verified" | "pro" | "elite" | "enterprise";
+
+export const PROVIDER_TIER_LABELS: Record<ProviderTier, string> = {
+  verified: "Verified",
+  pro: "Pro",
+  elite: "Elite",
+  enterprise: "Enterprise Partner",
+};
+
+export const PROVIDER_TIER_COLORS: Record<ProviderTier, string> = {
+  verified: "bg-primary/10 text-primary border-primary/20",
+  pro: "bg-success/10 text-success border-success/20",
+  elite: "bg-warning/10 text-warning border-warning/20",
+  enterprise: "bg-accent/10 text-accent-foreground border-accent/20",
+};
+
+/** Tier priority for dispatch scoring bonus */
+export const PROVIDER_TIER_PRIORITY: Record<ProviderTier, number> = {
+  verified: 0,
+  pro: 3,
+  elite: 6,
+  enterprise: 10,
+};
+
 export interface Partner {
   id: string;
   name: string;
@@ -247,6 +292,7 @@ export interface Partner {
   categories: CategoryCode[];
   serviceCodes: string[];
   responseSlaByCategory: Partial<Record<CategoryCode, number>>;
+  tier: ProviderTier;
 }
 
 // ============================================================
@@ -392,6 +438,15 @@ export const PARTNER_QUOTE_REVIEW_CATEGORIES: CategoryCode[] = [
   "CCTV", "SOLAR", "COPIER", "SMART_HOME_OFFICE",
 ];
 
+export interface WarrantyRecord {
+  providerId: string;
+  jobId: string;
+  category: CategoryCode;
+  serviceType: string;
+  startDate: string;
+  expiryDate: string;
+}
+
 export interface BookingState {
   jobId: string;
   categoryCode: CategoryCode;
@@ -440,6 +495,10 @@ export interface BookingState {
   dispatchScore?: number;
   /** Live tracking */
   trackingData?: import("@/lib/trackingEngine").TrackingData;
+  /** Stage 8: Warranty record */
+  warranty?: WarrantyRecord;
+  /** Stage 8: Communication relay */
+  communicationRelay?: boolean;
 }
 
 // ============================================================

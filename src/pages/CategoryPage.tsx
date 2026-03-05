@@ -6,20 +6,28 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import TrustRibbon from "@/components/landing/TrustRibbon";
 import SLAChip from "@/components/ui/SLAChip";
+import RepeatServiceBanner from "@/components/tracker/RepeatServiceBanner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Zap, Stethoscope, FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { CategoryCode, ServiceMode } from "@/types/booking";
 import { SERVICE_MODE_LABELS } from "@/types/booking";
+import { track } from "@/lib/analytics";
 
 const CategoryPage = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { setDraftCategory, setDraftService, setDraftMode, setDraftEmergency } = useBookingStore();
+  const { setDraftCategory, setDraftService, setDraftMode, setDraftEmergency, getRepeatBooking } = useBookingStore();
   const category = getCategoryByCode(code || "");
   const [modeFilter, setModeFilter] = useState<ServiceMode | "all">("all");
   const [emergency, setEmergency] = useState(false);
+
+  const repeatBooking = category ? getRepeatBooking(category.code) : undefined;
+
+  useEffect(() => {
+    if (category) track("service_lane_view", { category: category.code });
+  }, [category?.code]);
 
   if (!category) {
     return (<div className="min-h-screen flex flex-col"><Header /><main className="flex-1 flex items-center justify-center"><div className="text-center"><h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1><Button asChild variant="outline"><Link to="/categories">View All Categories</Link></Button></div></main><Footer /></div>);
@@ -35,6 +43,7 @@ const CategoryPage = () => {
     setDraftService(serviceCode, serviceName);
     setDraftMode(mode);
     setDraftEmergency(emergency);
+    track("service_lane_selected", { category: category.code, service: serviceCode, mode });
     navigate(`/precheck/${category.code}/${serviceCode}`);
   };
 
@@ -47,6 +56,11 @@ const CategoryPage = () => {
           <h1 className="text-3xl font-bold text-foreground mb-1">{category.name}</h1>
           <p className="text-muted-foreground mb-3">{category.description}</p>
           <TrustRibbon />
+
+          {/* Repeat service protection */}
+          {repeatBooking && (
+            <RepeatServiceBanner previousBooking={repeatBooking} categoryCode={category.code} />
+          )}
 
           <div className="flex flex-wrap gap-2 mb-4 mt-4">
             <Button variant={modeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setModeFilter("all")}>All</Button>
