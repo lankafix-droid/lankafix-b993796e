@@ -154,7 +154,7 @@ const DiagnosePage = () => {
               <DiagnoseStepArea onSelect={handleAreaSelect} selected={selectedArea} />
             )}
             {showResult && result && selectedArea && (
-              <DiagnoseResult result={result} userArea={selectedArea} onRestart={handleRestart} />
+              <DiagnoseResult result={result} userArea={selectedArea} urgency={selectedUrgency || "flexible"} onRestart={handleRestart} />
             )}
           </div>
         </div>
