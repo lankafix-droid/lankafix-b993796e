@@ -156,6 +156,25 @@ export default function TechnicianJobDetailPage() {
           />
         )}
 
+        {/* Pre-Job Chat */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">💬 Customer Chat</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {(booking.chatMessages || []).map((m) => (
+              <div key={m.id} className={`text-xs p-2 rounded-lg ${m.sender === "technician" ? "bg-primary/10 ml-4" : "bg-muted mr-4"}`}>
+                <span className="font-medium">{m.sender === "technician" ? "You" : "Customer"}: </span>{m.message}
+              </div>
+            ))}
+            <div className="flex gap-2">
+              <Textarea placeholder="Message customer..." value={chatMsg} onChange={(e) => setChatMsg(e.target.value)} rows={1} className="text-sm flex-1" />
+              <Button size="sm" variant="outline" disabled={!chatMsg.trim()} onClick={() => {
+                addChatMessage(booking.jobId, { id: Date.now().toString(), sender: "technician", message: chatMsg, timestamp: new Date().toISOString() });
+                setChatMsg("");
+              }}>Send</Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Internal Note */}
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">My Notes</CardTitle></CardHeader>
@@ -170,6 +189,26 @@ export default function TechnicianJobDetailPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Job Outcome (post-completion) */}
+        {["completed", "rated"].includes(status) && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Job Outcome</CardTitle></CardHeader>
+            <CardContent className="space-y-1">
+              {booking.jobOutcome ? (
+                <Badge variant="outline">{JOB_OUTCOME_LABELS[booking.jobOutcome]}</Badge>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {(Object.entries(JOB_OUTCOME_LABELS) as [JobOutcome, string][]).map(([key, label]) => (
+                    <Button key={key} variant="ghost" size="sm" className="text-xs h-7" onClick={() => setJobOutcome(booking.jobId, key)}>
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Timeline */}
         <TimelineEventLog events={booking.timelineEvents} />
