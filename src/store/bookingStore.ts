@@ -133,6 +133,7 @@ export const useBookingStore = create<BookingStore>()(
       draft: { ...initialDraft },
       bookings: [],
       lastMatchResult: null,
+      techAvailability: {},
 
       setDraftCategory: (code, name) =>
         set((s) => ({ draft: { ...s.draft, categoryCode: code, categoryName: name, serviceCode: null, serviceName: "", precheckAnswers: {} } })),
