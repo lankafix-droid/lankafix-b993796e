@@ -1,14 +1,16 @@
 import { MapPin, Users, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getZoneIntelligence } from "@/engines/matchingEngine";
+import { getZoneByLabel } from "@/data/colomboZones";
+import { useMemo } from "react";
 
 interface ZoneIntelligenceCardProps {
   zone: string;
 }
 
 const ZoneIntelligenceCard = ({ zone }: ZoneIntelligenceCardProps) => {
-  // Mock zone intelligence data — API contract: GET /api/zones/:zone/intelligence
-  const techsNearby = 3 + Math.floor(Math.random() * 5);
-  const avgResponse = `${18 + Math.floor(Math.random() * 12)} mins`;
+  const zoneData = getZoneByLabel(zone);
+  const intelligence = useMemo(() => getZoneIntelligence(zoneData?.id || ""), [zoneData?.id]);
 
   return (
     <div className="bg-card rounded-xl border p-4 animate-fade-in">
@@ -23,18 +25,21 @@ const ZoneIntelligenceCard = ({ zone }: ZoneIntelligenceCardProps) => {
         <div className="flex items-center gap-2">
           <Users className="w-3.5 h-3.5 text-success" />
           <div>
-            <p className="font-medium text-foreground">{techsNearby}</p>
+            <p className="font-medium text-foreground">{intelligence.techsNearby}</p>
             <p className="text-[10px] text-muted-foreground">Verified techs nearby</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-warning" />
           <div>
-            <p className="font-medium text-foreground">{avgResponse}</p>
+            <p className="font-medium text-foreground">{intelligence.avgResponseMinutes} mins</p>
             <p className="text-[10px] text-muted-foreground">Avg response time</p>
           </div>
         </div>
       </div>
+      {zoneData?.surgeFactor && zoneData.surgeFactor > 1 && (
+        <p className="text-[10px] text-warning mt-2">⚡ Extended zone — {Math.round((zoneData.surgeFactor - 1) * 100)}% zone surcharge applies</p>
+      )}
     </div>
   );
 };

@@ -2,6 +2,7 @@ import Header from "@/components/layout/Header";
 import HeroSection from "@/components/landing/HeroSection";
 import GeoStrip from "@/components/landing/GeoStrip";
 import CategoryGrid from "@/components/landing/CategoryGrid";
+import DiagnoseCard from "@/components/landing/DiagnoseCard";
 import HowItWorks from "@/components/landing/HowItWorks";
 import TrustStrip from "@/components/landing/TrustStrip";
 import Footer from "@/components/landing/Footer";
@@ -13,6 +14,10 @@ const Index = () => {
       <main className="flex-1">
         <HeroSection />
         <GeoStrip />
+        {/* Diagnose CTA */}
+        <div className="container py-6">
+          <DiagnoseCard />
+        </div>
         <CategoryGrid />
         <HowItWorks />
         <TrustStrip />

@@ -12,6 +12,7 @@ import QuoteApproval from "./pages/QuoteApproval";
 import BookingTracker from "./pages/BookingTracker";
 import TrackJob from "./pages/TrackJob";
 import WaitlistPage from "./pages/WaitlistPage";
+import DiagnosePage from "./pages/DiagnosePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/tracker/:jobId" element={<BookingTracker />} />
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
+          <Route path="/diagnose" element={<DiagnosePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
