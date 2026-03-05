@@ -29,8 +29,8 @@ const App = () => (
           <Route path="/category/:code" element={<CategoryPage />} />
           <Route path="/precheck/:catCode/:svcCode" element={<PrecheckPage />} />
           <Route path="/pricing/:catCode/:svcCode" element={<PricingBuilder />} />
-          <Route path="/quote/:jobId" element={<QuoteApproval />} />
-          <Route path="/tracker/:jobId" element={<BookingTracker />} />
+          <Route path="/quote/:jobId" element={<QuotePage />} />
+          <Route path="/tracker/:jobId" element={<TrackerPage />} />
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/diagnose" element={<DiagnosePage />} />
