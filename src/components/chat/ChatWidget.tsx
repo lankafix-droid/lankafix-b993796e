@@ -79,7 +79,7 @@ export default function ChatWidget() {
     <div className="fixed bottom-4 right-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[calc(100vh-2rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
       {/* Header */}
       <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3 shrink-0">
-        <MascotIcon state="happy" size="sm" />
+        <MascotIcon state="default" size="sm" />
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm">LankaFix Assistant</p>
           <p className="text-xs opacity-80">Online · Ready to help</p>
