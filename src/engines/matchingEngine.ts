@@ -1,16 +1,15 @@
 /**
  * LankaFix Matching Engine
  * Matches technicians to bookings based on specialization, zone, availability, rating, and workload.
- * API Contract: POST /api/matching/find { bookingDraft } -> TechnicianInfo
  */
-import type { TechnicianInfo, CategoryCode, BookingState } from "@/types/booking";
+import type { TechnicianInfo, CategoryCode } from "@/types/booking";
 
 interface MatchCandidate {
   tech: TechnicianInfo;
   score: number;
 }
 
-// Mock technician pool — in production this comes from the partner API
+// Mock technician pool
 const MOCK_TECHNICIANS: TechnicianInfo[] = [
   { technicianId: "T001", name: "Kasun Perera", partnerId: "P001", partnerName: "ColomboTech Solutions", rating: 4.8, jobsCompleted: 342, verifiedSince: "2024-01-15", specializations: ["AC", "HVAC", "CONSUMER_ELEC"], eta: "25 mins", currentZoneId: "col_07", availabilityStatus: "available", activeJobsCount: 1 },
   { technicianId: "T002", name: "Nadeesha Silva", partnerId: "P002", partnerName: "Lanka Service Pro", rating: 4.9, jobsCompleted: 567, verifiedSince: "2023-06-20", specializations: ["CCTV", "SMART_HOME_OFFICE", "IT"], eta: "18 mins", currentZoneId: "rajagiriya", availabilityStatus: "available", activeJobsCount: 0 },
@@ -29,7 +28,6 @@ function scoreSpecialization(tech: TechnicianInfo, categoryCode: CategoryCode): 
 function scoreZone(tech: TechnicianInfo, zoneId: string): number {
   if (!tech.currentZoneId) return 5;
   if (tech.currentZoneId === zoneId) return 20;
-  // Nearby zone heuristic: if same city prefix
   if (tech.currentZoneId.startsWith("col_") && zoneId.startsWith("col_")) return 12;
   return 5;
 }
@@ -57,8 +55,30 @@ function scoreWorkload(tech: TechnicianInfo): number {
 export interface MatchResult {
   technician: TechnicianInfo | null;
   score: number;
+  confidenceScore: number;
   extendedCoverage: boolean;
+  nearbyTechCount: number;
+  distanceKm: number;
+  etaRange: string;
+  zoneMatch: boolean;
+  requiresPartnerConfirmation: boolean;
   message: string;
+}
+
+/** Compute a human-friendly ETA range */
+function computeEtaRange(etaMins: number): string {
+  if (etaMins <= 30) return "within 30 minutes";
+  if (etaMins <= 60) return "within 1 hour";
+  if (etaMins <= 240) return "today";
+  return "within 24 hours";
+}
+
+/** Simulate distance from zone */
+function computeDistanceKm(techZone: string | undefined, targetZone: string): number {
+  if (!techZone) return 8;
+  if (techZone === targetZone) return 1.5 + Math.random() * 2;
+  if (techZone.startsWith("col_") && targetZone.startsWith("col_")) return 3 + Math.random() * 4;
+  return 6 + Math.random() * 6;
 }
 
 export function matchTechnician(
@@ -75,7 +95,6 @@ export function matchTechnician(
         + scoreRating(tech)
         + scoreWorkload(tech);
 
-      // Emergency: boost available techs in-zone
       if (isEmergency && tech.availabilityStatus === "available" && tech.currentZoneId === zoneId) {
         score += 15;
       }
@@ -84,21 +103,48 @@ export function matchTechnician(
     })
     .sort((a, b) => b.score - a.score);
 
+  const nearbyTechCount = candidates.filter(c => 
+    c.tech.currentZoneId === zoneId || 
+    (c.tech.currentZoneId?.startsWith("col_") && zoneId.startsWith("col_"))
+  ).length;
+
   if (candidates.length === 0) {
-    return { technician: null, score: 0, extendedCoverage: false, message: "No technicians available. Matching in progress." };
+    return {
+      technician: null,
+      score: 0,
+      confidenceScore: 0,
+      extendedCoverage: false,
+      nearbyTechCount: 0,
+      distanceKm: 0,
+      etaRange: "within 24 hours",
+      zoneMatch: false,
+      requiresPartnerConfirmation: false,
+      message: "No technicians available. Matching in progress.",
+    };
   }
 
   const best = candidates[0];
   const inZone = best.tech.currentZoneId === zoneId;
   const extendedCoverage = !inZone && best.score < 50;
+  const etaMins = parseInt(best.tech.eta) || 30;
+  const distanceKm = Math.round(computeDistanceKm(best.tech.currentZoneId, zoneId) * 10) / 10;
+  
+  // Partner confirmation required if busy or high workload
+  const requiresPartnerConfirmation = best.tech.availabilityStatus === "busy" || (best.tech.activeJobsCount ?? 0) >= 3;
 
   return {
     technician: {
       ...best.tech,
-      eta: extendedCoverage ? `${parseInt(best.tech.eta) + 15} mins` : best.tech.eta,
+      eta: extendedCoverage ? `${etaMins + 15} mins` : best.tech.eta,
     },
     score: best.score,
+    confidenceScore: Math.min(best.score, 100),
     extendedCoverage,
+    nearbyTechCount,
+    distanceKm,
+    etaRange: computeEtaRange(extendedCoverage ? etaMins + 15 : etaMins),
+    zoneMatch: inZone,
+    requiresPartnerConfirmation,
     message: extendedCoverage
       ? "Extended coverage — technician from nearby zone"
       : `Matched: ${best.tech.name} (Score: ${best.score}/100)`,

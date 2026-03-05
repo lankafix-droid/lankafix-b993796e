@@ -5,16 +5,20 @@ import { ArrowRight, RotateCcw, ExternalLink, MessageCircle, CheckCircle2, MapPi
 import MascotIcon from "@/components/brand/MascotIcon";
 import { track } from "@/lib/analytics";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
+import { useBookingStore } from "@/store/bookingStore";
+import { categories } from "@/data/categories";
 import type { DiagnoseRecommendation } from "@/engines/diagnoseEngine";
 
 interface Props {
   result: DiagnoseRecommendation;
   userArea: string;
+  urgency: string;
   onRestart: () => void;
 }
 
-const DiagnoseResult = ({ result, userArea, onRestart }: Props) => {
+const DiagnoseResult = ({ result, userArea, urgency, onRestart }: Props) => {
   const navigate = useNavigate();
+  const { prefillDraftFromDiagnose } = useBookingStore();
 
   const handleContinue = () => {
     track("diagnose_continue_booking", {
@@ -22,10 +26,29 @@ const DiagnoseResult = ({ result, userArea, onRestart }: Props) => {
       service: result.recommendedServiceCode,
       resultType: result.resultType,
     });
+    track("diagnose_to_booking_conversion", {
+      category: result.recommendedCategoryCode,
+      service: result.recommendedServiceCode,
+    });
 
     if (result.resultType === "product") {
-      navigate(`/category/${result.recommendedCategoryCode.toLowerCase()}`);
+      // Map problem to intent query param
+      const intentMap: Record<string, string> = {
+        need_toner: "toner", need_ink: "ink", need_printer: "printer", need_accessories: "accessories",
+      };
+      const intent = intentMap[result.recommendedServiceCode] || "toner";
+      navigate(`/category/print_supplies?intent=${intent}`);
     } else {
+      const cat = categories.find(c => c.code === result.recommendedCategoryCode);
+      prefillDraftFromDiagnose({
+        categoryCode: result.recommendedCategoryCode,
+        categoryName: cat?.name || "",
+        serviceCode: result.recommendedServiceCode,
+        serviceName: result.recommendedServiceName,
+        urgency,
+        zone: userArea,
+        recommendedMode: result.recommendedMode,
+      });
       navigate(`/precheck/${result.recommendedCategoryCode}/${result.recommendedServiceCode}`);
     }
   };

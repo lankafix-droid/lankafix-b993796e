@@ -8,7 +8,9 @@ import type {
 import { BOOKING_STATUS_LABELS } from "@/types/booking";
 import { canTransition } from "@/brand/trustSystem";
 import { matchTechnician } from "@/engines/matchingEngine";
+import type { MatchResult } from "@/engines/matchingEngine";
 import { getZoneByLabel } from "@/data/colomboZones";
+import { track } from "@/lib/analytics";
 
 interface BookingDraft {
   categoryCode: CategoryCode | null;
@@ -24,11 +26,14 @@ interface BookingDraft {
   scheduledDate: string;
   scheduledTime: string;
   preferredWindow: string;
+  diagnoseSource?: boolean;
+  urgency?: string;
 }
 
 interface BookingStore {
   draft: BookingDraft;
   bookings: BookingState[];
+  lastMatchResult: MatchResult | null;
 
   setDraftCategory: (code: CategoryCode, name: string) => void;
   setDraftService: (code: string, name: string) => void;
@@ -38,6 +43,15 @@ interface BookingStore {
   setDraftSchedule: (date: string, time: string, window?: string) => void;
   setDraftLocation: (zone: string, address: string) => void;
   resetDraft: () => void;
+  prefillDraftFromDiagnose: (payload: {
+    categoryCode: CategoryCode;
+    categoryName: string;
+    serviceCode: string;
+    serviceName: string;
+    urgency: string;
+    zone: string;
+    recommendedMode: ServiceMode;
+  }) => void;
 
   confirmBooking: (pricing: PricingBreakdown, quoteRequired: boolean) => string;
   updateBookingStatus: (jobId: string, status: BookingStatus) => void;
@@ -81,48 +95,12 @@ function generateJobId(): string {
   return id;
 }
 
-// ============================================================
-// Centralized timeline logger
-// ============================================================
-function appendTimeline(
-  bookings: BookingState[],
-  jobId: string,
-  event: TimelineEvent
-): BookingState[] {
-  return bookings.map((b) =>
-    b.jobId === jobId
-      ? { ...b, timelineEvents: [...b.timelineEvents, event] }
-      : b
-  );
+function appendTimeline(bookings: BookingState[], jobId: string, event: TimelineEvent): BookingState[] {
+  return bookings.map((b) => b.jobId === jobId ? { ...b, timelineEvents: [...b.timelineEvents, event] } : b);
 }
 
-function logEvent(
-  bookings: BookingState[],
-  jobId: string,
-  title: string,
-  description: string | undefined,
-  actor: TimelineActor,
-  meta?: TimelineEventMeta
-): BookingState[] {
-  return appendTimeline(bookings, jobId, {
-    timestamp: new Date().toISOString(),
-    title,
-    description,
-    actor,
-    meta,
-  });
-}
-
-function createInitialTimeline(quoteRequired: boolean, matchMsg: string): TimelineEvent[] {
-  const now = new Date().toISOString();
-  return [
-    { timestamp: now, title: "Booking Created", description: "Service request submitted by customer", actor: "system" },
-    { timestamp: now, title: "Matching Started", description: "Looking for the best technician in your area", actor: "system" },
-    { timestamp: now, title: "Technician Matched", description: matchMsg, actor: "system" },
-    ...(quoteRequired
-      ? [{ timestamp: now, title: "Inspection Scheduled", description: "Technician will inspect and provide a detailed quote", actor: "system" as const }]
-      : []),
-  ];
+function logEvent(bookings: BookingState[], jobId: string, title: string, description: string | undefined, actor: TimelineActor, meta?: TimelineEventMeta): BookingState[] {
+  return appendTimeline(bookings, jobId, { timestamp: new Date().toISOString(), title, description, actor, meta });
 }
 
 const DEFAULT_CANCEL_POLICY = {
@@ -136,6 +114,7 @@ export const useBookingStore = create<BookingStore>()(
     (set, get) => ({
       draft: { ...initialDraft },
       bookings: [],
+      lastMatchResult: null,
 
       setDraftCategory: (code, name) =>
         set((s) => ({ draft: { ...s.draft, categoryCode: code, categoryName: name, serviceCode: null, serviceName: "", precheckAnswers: {} } })),
@@ -160,7 +139,24 @@ export const useBookingStore = create<BookingStore>()(
 
       resetDraft: () => set({ draft: { ...initialDraft } }),
 
-      // Confirm booking with matching engine
+      prefillDraftFromDiagnose: (payload) => {
+        track("booking_prefill_from_diagnose", payload);
+        set((s) => ({
+          draft: {
+            ...s.draft,
+            categoryCode: payload.categoryCode,
+            categoryName: payload.categoryName,
+            serviceCode: payload.serviceCode,
+            serviceName: payload.serviceName,
+            serviceMode: payload.recommendedMode,
+            zone: payload.zone,
+            isEmergency: payload.urgency === "emergency",
+            diagnoseSource: true,
+            urgency: payload.urgency,
+          },
+        }));
+      },
+
       confirmBooking: (pricing, quoteRequired) => {
         const { draft } = get();
 
@@ -175,13 +171,63 @@ export const useBookingStore = create<BookingStore>()(
           cancelPolicy: pricing.cancelPolicy || DEFAULT_CANCEL_POLICY,
         };
 
-        // Use matching engine
+        // Run matching engine
         const zoneData = getZoneByLabel(draft.zone);
         const matchResult = matchTechnician(draft.categoryCode, zoneData?.id || "", draft.isEmergency);
+
+        track("matching_started", { category: draft.categoryCode, zone: draft.zone, urgency: draft.urgency });
 
         const depositPayment: PaymentIntent | undefined = pricingWithPolicy.depositRequired
           ? { type: "deposit", amount: pricingWithPolicy.depositAmount, method: null, status: "pending", refundableAmount: pricingWithPolicy.depositAmount, refundStatus: "none", provider: "manual" }
           : undefined;
+
+        // Determine initial status based on matching
+        let initialStatus: BookingStatus = "matching";
+        if (matchResult.technician) {
+          if (matchResult.requiresPartnerConfirmation) {
+            initialStatus = "awaiting_partner_confirmation";
+          } else {
+            initialStatus = "assigned";
+          }
+        }
+
+        const now = new Date().toISOString();
+        const timelineEvents: TimelineEvent[] = [
+          { timestamp: now, title: "Booking Created", description: "Service request submitted by customer", actor: "system" },
+          { timestamp: now, title: "Matching Started", description: "Looking for the best technician in your area", actor: "system" },
+        ];
+
+        if (matchResult.technician) {
+          track("technician_matched", {
+            category: draft.categoryCode,
+            zone: draft.zone,
+            confidenceScore: matchResult.confidenceScore,
+            distanceKm: matchResult.distanceKm,
+            extendedCoverage: matchResult.extendedCoverage,
+          });
+
+          if (matchResult.extendedCoverage) {
+            track("extended_coverage_applied", { category: draft.categoryCode, zone: draft.zone });
+          }
+
+          timelineEvents.push({
+            timestamp: now,
+            title: matchResult.requiresPartnerConfirmation ? "Awaiting Partner Confirmation" : "Technician Matched",
+            description: matchResult.message,
+            actor: "system",
+          });
+
+          if (quoteRequired) {
+            timelineEvents.push({
+              timestamp: now,
+              title: "Inspection Scheduled",
+              description: "Technician will inspect and provide a detailed quote",
+              actor: "system",
+            });
+          }
+        } else {
+          track("technician_match_failed", { category: draft.categoryCode, zone: draft.zone });
+        }
 
         const booking: BookingState = {
           jobId,
@@ -200,8 +246,8 @@ export const useBookingStore = create<BookingStore>()(
           preferredWindow: draft.preferredWindow,
           pricing: pricingWithPolicy,
           technician: matchResult.technician,
-          status: quoteRequired ? "scheduled" : "requested",
-          createdAt: new Date().toISOString(),
+          status: initialStatus,
+          createdAt: now,
           quote: null,
           rating: null,
           cancelReason: null,
@@ -210,13 +256,15 @@ export const useBookingStore = create<BookingStore>()(
           startOtpVerifiedAt: null,
           completionOtpVerifiedAt: null,
           payments: { deposit: depositPayment },
-          timelineEvents: createInitialTimeline(quoteRequired, matchResult.message),
+          timelineEvents,
           dispatchStatus: "pending",
           etaMinutes: matchResult.technician ? parseInt(matchResult.technician.eta) || undefined : undefined,
         };
+
         set((s) => ({
           bookings: [booking, ...s.bookings],
           draft: { ...initialDraft },
+          lastMatchResult: matchResult,
         }));
         return jobId;
       },
@@ -231,9 +279,8 @@ export const useBookingStore = create<BookingStore>()(
             return s;
           }
 
-          // Quote-required completion guard
           if (toStatus === "completed" && booking.pricing.quoteRequired) {
-            if (!booking.quote?.selectedOptionId && booking.status !== "quote_approved") {
+            if (!booking.quote?.selectedOptionId && booking.status !== "quote_approved" && booking.status !== "repair_started") {
               console.warn("[LankaFix] Cannot complete: quote-required booking must have approved quote.");
               return s;
             }
@@ -243,7 +290,6 @@ export const useBookingStore = create<BookingStore>()(
             b.jobId === jobId ? { ...b, status: toStatus } : b
           );
 
-          // Dispatch auto updates
           if (toStatus === "tech_en_route") {
             const now = new Date().toISOString();
             updated = updated.map((b) =>
@@ -252,8 +298,14 @@ export const useBookingStore = create<BookingStore>()(
             updated = logEvent(updated, jobId, "Technician Dispatched", "Technician is on the way to your location", "system");
           }
 
-          updated = logEvent(
-            updated, jobId,
+          if (toStatus === "arrived") {
+            const now = new Date().toISOString();
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, dispatchStatus: "arrived" as const, arrivedAt: now } : b
+            );
+          }
+
+          updated = logEvent(updated, jobId,
             `Status Updated — ${BOOKING_STATUS_LABELS[toStatus]}`,
             `From ${BOOKING_STATUS_LABELS[booking.status]} → ${BOOKING_STATUS_LABELS[toStatus]}`,
             "system"
@@ -261,15 +313,12 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // Set quote with transition guard
       setBookingQuote: (jobId, quote) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking) return s;
-
           const canMove = canTransition(booking.status, "quote_submitted");
           const newStatus = canMove ? "quote_submitted" as BookingStatus : booking.status;
-
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, quote, status: newStatus } : b
           );
@@ -277,12 +326,10 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // Quote approval
       approveQuote: (jobId, optionId) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking || !booking.quote) return s;
-
           const now = new Date().toISOString();
           const updatedQuote: QuoteData = {
             ...booking.quote,
@@ -290,11 +337,9 @@ export const useBookingStore = create<BookingStore>()(
             approvedAt: now,
             approvedBy: "customer",
           };
-
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, quote: updatedQuote } : b
           );
-
           if (canTransition(booking.status, "quote_approved")) {
             updated = updated.map((b) =>
               b.jobId === jobId ? { ...b, status: "quote_approved" as BookingStatus } : b
@@ -302,7 +347,6 @@ export const useBookingStore = create<BookingStore>()(
             updated = logEvent(updated, jobId, `Status Updated — ${BOOKING_STATUS_LABELS["quote_approved"]}`,
               `From ${BOOKING_STATUS_LABELS[booking.status]} → ${BOOKING_STATUS_LABELS["quote_approved"]}`, "system");
           }
-
           updated = logEvent(updated, jobId, "Quote Approved", `Customer approved Option ${optionId}`, "customer", { optionId });
           return { bookings: updated };
         }),
@@ -341,34 +385,26 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // OTP verification with guard + auto transitions
       verifyOtp: (jobId, type) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking) return s;
-
           const now = new Date().toISOString();
           let newStatus = booking.status;
-
           if (type === "start" && canTransition(booking.status, "in_progress")) {
             newStatus = "in_progress";
           }
           if (type === "completion" && canTransition(booking.status, "completed")) {
-            if (booking.pricing.quoteRequired && !booking.quote?.selectedOptionId && booking.status !== "quote_approved") {
+            if (booking.pricing.quoteRequired && !booking.quote?.selectedOptionId && booking.status !== "quote_approved" && booking.status !== "repair_started") {
               console.warn("[LankaFix] Cannot complete via OTP: quote not approved.");
               newStatus = booking.status;
             } else {
               newStatus = "completed";
             }
           }
-
           let updated = s.bookings.map((b) =>
             b.jobId === jobId
-              ? {
-                  ...b,
-                  ...(type === "start" ? { startOtpVerifiedAt: now } : { completionOtpVerifiedAt: now }),
-                  status: newStatus,
-                }
+              ? { ...b, ...(type === "start" ? { startOtpVerifiedAt: now } : { completionOtpVerifiedAt: now }), status: newStatus }
               : b
           );
           updated = logEvent(updated, jobId, type === "start" ? "Job Start Verified (OTP)" : "Completion Verified (OTP)", "OTP verified by customer", "customer");
@@ -376,40 +412,28 @@ export const useBookingStore = create<BookingStore>()(
             updated = logEvent(updated, jobId, `Status Updated — ${BOOKING_STATUS_LABELS[newStatus]}`,
               `Auto-transition after OTP ${type} verification`, "system");
           }
-          // If completed, log warranty activation
           if (newStatus === "completed") {
             updated = logEvent(updated, jobId, "Warranty Activated", "Labor warranty now active from this date", "system");
           }
           return { bookings: updated };
         }),
 
-      // Payment with timeline + optional auto status
       setPayment: (jobId, key, payment) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking) return s;
-
-          const paymentWithProvider: PaymentIntent = {
-            ...payment,
-            provider: payment.provider || "manual",
-          };
-
+          const paymentWithProvider: PaymentIntent = { ...payment, provider: payment.provider || "manual" };
           let newStatus = booking.status;
           if (key === "deposit" && paymentWithProvider.status === "paid" && canTransition(booking.status, "scheduled")) {
             newStatus = "scheduled";
           }
-
           let updated = s.bookings.map((b) =>
-            b.jobId === jobId
-              ? { ...b, payments: { ...b.payments, [key]: paymentWithProvider }, status: newStatus }
-              : b
+            b.jobId === jobId ? { ...b, payments: { ...b.payments, [key]: paymentWithProvider }, status: newStatus } : b
           );
-          updated = logEvent(
-            updated, jobId,
+          updated = logEvent(updated, jobId,
             paymentWithProvider.status === "paid" ? "Payment Received" : "Payment Updated",
             `${key} — LKR ${paymentWithProvider.amount.toLocaleString("en-LK")}`,
-            "system",
-            { amount: paymentWithProvider.amount, paymentKey: key }
+            "system", { amount: paymentWithProvider.amount, paymentKey: key }
           );
           if (newStatus !== booking.status) {
             updated = logEvent(updated, jobId, `Status Updated — ${BOOKING_STATUS_LABELS[newStatus]}`,
@@ -418,7 +442,6 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // Mark arrived
       markArrived: (jobId) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -427,11 +450,15 @@ export const useBookingStore = create<BookingStore>()(
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, dispatchStatus: "arrived" as const, arrivedAt: now } : b
           );
+          if (canTransition(booking.status, "arrived")) {
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, status: "arrived" as BookingStatus } : b
+            );
+          }
           updated = logEvent(updated, jobId, "Technician Arrived", "Technician has arrived at your location", "system");
           return { bookings: updated };
         }),
 
-      // Mark dispatched
       markDispatched: (jobId) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -445,9 +472,7 @@ export const useBookingStore = create<BookingStore>()(
         }),
 
       addTimelineEvent: (jobId, event) =>
-        set((s) => ({
-          bookings: appendTimeline(s.bookings, jobId, event),
-        })),
+        set((s) => ({ bookings: appendTimeline(s.bookings, jobId, event) })),
 
       addBookingPhoto: (jobId, photo) =>
         set((s) => {
@@ -459,11 +484,8 @@ export const useBookingStore = create<BookingStore>()(
         }),
 
       getBooking: (jobId) => get().bookings.find((b) => b.jobId === jobId),
-
       getRecentBookings: () => get().bookings.slice(0, 10),
     }),
-    {
-      name: "lankafix-bookings",
-    }
+    { name: "lankafix-bookings" }
   )
 );
