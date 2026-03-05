@@ -421,7 +421,7 @@ export function generateMockScenarios(cat: CategoryCode): DemandScenario[] {
 }
 
 export function generateMockCategoryTrends(): CategoryTrend[] {
-  const names: Record<string, string> = { AC: "AC Service & Repair", CCTV: "CCTV & Security", IT: "IT Repair & Support", MOBILE: "Mobile & Device Repair", SOLAR: "Solar Power", COPIER: "Copier Repair" };
+  const names: Record<string, string> = { AC: "AC Service & Repair", CCTV: "CCTV & Security", IT: "IT Repair & Support", MOBILE: "Mobile & Device Repair", SOLAR: "Solar Power", COPIER: "Copier Repair", SMART_HOME_OFFICE: "Smart Home & Office", CONSUMER_ELEC: "Consumer Electronics", PRINT_SUPPLIES: "Printing & Supplies" };
   return CATEGORY_CODES.slice(0, 6).map((cat, i) => {
     const curr = Math.round(80 + seededRandom(i * 41) * 200);
     const prev = Math.round(60 + seededRandom(i * 43) * 180);
