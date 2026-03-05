@@ -34,7 +34,7 @@ interface BookingDraft {
 interface BookingStore {
   draft: BookingDraft;
   bookings: BookingState[];
-  lastMatchResult: MatchResult | null;
+  lastMatchResult: DispatchResult | null;
   techAvailability: Record<string, import("@/types/booking").TechnicianAvailability>;
 
   setDraftCategory: (code: CategoryCode, name: string) => void;
