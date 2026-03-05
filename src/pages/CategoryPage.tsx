@@ -18,10 +18,16 @@ import { track } from "@/lib/analytics";
 const CategoryPage = () => {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { setDraftCategory, setDraftService, setDraftMode, setDraftEmergency } = useBookingStore();
+  const { setDraftCategory, setDraftService, setDraftMode, setDraftEmergency, getRepeatBooking } = useBookingStore();
   const category = getCategoryByCode(code || "");
   const [modeFilter, setModeFilter] = useState<ServiceMode | "all">("all");
   const [emergency, setEmergency] = useState(false);
+
+  const repeatBooking = category ? getRepeatBooking(category.code) : undefined;
+
+  useEffect(() => {
+    if (category) track("service_lane_view", { category: category.code });
+  }, [category?.code]);
 
   if (!category) {
     return (<div className="min-h-screen flex flex-col"><Header /><main className="flex-1 flex items-center justify-center"><div className="text-center"><h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1><Button asChild variant="outline"><Link to="/categories">View All Categories</Link></Button></div></main><Footer /></div>);
