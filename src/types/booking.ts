@@ -200,6 +200,27 @@ export interface TechnicianInfo {
   currentZoneId?: string;
   availabilityStatus?: TechnicianAvailability;
   activeJobsCount?: number;
+  tier?: ProviderTier;
+}
+
+// ============================================================
+// Identity Masking Helpers
+// ============================================================
+
+/** Mask technician name to first name + last initial */
+export function maskTechnicianName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length <= 1) return fullName;
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+}
+
+/** Get masked technician display for pre-booking (no identity) */
+export function getPreBookingTechDisplay(rating?: number, jobsCompleted?: number) {
+  return {
+    name: "Verified LankaFix Technician",
+    ratingBand: rating ? (rating >= 4.5 ? "⭐ Top Rated" : rating >= 4.0 ? "⭐ Highly Rated" : "⭐ Rated") : "⭐ Rated",
+    experienceLevel: jobsCompleted ? (jobsCompleted >= 500 ? "Expert" : jobsCompleted >= 200 ? "Experienced" : "Qualified") : "Qualified",
+  };
 }
 
 // ============================================================
