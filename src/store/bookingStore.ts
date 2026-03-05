@@ -191,9 +191,8 @@ export const useBookingStore = create<BookingStore>()(
           cancelPolicy: pricing.cancelPolicy || DEFAULT_CANCEL_POLICY,
         };
 
-        // Run matching engine
-        const zoneData = getZoneByLabel(draft.zone);
-        const matchResult = matchTechnician(draft.categoryCode, zoneData?.id || "", draft.isEmergency);
+        // Run dispatch engine
+        const dispatchResult = runDispatch({ categoryCode: draft.categoryCode, zone: draft.zone, isEmergency: draft.isEmergency });
 
         track("matching_started", { category: draft.categoryCode, zone: draft.zone, urgency: draft.urgency });
 
@@ -201,10 +200,11 @@ export const useBookingStore = create<BookingStore>()(
           ? { type: "deposit", amount: pricingWithPolicy.depositAmount, method: null, status: "pending", refundableAmount: pricingWithPolicy.depositAmount, refundStatus: "none", provider: "manual" }
           : undefined;
 
-        // Determine initial status based on matching
+        // Determine initial status based on dispatch
+        const matchedTech = dispatchResult.bestMatch?.tech || null;
         let initialStatus: BookingStatus = "matching";
-        if (matchResult.technician) {
-          if (matchResult.requiresPartnerConfirmation) {
+        if (matchedTech) {
+          if (dispatchResult.requiresPartnerConfirmation) {
             initialStatus = "awaiting_partner_confirmation";
           } else {
             initialStatus = "assigned";
