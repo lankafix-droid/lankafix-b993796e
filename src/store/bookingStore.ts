@@ -126,7 +126,7 @@ function createInitialTimeline(quoteRequired: boolean, matchMsg: string): Timeli
 }
 
 const DEFAULT_CANCEL_POLICY = {
-  freeCancelMinutes: 5,
+  freeCancelMinutes: 10,
   refundBeforeDispatchPercent: 100,
   refundAfterDispatchPercent: 0,
 };
