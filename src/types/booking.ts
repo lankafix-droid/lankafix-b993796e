@@ -4,14 +4,19 @@ export type ServiceMode = "on_site" | "drop_off" | "pickup_return" | "remote";
 
 export type BookingStatus =
   | "requested"
+  | "matching"
+  | "awaiting_partner_confirmation"
   | "scheduled"
   | "assigned"
   | "tech_en_route"
+  | "arrived"
+  | "inspection_started"
   | "in_progress"
   | "quote_submitted"
   | "quote_revised"
   | "quote_approved"
   | "quote_rejected"
+  | "repair_started"
   | "completed"
   | "rated"
   | "cancelled";
@@ -25,14 +30,19 @@ export const SERVICE_MODE_LABELS: Record<ServiceMode, string> = {
 
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
   requested: "Requested",
+  matching: "Matching Technician",
+  awaiting_partner_confirmation: "Awaiting Confirmation",
   scheduled: "Scheduled",
   assigned: "Assigned",
   tech_en_route: "Tech En Route",
+  arrived: "Technician Arrived",
+  inspection_started: "Inspection Started",
   in_progress: "In Progress",
   quote_submitted: "Quote Submitted",
   quote_approved: "Quote Approved",
   quote_rejected: "Quote Rejected",
   quote_revised: "Quote Revised",
+  repair_started: "Repair Started",
   completed: "Completed",
   rated: "Rated",
   cancelled: "Cancelled",
@@ -40,37 +50,45 @@ export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
 
 export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
   requested: "bg-muted text-muted-foreground",
+  matching: "bg-primary/10 text-primary",
+  awaiting_partner_confirmation: "bg-warning/10 text-warning",
   scheduled: "bg-primary/10 text-primary",
   assigned: "bg-primary/10 text-primary",
   tech_en_route: "bg-warning/10 text-warning",
+  arrived: "bg-success/10 text-success",
+  inspection_started: "bg-primary/10 text-primary",
   in_progress: "bg-primary/10 text-primary",
   quote_submitted: "bg-warning/10 text-warning",
   quote_approved: "bg-success/10 text-success",
   quote_rejected: "bg-destructive/10 text-destructive",
   quote_revised: "bg-warning/10 text-warning",
+  repair_started: "bg-primary/10 text-primary",
   completed: "bg-success/10 text-success",
   rated: "bg-success/10 text-success",
   cancelled: "bg-destructive/10 text-destructive",
 };
 
 export const BOOKING_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = [
-  { status: "requested", label: "Service Requested" },
-  { status: "scheduled", label: "Scheduled" },
+  { status: "requested", label: "Booking Created" },
+  { status: "matching", label: "Matching Technician" },
   { status: "assigned", label: "Technician Assigned" },
-  { status: "tech_en_route", label: "Technician On The Way" },
+  { status: "tech_en_route", label: "Technician En Route" },
+  { status: "arrived", label: "Technician Arrived" },
   { status: "in_progress", label: "Work In Progress" },
-  { status: "completed", label: "Job Completed" },
+  { status: "completed", label: "Service Completed" },
 ];
 
 export const QUOTE_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = [
-  { status: "requested", label: "Inspection Requested" },
-  { status: "scheduled", label: "Inspection Scheduled" },
+  { status: "requested", label: "Booking Created" },
+  { status: "matching", label: "Matching Technician" },
   { status: "assigned", label: "Technician Assigned" },
-  { status: "tech_en_route", label: "Technician On The Way" },
-  { status: "in_progress", label: "Inspection In Progress" },
+  { status: "tech_en_route", label: "Technician En Route" },
+  { status: "arrived", label: "Technician Arrived" },
+  { status: "inspection_started", label: "Inspection Started" },
   { status: "quote_submitted", label: "Quote Submitted" },
   { status: "quote_approved", label: "Quote Approved" },
-  { status: "completed", label: "Job Completed" },
+  { status: "repair_started", label: "Repair Started" },
+  { status: "completed", label: "Service Completed" },
 ];
 
 // ============================================================
@@ -366,6 +384,8 @@ export interface BookingState {
 
 export const CANCELLABLE_STATUSES: BookingStatus[] = [
   "requested",
+  "matching",
+  "awaiting_partner_confirmation",
   "scheduled",
   "assigned",
   "tech_en_route",
