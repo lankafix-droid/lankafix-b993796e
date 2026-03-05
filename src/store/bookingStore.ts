@@ -642,6 +642,7 @@ export const useBookingStore = create<BookingStore>()(
             return s;
           }
           track("technician_complete_job", { jobId, category: booking.categoryCode });
+          track("repair_completed", { jobId, category: booking.categoryCode });
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, status: "completed" as BookingStatus } : b
           );
