@@ -1,4 +1,4 @@
-import type { Partner, TechnicianInfo, CategoryCode } from "@/types/booking";
+import type { Partner, TechnicianInfo, CategoryCode, ProviderTier } from "@/types/booking";
 
 export const MOCK_PARTNERS: Partner[] = [
   {
