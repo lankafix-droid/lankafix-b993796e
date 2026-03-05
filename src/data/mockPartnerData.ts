@@ -35,7 +35,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["battaramulla", "kotte", "rajagiriya", "nawala", "thalawathugoda", "malabe"],
     categories: ["SOLAR", "SMART_HOME_OFFICE"] as CategoryCode[],
     serviceCodes: ["SOLAR_INSTALL", "SOLAR_MAINTENANCE", "SOLAR_INVERTER", "SH_SETUP", "SH_INTERCOM"],
-    responseSlaByCategory: { SOLAR: 240, SMART_HOME_OFFICE: 120 },
+    responseSlaByCategory: { SOLAR: 240, SMART_HOME_OFFICE: 120 }, tier: "elite" as ProviderTier,
   },
 ];
 
