@@ -6,12 +6,14 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import TrustRibbon from "@/components/landing/TrustRibbon";
 import SLAChip from "@/components/ui/SLAChip";
+import RepeatServiceBanner from "@/components/tracker/RepeatServiceBanner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Zap, Stethoscope, FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { CategoryCode, ServiceMode } from "@/types/booking";
 import { SERVICE_MODE_LABELS } from "@/types/booking";
+import { track } from "@/lib/analytics";
 
 const CategoryPage = () => {
   const { code } = useParams<{ code: string }>();
