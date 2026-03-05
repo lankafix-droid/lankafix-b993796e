@@ -23,12 +23,23 @@ const QuotePage = () => {
   const [showRejectOptions, setShowRejectOptions] = useState(false);
 
   const booking = getBooking(jobId || "");
+  const quote = booking?.quote ?? null;
+  const isApproved = !!quote?.approvedAt;
+
+  const expiresIn = useMemo(() => {
+    if (!quote) return "";
+    const diff = new Date(quote.expiresAt).getTime() - Date.now();
+    if (diff <= 0) return "Expired";
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${mins}m`;
+  }, [quote?.expiresAt]);
 
   // Generate demo quote if needed
   const handleGenerateQuote = () => {
     if (!booking) return;
-    const quote = generateDemoQuote(booking.categoryCode, booking.serviceCode, booking.pricing.estimatedMin);
-    setBookingQuote(booking.jobId, quote);
+    const demoQuote = generateDemoQuote(booking.categoryCode, booking.serviceCode, booking.pricing.estimatedMin);
+    setBookingQuote(booking.jobId, demoQuote);
     toast.success("Demo quote generated");
   };
 
