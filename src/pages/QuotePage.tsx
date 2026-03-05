@@ -4,14 +4,16 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, RotateCcw, XCircle } from "lucide-react";
+import { ArrowLeft, Clock, RotateCcw, XCircle, ShieldCheck, FileText, Package, CheckCircle2, Info } from "lucide-react";
 import { useState, useMemo } from "react";
-import type { QuoteOption } from "@/types/booking";
+import type { QuoteOption, QuoteItem } from "@/types/booking";
+import { QUALITY_EXPLANATIONS } from "@/types/booking";
 import MascotIcon from "@/components/brand/MascotIcon";
 import MascotGuide from "@/components/mascot/MascotGuide";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 import { QUALITY_BADGES, TRUST_ICONS, canTransition } from "@/brand/trustSystem";
 import { generateDemoQuote } from "@/engines/quoteEngine";
+import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 
 const QuotePage = () => {
@@ -21,25 +23,28 @@ const QuotePage = () => {
 
   const [selectedTab, setSelectedTab] = useState<string>("A");
   const [showRejectOptions, setShowRejectOptions] = useState(false);
+  const [excludedOptionals, setExcludedOptionals] = useState<Set<string>>(new Set());
+  const [showInvoice, setShowInvoice] = useState(false);
 
   const booking = getBooking(jobId || "");
   const quote = booking?.quote ?? null;
   const isApproved = !!quote?.approvedAt;
 
-  const expiresIn = useMemo(() => {
-    if (!quote) return "";
+  // Expiry check
+  const expiryInfo = useMemo(() => {
+    if (!quote) return { text: "", expired: false };
     const diff = new Date(quote.expiresAt).getTime() - Date.now();
-    if (diff <= 0) return "Expired";
+    if (diff <= 0) return { text: "Expired", expired: true };
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hours}h ${mins}m`;
+    return { text: `${hours}h ${mins}m`, expired: false };
   }, [quote?.expiresAt]);
 
-  // Generate demo quote if needed
   const handleGenerateQuote = () => {
     if (!booking) return;
     const demoQuote = generateDemoQuote(booking.categoryCode, booking.serviceCode, booking.pricing.estimatedMin);
     setBookingQuote(booking.jobId, demoQuote);
+    track("quote_generated", { jobId: booking.jobId, category: booking.categoryCode });
     toast.success("Demo quote generated");
   };
 
@@ -59,7 +64,6 @@ const QuotePage = () => {
       </div>
     );
   }
-
 
   if (!quote) {
     return (
@@ -90,8 +94,21 @@ const QuotePage = () => {
 
   const activeOption: QuoteOption | undefined = quote.options?.find((o) => o.id === selectedTab);
 
+  // Compute totals accounting for excluded optionals
+  const computeAdjustedTotal = (opt: QuoteOption) => {
+    const excludeAmount = [...opt.laborItems, ...opt.partsItems, ...opt.addOns]
+      .filter((item) => item.optional && excludedOptionals.has(item.description))
+      .reduce((sum, item) => sum + item.amount, 0);
+    return opt.totals.total - excludeAmount;
+  };
+
   const handleApprove = () => {
+    if (expiryInfo.expired) {
+      toast.error("Quote has expired. Please request a new quote.");
+      return;
+    }
     approveQuote(booking.jobId, selectedTab);
+    track("quote_approved", { jobId: booking.jobId, option: selectedTab, total: activeOption?.totals.total });
     toast.success(`Option ${selectedTab} approved`);
     setTimeout(() => navigate(`/tracker/${booking.jobId}`), 600);
   };
@@ -99,6 +116,7 @@ const QuotePage = () => {
   const handleRevise = () => {
     if (canTransition(booking.status, "quote_revised")) {
       updateBookingStatus(booking.jobId, "quote_revised");
+      track("quote_revision_requested", { jobId: booking.jobId });
       toast.info("Revision requested — technician will update the quote");
     }
   };
@@ -106,9 +124,48 @@ const QuotePage = () => {
   const handleReject = () => {
     if (canTransition(booking.status, "quote_rejected")) {
       updateBookingStatus(booking.jobId, "quote_rejected");
+      track("quote_rejected", { jobId: booking.jobId });
       toast.info("Quote rejected");
       navigate(`/tracker/${booking.jobId}`);
     }
+  };
+
+  const toggleOptionalItem = (description: string) => {
+    setExcludedOptionals((prev) => {
+      const next = new Set(prev);
+      if (next.has(description)) next.delete(description);
+      else next.add(description);
+      return next;
+    });
+  };
+
+  const renderItem = (item: QuoteItem, i: number) => {
+    const pq = item.partQuality ? QUALITY_BADGES[item.partQuality] : null;
+    const isExcluded = item.optional && excludedOptionals.has(item.description);
+    return (
+      <div key={i} className={`flex justify-between text-sm items-center ${isExcluded ? "opacity-40 line-through" : ""}`}>
+        <span className="text-muted-foreground flex items-center gap-1.5 flex-1">
+          {item.description}
+          {pq && <Badge variant="outline" className={`text-[9px] ${pq.color}`}>{pq.label}</Badge>}
+          {item.optional && (
+            <button
+              onClick={() => toggleOptionalItem(item.description)}
+              className={`text-[9px] px-1.5 py-0.5 rounded border transition-all ${
+                isExcluded
+                  ? "border-muted text-muted-foreground bg-muted/30"
+                  : "border-primary/30 text-primary bg-primary/5"
+              }`}
+            >
+              {isExcluded ? "Excluded" : "Optional ✓"}
+            </button>
+          )}
+          {item.warrantyDays && (
+            <span className="text-[9px] text-success">🛡 {item.warrantyDays}d</span>
+          )}
+        </span>
+        <span className="font-medium text-foreground shrink-0">LKR {item.amount.toLocaleString("en-LK")}</span>
+      </div>
+    );
   };
 
   return (
@@ -133,22 +190,53 @@ const QuotePage = () => {
               </div>
             </div>
             {!isApproved && (
-              <div className="flex items-center gap-1 text-warning">
+              <div className={`flex items-center gap-1 ${expiryInfo.expired ? "text-destructive" : "text-warning"}`}>
                 <Clock className="w-3.5 h-3.5" />
-                <span className="text-xs font-medium">{expiresIn}</span>
+                <span className="text-xs font-medium">{expiryInfo.text}</span>
               </div>
             )}
           </div>
 
+          {/* Expired banner */}
+          {expiryInfo.expired && !isApproved && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-4 mb-4 text-center">
+              <p className="text-sm font-medium text-destructive">This quote has expired</p>
+              <p className="text-xs text-muted-foreground mt-1">Please request a new quote from your technician.</p>
+            </div>
+          )}
+
+          {/* Trust microcopy */}
+          <div className="bg-success/5 border border-success/20 rounded-xl p-3 mb-4 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-success shrink-0" />
+            <p className="text-xs text-success">
+              Repairs only begin after your approval. All work is covered by LankaFix warranty protection.
+            </p>
+          </div>
+
+          {/* Awaiting parts */}
+          {quote.awaitingParts && (
+            <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 mb-4 flex items-center gap-3">
+              <Package className="w-5 h-5 text-warning shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Part Sourcing in Progress</p>
+                <p className="text-xs text-muted-foreground">
+                  {quote.awaitingPartsEta
+                    ? `Estimated arrival: ${quote.awaitingPartsEta}`
+                    : "The technician is sourcing required parts. You can schedule a second visit."}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Technician */}
           {booking.technician && (
-            <div className="bg-card rounded-xl border p-4 mt-4 mb-4 flex items-center gap-3">
+            <div className="bg-card rounded-xl border p-4 mb-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                 <TRUST_ICONS.ShieldCheck className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-foreground">{booking.technician.name}</p>
-                <p className="text-xs text-muted-foreground">{booking.technician.partnerName} • ★{booking.technician.rating} • {booking.technician.jobsCompleted} jobs</p>
+                <p className="text-sm font-semibold text-foreground">LankaFix Verified Technician</p>
+                <p className="text-xs text-muted-foreground">★{booking.technician.rating} • {booking.technician.jobsCompleted} jobs</p>
               </div>
               <Badge variant="outline" className="text-[10px]">Verified since {new Date(booking.technician.verifiedSince).getFullYear()}</Badge>
             </div>
@@ -178,6 +266,7 @@ const QuotePage = () => {
                 const qb = QUALITY_BADGES[opt.partQuality];
                 const isRecommended = opt.id === quote.recommendedOptionId;
                 const isSelected = opt.id === quote.selectedOptionId;
+                const adjustedTotal = computeAdjustedTotal(opt);
                 return (
                   <button
                     key={opt.id}
@@ -198,11 +287,22 @@ const QuotePage = () => {
                       <span className="text-xs font-bold text-foreground">Option {opt.id}</span>
                       <Badge variant="outline" className={`text-[10px] ${qb.color}`}>{qb.label}</Badge>
                     </div>
-                    <p className="text-lg font-bold text-foreground">LKR {opt.totals.total.toLocaleString("en-LK")}</p>
+                    <p className="text-lg font-bold text-foreground">LKR {adjustedTotal.toLocaleString("en-LK")}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">Parts: {opt.warranty.parts}</p>
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {/* Parts quality explanation */}
+          {activeOption && (
+            <div className="bg-muted/30 rounded-xl p-3 mb-4 flex items-start gap-2">
+              <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-foreground">{QUALITY_BADGES[activeOption.partQuality].label} Parts</p>
+                <p className="text-[10px] text-muted-foreground">{QUALITY_EXPLANATIONS[activeOption.partQuality]}</p>
+              </div>
             </div>
           )}
 
@@ -223,41 +323,20 @@ const QuotePage = () => {
               <div className="bg-card rounded-xl border p-5 mb-3">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Labor</h3>
                 <div className="space-y-2">
-                  {activeOption.laborItems.map((item, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{item.description}</span>
-                      <span className="font-medium text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
-                    </div>
-                  ))}
+                  {activeOption.laborItems.map((item, i) => renderItem(item, i))}
                 </div>
               </div>
               <div className="bg-card rounded-xl border p-5 mb-3">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Parts</h3>
                 <div className="space-y-2">
-                  {activeOption.partsItems.map((item, i) => {
-                    const pq = item.partQuality ? QUALITY_BADGES[item.partQuality] : null;
-                    return (
-                      <div key={i} className="flex justify-between text-sm items-center">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          {item.description}
-                          {pq && <Badge variant="outline" className={`text-[9px] ${pq.color}`}>{pq.label}</Badge>}
-                        </span>
-                        <span className="font-medium text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
-                      </div>
-                    );
-                  })}
+                  {activeOption.partsItems.map((item, i) => renderItem(item, i))}
                 </div>
               </div>
               {activeOption.addOns.length > 0 && (
                 <div className="bg-card rounded-xl border p-5 mb-3">
                   <h3 className="text-sm font-semibold text-foreground mb-3">Add-Ons</h3>
                   <div className="space-y-2">
-                    {activeOption.addOns.map((item, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">{item.description}</span>
-                        <span className="font-medium text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
-                      </div>
-                    ))}
+                    {activeOption.addOns.map((item, i) => renderItem(item, i))}
                   </div>
                 </div>
               )}
@@ -268,9 +347,28 @@ const QuotePage = () => {
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor</span><span className="text-foreground">LKR {activeOption.totals.labor.toLocaleString("en-LK")}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Parts</span><span className="text-foreground">LKR {activeOption.totals.parts.toLocaleString("en-LK")}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Add-Ons</span><span className="text-foreground">LKR {activeOption.totals.addOns.toLocaleString("en-LK")}</span></div>
-                  <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2"><span className="text-foreground">Total</span><span className="text-primary">LKR {activeOption.totals.total.toLocaleString("en-LK")}</span></div>
+                  {excludedOptionals.size > 0 && (
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Excluded optional items</span>
+                      <span>−LKR {(activeOption.totals.total - computeAdjustedTotal(activeOption)).toLocaleString("en-LK")}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2">
+                    <span className="text-foreground">Total</span>
+                    <span className="text-primary">LKR {computeAdjustedTotal(activeOption).toLocaleString("en-LK")}</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Estimated completion */}
+              {activeOption.estimatedCompletionMinutes && (
+                <div className="flex items-center gap-2 bg-muted/30 rounded-xl p-3 mb-4">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    Estimated completion: ~{activeOption.estimatedCompletionMinutes} minutes
+                  </p>
+                </div>
+              )}
 
               {/* Warranty */}
               <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-4 flex items-start gap-3">
@@ -325,13 +423,80 @@ const QuotePage = () => {
 
           {/* Actions */}
           {isApproved ? (
-            <div className="rounded-xl p-5 text-center bg-success/10 border border-success/20 mb-6">
-              <MascotIcon state="completed" size="sm" className="mx-auto mb-2" />
-              <p className="font-semibold text-foreground">✓ Quote Approved (Option {quote.selectedOptionId})</p>
-              <p className="text-xs text-muted-foreground mt-1">Work will begin as scheduled.</p>
-              <Button variant="outline" size="sm" className="mt-3" asChild>
-                <Link to={`/tracker/${booking.jobId}`}>Back to Tracker</Link>
-              </Button>
+            <div className="space-y-4 mb-6">
+              <div className="rounded-xl p-5 text-center bg-success/10 border border-success/20">
+                <MascotIcon state="completed" size="sm" className="mx-auto mb-2" />
+                <p className="font-semibold text-foreground">✓ Quote Approved (Option {quote.selectedOptionId})</p>
+                <p className="text-xs text-muted-foreground mt-1">Work will begin as scheduled.</p>
+                <div className="flex gap-2 justify-center mt-3">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`/tracker/${booking.jobId}`}>Back to Tracker</Link>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowInvoice(!showInvoice)}>
+                    <FileText className="w-4 h-4 mr-1" /> {showInvoice ? "Hide" : "View"} Invoice
+                  </Button>
+                </div>
+              </div>
+
+              {/* Invoice */}
+              {showInvoice && activeOption && (
+                <div className="bg-card rounded-xl border p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b pb-3">
+                    <LankaFixLogo size="sm" />
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-foreground">INVOICE</p>
+                      <p className="text-[10px] text-muted-foreground">#{booking.jobId}</p>
+                      <p className="text-[10px] text-muted-foreground">{new Date().toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Service</p>
+                      <p className="font-medium text-foreground">{booking.serviceName}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Category</p>
+                      <p className="font-medium text-foreground">{booking.categoryName}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Booking Reference</p>
+                      <p className="font-medium text-foreground">{booking.jobId}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Date</p>
+                      <p className="font-medium text-foreground">{booking.scheduledDate || new Date(booking.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="border-t pt-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-2">Labor</p>
+                    {activeOption.laborItems.map((item, i) => (
+                      <div key={i} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{item.description}</span>
+                        <span className="text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t pt-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-foreground mb-2">Parts</p>
+                    {activeOption.partsItems.map((item, i) => (
+                      <div key={i} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">{item.description}</span>
+                        <span className="text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t pt-3">
+                    <div className="flex justify-between text-sm font-bold">
+                      <span className="text-foreground">Total</span>
+                      <span className="text-primary">LKR {activeOption.totals.total.toLocaleString("en-LK")}</span>
+                    </div>
+                  </div>
+                  <div className="border-t pt-3 text-[10px] text-muted-foreground">
+                    <p>Warranty: Labor {activeOption.warranty.labor} • Parts {activeOption.warranty.parts}</p>
+                    <p className="mt-1">Powered by LankaFix — Verified Tech. Fixed Fast.</p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : showRejectOptions ? (
             <div className="space-y-3 mb-6">
@@ -347,13 +512,27 @@ const QuotePage = () => {
               <Button variant="ghost" size="sm" onClick={() => setShowRejectOptions(false)}>Back</Button>
             </div>
           ) : (
-            <div className="flex gap-3 mb-6">
-              <Button variant="hero" size="xl" className="flex-1" onClick={handleApprove}>
-                Approve Option {selectedTab}
-              </Button>
-              <Button variant="outline" size="xl" className="flex-1" onClick={() => setShowRejectOptions(true)}>
-                Not Happy?
-              </Button>
+            <div className="space-y-3 mb-6">
+              <div className="flex gap-3">
+                <Button
+                  variant="hero"
+                  size="xl"
+                  className="flex-1"
+                  onClick={handleApprove}
+                  disabled={expiryInfo.expired}
+                >
+                  <CheckCircle2 className="w-5 h-5 mr-2" />
+                  Approve Option {selectedTab}
+                </Button>
+                <Button variant="outline" size="xl" className="flex-1" onClick={() => setShowRejectOptions(true)}>
+                  Not Happy?
+                </Button>
+              </div>
+              {/* Repair lock notice */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
+                <ShieldCheck className="w-3.5 h-3.5 text-success" />
+                <span>No work begins without your explicit approval</span>
+              </div>
             </div>
           )}
         </div>

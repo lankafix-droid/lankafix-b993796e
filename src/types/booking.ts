@@ -141,6 +141,12 @@ export interface QuoteItem {
   description: string;
   amount: number;
   partQuality?: PartQuality;
+  /** Stage 9: optional item toggle */
+  optional?: boolean;
+  /** Stage 9: warranty days per item */
+  warrantyDays?: number;
+  quantity?: number;
+  unitPrice?: number;
 }
 
 export interface WarrantyTerms {
@@ -159,7 +165,29 @@ export interface QuoteOption {
   totals: { labor: number; parts: number; addOns: number; total: number };
   warranty: WarrantyTerms;
   partQuality: PartQuality;
+  /** Stage 9: estimated completion time in minutes */
+  estimatedCompletionMinutes?: number;
 }
+
+/** Stage 9: Quote lifecycle status */
+export type QuoteStatus =
+  | "pending_inspection"
+  | "quote_generated"
+  | "quote_sent"
+  | "quote_revision_requested"
+  | "quote_approved"
+  | "quote_rejected"
+  | "repair_in_progress";
+
+export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
+  pending_inspection: "Pending Inspection",
+  quote_generated: "Quote Generated",
+  quote_sent: "Sent to Customer",
+  quote_revision_requested: "Revision Requested",
+  quote_approved: "Approved",
+  quote_rejected: "Rejected",
+  repair_in_progress: "Repair In Progress",
+};
 
 export interface QuoteData {
   options: QuoteOption[];
@@ -173,6 +201,13 @@ export interface QuoteData {
   inspectionFindings: string[];
   approvedAt?: string;
   approvedBy?: "customer" | "system";
+  /** Stage 9: quote lifecycle status */
+  quoteStatus?: QuoteStatus;
+  /** Stage 9: optional items excluded by customer */
+  excludedOptionalItems?: string[];
+  /** Stage 9: awaiting parts */
+  awaitingParts?: boolean;
+  awaitingPartsEta?: string;
   // Legacy flat fields for backward compat
   laborItems: QuoteItem[];
   partsItems: QuoteItem[];
@@ -180,6 +215,13 @@ export interface QuoteData {
   totals: { labor: number; parts: number; addOns: number; total: number };
   warranty: WarrantyTerms;
 }
+
+/** Stage 9: Quality explanation for transparency */
+export const QUALITY_EXPLANATIONS: Record<PartQuality, string> = {
+  genuine: "Original manufacturer part with full factory warranty",
+  oem_grade: "High-quality equivalent meeting manufacturer specifications",
+  compatible: "Budget-friendly alternative with basic warranty coverage",
+};
 
 // ============================================================
 // Technician & Partner Models

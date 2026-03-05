@@ -354,9 +354,11 @@ export const useBookingStore = create<BookingStore>()(
           if (!booking) return s;
           const canMove = canTransition(booking.status, "quote_submitted");
           const newStatus = canMove ? "quote_submitted" as BookingStatus : booking.status;
+          const quoteWithStatus = { ...quote, quoteStatus: quote.quoteStatus || "quote_sent" as const };
           let updated = s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, quote, status: newStatus } : b
+            b.jobId === jobId ? { ...b, quote: quoteWithStatus, status: newStatus } : b
           );
+          track("quote_generated", { jobId, category: booking.categoryCode });
           updated = logEvent(updated, jobId, "Quote Submitted", "Detailed quote ready for your review", "technician");
           return { bookings: updated };
         }),
@@ -597,6 +599,7 @@ export const useBookingStore = create<BookingStore>()(
           if (!booking) return s;
           if (!canTransition(booking.status, "inspection_started")) return s;
           track("technician_inspection_start", { jobId, category: booking.categoryCode });
+          track("inspection_completed", { jobId, category: booking.categoryCode });
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, status: "inspection_started" as BookingStatus } : b
           );
@@ -608,9 +611,17 @@ export const useBookingStore = create<BookingStore>()(
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking) return s;
+
+          // Stage 9: Repair Lock — quote-required services MUST have approved quote
+          if (booking.pricing.quoteRequired && !booking.quote?.selectedOptionId) {
+            console.warn("[LankaFix] Repair locked: quote must be approved before starting repair");
+            return s;
+          }
+
           const validFrom: BookingStatus[] = ["quote_approved", "in_progress", "inspection_started"];
           if (!validFrom.includes(booking.status) && !canTransition(booking.status, "repair_started")) return s;
           track("technician_repair_start", { jobId, category: booking.categoryCode });
+          track("repair_started", { jobId, category: booking.categoryCode });
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, status: "repair_started" as BookingStatus } : b
           );
@@ -631,6 +642,7 @@ export const useBookingStore = create<BookingStore>()(
             return s;
           }
           track("technician_complete_job", { jobId, category: booking.categoryCode });
+          track("repair_completed", { jobId, category: booking.categoryCode });
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, status: "completed" as BookingStatus } : b
           );
