@@ -143,7 +143,7 @@ function MessageBubble({ msg }: { msg: ChatMsg }) {
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} gap-2`}>
       {!isUser && (
         <div className="shrink-0 mt-1">
-          <MascotIcon state="happy" size="sm" />
+          <MascotIcon state="default" size="sm" />
         </div>
       )}
       <div
