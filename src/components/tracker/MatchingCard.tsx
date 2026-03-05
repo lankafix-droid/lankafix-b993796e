@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Users, Clock, Loader2 } from "lucide-react";
+import { MessageCircle, Users, Clock, Loader2, ShieldCheck, Lock } from "lucide-react";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { track } from "@/lib/analytics";
 
