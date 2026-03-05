@@ -6,11 +6,12 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ShieldCheck, CreditCard, Info, Wallet } from "lucide-react";
+import { ArrowLeft, Info, Wallet } from "lucide-react";
 import { SERVICE_MODE_LABELS } from "@/types/booking";
 import type { CategoryCode } from "@/types/booking";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 import MascotIcon from "@/components/brand/MascotIcon";
+import { TRUST_ICONS } from "@/brand/trustSystem";
 
 const PricingBuilder = () => {
   const { catCode, svcCode } = useParams<{ catCode: string; svcCode: string }>();
@@ -26,8 +27,10 @@ const PricingBuilder = () => {
   const pricing = calculatePricing(catCode as CategoryCode, svcCode!, service.fromPrice, service.requiresDiagnostic, service.requiresQuote, draft.isEmergency);
 
   const handleConfirm = () => {
-    const jobId = confirmBooking({ visitFee: pricing.visitFee, diagnosticFee: pricing.diagnosticFee, emergencySurcharge: pricing.emergencySurcharge, estimatedMin: pricing.estimatedMin, estimatedMax: pricing.estimatedMax, depositRequired: pricing.depositRequired, depositAmount: pricing.depositAmount, partsSeparate: pricing.partsSeparate, quoteRequired: pricing.quoteRequired }, pricing.quoteRequired);
-    navigate(`/tracker/${jobId}`);
+    const jobId = confirmBooking(pricing, pricing.quoteRequired);
+    if (jobId) {
+      navigate(`/tracker/${jobId}`);
+    }
   };
 
   return (
@@ -61,10 +64,10 @@ const PricingBuilder = () => {
           <div className="bg-primary/5 rounded-xl border border-primary/20 p-5 mb-4">
             <h3 className="text-sm font-semibold text-foreground mb-4">Price Breakdown</h3>
             <div className="space-y-3">
-              {pricing.visitFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Visit Fee</span><span className="font-medium text-foreground">LKR {pricing.visitFee.toLocaleString()}</span></div>}
-              {pricing.diagnosticFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Diagnostic Fee</span><span className="font-medium text-foreground">LKR {pricing.diagnosticFee.toLocaleString()}</span></div>}
-              {pricing.emergencySurcharge > 0 && <div className="flex justify-between text-sm"><span className="text-warning">Emergency Surcharge</span><span className="font-medium text-warning">+ LKR {pricing.emergencySurcharge.toLocaleString()}</span></div>}
-              <div className="border-t pt-3 flex justify-between text-sm"><span className="text-muted-foreground">Estimated Service Range</span><span className="font-bold text-foreground">LKR {pricing.estimatedMin.toLocaleString()} – {pricing.estimatedMax.toLocaleString()}</span></div>
+              {pricing.visitFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Visit Fee</span><span className="font-medium text-foreground">LKR {pricing.visitFee.toLocaleString("en-LK")}</span></div>}
+              {pricing.diagnosticFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Diagnostic Fee</span><span className="font-medium text-foreground">LKR {pricing.diagnosticFee.toLocaleString("en-LK")}</span></div>}
+              {pricing.emergencySurcharge > 0 && <div className="flex justify-between text-sm"><span className="text-warning">Emergency Surcharge</span><span className="font-medium text-warning">+ LKR {pricing.emergencySurcharge.toLocaleString("en-LK")}</span></div>}
+              <div className="border-t pt-3 flex justify-between text-sm"><span className="text-muted-foreground">Estimated Service Range</span><span className="font-bold text-foreground">LKR {pricing.estimatedMin.toLocaleString("en-LK")} – {pricing.estimatedMax.toLocaleString("en-LK")}</span></div>
               {pricing.partsSeparate && <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Info className="w-3 h-3" />Parts will be quoted separately after inspection</div>}
             </div>
           </div>
@@ -81,26 +84,26 @@ const PricingBuilder = () => {
               <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
                 <Wallet className="w-4 h-4 text-primary" /> Commitment Fee
               </h3>
-              <p className="text-lg font-bold text-primary mb-2">LKR {pricing.depositAmount.toLocaleString()}</p>
+              <p className="text-lg font-bold text-primary mb-2">LKR {pricing.depositAmount.toLocaleString("en-LK")}</p>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• Free cancellation within {pricing.cancelPolicy.freeCancelMinutes} minutes</p>
                 <p>• {pricing.cancelPolicy.refundBeforeDispatchPercent}% refund before technician dispatch</p>
                 <p>• {pricing.cancelPolicy.refundAfterDispatchPercent}% refund after dispatch</p>
               </div>
               <Button variant="outline" size="sm" className="mt-3 w-full">
-                <Wallet className="w-4 h-4 mr-2" /> Pay Deposit — LKR {pricing.depositAmount.toLocaleString()}
+                <Wallet className="w-4 h-4 mr-2" /> Pay Deposit — LKR {pricing.depositAmount.toLocaleString("en-LK")}
               </Button>
             </div>
           )}
 
           <div className="bg-card rounded-xl border p-5 mb-4">
-            <div className="flex items-center gap-2 mb-3"><CreditCard className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Payment</h3></div>
+            <div className="flex items-center gap-2 mb-3"><TRUST_ICONS.CreditCard className="w-4 h-4 text-primary" /><h3 className="text-sm font-semibold text-foreground">Payment</h3></div>
             <p className="text-sm text-muted-foreground mb-2">{pricing.quoteRequired ? "Pay after quote approval — no upfront charge for inspection." : "Pay after service completion — no hidden fees."}</p>
             <div className="flex flex-wrap gap-2">{["Cash", "Bank Transfer", "Card at Completion"].map((m) => (<Badge key={m} variant="outline" className="text-xs">{m}</Badge>))}</div>
           </div>
 
           <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-8 flex items-start gap-3">
-            <ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
+            <TRUST_ICONS.ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
             <div><p className="text-sm font-medium text-foreground">Warranty-Backed Service</p><p className="text-xs text-muted-foreground mt-1">All LankaFix services come with a labor warranty. Parts warranty depends on supplier terms.</p></div>
           </div>
 

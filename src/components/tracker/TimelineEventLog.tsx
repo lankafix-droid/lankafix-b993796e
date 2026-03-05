@@ -1,4 +1,5 @@
-import { Clock, User, Wrench, Monitor } from "lucide-react";
+import { Monitor, Wrench, User } from "lucide-react";
+import { TRUST_ICONS } from "@/brand/trustSystem";
 import type { TimelineEvent, TimelineActor } from "@/types/booking";
 
 const actorConfig: Record<TimelineActor, { icon: React.ReactNode; color: string }> = {
@@ -12,12 +13,12 @@ interface TimelineEventLogProps {
 }
 
 const TimelineEventLog = ({ events }: TimelineEventLogProps) => {
-  const sorted = [...events].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const sorted = [...events].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   return (
     <div className="bg-card rounded-xl border p-5 animate-fade-in">
       <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-        <Clock className="w-4 h-4 text-primary" />
+        <TRUST_ICONS.Clock className="w-4 h-4 text-primary" />
         Event Log
       </h3>
       <div className="space-y-3">

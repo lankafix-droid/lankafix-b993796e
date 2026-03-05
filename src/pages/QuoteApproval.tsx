@@ -4,16 +4,16 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ShieldCheck, FileText, Clock } from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import type { QuoteData, QuoteOption } from "@/types/booking";
 import MascotIcon from "@/components/brand/MascotIcon";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
+import { QUALITY_BADGES, TRUST_ICONS } from "@/brand/trustSystem";
 
 function generateMockQuote(): QuoteData {
   const optionA: QuoteOption = {
-    id: "A",
-    label: "Option A — Genuine Parts",
+    id: "A", label: "Option A — Genuine Parts",
     laborItems: [
       { description: "Site inspection & assessment", amount: 3000 },
       { description: "Installation / repair labor", amount: 8000 },
@@ -30,8 +30,7 @@ function generateMockQuote(): QuoteData {
   };
 
   const optionB: QuoteOption = {
-    id: "B",
-    label: "Option B — OEM Grade Parts",
+    id: "B", label: "Option B — OEM Grade Parts",
     laborItems: [
       { description: "Site inspection & assessment", amount: 3000 },
       { description: "Installation / repair labor", amount: 8000 },
@@ -48,8 +47,7 @@ function generateMockQuote(): QuoteData {
   };
 
   const optionC: QuoteOption = {
-    id: "C",
-    label: "Option C — Compatible Parts",
+    id: "C", label: "Option C — Compatible Parts",
     laborItems: [
       { description: "Site inspection & assessment", amount: 3000 },
       { description: "Installation / repair labor", amount: 8000 },
@@ -96,21 +94,16 @@ function generateMockQuote(): QuoteData {
   };
 }
 
-import { QUALITY_BADGES } from "@/brand/trustSystem";
-
-
 const QuoteApproval = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
-  const { getBooking, updateBookingStatus, setBookingQuote } = useBookingStore();
+  const { getBooking, setBookingQuote, approveQuote } = useBookingStore();
 
-  const [decided, setDecided] = useState<"approved" | null>(null);
   const [showRejectOptions, setShowRejectOptions] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string>("A");
 
   const booking = getBooking(jobId || "");
 
-  // Seed quote on mount if needed
   useEffect(() => {
     if (booking && !booking.quote) {
       setBookingQuote(booking.jobId, generateMockQuote());
@@ -118,6 +111,7 @@ const QuoteApproval = () => {
   }, [booking?.jobId, booking?.quote]);
 
   const quote = booking?.quote || null;
+  const isApproved = !!quote?.approvedAt;
 
   const expiresIn = useMemo(() => {
     if (!quote) return "";
@@ -146,8 +140,7 @@ const QuoteApproval = () => {
   const activeOption = quote.options?.find((o) => o.id === selectedOption) || null;
 
   const handleApprove = () => {
-    updateBookingStatus(booking.jobId, "quote_approved");
-    setDecided("approved");
+    approveQuote(booking.jobId, selectedOption);
   };
 
   const handleRejectOption = (reason: string) => {
@@ -159,7 +152,6 @@ const QuoteApproval = () => {
       navigate(`/tracker/${booking.jobId}`);
       return;
     }
-    updateBookingStatus(booking.jobId, "quote_rejected");
     navigate(`/tracker/${booking.jobId}`);
   };
 
@@ -172,7 +164,6 @@ const QuoteApproval = () => {
             <ArrowLeft className="w-4 h-4" /> Back to Tracker
           </Link>
 
-          {/* Header with mascot */}
           <div className="flex items-center gap-3 mb-2">
             <MascotIcon state="verified" badge="verified" size="sm" />
             <div>
@@ -202,12 +193,30 @@ const QuoteApproval = () => {
             </div>
           </div>
 
+          {/* Inspection Findings */}
+          {quote.inspectionFindings && quote.inspectionFindings.length > 0 && (
+            <div className="bg-card rounded-xl border p-5 mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <TRUST_ICONS.ListChecks className="w-4 h-4 text-primary" />
+                Inspection Findings
+              </h3>
+              <ul className="space-y-1.5">
+                {quote.inspectionFindings.map((finding, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                    <span className="text-primary mt-0.5">•</span> {finding}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {/* Option Tabs */}
           {quote.options && quote.options.length > 0 && (
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
               {quote.options.map((opt) => {
                 const qb = QUALITY_BADGES[opt.partQuality];
                 const isRecommended = opt.id === quote.recommendedOptionId;
+                const isSelected = opt.id === quote.selectedOptionId;
                 return (
                   <button
                     key={opt.id}
@@ -221,15 +230,29 @@ const QuoteApproval = () => {
                     {isRecommended && (
                       <Badge className="absolute -top-2 left-2 text-[9px] bg-primary text-primary-foreground px-1.5 py-0">Recommended</Badge>
                     )}
+                    {isSelected && (
+                      <Badge className="absolute -top-2 right-2 text-[9px] bg-success text-success-foreground px-1.5 py-0">Approved</Badge>
+                    )}
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-bold text-foreground">Option {opt.id}</span>
-                      <Badge variant="outline" className={`text-[10px] ${qb?.color || ""}`}>{qb?.label}</Badge>
+                      <Badge variant="outline" className={`text-[10px] ${qb.color}`}>{qb.label}</Badge>
                     </div>
-                    <p className="text-lg font-bold text-foreground">LKR {opt.totals.total.toLocaleString()}</p>
+                    <p className="text-lg font-bold text-foreground">LKR {opt.totals.total.toLocaleString("en-LK")}</p>
                     <p className="text-[10px] text-muted-foreground mt-0.5">Parts: {opt.warranty.parts}</p>
                   </button>
                 );
               })}
+            </div>
+          )}
+
+          {/* Recommended Reason */}
+          {quote.recommendedReason && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-4 text-xs">
+              <p className="font-medium text-foreground mb-1 flex items-center gap-1.5">
+                <TRUST_ICONS.BadgeCheck className="w-3.5 h-3.5 text-primary" />
+                Why we recommend Option {quote.recommendedOptionId}
+              </p>
+              <p className="text-muted-foreground">{quote.recommendedReason}</p>
             </div>
           )}
 
@@ -242,7 +265,7 @@ const QuoteApproval = () => {
                   {activeOption.laborItems.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{item.description}</span>
-                      <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
+                      <span className="font-medium text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
                     </div>
                   ))}
                 </div>
@@ -253,7 +276,7 @@ const QuoteApproval = () => {
                   {activeOption.partsItems.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{item.description}</span>
-                      <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
+                      <span className="font-medium text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
                     </div>
                   ))}
                 </div>
@@ -265,7 +288,7 @@ const QuoteApproval = () => {
                     {activeOption.addOns.map((item, i) => (
                       <div key={i} className="flex justify-between text-sm">
                         <span className="text-muted-foreground">{item.description}</span>
-                        <span className="font-medium text-foreground">LKR {item.amount.toLocaleString()}</span>
+                        <span className="font-medium text-foreground">LKR {item.amount.toLocaleString("en-LK")}</span>
                       </div>
                     ))}
                   </div>
@@ -275,45 +298,23 @@ const QuoteApproval = () => {
               {/* Totals */}
               <div className="bg-primary/5 rounded-xl border border-primary/20 p-5 mb-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor</span><span className="text-foreground">LKR {activeOption.totals.labor.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Parts</span><span className="text-foreground">LKR {activeOption.totals.parts.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Add-Ons</span><span className="text-foreground">LKR {activeOption.totals.addOns.toLocaleString()}</span></div>
-                  <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2"><span className="text-foreground">Total</span><span className="text-primary">LKR {activeOption.totals.total.toLocaleString()}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Labor</span><span className="text-foreground">LKR {activeOption.totals.labor.toLocaleString("en-LK")}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Parts</span><span className="text-foreground">LKR {activeOption.totals.parts.toLocaleString("en-LK")}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-muted-foreground">Add-Ons</span><span className="text-foreground">LKR {activeOption.totals.addOns.toLocaleString("en-LK")}</span></div>
+                  <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2"><span className="text-foreground">Total</span><span className="text-primary">LKR {activeOption.totals.total.toLocaleString("en-LK")}</span></div>
                 </div>
               </div>
 
               {/* Warranty */}
               <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-4 flex items-start gap-3">
-                <ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                <TRUST_ICONS.ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-foreground">Warranty Terms</p>
-                  <p className="text-xs text-muted-foreground mt-1">Labor: {activeOption.warranty.labor}</p>
-                  <p className="text-xs text-muted-foreground">Parts: {activeOption.warranty.parts}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Labor: {activeOption.warranty.labor} ({activeOption.warranty.laborDays} days)</p>
+                  <p className="text-xs text-muted-foreground">Parts: {activeOption.warranty.parts} ({activeOption.warranty.partsDays} days)</p>
                 </div>
               </div>
             </>
-          )}
-
-          {/* Inspection Findings */}
-          {quote.inspectionFindings && quote.inspectionFindings.length > 0 && (
-            <div className="bg-card rounded-xl border p-5 mb-4">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Inspection Findings</h3>
-              <ul className="space-y-1.5">
-                {quote.inspectionFindings.map((finding, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-primary mt-0.5">•</span> {finding}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Recommended Reason */}
-          {quote.recommendedReason && (
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-4 text-xs">
-              <p className="font-medium text-foreground mb-1">💡 Why we recommend Option {quote.recommendedOptionId}</p>
-              <p className="text-muted-foreground">{quote.recommendedReason}</p>
-            </div>
           )}
 
           {/* Scope & Assumptions */}
@@ -353,13 +354,11 @@ const QuoteApproval = () => {
             </div>
           )}
 
-
-
           {/* Actions */}
-          {decided === "approved" ? (
+          {isApproved ? (
             <div className="rounded-xl p-5 text-center bg-success/10 border border-success/20">
               <MascotIcon state="completed" size="sm" className="mx-auto mb-2" />
-              <p className="font-semibold text-foreground">✓ Quote Approved (Option {selectedOption})</p>
+              <p className="font-semibold text-foreground">✓ Quote Approved (Option {quote.selectedOptionId})</p>
               <p className="text-xs text-muted-foreground mt-1">Work will begin as scheduled.</p>
               <Button variant="outline" size="sm" className="mt-3" asChild>
                 <Link to={`/tracker/${booking.jobId}`}>Back to Tracker</Link>

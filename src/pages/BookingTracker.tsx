@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, Star, Upload,
-  CheckCircle2, Circle, Clock, MapPin, Calendar,
-  XCircle, FileText, AlertTriangle, KeyRound,
+  CheckCircle2, Circle, Calendar,
+  XCircle, FileText, AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -25,7 +25,7 @@ import WarrantyCard from "@/components/tracker/WarrantyCard";
 import ZoneIntelligenceCard from "@/components/tracker/ZoneIntelligenceCard";
 import TechnicianConfidenceCard from "@/components/tracker/TechnicianConfidenceCard";
 import { toast } from "sonner";
-import { statusToMascotState } from "@/brand/trustSystem";
+import { statusToMascotState, TRUST_ICONS, getRefundEligibility } from "@/brand/trustSystem";
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -56,7 +56,7 @@ const BookingTracker = () => {
           <div className="text-center">
             <MascotIcon state="default" size="lg" className="mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-foreground mb-2">Booking Not Found</h1>
-            <p className="text-muted-foreground mb-4">No booking found for "{jobId}"</p>
+            <p className="text-muted-foreground mb-4">No booking found for &quot;{jobId}&quot;</p>
             <Button asChild variant="outline"><Link to="/track">Track a Job</Link></Button>
           </div>
         </main>
@@ -70,9 +70,10 @@ const BookingTracker = () => {
   const timelineSteps = isQuoteFlow ? QUOTE_TIMELINE_STEPS : BOOKING_TIMELINE_STEPS;
   const statusOrder = timelineSteps.map((s) => s.status);
   const currentIdx = statusOrder.indexOf(booking.status);
-  const mascotState = statusToMascotState[booking.status] || "default";
+  const mascotState = statusToMascotState[booking.status];
   const isCompleted = booking.status === "completed" || booking.status === "rated";
   const depositPaid = booking.payments.deposit?.status === "paid";
+  const refundInfo = getRefundEligibility(booking);
 
   const handleCancel = () => {
     if (!cancelReason) return;
@@ -113,8 +114,8 @@ const BookingTracker = () => {
                 <p className="text-sm text-muted-foreground">{booking.categoryName} • {booking.serviceName}</p>
               </div>
             </div>
-            <Badge className={BOOKING_STATUS_COLORS[booking.status] || "bg-muted text-muted-foreground"}>
-              {BOOKING_STATUS_LABELS[booking.status] || booking.status}
+            <Badge className={BOOKING_STATUS_COLORS[booking.status]}>
+              {BOOKING_STATUS_LABELS[booking.status]}
             </Badge>
           </div>
 
@@ -138,12 +139,12 @@ const BookingTracker = () => {
                 <span className="font-medium text-foreground">{booking.scheduledDate || "TBD"}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-primary" />
+                <TRUST_ICONS.Clock className="w-3.5 h-3.5 text-primary" />
                 <span className="text-muted-foreground">Time:</span>
                 <span className="font-medium text-foreground">{booking.scheduledTime || booking.preferredWindow || "TBD"}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-primary" />
+                <TRUST_ICONS.MapPin className="w-3.5 h-3.5 text-primary" />
                 <span className="text-muted-foreground">Zone:</span>
                 <span className="font-medium text-foreground">{booking.zone}</span>
               </div>
@@ -158,8 +159,15 @@ const BookingTracker = () => {
             {/* Deposit status */}
             {booking.payments.deposit && (
               <div className={`mt-2 pt-2 border-t text-xs flex items-center gap-1.5 ${depositPaid ? "text-success" : "text-warning"}`}>
-                {depositPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                Deposit: LKR {booking.payments.deposit.amount.toLocaleString()} — {depositPaid ? "Paid" : "Pending"}
+                {depositPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <TRUST_ICONS.Clock className="w-3.5 h-3.5" />}
+                Deposit: LKR {booking.payments.deposit.amount.toLocaleString("en-LK")} — {depositPaid ? "Paid" : "Pending"}
+              </div>
+            )}
+            {/* Dispatch status */}
+            {booking.dispatchStatus !== "pending" && (
+              <div className="mt-1 text-xs text-muted-foreground">
+                Dispatch: {booking.dispatchStatus === "dispatched" ? "En Route" : "Arrived"}
+                {booking.dispatchedAt && ` • ${new Date(booking.dispatchedAt).toLocaleTimeString()}`}
               </div>
             )}
             <p className="text-xs text-muted-foreground mt-1">Created: {new Date(booking.createdAt).toLocaleString()}</p>
@@ -169,7 +177,7 @@ const BookingTracker = () => {
           {(booking.status === "assigned" || booking.status === "tech_en_route" || booking.status === "in_progress") && (
             <div className="bg-card rounded-xl border p-4 mb-4 animate-fade-in">
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-primary" /> Job Verification
+                <TRUST_ICONS.KeyRound className="w-4 h-4 text-primary" /> Job Verification
               </h3>
               <div className="flex gap-2">
                 <Button
@@ -232,7 +240,7 @@ const BookingTracker = () => {
           )}
 
           {/* Quote Link */}
-          {isQuoteFlow && (booking.status === "quote_submitted" || booking.status === "quote_approved" || booking.status === "quote_rejected") && (
+          {isQuoteFlow && (booking.status === "quote_submitted" || booking.status === "quote_approved" || booking.status === "quote_rejected" || booking.status === "quote_revised") && (
             <Button variant="outline" className="w-full mb-4" asChild>
               <Link to={`/quote/${booking.jobId}`}>
                 <FileText className="w-4 h-4 mr-2" />
@@ -328,7 +336,7 @@ const BookingTracker = () => {
                   </h3>
                   {booking.pricing.depositRequired && (
                     <p className="text-xs text-warning bg-warning/10 rounded-lg px-3 py-2 mb-3">
-                      ⚠ Cancellation fee may apply based on dispatch status.
+                      ⚠ Refund: {refundInfo.refundPercent}% — {refundInfo.reason}
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground mb-2">Select a reason:</p>

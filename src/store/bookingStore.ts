@@ -3,8 +3,9 @@ import { persist } from "zustand/middleware";
 import type {
   BookingState, BookingStatus, CategoryCode, PricingBreakdown,
   QuoteData, ServiceMode, TechnicianInfo, PaymentIntent,
-  TimelineEvent, BookingPayments, TimelineActor, BookingPhoto,
+  TimelineEvent, TimelineActor, BookingPhoto, TimelineEventMeta,
 } from "@/types/booking";
+import { BOOKING_STATUS_LABELS } from "@/types/booking";
 import { canTransition } from "@/brand/trustSystem";
 
 interface BookingDraft {
@@ -39,11 +40,13 @@ interface BookingStore {
   confirmBooking: (pricing: PricingBreakdown, quoteRequired: boolean) => string;
   updateBookingStatus: (jobId: string, status: BookingStatus) => void;
   setBookingQuote: (jobId: string, quote: QuoteData) => void;
+  approveQuote: (jobId: string, optionId: string) => void;
   setBookingTechnician: (jobId: string, tech: TechnicianInfo) => void;
   setBookingRating: (jobId: string, rating: number) => void;
   cancelBooking: (jobId: string, reason: string) => void;
   verifyOtp: (jobId: string, type: "start" | "completion") => void;
   setPayment: (jobId: string, key: "deposit" | "completion", payment: PaymentIntent) => void;
+  markArrived: (jobId: string) => void;
   addTimelineEvent: (jobId: string, event: TimelineEvent) => void;
   getBooking: (jobId: string) => BookingState | undefined;
   getRecentBookings: () => BookingState[];
@@ -95,20 +98,14 @@ function seedTechnician(): TechnicianInfo {
   };
 }
 
-// Centralized timeline logger helper
-function logEvent(
+// ============================================================
+// C1) Centralized timeline logger
+// ============================================================
+function appendTimeline(
   bookings: BookingState[],
   jobId: string,
-  title: string,
-  description: string | undefined,
-  actor: TimelineActor
+  event: TimelineEvent
 ): BookingState[] {
-  const event: TimelineEvent = {
-    timestamp: new Date().toISOString(),
-    title,
-    description,
-    actor,
-  };
   return bookings.map((b) =>
     b.jobId === jobId
       ? { ...b, timelineEvents: [...b.timelineEvents, event] }
@@ -116,15 +113,39 @@ function logEvent(
   );
 }
 
+function logEvent(
+  bookings: BookingState[],
+  jobId: string,
+  title: string,
+  description: string | undefined,
+  actor: TimelineActor,
+  meta?: TimelineEventMeta
+): BookingState[] {
+  return appendTimeline(bookings, jobId, {
+    timestamp: new Date().toISOString(),
+    title,
+    description,
+    actor,
+    meta,
+  });
+}
+
 function createInitialTimeline(quoteRequired: boolean): TimelineEvent[] {
+  const now = new Date().toISOString();
   return [
-    { timestamp: new Date().toISOString(), title: "Booking Created", description: "Service request submitted by customer", actor: "system" },
-    { timestamp: new Date(Date.now() + 60000).toISOString(), title: "Technician Assigned", description: "Verified technician matched to your job", actor: "system" },
+    { timestamp: now, title: "Booking Created", description: "Service request submitted by customer", actor: "system" },
+    { timestamp: now, title: "Technician Assigned", description: "Verified technician matched to your job", actor: "system" },
     ...(quoteRequired
-      ? [{ timestamp: new Date(Date.now() + 120000).toISOString(), title: "Inspection Scheduled", description: "Technician will inspect and provide a detailed quote", actor: "system" as const }]
+      ? [{ timestamp: now, title: "Inspection Scheduled", description: "Technician will inspect and provide a detailed quote", actor: "system" as const }]
       : []),
   ];
 }
+
+const DEFAULT_CANCEL_POLICY = {
+  freeCancelMinutes: 5,
+  refundBeforeDispatchPercent: 100,
+  refundAfterDispatchPercent: 0,
+};
 
 export const useBookingStore = create<BookingStore>()(
   persist(
@@ -155,17 +176,29 @@ export const useBookingStore = create<BookingStore>()(
 
       resetDraft: () => set({ draft: { ...initialDraft } }),
 
+      // C2) Confirm booking with validation
       confirmBooking: (pricing, quoteRequired) => {
         const { draft } = get();
+
+        if (!draft.categoryCode || !draft.serviceCode) {
+          console.warn("[LankaFix] Cannot confirm booking: missing category or service code.");
+          return "";
+        }
+
         const jobId = generateJobId();
-        const depositPayment: PaymentIntent | undefined = pricing.depositRequired
-          ? { type: "deposit", amount: pricing.depositAmount, method: null, status: "pending", refundableAmount: pricing.depositAmount, refundStatus: "none" }
+        const pricingWithPolicy: PricingBreakdown = {
+          ...pricing,
+          cancelPolicy: pricing.cancelPolicy || DEFAULT_CANCEL_POLICY,
+        };
+
+        const depositPayment: PaymentIntent | undefined = pricingWithPolicy.depositRequired
+          ? { type: "deposit", amount: pricingWithPolicy.depositAmount, method: null, status: "pending", refundableAmount: pricingWithPolicy.depositAmount, refundStatus: "none", provider: "manual" }
           : undefined;
 
         const booking: BookingState = {
           jobId,
-          categoryCode: draft.categoryCode!,
-          serviceCode: draft.serviceCode!,
+          categoryCode: draft.categoryCode,
+          serviceCode: draft.serviceCode,
           serviceName: draft.serviceName,
           categoryName: draft.categoryName,
           serviceMode: draft.serviceMode,
@@ -177,7 +210,7 @@ export const useBookingStore = create<BookingStore>()(
           scheduledDate: draft.scheduledDate,
           scheduledTime: draft.scheduledTime,
           preferredWindow: draft.preferredWindow,
-          pricing,
+          pricing: pricingWithPolicy,
           technician: seedTechnician(),
           status: quoteRequired ? "scheduled" : "requested",
           createdAt: new Date().toISOString(),
@@ -190,6 +223,7 @@ export const useBookingStore = create<BookingStore>()(
           completionOtpVerifiedAt: null,
           payments: { deposit: depositPayment },
           timelineEvents: createInitialTimeline(quoteRequired),
+          dispatchStatus: "pending",
         };
         set((s) => ({
           bookings: [booking, ...s.bookings],
@@ -198,27 +232,90 @@ export const useBookingStore = create<BookingStore>()(
         return jobId;
       },
 
-      updateBookingStatus: (jobId, status) =>
+      // C4) Guarded status transition
+      updateBookingStatus: (jobId, toStatus) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking) return s;
-          if (!canTransition(booking.status, status)) {
-            console.warn(`[LankaFix] Invalid transition: ${booking.status} → ${status}`);
+          if (!canTransition(booking.status, toStatus)) {
+            console.warn(`[LankaFix] Invalid transition: ${booking.status} → ${toStatus}`);
             return s;
           }
+
+          // C5) Quote-required completion guard
+          if (toStatus === "completed" && booking.pricing.quoteRequired) {
+            if (!booking.quote?.selectedOptionId && booking.status !== "quote_approved") {
+              console.warn("[LankaFix] Cannot complete: quote-required booking must have approved quote.");
+              return s;
+            }
+          }
+
           let updated = s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, status } : b
+            b.jobId === jobId ? { ...b, status: toStatus } : b
           );
-          updated = logEvent(updated, jobId, `Status: ${status}`, `Transitioned from ${booking.status}`, "system");
+
+          // C6) Dispatch auto updates
+          if (toStatus === "tech_en_route") {
+            const now = new Date().toISOString();
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, dispatchStatus: "dispatched" as const, dispatchedAt: now } : b
+            );
+            updated = logEvent(updated, jobId, "Technician Dispatched", "Technician is on the way to your location", "system");
+          }
+
+          updated = logEvent(
+            updated, jobId,
+            `Status Updated — ${BOOKING_STATUS_LABELS[toStatus]}`,
+            `From ${BOOKING_STATUS_LABELS[booking.status]} → ${BOOKING_STATUS_LABELS[toStatus]}`,
+            "system"
+          );
           return { bookings: updated };
         }),
 
+      // C7) Set quote with transition guard
       setBookingQuote: (jobId, quote) =>
         set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+
+          const canMove = canTransition(booking.status, "quote_submitted");
+          const newStatus = canMove ? "quote_submitted" as BookingStatus : booking.status;
+
           let updated = s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, quote, status: "quote_submitted" as BookingStatus } : b
+            b.jobId === jobId ? { ...b, quote, status: newStatus } : b
           );
           updated = logEvent(updated, jobId, "Quote Submitted", "Detailed quote ready for your review", "technician");
+          return { bookings: updated };
+        }),
+
+      // C8) Quote approval
+      approveQuote: (jobId, optionId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking || !booking.quote) return s;
+
+          const now = new Date().toISOString();
+          const updatedQuote: QuoteData = {
+            ...booking.quote,
+            selectedOptionId: optionId,
+            approvedAt: now,
+            approvedBy: "customer",
+          };
+
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, quote: updatedQuote } : b
+          );
+
+          // Transition to quote_approved if valid
+          if (canTransition(booking.status, "quote_approved")) {
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, status: "quote_approved" as BookingStatus } : b
+            );
+            updated = logEvent(updated, jobId, `Status Updated — ${BOOKING_STATUS_LABELS["quote_approved"]}`,
+              `From ${BOOKING_STATUS_LABELS[booking.status]} → ${BOOKING_STATUS_LABELS["quote_approved"]}`, "system");
+          }
+
+          updated = logEvent(updated, jobId, "Quote Approved", `Customer approved Option ${optionId}`, "customer", { optionId });
           return { bookings: updated };
         }),
 
@@ -229,6 +326,12 @@ export const useBookingStore = create<BookingStore>()(
 
       setBookingRating: (jobId, rating) =>
         set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          if (!canTransition(booking.status, "rated")) {
+            console.warn(`[LankaFix] Cannot rate from status: ${booking.status}`);
+            return s;
+          }
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, rating, status: "rated" as BookingStatus } : b
           );
@@ -250,6 +353,7 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
+      // C9) OTP verification with guard + auto transitions
       verifyOtp: (jobId, type) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -258,12 +362,17 @@ export const useBookingStore = create<BookingStore>()(
           const now = new Date().toISOString();
           let newStatus = booking.status;
 
-          // Auto-transition on OTP verify
-          if (type === "start" && (booking.status === "assigned" || booking.status === "tech_en_route")) {
+          if (type === "start" && canTransition(booking.status, "in_progress")) {
             newStatus = "in_progress";
           }
-          if (type === "completion" && (booking.status === "in_progress" || booking.status === "quote_approved")) {
-            newStatus = "completed";
+          if (type === "completion" && canTransition(booking.status, "completed")) {
+            // Quote-required guard
+            if (booking.pricing.quoteRequired && !booking.quote?.selectedOptionId && booking.status !== "quote_approved") {
+              console.warn("[LankaFix] Cannot complete via OTP: quote not approved.");
+              newStatus = booking.status;
+            } else {
+              newStatus = "completed";
+            }
           }
 
           let updated = s.bookings.map((b) =>
@@ -275,42 +384,65 @@ export const useBookingStore = create<BookingStore>()(
                 }
               : b
           );
-          updated = logEvent(updated, jobId, type === "start" ? "Job Start Verified" : "Completion Verified", "OTP verified by customer", "customer");
+          updated = logEvent(updated, jobId, type === "start" ? "Job Start Verified (OTP)" : "Completion Verified (OTP)", "OTP verified by customer", "customer");
           if (newStatus !== booking.status) {
-            updated = logEvent(updated, jobId, `Auto-transition: ${newStatus}`, `Status updated after OTP ${type} verification`, "system");
+            updated = logEvent(updated, jobId, `Status Updated — ${BOOKING_STATUS_LABELS[newStatus]}`,
+              `Auto-transition after OTP ${type} verification`, "system");
           }
           return { bookings: updated };
         }),
 
+      // C10) Payment with timeline + optional auto status
       setPayment: (jobId, key, payment) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking) return s;
 
+          const paymentWithProvider: PaymentIntent = {
+            ...payment,
+            provider: payment.provider || "manual",
+          };
+
           let newStatus = booking.status;
-          // Auto-transition on payment
-          if (key === "deposit" && payment.status === "paid" && booking.status === "requested") {
+          if (key === "deposit" && paymentWithProvider.status === "paid" && canTransition(booking.status, "scheduled")) {
             newStatus = "scheduled";
           }
 
           let updated = s.bookings.map((b) =>
             b.jobId === jobId
-              ? { ...b, payments: { ...b.payments, [key]: payment }, status: newStatus }
+              ? { ...b, payments: { ...b.payments, [key]: paymentWithProvider }, status: newStatus }
               : b
           );
           updated = logEvent(
-            updated,
-            jobId,
-            `Payment ${payment.status === "paid" ? "Received" : "Updated"}`,
-            `${key} — LKR ${payment.amount.toLocaleString()}`,
-            "system"
+            updated, jobId,
+            paymentWithProvider.status === "paid" ? "Payment Received" : "Payment Updated",
+            `${key} — LKR ${paymentWithProvider.amount.toLocaleString("en-LK")}`,
+            "system",
+            { amount: paymentWithProvider.amount, paymentKey: key }
           );
+          if (newStatus !== booking.status) {
+            updated = logEvent(updated, jobId, `Status Updated — ${BOOKING_STATUS_LABELS[newStatus]}`,
+              `Auto-transition after ${key} payment`, "system");
+          }
+          return { bookings: updated };
+        }),
+
+      // C6) Mark arrived
+      markArrived: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          const now = new Date().toISOString();
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, dispatchStatus: "arrived" as const, arrivedAt: now } : b
+          );
+          updated = logEvent(updated, jobId, "Technician Arrived", "Technician has arrived at your location", "system");
           return { bookings: updated };
         }),
 
       addTimelineEvent: (jobId, event) =>
         set((s) => ({
-          bookings: logEvent(s.bookings, jobId, event.title, event.description, event.actor),
+          bookings: appendTimeline(s.bookings, jobId, event),
         })),
 
       getBooking: (jobId) => get().bookings.find((b) => b.jobId === jobId),

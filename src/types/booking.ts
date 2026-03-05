@@ -9,9 +9,9 @@ export type BookingStatus =
   | "tech_en_route"
   | "in_progress"
   | "quote_submitted"
+  | "quote_revised"
   | "quote_approved"
   | "quote_rejected"
-  | "quote_revised"
   | "completed"
   | "rated"
   | "cancelled";
@@ -139,6 +139,8 @@ export interface QuoteData {
   notes: string;
   expiresAt: string;
   inspectionFindings: string[];
+  approvedAt?: string;
+  approvedBy?: "customer" | "system";
   // Legacy flat fields for backward compat
   laborItems: QuoteItem[];
   partsItems: QuoteItem[];
@@ -157,6 +159,12 @@ export interface TechnicianInfo {
   specializations: string[];
 }
 
+export interface CancelPolicy {
+  freeCancelMinutes: number;
+  refundBeforeDispatchPercent: number;
+  refundAfterDispatchPercent: number;
+}
+
 export interface PricingBreakdown {
   visitFee: number;
   diagnosticFee: number;
@@ -167,6 +175,7 @@ export interface PricingBreakdown {
   depositAmount: number;
   partsSeparate: boolean;
   quoteRequired: boolean;
+  cancelPolicy: CancelPolicy;
 }
 
 export type PaymentMethod = "cash" | "bank_transfer" | "card";
@@ -184,13 +193,21 @@ export interface PaymentIntent {
   provider?: "manual" | "gateway";
 }
 
+export type DispatchStatus = "pending" | "dispatched" | "arrived";
 export type TimelineActor = "system" | "technician" | "customer";
+
+export interface TimelineEventMeta {
+  optionId?: string;
+  amount?: number;
+  paymentKey?: "deposit" | "completion";
+}
 
 export interface TimelineEvent {
   timestamp: string;
   title: string;
   description?: string;
   actor: TimelineActor;
+  meta?: TimelineEventMeta;
 }
 
 export interface BookingPayments {
@@ -232,6 +249,9 @@ export interface BookingState {
   completionOtpVerifiedAt: string | null;
   payments: BookingPayments;
   timelineEvents: TimelineEvent[];
+  dispatchStatus: DispatchStatus;
+  dispatchedAt?: string;
+  arrivedAt?: string;
 }
 
 export const CANCELLABLE_STATUSES: BookingStatus[] = [
