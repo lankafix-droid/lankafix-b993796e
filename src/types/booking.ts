@@ -337,6 +337,29 @@ export interface BookingPayments {
 // Core Booking State
 // ============================================================
 
+export type SlaHealth = "on_time" | "at_risk" | "delayed";
+
+export type TechRejectionReason =
+  | "out_of_zone"
+  | "unavailable"
+  | "skill_mismatch"
+  | "overload"
+  | "customer_unreachable"
+  | "other";
+
+export const TECH_REJECTION_LABELS: Record<TechRejectionReason, string> = {
+  out_of_zone: "Out of Zone",
+  unavailable: "Unavailable",
+  skill_mismatch: "Skill Mismatch",
+  overload: "Overload",
+  customer_unreachable: "Customer Unreachable",
+  other: "Other",
+};
+
+export const PARTNER_QUOTE_REVIEW_CATEGORIES: CategoryCode[] = [
+  "CCTV", "SOLAR", "COPIER", "SMART_HOME_OFFICE",
+];
+
 export interface BookingState {
   jobId: string;
   categoryCode: CategoryCode;
@@ -368,14 +391,18 @@ export interface BookingState {
   dispatchStatus: DispatchStatus;
   dispatchedAt?: string;
   arrivedAt?: string;
-  /** Dispatch ETA in minutes */
   etaMinutes?: number;
   route?: { distanceKm: number; updatedAt: string };
-  /** Safety / fraud */
   geoCheckIn?: GeoCheckPoint;
   geoCheckOut?: GeoCheckPoint;
   safetyFlag?: boolean;
   sos?: SosState;
+  /** Supply-side fields */
+  slaHealth?: SlaHealth;
+  partnerInternalNote?: string;
+  technicianInternalNote?: string;
+  requiresPartnerQuoteReview?: boolean;
+  rejectionReason?: TechRejectionReason;
 }
 
 // ============================================================

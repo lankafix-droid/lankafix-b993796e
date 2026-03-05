@@ -504,6 +504,169 @@ export const useBookingStore = create<BookingStore>()(
 
       getBooking: (jobId) => get().bookings.find((b) => b.jobId === jobId),
       getRecentBookings: () => get().bookings.slice(0, 10),
+
+      // ========== SUPPLY-SIDE ACTIONS ==========
+
+      acceptJob: (jobId, technicianId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          track("technician_job_accept", { jobId, technicianId, category: booking.categoryCode });
+          let updated = s.bookings;
+          if (canTransition(booking.status, "assigned")) {
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, status: "assigned" as BookingStatus } : b
+            );
+          }
+          updated = logEvent(updated, jobId, "Technician Accepted Job", `Technician ${technicianId} accepted the assignment`, "technician");
+          return { bookings: updated };
+        }),
+
+      rejectJob: (jobId, reason) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          track("technician_job_reject", { jobId, reason, category: booking.categoryCode });
+          let newStatus = booking.status;
+          if (booking.status === "assigned" || booking.status === "awaiting_partner_confirmation") {
+            newStatus = "matching";
+          }
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: newStatus, rejectionReason: reason, technician: null } : b
+          );
+          updated = logEvent(updated, jobId, "Technician Rejected Job", `Reason: ${reason}`, "technician");
+          return { bookings: updated };
+        }),
+
+      confirmPartnerAssignment: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          if (!canTransition(booking.status, "assigned")) return s;
+          track("partner_assignment_confirmed", { jobId, category: booking.categoryCode });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: "assigned" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Partner Confirmed Assignment", "Partner approved the technician assignment", "partner");
+          return { bookings: updated };
+        }),
+
+      reassignTechnician: (jobId, tech) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          track("partner_reassigned_technician", { jobId, newTech: tech.name });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, technician: tech } : b
+          );
+          updated = logEvent(updated, jobId, "Technician Reassigned", `New technician: ${tech.name}`, "partner");
+          return { bookings: updated };
+        }),
+
+      startInspection: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          if (!canTransition(booking.status, "inspection_started")) return s;
+          track("technician_inspection_start", { jobId, category: booking.categoryCode });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: "inspection_started" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Inspection Started", "Technician is inspecting the issue", "technician");
+          return { bookings: updated };
+        }),
+
+      startRepair: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          const validFrom: BookingStatus[] = ["quote_approved", "in_progress", "inspection_started"];
+          if (!validFrom.includes(booking.status) && !canTransition(booking.status, "repair_started")) return s;
+          track("technician_repair_start", { jobId, category: booking.categoryCode });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: "repair_started" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Repair Started", "Technician has started the repair work", "technician");
+          return { bookings: updated };
+        }),
+
+      markCompleted: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          if (!canTransition(booking.status, "completed")) {
+            console.warn(`[LankaFix] Cannot complete from ${booking.status}`);
+            return s;
+          }
+          if (booking.pricing.quoteRequired && !booking.quote?.selectedOptionId) {
+            console.warn("[LankaFix] Cannot complete: quote not approved");
+            return s;
+          }
+          track("technician_complete_job", { jobId, category: booking.categoryCode });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: "completed" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Technician Marked Completed", "Service work has been completed", "technician");
+          updated = logEvent(updated, jobId, "Warranty Activated", "Labor warranty now active from this date", "system");
+          return { bookings: updated };
+        }),
+
+      updateTechnicianAvailability: (techId, status) =>
+        set((s) => {
+          track("technician_availability_updated", { techId, status });
+          return { techAvailability: { ...s.techAvailability, [techId]: status } };
+        }),
+
+      attachTechnicianPhoto: (jobId, type, url) =>
+        set((s) => {
+          const photo: BookingPhoto = { url, type, uploadedAt: new Date().toISOString() };
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, photos: [...b.photos, photo] } : b
+          );
+          const label = type === "before" ? "Before Photo Uploaded" : "After Photo Uploaded";
+          updated = logEvent(updated, jobId, label, "Technician uploaded evidence photo", "technician");
+          return { bookings: updated };
+        }),
+
+      setInternalNote: (jobId, noteType, note) =>
+        set((s) => ({
+          bookings: s.bookings.map((b) =>
+            b.jobId === jobId
+              ? { ...b, ...(noteType === "partner" ? { partnerInternalNote: note } : { technicianInternalNote: note }) }
+              : b
+          ),
+        })),
+
+      // ========== OPS HOOKS ==========
+
+      opsAssignTechnician: (jobId, technicianId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          track("ops_assign_technician", { jobId, technicianId });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: "assigned" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Ops: Technician Assigned", `Manually assigned by operations team`, "ops");
+          return { bookings: updated };
+        }),
+
+      opsEscalateJob: (jobId, reason) =>
+        set((s) => {
+          track("ops_escalate_job", { jobId, reason });
+          let updated = logEvent(s.bookings, jobId, "Ops: Job Escalated", `Reason: ${reason}`, "ops");
+          return { bookings: updated };
+        }),
+
+      opsMoveToManualQueue: (jobId) =>
+        set((s) => {
+          track("ops_manual_queue", { jobId });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, status: "matching" as BookingStatus } : b
+          );
+          updated = logEvent(updated, jobId, "Ops: Moved to Manual Queue", "Job requires manual technician assignment", "ops");
+          return { bookings: updated };
+        }),
     }),
     { name: "lankafix-bookings" }
   )
