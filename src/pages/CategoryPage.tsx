@@ -43,6 +43,7 @@ const CategoryPage = () => {
     setDraftService(serviceCode, serviceName);
     setDraftMode(mode);
     setDraftEmergency(emergency);
+    track("service_lane_selected", { category: category.code, service: serviceCode, mode });
     navigate(`/precheck/${category.code}/${serviceCode}`);
   };
 
