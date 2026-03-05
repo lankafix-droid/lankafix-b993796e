@@ -431,10 +431,32 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
+      // Mark dispatched
+      markDispatched: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          const now = new Date().toISOString();
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, dispatchStatus: "dispatched" as const, dispatchedAt: now } : b
+          );
+          updated = logEvent(updated, jobId, "Technician Dispatched", "Technician is on the way to your location", "system");
+          return { bookings: updated };
+        }),
+
       addTimelineEvent: (jobId, event) =>
         set((s) => ({
           bookings: appendTimeline(s.bookings, jobId, event),
         })),
+
+      addBookingPhoto: (jobId, photo) =>
+        set((s) => {
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, photos: [...b.photos, photo] } : b
+          );
+          updated = logEvent(updated, jobId, `${photo.type.charAt(0).toUpperCase() + photo.type.slice(1)} Photo Uploaded`, "Evidence photo added", "customer");
+          return { bookings: updated };
+        }),
 
       getBooking: (jobId) => get().bookings.find((b) => b.jobId === jobId),
 
