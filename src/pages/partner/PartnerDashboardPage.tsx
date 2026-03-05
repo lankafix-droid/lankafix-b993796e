@@ -3,23 +3,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useBookingStore } from "@/store/bookingStore";
+import { useProviderERPStore } from "@/store/providerERPStore";
 import { MOCK_PARTNERS, getTechniciansByPartner } from "@/data/mockPartnerData";
 import { getTechPerformanceMetrics } from "@/lib/dispatchEngine";
 import { track } from "@/lib/analytics";
+import { VERIFICATION_STATUS_STYLES } from "@/types/provider";
 import { useEffect } from "react";
 import {
   Briefcase, Clock, CheckCircle2, AlertTriangle, Users,
-  MapPin, ArrowRight, Wrench,
+  MapPin, ArrowRight, Wrench, BarChart3, Wallet,
+  TrendingUp, Shield, Settings,
 } from "lucide-react";
 
-const CURRENT_PARTNER = MOCK_PARTNERS[0]; // Mock: logged in as P001
+const CURRENT_PARTNER = MOCK_PARTNERS[0];
 
 export default function PartnerDashboardPage() {
   const navigate = useNavigate();
   const bookings = useBookingStore((s) => s.bookings);
   const techs = getTechniciansByPartner(CURRENT_PARTNER.id);
+  const { getFleetSummary, getProviderPerformance, getProvider } = useProviderERPStore();
 
   useEffect(() => { track("partner_dashboard_view"); }, []);
+
+  const provider = getProvider(CURRENT_PARTNER.id);
+  const fleet = getFleetSummary(CURRENT_PARTNER.id);
+  const performance = getProviderPerformance(CURRENT_PARTNER.id);
+  const verificationStyle = provider ? VERIFICATION_STATUS_STYLES[provider.verificationStatus] : VERIFICATION_STATUS_STYLES.verified;
 
   const activeJobs = bookings.filter((b) => !["completed", "rated", "cancelled"].includes(b.status));
   const awaitingConfirmation = bookings.filter((b) => b.status === "awaiting_partner_confirmation");
@@ -30,16 +39,9 @@ export default function PartnerDashboardPage() {
     return b.timelineEvents.some((e) => e.title.includes("Completed") && new Date(e.timestamp).toDateString() === today);
   });
 
-  const availableTechs = techs.filter((t) => t.availabilityStatus === "available");
-  const busyTechs = techs.filter((t) => t.availabilityStatus === "busy");
-  const offlineTechs = techs.filter((t) => t.availabilityStatus === "offline");
-
-  const summaryCards = [
-    { label: "Active Jobs", value: activeJobs.length, icon: Briefcase, color: "text-primary" },
-    { label: "Awaiting Confirmation", value: awaitingConfirmation.length, icon: AlertTriangle, color: "text-warning" },
-    { label: "In Progress", value: inProgress.length, icon: Wrench, color: "text-primary" },
-    { label: "Completed Today", value: completedToday.length, icon: CheckCircle2, color: "text-success" },
-  ];
+  const topCategories = Object.entries(performance.jobsByCategory)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 4);
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,15 +51,20 @@ export default function PartnerDashboardPage() {
             <h1 className="text-lg font-bold text-foreground">Partner Dashboard</h1>
             <p className="text-xs text-muted-foreground">{CURRENT_PARTNER.companyName}</p>
           </div>
-          <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-xs">Verified</Badge>
+          <Badge className={verificationStyle.color + " text-xs"}>{verificationStyle.label}</Badge>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Summary Cards */}
+        {/* Job Stats */}
         <div className="grid grid-cols-2 gap-3">
-          {summaryCards.map((card) => (
-            <Card key={card.label} className="border">
+          {[
+            { label: "Active Jobs", value: activeJobs.length, icon: Briefcase, color: "text-primary" },
+            { label: "Awaiting Confirm", value: awaitingConfirmation.length, icon: AlertTriangle, color: "text-warning" },
+            { label: "In Progress", value: inProgress.length, icon: Wrench, color: "text-primary" },
+            { label: "Completed Today", value: completedToday.length, icon: CheckCircle2, color: "text-success" },
+          ].map((card) => (
+            <Card key={card.label}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <card.icon className={`w-4 h-4 ${card.color}`} />
@@ -69,59 +76,103 @@ export default function PartnerDashboardPage() {
           ))}
         </div>
 
-        {/* Coverage Summary */}
+        {/* Fleet Management */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" /> Coverage & Categories
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex flex-wrap gap-1">
-              {CURRENT_PARTNER.categories.map((cat) => (
-                <Badge key={cat} variant="secondary" className="text-xs">{cat}</Badge>
-              ))}
-            </div>
-            <p className="text-xs text-muted-foreground">{CURRENT_PARTNER.coverageZones.length} zones covered</p>
-          </CardContent>
-        </Card>
-
-        {/* Technician Availability */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" /> Technician Availability
+              <Users className="w-4 h-4 text-primary" /> Fleet Management
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3 text-center mb-3">
+            <div className="grid grid-cols-4 gap-2 text-center mb-3">
               <div>
-                <p className="text-xl font-bold text-success">{availableTechs.length}</p>
-                <p className="text-xs text-muted-foreground">Available</p>
+                <p className="text-xl font-bold text-foreground">{fleet.totalTechnicians}</p>
+                <p className="text-[10px] text-muted-foreground">Total</p>
               </div>
               <div>
-                <p className="text-xl font-bold text-warning">{busyTechs.length}</p>
-                <p className="text-xs text-muted-foreground">Busy</p>
+                <p className="text-xl font-bold text-success">{fleet.online}</p>
+                <p className="text-[10px] text-muted-foreground">Online</p>
               </div>
               <div>
-                <p className="text-xl font-bold text-muted-foreground">{offlineTechs.length}</p>
-                <p className="text-xs text-muted-foreground">Offline</p>
+                <p className="text-xl font-bold text-warning">{fleet.busy}</p>
+                <p className="text-[10px] text-muted-foreground">Busy</p>
+              </div>
+              <div>
+                <p className="text-xl font-bold text-muted-foreground">{fleet.offline}</p>
+                <p className="text-[10px] text-muted-foreground">Offline</p>
               </div>
             </div>
-            {/* Dispatch-ready metrics */}
-            <div className="space-y-1 border-t pt-2">
-              {techs.slice(0, 3).map((t) => {
-                const perf = getTechPerformanceMetrics(t.technicianId || "");
-                return (
-                  <div key={t.technicianId} className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{t.name}</span>
+            {/* Capacity bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Daily Capacity</span>
+                <span>{fleet.usedCapacityToday}/{fleet.totalCapacityToday} jobs</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all"
+                  style={{ width: `${Math.min((fleet.usedCapacityToday / Math.max(fleet.totalCapacityToday, 1)) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Performance Overview */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" /> Performance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-muted/30 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-foreground">⭐ {performance.customerRating}</p>
+                <p className="text-[10px] text-muted-foreground">Avg Rating</p>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-foreground">{performance.completionRate}%</p>
+                <p className="text-[10px] text-muted-foreground">Completion Rate</p>
+              </div>
+            </div>
+            {/* Category breakdown */}
+            {topCategories.length > 0 && (
+              <div className="space-y-1.5 border-t pt-2">
+                <p className="text-xs text-muted-foreground font-medium">Jobs by Category</p>
+                {topCategories.map(([cat, count]) => (
+                  <div key={cat} className="flex items-center justify-between text-xs">
+                    <span className="text-foreground">{cat}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-success">{perf?.acceptanceRate ?? 0}% accept</span>
-                      <span className="text-muted-foreground">Profile: {perf?.profileStrength ?? 0}%</span>
+                      <div className="h-1.5 bg-muted rounded-full w-20 overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min((count / topCategories[0][1]) * 100, 100)}%` }} />
+                      </div>
+                      <span className="text-muted-foreground w-8 text-right">{count}</span>
                     </div>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Revenue */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-success" /> Revenue
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-success/5 border border-success/20 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-foreground">LKR {performance.weeklyRevenue.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">This Week</p>
+              </div>
+              <div className="bg-success/5 border border-success/20 rounded-lg p-3 text-center">
+                <p className="text-lg font-bold text-foreground">LKR {performance.monthlyRevenue.toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">This Month</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -134,15 +185,9 @@ export default function PartnerDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {activeJobs.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No active jobs</p>
-            )}
+            {activeJobs.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No active jobs</p>}
             {activeJobs.slice(0, 5).map((b) => (
-              <div
-                key={b.jobId}
-                className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => navigate(`/partner/job/${b.jobId}`)}
-              >
+              <div key={b.jobId} className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/partner/job/${b.jobId}`)}>
                 <div>
                   <p className="text-sm font-medium text-foreground">{b.jobId}</p>
                   <p className="text-xs text-muted-foreground">{b.categoryName} • {b.serviceName}</p>
@@ -163,6 +208,12 @@ export default function PartnerDashboardPage() {
           </Button>
           <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/technicians")}>
             <Users className="w-4 h-4 mr-2" /> Technicians
+          </Button>
+          <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/wallet")}>
+            <Wallet className="w-4 h-4 mr-2" /> Wallet
+          </Button>
+          <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/profile")}>
+            <Settings className="w-4 h-4 mr-2" /> Profile
           </Button>
         </div>
       </div>
