@@ -32,6 +32,7 @@ import CareDashboardPage from "./pages/care/CareDashboardPage";
 import DeviceTimelinePage from "./pages/care/DeviceTimelinePage";
 import SubscriptionAnalyticsPage from "./pages/ops/SubscriptionAnalyticsPage";
 import DiagnoseAnalyticsPage from "./pages/ops/DiagnoseAnalyticsPage";
+import DispatchAnalyticsPage from "./pages/ops/DispatchAnalyticsPage";
 
 const queryClient = new QueryClient();
 
