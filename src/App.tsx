@@ -63,9 +63,15 @@ const App = () => (
           <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
           <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
           <Route path="/technician/earnings" element={<TechnicianEarningsPage />} />
+          {/* Care / Subscription routes */}
+          <Route path="/care" element={<CarePlansPage />} />
+          <Route path="/care/subscribe/:planId" element={<SubscribePage />} />
+          <Route path="/care/dashboard" element={<CareDashboardPage />} />
+          <Route path="/care/device/:deviceId" element={<DeviceTimelinePage />} />
           {/* Ops routes */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="/ops/finance" element={<FinanceBoardPage />} />
+          <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

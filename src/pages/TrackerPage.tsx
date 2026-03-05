@@ -516,6 +516,13 @@ const TrackerPage = () => {
             </div>
           )}
 
+          {/* Care Upsell — after completed repairs */}
+          {isCompleted && (
+            <div className="mb-4">
+              <CareUpsellBanner categoryCode={booking.categoryCode} />
+            </div>
+          )}
+
           {/* Rating */}
           {isCompleted && (
             <div className="bg-card rounded-xl border p-5 mb-4 animate-fade-in">
