@@ -32,7 +32,59 @@ export const COLOMBO_ZONES_DATA: Zone[] = [
   { id: "boralesgamuwa", city: "Colombo", area: "Boralesgamuwa", label: "Boralesgamuwa", geo: { lat: 6.8420, lng: 79.9040 } },
   { id: "athurugiriya", city: "Colombo", area: "Athurugiriya", label: "Athurugiriya", geo: { lat: 6.8870, lng: 79.9680 }, surgeFactor: 1.15 },
   { id: "wattala", city: "Colombo", area: "Wattala", label: "Wattala", geo: { lat: 6.9720, lng: 79.8910 }, surgeFactor: 1.1 },
+  // Expanded zones — Stage 14
+  { id: "ratmalana", city: "Colombo", area: "Ratmalana", label: "Ratmalana", geo: { lat: 6.8200, lng: 79.8700 }, surgeFactor: 1.1 },
+  { id: "kelaniya", city: "Colombo", area: "Kelaniya", label: "Kelaniya", geo: { lat: 6.9610, lng: 79.9210 } },
+  { id: "ja_ela", city: "Gampaha", area: "Ja-Ela", label: "Ja-Ela", geo: { lat: 7.0740, lng: 79.8910 }, surgeFactor: 1.15 },
+  { id: "gampaha", city: "Gampaha", area: "Gampaha", label: "Gampaha", geo: { lat: 7.0917, lng: 80.0000 }, surgeFactor: 1.2 },
+  { id: "negombo", city: "Gampaha", area: "Negombo", label: "Negombo", geo: { lat: 7.2094, lng: 79.8358 }, surgeFactor: 1.2 },
+  { id: "kandy_city", city: "Kandy", area: "Kandy City", label: "Kandy City", geo: { lat: 7.2906, lng: 80.6337 }, surgeFactor: 1.25 },
+  { id: "kurunegala", city: "Kurunegala", area: "Kurunegala", label: "Kurunegala", geo: { lat: 7.4863, lng: 80.3623 }, surgeFactor: 1.3 },
+  { id: "galle", city: "Galle", area: "Galle", label: "Galle", geo: { lat: 6.0535, lng: 80.2210 }, surgeFactor: 1.3 },
 ];
+
+/** Neighbor zone mapping for extended search */
+export const ZONE_NEIGHBORS: Record<string, string[]> = {
+  col_01: ["col_02", "col_11", "col_12"],
+  col_02: ["col_01", "col_03", "col_10"],
+  col_03: ["col_02", "col_04", "col_07"],
+  col_04: ["col_03", "col_05"],
+  col_05: ["col_04", "col_06", "col_08"],
+  col_06: ["col_05", "dehiwala"],
+  col_07: ["col_03", "col_08", "col_10"],
+  col_08: ["col_07", "col_09", "col_05", "rajagiriya"],
+  col_09: ["col_08", "col_10", "col_14"],
+  col_10: ["col_02", "col_07", "col_09", "col_11"],
+  col_11: ["col_01", "col_10", "col_12", "col_13"],
+  col_12: ["col_01", "col_11", "col_13"],
+  col_13: ["col_12", "col_14", "col_15"],
+  col_14: ["col_13", "col_15", "col_09"],
+  col_15: ["col_14", "col_13", "wattala"],
+  nugegoda: ["col_05", "col_06", "nawala", "maharagama", "boralesgamuwa", "kotte"],
+  rajagiriya: ["col_08", "col_07", "battaramulla", "nawala", "kotte"],
+  battaramulla: ["rajagiriya", "kotte", "malabe", "thalawathugoda"],
+  nawala: ["nugegoda", "rajagiriya", "kotte"],
+  dehiwala: ["col_06", "mt_lavinia", "ratmalana", "nugegoda", "boralesgamuwa"],
+  mt_lavinia: ["dehiwala", "ratmalana", "moratuwa"],
+  thalawathugoda: ["battaramulla", "kotte", "malabe", "maharagama"],
+  maharagama: ["nugegoda", "boralesgamuwa", "piliyandala", "thalawathugoda"],
+  kotte: ["rajagiriya", "nawala", "battaramulla", "nugegoda", "thalawathugoda"],
+  kaduwela: ["malabe", "athurugiriya", "battaramulla"],
+  malabe: ["kaduwela", "battaramulla", "thalawathugoda", "athurugiriya"],
+  piliyandala: ["maharagama", "boralesgamuwa", "moratuwa"],
+  moratuwa: ["mt_lavinia", "ratmalana", "piliyandala"],
+  boralesgamuwa: ["nugegoda", "maharagama", "piliyandala", "dehiwala"],
+  athurugiriya: ["malabe", "kaduwela"],
+  wattala: ["col_15", "kelaniya", "ja_ela"],
+  ratmalana: ["dehiwala", "mt_lavinia", "moratuwa"],
+  kelaniya: ["wattala", "col_09", "col_14"],
+  ja_ela: ["wattala", "gampaha", "negombo"],
+  gampaha: ["ja_ela", "negombo"],
+  negombo: ["ja_ela", "gampaha"],
+  kandy_city: [],
+  kurunegala: [],
+  galle: [],
+};
 
 export const COLOMBO_ZONES = COLOMBO_ZONES_DATA.map((z) => z.label) as readonly string[];
 
@@ -42,14 +94,23 @@ export function getZoneByLabel(label: string): Zone | undefined {
   return COLOMBO_ZONES_DATA.find((z) => z.label === label);
 }
 
+export function getZoneById(id: string): Zone | undefined {
+  return COLOMBO_ZONES_DATA.find((z) => z.id === id);
+}
+
 export function getZoneSurgeFactor(label: string): number {
   return getZoneByLabel(label)?.surgeFactor ?? 1.0;
 }
 
+/** Get neighbor zone IDs for extended search */
+export function getNeighborZones(zoneId: string): string[] {
+  return ZONE_NEIGHBORS[zoneId] ?? [];
+}
+
 export const OUT_OF_ZONE_KEYWORDS = [
-  "kandy", "galle", "jaffna", "matara", "kurunegala", "anuradhapura",
+  "jaffna", "matara", "anuradhapura",
   "trincomalee", "batticaloa", "ratnapura", "badulla", "nuwara eliya",
-  "negombo", "chilaw", "hambantota", "kalutara",
+  "chilaw", "hambantota", "kalutara",
 ];
 
 export function isOutOfZone(address: string): boolean {
@@ -60,4 +121,5 @@ export function isOutOfZone(address: string): boolean {
 export const COLOMBO_AREAS_DISPLAY = [
   "Colombo 1–15", "Nugegoda", "Rajagiriya", "Battaramulla",
   "Dehiwala", "Mount Lavinia", "Nawala", "Kotte", "Maharagama", "Wattala",
+  "Ratmalana", "Kelaniya", "Gampaha", "Negombo", "Kandy City", "Kurunegala",
 ];
