@@ -17,7 +17,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["rajagiriya", "battaramulla", "nawala", "kotte", "col_07"],
     categories: ["CCTV", "SMART_HOME_OFFICE", "IT"] as CategoryCode[],
     serviceCodes: ["CCTV_INSTALL", "CCTV_REPAIR", "CCTV_MAINTENANCE", "IT_ONSITE", "IT_NETWORK", "SH_SETUP"],
-    responseSlaByCategory: { CCTV: 120, SMART_HOME_OFFICE: 120, IT: 90 },
+    responseSlaByCategory: { CCTV: 120, SMART_HOME_OFFICE: 120, IT: 90 }, tier: "enterprise" as ProviderTier,
   },
   {
     id: "P003", name: "QuickFix Colombo", companyName: "QuickFix Colombo",
