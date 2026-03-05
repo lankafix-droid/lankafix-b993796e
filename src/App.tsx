@@ -34,6 +34,7 @@ import SubscriptionAnalyticsPage from "./pages/ops/SubscriptionAnalyticsPage";
 import DiagnoseAnalyticsPage from "./pages/ops/DiagnoseAnalyticsPage";
 import DispatchAnalyticsPage from "./pages/ops/DispatchAnalyticsPage";
 import ControlTowerPage from "./pages/ops/ControlTowerPage";
+import ChatWidget from "./components/chat/ChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <ChatWidget />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
