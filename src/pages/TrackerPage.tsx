@@ -78,7 +78,7 @@ const TrackerPage = () => {
   const {
     getBooking, cancelBooking, setBookingRating, verifyOtp,
     setPayment, markDispatched, markArrived, updateBookingStatus,
-    setBookingQuote, lastMatchResult, updateTracking,
+    setBookingQuote, lastMatchResult, updateTracking, startTravel,
   } = useBookingStore();
 
   const booking = getBooking(jobId || "");
