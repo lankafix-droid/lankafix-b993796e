@@ -37,6 +37,7 @@ import { statusToMascotState, TRUST_ICONS, getRefundEligibility, type MascotMess
 import { generateDemoQuote } from "@/engines/quoteEngine";
 import { getZoneIntelligence } from "@/engines/matchingEngine";
 import { track } from "@/lib/analytics";
+import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
 import type { TrackingSimulation } from "@/lib/trackingEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -512,6 +513,13 @@ const TrackerPage = () => {
           {isCompleted && (
             <div className="mb-4">
               <WarrantyCard booking={booking} />
+            </div>
+          )}
+
+          {/* Care Upsell — after completed repairs */}
+          {isCompleted && (
+            <div className="mb-4">
+              <CareUpsellBanner categoryCode={booking.categoryCode} />
             </div>
           )}
 

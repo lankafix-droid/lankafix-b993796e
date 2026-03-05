@@ -188,6 +188,9 @@ export function calculateTechnicianScore(
     totalScore += 15;
   }
 
+  // Stage 11: Subscriber priority boost (+20) — applied externally via subscriberBonus param
+  // This is handled at the dispatch call site
+
   return { tech, totalScore: Math.min(totalScore, 100), distanceKm, breakdown };
 }
 

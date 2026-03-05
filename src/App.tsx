@@ -26,6 +26,11 @@ import TechnicianDashboardPage from "./pages/technician/TechnicianDashboardPage"
 import TechnicianJobsPage from "./pages/technician/TechnicianJobsPage";
 import TechnicianJobDetailPage from "./pages/technician/TechnicianJobDetailPage";
 import TechnicianEarningsPage from "./pages/technician/TechnicianEarningsPage";
+import CarePlansPage from "./pages/care/CarePlansPage";
+import SubscribePage from "./pages/care/SubscribePage";
+import CareDashboardPage from "./pages/care/CareDashboardPage";
+import DeviceTimelinePage from "./pages/care/DeviceTimelinePage";
+import SubscriptionAnalyticsPage from "./pages/ops/SubscriptionAnalyticsPage";
 
 const queryClient = new QueryClient();
 
@@ -58,9 +63,15 @@ const App = () => (
           <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
           <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
           <Route path="/technician/earnings" element={<TechnicianEarningsPage />} />
+          {/* Care / Subscription routes */}
+          <Route path="/care" element={<CarePlansPage />} />
+          <Route path="/care/subscribe/:planId" element={<SubscribePage />} />
+          <Route path="/care/dashboard" element={<CareDashboardPage />} />
+          <Route path="/care/device/:deviceId" element={<DeviceTimelinePage />} />
           {/* Ops routes */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="/ops/finance" element={<FinanceBoardPage />} />
+          <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
