@@ -57,6 +57,11 @@ const CategoryPage = () => {
           <p className="text-muted-foreground mb-3">{category.description}</p>
           <TrustRibbon />
 
+          {/* Repeat service protection */}
+          {repeatBooking && (
+            <RepeatServiceBanner previousBooking={repeatBooking} categoryCode={category.code} />
+          )}
+
           <div className="flex flex-wrap gap-2 mb-4 mt-4">
             <Button variant={modeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setModeFilter("all")}>All</Button>
             {allModes.map((mode) => (<Button key={mode} variant={modeFilter === mode ? "default" : "outline"} size="sm" onClick={() => setModeFilter(mode)}>{SERVICE_MODE_LABELS[mode]}</Button>))}
