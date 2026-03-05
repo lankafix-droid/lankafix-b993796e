@@ -3,13 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useBookingStore } from "@/store/bookingStore";
+import { useProviderERPStore } from "@/store/providerERPStore";
 import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS, SERVICE_MODE_LABELS,
   TECH_REJECTION_LABELS,
 } from "@/types/booking";
 import type { TechRejectionReason, JobOutcome } from "@/types/booking";
 import { JOB_OUTCOME_LABELS } from "@/types/booking";
+import { DISPUTE_REASONS } from "@/types/provider";
 import TimelineEventLog from "@/components/tracker/TimelineEventLog";
 import QuoteBuilder from "@/components/technician/QuoteBuilder";
 import { track } from "@/lib/analytics";
@@ -17,7 +20,7 @@ import { useState, useEffect } from "react";
 import {
   ArrowLeft, MapPin, Camera, Wrench, CheckCircle2,
   XCircle, Navigation, Eye, ClipboardList, ShieldCheck,
-  AlertTriangle,
+  AlertTriangle, Flag,
 } from "lucide-react";
 
 export default function TechnicianJobDetailPage() {
@@ -38,12 +41,27 @@ export default function TechnicianJobDetailPage() {
   const setJobOutcome = useBookingStore((s) => s.setJobOutcome);
   const startTravel = useBookingStore((s) => s.startTravel);
 
+  const {
+    initJobChecklist, getJobChecklist, toggleChecklistItem, isChecklistComplete,
+    raiseDispute, getDisputesForJob,
+  } = useProviderERPStore();
+
   const [showRejectReasons, setShowRejectReasons] = useState(false);
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
+  const [showDispute, setShowDispute] = useState(false);
+  const [disputeReason, setDisputeReason] = useState("");
+  const [disputeDesc, setDisputeDesc] = useState("");
   const [techNote, setTechNote] = useState("");
   const [chatMsg, setChatMsg] = useState("");
 
   useEffect(() => { if (jobId) track("technician_job_detail_view", { jobId }); }, [jobId]);
+
+  // Init checklist when job arrives
+  useEffect(() => {
+    if (booking && getJobChecklist(booking.jobId).length === 0) {
+      initJobChecklist(booking.jobId, booking.categoryCode);
+    }
+  }, [booking?.jobId]);
 
   if (!booking) {
     return (
@@ -57,6 +75,9 @@ export default function TechnicianJobDetailPage() {
   }
 
   const status = booking.status;
+  const checklist = getJobChecklist(booking.jobId);
+  const checklistDone = isChecklistComplete(booking.jobId);
+  const disputes = getDisputesForJob(booking.jobId);
 
   const handlePhotoUpload = (type: "before" | "after") => {
     const mockUrl = `https://placeholder.co/400x300?text=${type}_photo_${Date.now()}`;
@@ -67,12 +88,19 @@ export default function TechnicianJobDetailPage() {
   const handleReject = (reason: TechRejectionReason) => {
     rejectJob(booking.jobId, reason);
     setShowRejectReasons(false);
-    track("technician_job_reject", { jobId: booking.jobId, reason });
+  };
+
+  const handleRaiseDispute = () => {
+    if (!disputeReason || !disputeDesc) return;
+    raiseDispute(booking.jobId, "technician", disputeReason, disputeDesc);
+    setShowDispute(false);
+    setDisputeReason("");
+    setDisputeDesc("");
   };
 
   const canAccept = ["matching", "awaiting_partner_confirmation", "assigned"].includes(status);
-  const canDispatch = status === "assigned";
   const canStartTravel = status === "assigned" && !booking.trackingData?.isTracking;
+  const canDispatch = status === "assigned";
   const canArrive = status === "tech_en_route";
   const canInspect = status === "arrived";
   const canSubmitQuote = ["inspection_started", "in_progress"].includes(status) && booking.pricing.quoteRequired;
@@ -87,18 +115,14 @@ export default function TechnicianJobDetailPage() {
         </Button>
         <div className="flex-1">
           <h1 className="text-lg font-bold text-foreground">{booking.jobId}</h1>
-          <Badge className={`text-[10px] ${BOOKING_STATUS_COLORS[status]}`}>
-            {BOOKING_STATUS_LABELS[status]}
-          </Badge>
+          <Badge className={`text-[10px] ${BOOKING_STATUS_COLORS[status]}`}>{BOOKING_STATUS_LABELS[status]}</Badge>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
         {/* Job Summary */}
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Job Summary</CardTitle>
-          </CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Job Summary</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium">{booking.categoryName}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span className="font-medium">{booking.serviceName}</span></div>
@@ -108,12 +132,41 @@ export default function TechnicianJobDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Precheck Answers */}
+        {/* Service Checklist */}
+        {checklist.length > 0 && (
+          <Card className={!checklistDone && canComplete ? "border-warning/40" : ""}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-primary" /> Service Checklist
+                <Badge variant="outline" className={`text-[10px] ${checklistDone ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                  {checklist.filter((c) => c.completed).length}/{checklist.length}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {checklist.map((item) => (
+                <div key={item.id} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={item.completed}
+                    onCheckedChange={() => toggleChecklistItem(booking.jobId, item.id)}
+                    id={item.id}
+                  />
+                  <label htmlFor={item.id} className={`text-sm cursor-pointer ${item.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                    {item.label}
+                  </label>
+                </div>
+              ))}
+              {!checklistDone && canComplete && (
+                <p className="text-[10px] text-warning mt-1">⚠ Complete all checklist items before marking job done</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Precheck */}
         {Object.keys(booking.precheckAnswers).length > 0 && (
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4 text-primary" /> Customer Precheck</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4 text-primary" /> Customer Precheck</CardTitle></CardHeader>
             <CardContent className="space-y-1">
               {Object.entries(booking.precheckAnswers).map(([key, val]) => (
                 <div key={key} className="flex justify-between text-xs">
@@ -128,22 +181,17 @@ export default function TechnicianJobDetailPage() {
         {/* Customer Photos */}
         {booking.photos.length > 0 && (
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><Eye className="w-4 h-4 text-primary" /> Customer Evidence</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Eye className="w-4 h-4 text-primary" /> Evidence</CardTitle></CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-2">
                 {booking.photos.map((p, i) => (
-                  <div key={i} className="aspect-square bg-muted rounded-lg flex items-center justify-center text-[10px] text-muted-foreground">
-                    {p.type}
-                  </div>
+                  <div key={i} className="aspect-square bg-muted rounded-lg flex items-center justify-center text-[10px] text-muted-foreground">{p.type}</div>
                 ))}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Trust Note */}
         <div className="flex items-center gap-2 bg-success/5 border border-success/20 rounded-lg p-3">
           <ShieldCheck className="w-4 h-4 text-success shrink-0" />
           <p className="text-xs text-success">No work starts without customer approval. Payment only after completion.</p>
@@ -151,16 +199,12 @@ export default function TechnicianJobDetailPage() {
 
         {/* Quote Builder */}
         {showQuoteBuilder && (
-          <QuoteBuilder
-            jobId={booking.jobId}
-            categoryCode={booking.categoryCode}
-            onClose={() => setShowQuoteBuilder(false)}
-          />
+          <QuoteBuilder jobId={booking.jobId} categoryCode={booking.categoryCode} onClose={() => setShowQuoteBuilder(false)} />
         )}
 
-        {/* Pre-Job Chat */}
+        {/* Chat */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">💬 Customer Chat</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">💬 Customer Chat</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {(booking.chatMessages || []).map((m) => (
               <div key={m.id} className={`text-xs p-2 rounded-lg ${m.sender === "technician" ? "bg-primary/10 ml-4" : "bg-muted mr-4"}`}>
@@ -181,18 +225,56 @@ export default function TechnicianJobDetailPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">My Notes</CardTitle></CardHeader>
           <CardContent className="space-y-2">
-            {booking.technicianInternalNote && (
-              <p className="text-xs bg-muted rounded p-2">{booking.technicianInternalNote}</p>
-            )}
+            {booking.technicianInternalNote && <p className="text-xs bg-muted rounded p-2">{booking.technicianInternalNote}</p>}
             <Textarea placeholder="Add note..." value={techNote} onChange={(e) => setTechNote(e.target.value)} rows={2} className="text-sm" />
-            <Button size="sm" variant="outline" disabled={!techNote.trim()}
-              onClick={() => { setInternalNote(booking.jobId, "technician", techNote); setTechNote(""); }}>
-              Save
-            </Button>
+            <Button size="sm" variant="outline" disabled={!techNote.trim()} onClick={() => { setInternalNote(booking.jobId, "technician", techNote); setTechNote(""); }}>Save</Button>
           </CardContent>
         </Card>
 
-        {/* Job Outcome (post-completion) */}
+        {/* Disputes */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Flag className="w-4 h-4 text-destructive" /> Disputes
+              {disputes.length > 0 && <Badge variant="outline" className="text-[10px]">{disputes.length}</Badge>}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {disputes.map((d) => (
+              <div key={d.id} className="text-xs border rounded p-2">
+                <div className="flex justify-between mb-1">
+                  <span className="font-medium">{d.reason.replace(/_/g, " ")}</span>
+                  <Badge variant="outline" className={`text-[9px] ${d.status === "resolved" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{d.status}</Badge>
+                </div>
+                <p className="text-muted-foreground">{d.description}</p>
+              </div>
+            ))}
+            {showDispute ? (
+              <div className="border rounded-lg p-3 space-y-2">
+                <div className="flex flex-wrap gap-1">
+                  {DISPUTE_REASONS.map((r) => (
+                    <Button key={r.value} size="sm" className="text-[10px] h-6"
+                      variant={disputeReason === r.value ? "default" : "outline"}
+                      onClick={() => setDisputeReason(r.value)}>
+                      {r.label}
+                    </Button>
+                  ))}
+                </div>
+                <Textarea placeholder="Describe the issue..." value={disputeDesc} onChange={(e) => setDisputeDesc(e.target.value)} rows={2} className="text-sm" />
+                <div className="flex gap-2">
+                  <Button size="sm" variant="destructive" onClick={handleRaiseDispute} disabled={!disputeReason || !disputeDesc}>Submit</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setShowDispute(false)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => setShowDispute(true)}>
+                <Flag className="w-3 h-3 mr-1" /> Raise Dispute
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Job Outcome */}
         {["completed", "rated"].includes(status) && (
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Job Outcome</CardTitle></CardHeader>
@@ -202,9 +284,7 @@ export default function TechnicianJobDetailPage() {
               ) : (
                 <div className="flex flex-wrap gap-1">
                   {(Object.entries(JOB_OUTCOME_LABELS) as [JobOutcome, string][]).map(([key, label]) => (
-                    <Button key={key} variant="ghost" size="sm" className="text-xs h-7" onClick={() => setJobOutcome(booking.jobId, key)}>
-                      {label}
-                    </Button>
+                    <Button key={key} variant="ghost" size="sm" className="text-xs h-7" onClick={() => setJobOutcome(booking.jobId, key)}>{label}</Button>
                   ))}
                 </div>
               )}
@@ -212,18 +292,14 @@ export default function TechnicianJobDetailPage() {
           </Card>
         )}
 
-        {/* Timeline */}
         <TimelineEventLog events={booking.timelineEvents} />
 
-        {/* Reject Reasons */}
         {showRejectReasons && (
           <Card className="border-destructive/30">
             <CardHeader className="pb-2"><CardTitle className="text-sm text-destructive">Reject Reason</CardTitle></CardHeader>
             <CardContent className="space-y-1">
               {(Object.entries(TECH_REJECTION_LABELS) as [TechRejectionReason, string][]).map(([key, label]) => (
-                <Button key={key} variant="ghost" size="sm" className="w-full justify-start text-xs h-8" onClick={() => handleReject(key)}>
-                  {label}
-                </Button>
+                <Button key={key} variant="ghost" size="sm" className="w-full justify-start text-xs h-8" onClick={() => handleReject(key)}>{label}</Button>
               ))}
               <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setShowRejectReasons(false)}>Cancel</Button>
             </CardContent>
@@ -236,7 +312,7 @@ export default function TechnicianJobDetailPage() {
         <div className="flex gap-2">
           {canAccept && !showRejectReasons && (
             <>
-              <Button className="flex-1" size="sm" onClick={() => { acceptJob(booking.jobId, booking.technician?.technicianId || "T001"); track("technician_job_accept", { jobId: booking.jobId }); }}>
+              <Button className="flex-1" size="sm" onClick={() => { acceptJob(booking.jobId, booking.technician?.technicianId || "T001"); }}>
                 <CheckCircle2 className="w-4 h-4 mr-1" /> Accept
               </Button>
               <Button variant="destructive" size="sm" onClick={() => setShowRejectReasons(true)}>
@@ -246,27 +322,25 @@ export default function TechnicianJobDetailPage() {
           )}
           {canStartTravel && (
             <Button className="flex-1 bg-primary" size="sm" onClick={() => {
-              // Simulate: tech zone geo → customer zone geo
-              const techZoneGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
-              const custZoneGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
-              startTravel(booking.jobId, techZoneGeo.lat, techZoneGeo.lng, custZoneGeo.lat, custZoneGeo.lng);
-              track("technician_travel_started", { jobId: booking.jobId });
+              const techGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
+              const custGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
+              startTravel(booking.jobId, techGeo.lat, techGeo.lng, custGeo.lat, custGeo.lng);
             }}>
               <Navigation className="w-4 h-4 mr-1" /> Start Travel
             </Button>
           )}
           {canDispatch && !canStartTravel && (
-            <Button className="flex-1" size="sm" onClick={() => { markDispatched(booking.jobId); track("technician_dispatch", { jobId: booking.jobId }); }}>
+            <Button className="flex-1" size="sm" onClick={() => markDispatched(booking.jobId)}>
               <Navigation className="w-4 h-4 mr-1" /> Mark Dispatched
             </Button>
           )}
           {canArrive && (
-            <Button className="flex-1" size="sm" onClick={() => { markArrived(booking.jobId); updateBookingStatus(booking.jobId, "arrived"); track("technician_arrival", { jobId: booking.jobId }); }}>
+            <Button className="flex-1" size="sm" onClick={() => { markArrived(booking.jobId); updateBookingStatus(booking.jobId, "arrived"); }}>
               <MapPin className="w-4 h-4 mr-1" /> Mark Arrived
             </Button>
           )}
           {canInspect && (
-            <Button className="flex-1" size="sm" onClick={() => { startInspection(booking.jobId); track("technician_inspection_start", { jobId: booking.jobId }); }}>
+            <Button className="flex-1" size="sm" onClick={() => startInspection(booking.jobId)}>
               <Eye className="w-4 h-4 mr-1" /> Start Inspection
             </Button>
           )}
@@ -278,12 +352,12 @@ export default function TechnicianJobDetailPage() {
             </Button>
           )}
           {canSubmitQuote && !showQuoteBuilder && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => { setShowQuoteBuilder(true); track("technician_quote_start", { jobId: booking.jobId }); }}>
+            <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowQuoteBuilder(true)}>
               <ClipboardList className="w-4 h-4 mr-1" /> Submit Quote
             </Button>
           )}
           {canStartRepair && (
-            <Button size="sm" className="flex-1" onClick={() => { startRepair(booking.jobId); track("technician_repair_start", { jobId: booking.jobId }); }}>
+            <Button size="sm" className="flex-1" onClick={() => startRepair(booking.jobId)}>
               <Wrench className="w-4 h-4 mr-1" /> Start Repair
             </Button>
           )}
@@ -295,8 +369,10 @@ export default function TechnicianJobDetailPage() {
             </Button>
           )}
           {canComplete && (
-            <Button size="sm" variant="default" className="flex-1 bg-success hover:bg-success/90" onClick={() => { markCompleted(booking.jobId); track("technician_complete_job", { jobId: booking.jobId }); }}>
-              <CheckCircle2 className="w-4 h-4 mr-1" /> Mark Complete
+            <Button size="sm" variant="default" className={`flex-1 ${checklistDone ? "bg-success hover:bg-success/90" : ""}`}
+              disabled={!checklistDone}
+              onClick={() => markCompleted(booking.jobId)}>
+              <CheckCircle2 className="w-4 h-4 mr-1" /> {checklistDone ? "Mark Complete" : "Complete Checklist First"}
             </Button>
           )}
         </div>
