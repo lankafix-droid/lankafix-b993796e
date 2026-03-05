@@ -355,6 +355,92 @@ export interface Zone {
 // ============================================================
 
 export type PaymentMethod = "cash" | "bank_transfer" | "card";
+
+// ============================================================
+// Stage 10: Payment OS Types
+// ============================================================
+
+export type CollectionMode = "cash_on_completion" | "bank_transfer" | "gateway" | "lankaqr";
+
+export type PaymentLifecycleStatus =
+  | "unpaid" | "deposit_pending" | "deposit_paid" | "partially_paid"
+  | "fully_paid" | "escrow_held" | "settlement_pending" | "settled"
+  | "refund_pending" | "refunded" | "failed";
+
+export type SettlementStatus = "not_ready" | "pending" | "processing" | "settled" | "held";
+
+export type RefundStatusDetailed = "none" | "requested" | "approved" | "processing" | "completed" | "rejected";
+
+export interface PaymentLedgerEntry {
+  id: string;
+  bookingId: string;
+  type: "deposit_collection" | "balance_collection" | "refund" | "commission" | "provider_settlement" | "technician_payout" | "manual_adjustment";
+  amount: number;
+  direction: "in" | "out";
+  status: "pending" | "completed" | "failed";
+  method?: CollectionMode;
+  reference?: string;
+  note?: string;
+  createdAt: string;
+}
+
+export interface SettlementBreakdown {
+  grossAmount: number;
+  depositCollected: number;
+  balanceCollected: number;
+  refundAmount: number;
+  netCollected: number;
+  lankafixCommission: number;
+  partnerShare: number;
+  technicianShare: number;
+  settlementStatus: SettlementStatus;
+  settlementReadyAt?: string;
+  settledAt?: string;
+}
+
+export interface ProviderWalletSummary {
+  partnerId: string;
+  pendingSettlement: number;
+  releasedSettlement: number;
+  totalCommissionGenerated: number;
+  heldAmount: number;
+  refundAdjustments: number;
+}
+
+export interface TechnicianEarningSummary {
+  technicianId: string;
+  today: number;
+  week: number;
+  month: number;
+  pending: number;
+  released: number;
+}
+
+export interface RefundRequest {
+  id: string;
+  bookingId: string;
+  requestedBy: "customer" | "ops";
+  reason: string;
+  requestedAmount: number;
+  approvedAmount?: number;
+  status: RefundStatusDetailed;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookingFinanceState {
+  collectionMode: CollectionMode | null;
+  paymentStatus: PaymentLifecycleStatus;
+  depositAmount: number;
+  balanceAmount: number;
+  totalApprovedAmount: number;
+  escrowHeldAmount: number;
+  collectedAmount: number;
+  refundAmount: number;
+  settlement: SettlementBreakdown;
+  ledgerEntries: PaymentLedgerEntry[];
+  latestReceiptRef?: string;
+}
 export type PaymentStatus = "pending" | "paid" | "refund_initiated" | "refunded" | "failed";
 
 export interface PaymentIntent {
@@ -541,6 +627,10 @@ export interface BookingState {
   warranty?: WarrantyRecord;
   /** Stage 8: Communication relay */
   communicationRelay?: boolean;
+  /** Stage 10: Finance state */
+  finance?: BookingFinanceState;
+  /** Stage 10: Refund requests */
+  refundRequests?: RefundRequest[];
 }
 
 // ============================================================

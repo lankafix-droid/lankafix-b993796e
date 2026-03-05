@@ -29,6 +29,7 @@ import EvidenceCard from "@/components/tracker/EvidenceCard";
 import SOSPanel from "@/components/tracker/SOSPanel";
 import MatchingCard from "@/components/tracker/MatchingCard";
 import AssignmentCard from "@/components/tracker/AssignmentCard";
+import PaymentCard from "@/components/tracker/PaymentCard";
 import TechnicianMap from "@/components/tracking/TechnicianMap";
 import TechnicianLocationCard from "@/components/tracking/TechnicianLocationCard";
 import { toast } from "sonner";
@@ -438,22 +439,12 @@ const TrackerPage = () => {
               </Button>
             )}
 
-            {/* Payment actions */}
-            {booking.payments.deposit && booking.payments.deposit.status === "pending" && (
-              <Button variant="outline" size="sm" className="w-full" onClick={handlePayDeposit}>
-                <CreditCard className="w-4 h-4 mr-2" /> Pay Commitment Fee — LKR {booking.payments.deposit.amount.toLocaleString("en-LK")}
-              </Button>
-            )}
-            {isCompleted && !booking.payments.completion?.status && (
-              <Button variant="outline" size="sm" className="w-full" onClick={handlePayCompletion}>
-                <CreditCard className="w-4 h-4 mr-2" /> Pay Completion
-              </Button>
-            )}
-            {isCompleted && booking.payments.completion?.status === "pending" && (
-              <Button variant="outline" size="sm" className="w-full" onClick={handlePayCompletion}>
-                <CreditCard className="w-4 h-4 mr-2" /> Pay Completion — LKR {booking.payments.completion.amount.toLocaleString("en-LK")}
-              </Button>
-            )}
+            {/* Payment actions — legacy buttons replaced by PaymentCard below */}
+          </div>
+
+          {/* Stage 10: Payment Card */}
+          <div className="mb-4">
+            <PaymentCard booking={booking} />
           </div>
 
           {/* Status Timeline */}
