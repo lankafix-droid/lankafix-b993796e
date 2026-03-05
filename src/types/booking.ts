@@ -4,14 +4,19 @@ export type ServiceMode = "on_site" | "drop_off" | "pickup_return" | "remote";
 
 export type BookingStatus =
   | "requested"
+  | "matching"
+  | "awaiting_partner_confirmation"
   | "scheduled"
   | "assigned"
   | "tech_en_route"
+  | "arrived"
+  | "inspection_started"
   | "in_progress"
   | "quote_submitted"
   | "quote_revised"
   | "quote_approved"
   | "quote_rejected"
+  | "repair_started"
   | "completed"
   | "rated"
   | "cancelled";
