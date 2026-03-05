@@ -2,7 +2,8 @@
  * LankaFix Smart Dispatch Engine
  * Weighted scoring, capability filtering, and zone-aware technician assignment.
  */
-import type { CategoryCode, TechnicianInfo, BookingState } from "@/types/booking";
+import type { CategoryCode, TechnicianInfo, BookingState, ProviderTier } from "@/types/booking";
+import { PROVIDER_TIER_PRIORITY } from "@/types/booking";
 import { MOCK_PARTNERS, MOCK_TECHNICIANS } from "@/data/mockPartnerData";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { calculateDistance, scoreDistance, DISPATCH_DEFAULTS } from "@/lib/locationUtils";
