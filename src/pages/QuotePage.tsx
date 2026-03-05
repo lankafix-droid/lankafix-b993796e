@@ -60,9 +60,6 @@ const QuotePage = () => {
     );
   }
 
-  const quote = booking.quote;
-  const isApproved = !!quote?.approvedAt;
-
   const expiresIn = useMemo(() => {
     if (!quote) return "";
     const diff = new Date(quote.expiresAt).getTime() - Date.now();
