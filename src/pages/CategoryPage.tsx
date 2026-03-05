@@ -4,6 +4,8 @@ import { categoryPricingRules } from "@/config/pricingRules";
 import { useBookingStore } from "@/store/bookingStore";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
+import TrustRibbon from "@/components/landing/TrustRibbon";
+import SLAChip from "@/components/ui/SLAChip";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Zap, Stethoscope, FileText } from "lucide-react";
@@ -43,8 +45,10 @@ const CategoryPage = () => {
         <div className="container py-8 max-w-3xl">
           <Link to="/categories" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"><ArrowLeft className="w-4 h-4" /> All Categories</Link>
           <h1 className="text-3xl font-bold text-foreground mb-1">{category.name}</h1>
-          <p className="text-muted-foreground mb-6">{category.description}</p>
-          <div className="flex flex-wrap gap-2 mb-4">
+          <p className="text-muted-foreground mb-3">{category.description}</p>
+          <TrustRibbon />
+
+          <div className="flex flex-wrap gap-2 mb-4 mt-4">
             <Button variant={modeFilter === "all" ? "default" : "outline"} size="sm" onClick={() => setModeFilter("all")}>All</Button>
             {allModes.map((mode) => (<Button key={mode} variant={modeFilter === mode ? "default" : "outline"} size="sm" onClick={() => setModeFilter(mode)}>{SERVICE_MODE_LABELS[mode]}</Button>))}
           </div>
@@ -67,6 +71,11 @@ const CategoryPage = () => {
                         <span className="text-sm text-muted-foreground">From <span className="font-bold text-foreground">LKR {svc.fromPrice.toLocaleString()}</span></span>
                         {svc.requiresDiagnostic && <Badge variant="outline" className="text-xs border-primary/30 text-primary gap-1"><Stethoscope className="w-3 h-3" /> Diagnostic</Badge>}
                         {svc.requiresQuote && <Badge variant="outline" className="text-xs border-warning/30 text-warning gap-1"><FileText className="w-3 h-3" /> Quote Required</Badge>}
+                        <SLAChip
+                          normalMinutes={svc.slaMinutesNormal}
+                          emergencyMinutes={emergency ? svc.slaMinutesEmergency : undefined}
+                          typicalDurationMinutes={svc.typicalDurationMinutes}
+                        />
                       </div>
                     </div>
                     <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />

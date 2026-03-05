@@ -3,8 +3,8 @@ import type { CategoryCode } from "@/types/booking";
 export interface CategoryPricingRule {
   visitFee: number;
   diagnosticFee: number;
-  emergencySurchargePercent: number; // 0 = no emergency option
-  estimateMultiplier: { min: number; max: number }; // applied to fromPrice
+  emergencySurchargePercent: number;
+  estimateMultiplier: { min: number; max: number };
   depositRequired: boolean;
   depositAmount: number;
   cancelPolicy: {
@@ -101,15 +101,35 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     depositAmount: 3000,
     cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
   },
+  COPIER: {
+    visitFee: 1000,
+    diagnosticFee: 1500,
+    emergencySurchargePercent: 20,
+    estimateMultiplier: { min: 1.0, max: 2.5 },
+    depositRequired: false,
+    depositAmount: 0,
+    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
+  },
+  PRINT_SUPPLIES: {
+    visitFee: 0,
+    diagnosticFee: 0,
+    emergencySurchargePercent: 0,
+    estimateMultiplier: { min: 1.0, max: 1.5 },
+    depositRequired: false,
+    depositAmount: 0,
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 100 },
+  },
 };
 
-// Service-specific pricing overrides keyed by serviceCode
 export const serviceOverrides: Record<string, ServicePricingOverride> = {
   AC_GAS_TOPUP: { visitFee: 0, diagnosticFee: 0, estimateMultiplier: { min: 1.0, max: 1.2 } },
   AC_FULL_SERVICE: { visitFee: 0, diagnosticFee: 0, estimateMultiplier: { min: 1.0, max: 1.3 } },
   MOBILE_SCREEN: { emergencySurchargePercent: 40 },
   IT_REMOTE: { visitFee: 0, diagnosticFee: 0 },
   SOLAR_INSTALL: { depositRequired: true, depositAmount: 10000 },
+  COPIER_MAJOR: { depositRequired: true, depositAmount: 5000 },
+  PS_TONER_ORDER: { estimateMultiplier: { min: 1.0, max: 1.2 } },
+  PS_INK_ORDER: { estimateMultiplier: { min: 1.0, max: 1.1 } },
 };
 
 export interface PricingResult {
@@ -123,6 +143,10 @@ export interface PricingResult {
   partsSeparate: boolean;
   quoteRequired: boolean;
   cancelPolicy: CategoryPricingRule["cancelPolicy"];
+  /** Dynamic pricing fields */
+  baseVisitFee: number;
+  zoneFactorAmount: number;
+  platformFee: number;
 }
 
 export function calculatePricing(
@@ -131,7 +155,8 @@ export function calculatePricing(
   fromPrice: number,
   requiresDiagnostic: boolean,
   requiresQuote: boolean,
-  isEmergency: boolean
+  isEmergency: boolean,
+  surgeFactor: number = 1.0
 ): PricingResult {
   const catRule = categoryPricingRules[categoryCode] || defaultRule;
   const svcOverride = serviceOverrides[serviceCode] || {};
@@ -145,18 +170,23 @@ export function calculatePricing(
 
   const baseMin = fromPrice * multiplier.min;
   const baseMax = fromPrice * multiplier.max;
+  const zoneFactorAmount = Math.round((visitFee + baseMin) * (surgeFactor - 1));
   const emergencySurcharge = isEmergency ? Math.round((visitFee + diagnosticFee + baseMin) * surchargePercent / 100) : 0;
+  const platformFee = Math.round(baseMin * 0.05); // 5% platform fee
 
   return {
     visitFee,
     diagnosticFee,
     emergencySurcharge,
-    estimatedMin: Math.round(baseMin),
-    estimatedMax: Math.round(baseMax),
+    estimatedMin: Math.round(baseMin + zoneFactorAmount),
+    estimatedMax: Math.round(baseMax + zoneFactorAmount),
     depositRequired: depositReq,
     depositAmount: depositAmt,
     partsSeparate: requiresQuote,
     quoteRequired: requiresQuote,
     cancelPolicy: catRule.cancelPolicy,
+    baseVisitFee: visitFee,
+    zoneFactorAmount,
+    platformFee,
   };
 }

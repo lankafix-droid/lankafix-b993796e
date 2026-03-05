@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getServiceByCode, getCategoryByCode } from "@/data/categories";
 import { calculatePricing } from "@/config/pricingRules";
+import { getZoneSurgeFactor } from "@/data/colomboZones";
 import { useBookingStore } from "@/store/bookingStore";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -24,7 +25,8 @@ const PricingBuilder = () => {
     return (<div className="min-h-screen flex flex-col"><Header /><main className="flex-1 flex items-center justify-center"><div className="text-center"><h1 className="text-2xl font-bold text-foreground mb-2">Service Not Found</h1><Button asChild variant="outline"><Link to="/categories">View All Categories</Link></Button></div></main><Footer /></div>);
   }
 
-  const pricing = calculatePricing(catCode as CategoryCode, svcCode!, service.fromPrice, service.requiresDiagnostic, service.requiresQuote, draft.isEmergency);
+  const surgeFactor = getZoneSurgeFactor(draft.zone);
+  const pricing = calculatePricing(catCode as CategoryCode, svcCode!, service.fromPrice, service.requiresDiagnostic, service.requiresQuote, draft.isEmergency, surgeFactor);
 
   const handleConfirm = () => {
     const jobId = confirmBooking(pricing, pricing.quoteRequired);
@@ -66,7 +68,9 @@ const PricingBuilder = () => {
             <div className="space-y-3">
               {pricing.visitFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Visit Fee</span><span className="font-medium text-foreground">LKR {pricing.visitFee.toLocaleString("en-LK")}</span></div>}
               {pricing.diagnosticFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Diagnostic Fee</span><span className="font-medium text-foreground">LKR {pricing.diagnosticFee.toLocaleString("en-LK")}</span></div>}
+              {pricing.zoneFactorAmount > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Zone Surcharge</span><span className="font-medium text-foreground">+ LKR {pricing.zoneFactorAmount.toLocaleString("en-LK")}</span></div>}
               {pricing.emergencySurcharge > 0 && <div className="flex justify-between text-sm"><span className="text-warning">Emergency Surcharge</span><span className="font-medium text-warning">+ LKR {pricing.emergencySurcharge.toLocaleString("en-LK")}</span></div>}
+              {pricing.platformFee > 0 && <div className="flex justify-between text-sm"><span className="text-muted-foreground">Platform Fee</span><span className="font-medium text-foreground">LKR {pricing.platformFee.toLocaleString("en-LK")}</span></div>}
               <div className="border-t pt-3 flex justify-between text-sm"><span className="text-muted-foreground">Estimated Service Range</span><span className="font-bold text-foreground">LKR {pricing.estimatedMin.toLocaleString("en-LK")} – {pricing.estimatedMax.toLocaleString("en-LK")}</span></div>
               {pricing.partsSeparate && <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Info className="w-3 h-3" />Parts will be quoted separately after inspection</div>}
             </div>
@@ -101,6 +105,29 @@ const PricingBuilder = () => {
             <p className="text-sm text-muted-foreground mb-2">{pricing.quoteRequired ? "Pay after quote approval — no upfront charge for inspection." : "Pay after service completion — no hidden fees."}</p>
             <div className="flex flex-wrap gap-2">{["Cash", "Bank Transfer", "Card at Completion"].map((m) => (<Badge key={m} variant="outline" className="text-xs">{m}</Badge>))}</div>
           </div>
+
+          {/* SLA info */}
+          {(service.slaMinutesNormal || service.typicalDurationMinutes) && (
+            <div className="bg-card rounded-xl border p-5 mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                <TRUST_ICONS.Clock className="w-4 h-4 text-primary" /> Expected Timeline
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {service.slaMinutesNormal && (
+                  <div>
+                    <span className="text-muted-foreground">Response Time</span>
+                    <p className="font-medium text-foreground">{service.slaMinutesNormal < 60 ? `${service.slaMinutesNormal} min` : `${Math.round(service.slaMinutesNormal / 60)}h`}</p>
+                  </div>
+                )}
+                {service.typicalDurationMinutes && (
+                  <div>
+                    <span className="text-muted-foreground">Typical Duration</span>
+                    <p className="font-medium text-foreground">~{service.typicalDurationMinutes < 60 ? `${service.typicalDurationMinutes} min` : `${Math.round(service.typicalDurationMinutes / 60)}h`}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-8 flex items-start gap-3">
             <TRUST_ICONS.ShieldCheck className="w-5 h-5 text-success shrink-0 mt-0.5" />

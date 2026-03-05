@@ -7,6 +7,8 @@ import type {
 } from "@/types/booking";
 import { BOOKING_STATUS_LABELS } from "@/types/booking";
 import { canTransition } from "@/brand/trustSystem";
+import { matchTechnician } from "@/engines/matchingEngine";
+import { getZoneByLabel } from "@/data/colomboZones";
 
 interface BookingDraft {
   categoryCode: CategoryCode | null;
@@ -77,29 +79,8 @@ function generateJobId(): string {
   return id;
 }
 
-const TECH_POOL = [
-  { name: "Kasun Perera", partner: "ColomboTech Solutions", rating: 4.8, jobs: 342, specs: ["AC", "HVAC"] },
-  { name: "Nadeesha Silva", partner: "Lanka Service Pro", rating: 4.9, jobs: 567, specs: ["CCTV", "Smart Home"] },
-  { name: "Ruwan Fernando", partner: "QuickFix Colombo", rating: 4.7, jobs: 218, specs: ["Mobile", "Electronics"] },
-  { name: "Dinesh Jayawardena", partner: "ProTech Lanka", rating: 4.6, jobs: 189, specs: ["IT", "Networking"] },
-  { name: "Chaminda Bandara", partner: "SmartFix Pvt Ltd", rating: 4.9, jobs: 412, specs: ["Solar", "Electrical"] },
-];
-
-function seedTechnician(): TechnicianInfo {
-  const t = TECH_POOL[Math.floor(Math.random() * TECH_POOL.length)];
-  return {
-    name: t.name,
-    rating: t.rating,
-    eta: `${15 + Math.floor(Math.random() * 30)} mins`,
-    partnerName: t.partner,
-    jobsCompleted: t.jobs,
-    verifiedSince: "2024-03-15",
-    specializations: t.specs,
-  };
-}
-
 // ============================================================
-// C1) Centralized timeline logger
+// Centralized timeline logger
 // ============================================================
 function appendTimeline(
   bookings: BookingState[],
@@ -130,11 +111,12 @@ function logEvent(
   });
 }
 
-function createInitialTimeline(quoteRequired: boolean): TimelineEvent[] {
+function createInitialTimeline(quoteRequired: boolean, matchMsg: string): TimelineEvent[] {
   const now = new Date().toISOString();
   return [
     { timestamp: now, title: "Booking Created", description: "Service request submitted by customer", actor: "system" },
-    { timestamp: now, title: "Technician Assigned", description: "Verified technician matched to your job", actor: "system" },
+    { timestamp: now, title: "Matching Started", description: "Looking for the best technician in your area", actor: "system" },
+    { timestamp: now, title: "Technician Matched", description: matchMsg, actor: "system" },
     ...(quoteRequired
       ? [{ timestamp: now, title: "Inspection Scheduled", description: "Technician will inspect and provide a detailed quote", actor: "system" as const }]
       : []),
@@ -176,7 +158,7 @@ export const useBookingStore = create<BookingStore>()(
 
       resetDraft: () => set({ draft: { ...initialDraft } }),
 
-      // C2) Confirm booking with validation
+      // Confirm booking with matching engine
       confirmBooking: (pricing, quoteRequired) => {
         const { draft } = get();
 
@@ -190,6 +172,10 @@ export const useBookingStore = create<BookingStore>()(
           ...pricing,
           cancelPolicy: pricing.cancelPolicy || DEFAULT_CANCEL_POLICY,
         };
+
+        // Use matching engine
+        const zoneData = getZoneByLabel(draft.zone);
+        const matchResult = matchTechnician(draft.categoryCode, zoneData?.id || "", draft.isEmergency);
 
         const depositPayment: PaymentIntent | undefined = pricingWithPolicy.depositRequired
           ? { type: "deposit", amount: pricingWithPolicy.depositAmount, method: null, status: "pending", refundableAmount: pricingWithPolicy.depositAmount, refundStatus: "none", provider: "manual" }
@@ -211,7 +197,7 @@ export const useBookingStore = create<BookingStore>()(
           scheduledTime: draft.scheduledTime,
           preferredWindow: draft.preferredWindow,
           pricing: pricingWithPolicy,
-          technician: seedTechnician(),
+          technician: matchResult.technician,
           status: quoteRequired ? "scheduled" : "requested",
           createdAt: new Date().toISOString(),
           quote: null,
@@ -222,8 +208,9 @@ export const useBookingStore = create<BookingStore>()(
           startOtpVerifiedAt: null,
           completionOtpVerifiedAt: null,
           payments: { deposit: depositPayment },
-          timelineEvents: createInitialTimeline(quoteRequired),
+          timelineEvents: createInitialTimeline(quoteRequired, matchResult.message),
           dispatchStatus: "pending",
+          etaMinutes: matchResult.technician ? parseInt(matchResult.technician.eta) || undefined : undefined,
         };
         set((s) => ({
           bookings: [booking, ...s.bookings],
@@ -232,7 +219,7 @@ export const useBookingStore = create<BookingStore>()(
         return jobId;
       },
 
-      // C4) Guarded status transition
+      // Guarded status transition
       updateBookingStatus: (jobId, toStatus) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -242,7 +229,7 @@ export const useBookingStore = create<BookingStore>()(
             return s;
           }
 
-          // C5) Quote-required completion guard
+          // Quote-required completion guard
           if (toStatus === "completed" && booking.pricing.quoteRequired) {
             if (!booking.quote?.selectedOptionId && booking.status !== "quote_approved") {
               console.warn("[LankaFix] Cannot complete: quote-required booking must have approved quote.");
@@ -254,7 +241,7 @@ export const useBookingStore = create<BookingStore>()(
             b.jobId === jobId ? { ...b, status: toStatus } : b
           );
 
-          // C6) Dispatch auto updates
+          // Dispatch auto updates
           if (toStatus === "tech_en_route") {
             const now = new Date().toISOString();
             updated = updated.map((b) =>
@@ -272,7 +259,7 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // C7) Set quote with transition guard
+      // Set quote with transition guard
       setBookingQuote: (jobId, quote) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -288,7 +275,7 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // C8) Quote approval
+      // Quote approval
       approveQuote: (jobId, optionId) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -306,7 +293,6 @@ export const useBookingStore = create<BookingStore>()(
             b.jobId === jobId ? { ...b, quote: updatedQuote } : b
           );
 
-          // Transition to quote_approved if valid
           if (canTransition(booking.status, "quote_approved")) {
             updated = updated.map((b) =>
               b.jobId === jobId ? { ...b, status: "quote_approved" as BookingStatus } : b
@@ -353,7 +339,7 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // C9) OTP verification with guard + auto transitions
+      // OTP verification with guard + auto transitions
       verifyOtp: (jobId, type) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -366,7 +352,6 @@ export const useBookingStore = create<BookingStore>()(
             newStatus = "in_progress";
           }
           if (type === "completion" && canTransition(booking.status, "completed")) {
-            // Quote-required guard
             if (booking.pricing.quoteRequired && !booking.quote?.selectedOptionId && booking.status !== "quote_approved") {
               console.warn("[LankaFix] Cannot complete via OTP: quote not approved.");
               newStatus = booking.status;
@@ -389,10 +374,14 @@ export const useBookingStore = create<BookingStore>()(
             updated = logEvent(updated, jobId, `Status Updated — ${BOOKING_STATUS_LABELS[newStatus]}`,
               `Auto-transition after OTP ${type} verification`, "system");
           }
+          // If completed, log warranty activation
+          if (newStatus === "completed") {
+            updated = logEvent(updated, jobId, "Warranty Activated", "Labor warranty now active from this date", "system");
+          }
           return { bookings: updated };
         }),
 
-      // C10) Payment with timeline + optional auto status
+      // Payment with timeline + optional auto status
       setPayment: (jobId, key, payment) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
@@ -427,7 +416,7 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
-      // C6) Mark arrived
+      // Mark arrived
       markArrived: (jobId) =>
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);

@@ -1,4 +1,4 @@
-export type CategoryCode = "AC" | "CCTV" | "MOBILE" | "IT" | "SOLAR" | "CONSUMER_ELEC" | "SMART_HOME_OFFICE";
+export type CategoryCode = "AC" | "CCTV" | "MOBILE" | "IT" | "SOLAR" | "CONSUMER_ELEC" | "SMART_HOME_OFFICE" | "COPIER" | "PRINT_SUPPLIES";
 
 export type ServiceMode = "on_site" | "drop_off" | "pickup_return" | "remote";
 
@@ -73,6 +73,10 @@ export const QUOTE_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = 
   { status: "completed", label: "Job Completed" },
 ];
 
+// ============================================================
+// Pre-check & Service Models
+// ============================================================
+
 export interface PrecheckQuestion {
   key: string;
   question: string;
@@ -90,6 +94,12 @@ export interface Service {
   requiresDiagnostic: boolean;
   fromPrice: number;
   precheckQuestions: PrecheckQuestion[];
+  /** SLA: Normal response time in minutes */
+  slaMinutesNormal?: number;
+  /** SLA: Emergency response time in minutes */
+  slaMinutesEmergency?: number;
+  /** Typical job duration in minutes */
+  typicalDurationMinutes?: number;
 }
 
 export interface Category {
@@ -102,6 +112,10 @@ export interface Category {
   tags: string[];
   services: Service[];
 }
+
+// ============================================================
+// Quote Models
+// ============================================================
 
 export type PartQuality = "genuine" | "oem_grade" | "compatible";
 
@@ -149,14 +163,72 @@ export interface QuoteData {
   warranty: WarrantyTerms;
 }
 
+// ============================================================
+// Technician & Partner Models
+// ============================================================
+
+export type TechnicianAvailability = "available" | "busy" | "offline";
+
 export interface TechnicianInfo {
+  technicianId?: string;
   name: string;
   rating: number;
   eta: string;
   partnerName: string;
+  partnerId?: string;
   jobsCompleted: number;
   verifiedSince: string;
   specializations: string[];
+  currentZoneId?: string;
+  availabilityStatus?: TechnicianAvailability;
+  activeJobsCount?: number;
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  companyName: string;
+  verified: boolean;
+  verifiedSince: string;
+  licenseNumber?: string;
+  rating: number;
+  jobsCompleted: number;
+  coverageZones: string[];
+  categories: CategoryCode[];
+  serviceCodes: string[];
+  responseSlaByCategory: Partial<Record<CategoryCode, number>>;
+}
+
+// ============================================================
+// Zone Model
+// ============================================================
+
+export interface Zone {
+  id: string;
+  city: string;
+  area: string;
+  label: string;
+  geo?: { lat: number; lng: number };
+  surgeFactor?: number;
+}
+
+// ============================================================
+// Payment Models
+// ============================================================
+
+export type PaymentMethod = "cash" | "bank_transfer" | "card";
+export type PaymentStatus = "pending" | "paid" | "refund_initiated" | "refunded" | "failed";
+
+export interface PaymentIntent {
+  type: "deposit" | "completion";
+  amount: number;
+  method: PaymentMethod | null;
+  status: PaymentStatus;
+  refundableAmount: number;
+  refundStatus: "none" | "partial" | "full";
+  paidAt?: string;
+  reference?: string;
+  provider?: "manual" | "gateway";
 }
 
 export interface CancelPolicy {
@@ -176,24 +248,38 @@ export interface PricingBreakdown {
   partsSeparate: boolean;
   quoteRequired: boolean;
   cancelPolicy: CancelPolicy;
+  /** Dynamic pricing additions */
+  baseVisitFee?: number;
+  zoneFactorAmount?: number;
+  complexityFactorAmount?: number;
+  urgencyFactorAmount?: number;
+  platformFee?: number;
 }
 
-export type PaymentMethod = "cash" | "bank_transfer" | "card";
-export type PaymentStatus = "pending" | "paid" | "refund_initiated" | "refunded" | "failed";
-
-export interface PaymentIntent {
-  type: "deposit" | "completion";
-  amount: number;
-  method: PaymentMethod | null;
-  status: PaymentStatus;
-  refundableAmount: number;
-  refundStatus: "none" | "partial" | "full";
-  paidAt?: string;
-  reference?: string;
-  provider?: "manual" | "gateway";
-}
+// ============================================================
+// Dispatch & Safety
+// ============================================================
 
 export type DispatchStatus = "pending" | "dispatched" | "arrived";
+
+export interface GeoCheckPoint {
+  lat: number;
+  lng: number;
+  at: string;
+}
+
+export interface SosState {
+  active: boolean;
+  reason?: SosReason;
+  severity?: import("@/brand/trustSystem").SosSeverity;
+  createdAt?: string;
+  resolvedAt?: string;
+}
+
+// ============================================================
+// Timeline
+// ============================================================
+
 export type TimelineActor = "system" | "technician" | "customer";
 
 export interface TimelineEventMeta {
@@ -210,16 +296,28 @@ export interface TimelineEvent {
   meta?: TimelineEventMeta;
 }
 
-export interface BookingPayments {
-  deposit?: PaymentIntent;
-  completion?: PaymentIntent;
-}
+// ============================================================
+// Booking Photo Evidence
+// ============================================================
 
 export interface BookingPhoto {
   url: string;
   type: "before" | "after" | "issue" | "invoice";
   uploadedAt: string;
 }
+
+// ============================================================
+// Booking Payments
+// ============================================================
+
+export interface BookingPayments {
+  deposit?: PaymentIntent;
+  completion?: PaymentIntent;
+}
+
+// ============================================================
+// Core Booking State
+// ============================================================
 
 export interface BookingState {
   jobId: string;
@@ -252,7 +350,19 @@ export interface BookingState {
   dispatchStatus: DispatchStatus;
   dispatchedAt?: string;
   arrivedAt?: string;
+  /** Dispatch ETA in minutes */
+  etaMinutes?: number;
+  route?: { distanceKm: number; updatedAt: string };
+  /** Safety / fraud */
+  geoCheckIn?: GeoCheckPoint;
+  geoCheckOut?: GeoCheckPoint;
+  safetyFlag?: boolean;
+  sos?: SosState;
 }
+
+// ============================================================
+// Constants
+// ============================================================
 
 export const CANCELLABLE_STATUSES: BookingStatus[] = [
   "requested",
@@ -269,3 +379,36 @@ export const SOS_REASONS = [
 ] as const;
 
 export type SosReason = typeof SOS_REASONS[number]["value"];
+
+// ============================================================
+// Technician App Scaffold Types (future)
+// ============================================================
+
+/** Technician-facing job view */
+export interface TechJobView {
+  jobId: string;
+  customerName: string;
+  categoryCode: CategoryCode;
+  serviceCode: string;
+  serviceName: string;
+  address: string;
+  zone: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  serviceMode: ServiceMode;
+  isEmergency: boolean;
+  status: BookingStatus;
+  dispatchStatus: DispatchStatus;
+}
+
+/** Technician actions */
+export type TechAction =
+  | "accept_job"
+  | "reject_job"
+  | "navigate"
+  | "request_start_otp"
+  | "upload_before_photos"
+  | "upload_after_photos"
+  | "submit_quote"
+  | "mark_arrived"
+  | "mark_completed";
