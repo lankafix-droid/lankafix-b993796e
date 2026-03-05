@@ -237,12 +237,12 @@ const TrackerPage = () => {
 
           {isAssigned && booking.technician && (
             <div className="mb-4">
-              <AssignmentCard
+             <AssignmentCard
                 technician={booking.technician}
-                distanceKm={lastMatchResult?.distanceKm}
+                distanceKm={lastMatchResult?.bestMatch?.distanceKm}
                 etaRange={lastMatchResult?.etaRange}
                 extendedCoverage={lastMatchResult?.extendedCoverage}
-                confidenceScore={lastMatchResult?.confidenceScore}
+                confidenceScore={lastMatchResult?.bestMatch?.totalScore}
                 serviceMode={booking.serviceMode}
               />
             </div>

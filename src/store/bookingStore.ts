@@ -217,23 +217,23 @@ export const useBookingStore = create<BookingStore>()(
           { timestamp: now, title: "Matching Started", description: "Looking for the best technician in your area", actor: "system" },
         ];
 
-        if (matchResult.technician) {
+        if (matchedTech) {
           track("technician_matched", {
             category: draft.categoryCode,
             zone: draft.zone,
-            confidenceScore: matchResult.confidenceScore,
-            distanceKm: matchResult.distanceKm,
-            extendedCoverage: matchResult.extendedCoverage,
+            confidenceScore: dispatchResult.bestMatch?.totalScore,
+            distanceKm: dispatchResult.bestMatch?.distanceKm,
+            extendedCoverage: dispatchResult.extendedCoverage,
           });
 
-          if (matchResult.extendedCoverage) {
+          if (dispatchResult.extendedCoverage) {
             track("extended_coverage_applied", { category: draft.categoryCode, zone: draft.zone });
           }
 
           timelineEvents.push({
             timestamp: now,
-            title: matchResult.requiresPartnerConfirmation ? "Awaiting Partner Confirmation" : "Technician Matched",
-            description: matchResult.message,
+            title: dispatchResult.requiresPartnerConfirmation ? "Awaiting Partner Confirmation" : "Technician Matched",
+            description: `${matchedTech.name} (Score: ${dispatchResult.bestMatch?.totalScore}/100)`,
             actor: "system",
           });
 
@@ -265,7 +265,7 @@ export const useBookingStore = create<BookingStore>()(
           scheduledTime: draft.scheduledTime,
           preferredWindow: draft.preferredWindow,
           pricing: pricingWithPolicy,
-          technician: matchResult.technician,
+          technician: matchedTech,
           status: initialStatus,
           createdAt: now,
           quote: null,
@@ -278,13 +278,14 @@ export const useBookingStore = create<BookingStore>()(
           payments: { deposit: depositPayment },
           timelineEvents,
           dispatchStatus: "pending",
-          etaMinutes: matchResult.technician ? parseInt(matchResult.technician.eta) || undefined : undefined,
+          etaMinutes: matchedTech ? parseInt(matchedTech.eta) || undefined : undefined,
+          dispatchScore: dispatchResult.bestMatch?.totalScore,
         };
 
         set((s) => ({
           bookings: [booking, ...s.bookings],
           draft: { ...initialDraft },
-          lastMatchResult: matchResult,
+          lastMatchResult: dispatchResult,
         }));
         return jobId;
       },
