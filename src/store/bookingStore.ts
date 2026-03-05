@@ -354,9 +354,11 @@ export const useBookingStore = create<BookingStore>()(
           if (!booking) return s;
           const canMove = canTransition(booking.status, "quote_submitted");
           const newStatus = canMove ? "quote_submitted" as BookingStatus : booking.status;
+          const quoteWithStatus = { ...quote, quoteStatus: quote.quoteStatus || "quote_sent" as const };
           let updated = s.bookings.map((b) =>
-            b.jobId === jobId ? { ...b, quote, status: newStatus } : b
+            b.jobId === jobId ? { ...b, quote: quoteWithStatus, status: newStatus } : b
           );
+          track("quote_generated", { jobId, category: booking.categoryCode });
           updated = logEvent(updated, jobId, "Quote Submitted", "Detailed quote ready for your review", "technician");
           return { bookings: updated };
         }),
