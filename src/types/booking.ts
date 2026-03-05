@@ -384,6 +384,8 @@ export interface BookingState {
 
 export const CANCELLABLE_STATUSES: BookingStatus[] = [
   "requested",
+  "matching",
+  "awaiting_partner_confirmation",
   "scheduled",
   "assigned",
   "tech_en_route",
