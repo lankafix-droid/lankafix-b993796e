@@ -33,6 +33,7 @@ import DeviceTimelinePage from "./pages/care/DeviceTimelinePage";
 import SubscriptionAnalyticsPage from "./pages/ops/SubscriptionAnalyticsPage";
 import DiagnoseAnalyticsPage from "./pages/ops/DiagnoseAnalyticsPage";
 import DispatchAnalyticsPage from "./pages/ops/DispatchAnalyticsPage";
+import ControlTowerPage from "./pages/ops/ControlTowerPage";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
             <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
             <Route path="/ops/diagnose-analytics" element={<DiagnoseAnalyticsPage />} />
             <Route path="/ops/dispatch-analytics" element={<DispatchAnalyticsPage />} />
+            <Route path="/ops/control-tower" element={<ControlTowerPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
