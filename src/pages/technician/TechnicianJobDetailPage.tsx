@@ -8,7 +8,8 @@ import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS, SERVICE_MODE_LABELS,
   TECH_REJECTION_LABELS,
 } from "@/types/booking";
-import type { TechRejectionReason } from "@/types/booking";
+import type { TechRejectionReason, JobOutcome } from "@/types/booking";
+import { JOB_OUTCOME_LABELS } from "@/types/booking";
 import TimelineEventLog from "@/components/tracker/TimelineEventLog";
 import QuoteBuilder from "@/components/technician/QuoteBuilder";
 import { track } from "@/lib/analytics";
