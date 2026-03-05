@@ -202,6 +202,38 @@ export interface TechnicianInfo {
   activeJobsCount?: number;
 }
 
+// ============================================================
+// Job Outcome Types
+// ============================================================
+
+export type JobOutcome =
+  | "completed"
+  | "customer_rescheduled"
+  | "site_inaccessible"
+  | "requires_second_visit"
+  | "part_not_available"
+  | "customer_cancelled";
+
+export const JOB_OUTCOME_LABELS: Record<JobOutcome, string> = {
+  completed: "Completed",
+  customer_rescheduled: "Customer Rescheduled",
+  site_inaccessible: "Site Inaccessible",
+  requires_second_visit: "Requires Second Visit",
+  part_not_available: "Part Not Available",
+  customer_cancelled: "Customer Cancelled",
+};
+
+// ============================================================
+// Pre-Job Chat
+// ============================================================
+
+export interface ChatMessage {
+  id: string;
+  sender: "customer" | "technician";
+  message: string;
+  timestamp: string;
+}
+
 export interface Partner {
   id: string;
   name: string;
@@ -403,6 +435,9 @@ export interface BookingState {
   technicianInternalNote?: string;
   requiresPartnerQuoteReview?: boolean;
   rejectionReason?: TechRejectionReason;
+  jobOutcome?: JobOutcome;
+  chatMessages?: ChatMessage[];
+  dispatchScore?: number;
 }
 
 // ============================================================

@@ -14,6 +14,7 @@ import TrackJob from "./pages/TrackJob";
 import WaitlistPage from "./pages/WaitlistPage";
 import DiagnosePage from "./pages/DiagnosePage";
 import NotFound from "./pages/NotFound";
+import DispatchBoardPage from "./pages/ops/DispatchBoardPage";
 import PartnerDashboardPage from "./pages/partner/PartnerDashboardPage";
 import PartnerJobsPage from "./pages/partner/PartnerJobsPage";
 import PartnerJobDetailPage from "./pages/partner/PartnerJobDetailPage";
@@ -52,6 +53,8 @@ const App = () => (
           <Route path="/technician" element={<TechnicianDashboardPage />} />
           <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
           <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
+          {/* Ops routes */}
+          <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

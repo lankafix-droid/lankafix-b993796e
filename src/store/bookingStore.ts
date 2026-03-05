@@ -4,11 +4,12 @@ import type {
   BookingState, BookingStatus, CategoryCode, PricingBreakdown,
   QuoteData, ServiceMode, TechnicianInfo, PaymentIntent,
   TimelineEvent, TimelineActor, BookingPhoto, TimelineEventMeta,
+  JobOutcome, ChatMessage,
 } from "@/types/booking";
 import { BOOKING_STATUS_LABELS } from "@/types/booking";
 import { canTransition } from "@/brand/trustSystem";
-import { matchTechnician } from "@/engines/matchingEngine";
-import type { MatchResult } from "@/engines/matchingEngine";
+import { runDispatch } from "@/lib/dispatchEngine";
+import type { DispatchResult } from "@/lib/dispatchEngine";
 import { getZoneByLabel } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 
@@ -33,7 +34,7 @@ interface BookingDraft {
 interface BookingStore {
   draft: BookingDraft;
   bookings: BookingState[];
-  lastMatchResult: MatchResult | null;
+  lastMatchResult: DispatchResult | null;
   techAvailability: Record<string, import("@/types/booking").TechnicianAvailability>;
 
   setDraftCategory: (code: CategoryCode, name: string) => void;
@@ -86,6 +87,10 @@ interface BookingStore {
   opsAssignTechnician: (jobId: string, technicianId: string) => void;
   opsEscalateJob: (jobId: string, reason: string) => void;
   opsMoveToManualQueue: (jobId: string) => void;
+
+  // Chat & outcomes
+  addChatMessage: (jobId: string, msg: ChatMessage) => void;
+  setJobOutcome: (jobId: string, outcome: JobOutcome) => void;
 }
 
 const initialDraft: BookingDraft = {
@@ -190,9 +195,8 @@ export const useBookingStore = create<BookingStore>()(
           cancelPolicy: pricing.cancelPolicy || DEFAULT_CANCEL_POLICY,
         };
 
-        // Run matching engine
-        const zoneData = getZoneByLabel(draft.zone);
-        const matchResult = matchTechnician(draft.categoryCode, zoneData?.id || "", draft.isEmergency);
+        // Run dispatch engine
+        const dispatchResult = runDispatch({ categoryCode: draft.categoryCode, zone: draft.zone, isEmergency: draft.isEmergency });
 
         track("matching_started", { category: draft.categoryCode, zone: draft.zone, urgency: draft.urgency });
 
@@ -200,10 +204,11 @@ export const useBookingStore = create<BookingStore>()(
           ? { type: "deposit", amount: pricingWithPolicy.depositAmount, method: null, status: "pending", refundableAmount: pricingWithPolicy.depositAmount, refundStatus: "none", provider: "manual" }
           : undefined;
 
-        // Determine initial status based on matching
+        // Determine initial status based on dispatch
+        const matchedTech = dispatchResult.bestMatch?.tech || null;
         let initialStatus: BookingStatus = "matching";
-        if (matchResult.technician) {
-          if (matchResult.requiresPartnerConfirmation) {
+        if (matchedTech) {
+          if (dispatchResult.requiresPartnerConfirmation) {
             initialStatus = "awaiting_partner_confirmation";
           } else {
             initialStatus = "assigned";
@@ -216,23 +221,23 @@ export const useBookingStore = create<BookingStore>()(
           { timestamp: now, title: "Matching Started", description: "Looking for the best technician in your area", actor: "system" },
         ];
 
-        if (matchResult.technician) {
+        if (matchedTech) {
           track("technician_matched", {
             category: draft.categoryCode,
             zone: draft.zone,
-            confidenceScore: matchResult.confidenceScore,
-            distanceKm: matchResult.distanceKm,
-            extendedCoverage: matchResult.extendedCoverage,
+            confidenceScore: dispatchResult.bestMatch?.totalScore,
+            distanceKm: dispatchResult.bestMatch?.distanceKm,
+            extendedCoverage: dispatchResult.extendedCoverage,
           });
 
-          if (matchResult.extendedCoverage) {
+          if (dispatchResult.extendedCoverage) {
             track("extended_coverage_applied", { category: draft.categoryCode, zone: draft.zone });
           }
 
           timelineEvents.push({
             timestamp: now,
-            title: matchResult.requiresPartnerConfirmation ? "Awaiting Partner Confirmation" : "Technician Matched",
-            description: matchResult.message,
+            title: dispatchResult.requiresPartnerConfirmation ? "Awaiting Partner Confirmation" : "Technician Matched",
+            description: `${matchedTech.name} (Score: ${dispatchResult.bestMatch?.totalScore}/100)`,
             actor: "system",
           });
 
@@ -264,7 +269,7 @@ export const useBookingStore = create<BookingStore>()(
           scheduledTime: draft.scheduledTime,
           preferredWindow: draft.preferredWindow,
           pricing: pricingWithPolicy,
-          technician: matchResult.technician,
+          technician: matchedTech,
           status: initialStatus,
           createdAt: now,
           quote: null,
@@ -277,13 +282,14 @@ export const useBookingStore = create<BookingStore>()(
           payments: { deposit: depositPayment },
           timelineEvents,
           dispatchStatus: "pending",
-          etaMinutes: matchResult.technician ? parseInt(matchResult.technician.eta) || undefined : undefined,
+          etaMinutes: matchedTech ? parseInt(matchedTech.eta) || undefined : undefined,
+          dispatchScore: dispatchResult.bestMatch?.totalScore,
         };
 
         set((s) => ({
           bookings: [booking, ...s.bookings],
           draft: { ...initialDraft },
-          lastMatchResult: matchResult,
+          lastMatchResult: dispatchResult,
         }));
         return jobId;
       },
@@ -665,6 +671,25 @@ export const useBookingStore = create<BookingStore>()(
             b.jobId === jobId ? { ...b, status: "matching" as BookingStatus } : b
           );
           updated = logEvent(updated, jobId, "Ops: Moved to Manual Queue", "Job requires manual technician assignment", "ops");
+          return { bookings: updated };
+        }),
+
+      // ========== CHAT & OUTCOMES ==========
+
+      addChatMessage: (jobId, msg) =>
+        set((s) => ({
+          bookings: s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, chatMessages: [...(b.chatMessages || []), msg] } : b
+          ),
+        })),
+
+      setJobOutcome: (jobId, outcome) =>
+        set((s) => {
+          track("job_outcome_set", { jobId, outcome });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, jobOutcome: outcome } : b
+          );
+          updated = logEvent(updated, jobId, `Job Outcome: ${outcome.replace(/_/g, " ")}`, `Outcome recorded`, "technician");
           return { bookings: updated };
         }),
     }),
