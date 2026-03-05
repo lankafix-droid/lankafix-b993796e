@@ -99,7 +99,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 4.0 },
     depositRequired: true,
     depositAmount: 3000,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
   },
   COPIER: {
     visitFee: 1000,
