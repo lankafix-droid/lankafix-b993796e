@@ -14,6 +14,14 @@ import TrackJob from "./pages/TrackJob";
 import WaitlistPage from "./pages/WaitlistPage";
 import DiagnosePage from "./pages/DiagnosePage";
 import NotFound from "./pages/NotFound";
+import PartnerDashboardPage from "./pages/partner/PartnerDashboardPage";
+import PartnerJobsPage from "./pages/partner/PartnerJobsPage";
+import PartnerJobDetailPage from "./pages/partner/PartnerJobDetailPage";
+import TechniciansPage from "./pages/partner/TechniciansPage";
+import PartnerProfilePage from "./pages/partner/PartnerProfilePage";
+import TechnicianDashboardPage from "./pages/technician/TechnicianDashboardPage";
+import TechnicianJobsPage from "./pages/technician/TechnicianJobsPage";
+import TechnicianJobDetailPage from "./pages/technician/TechnicianJobDetailPage";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +42,16 @@ const App = () => (
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/diagnose" element={<DiagnosePage />} />
+          {/* Partner routes */}
+          <Route path="/partner" element={<PartnerDashboardPage />} />
+          <Route path="/partner/jobs" element={<PartnerJobsPage />} />
+          <Route path="/partner/job/:jobId" element={<PartnerJobDetailPage />} />
+          <Route path="/partner/technicians" element={<TechniciansPage />} />
+          <Route path="/partner/profile" element={<PartnerProfilePage />} />
+          {/* Technician routes */}
+          <Route path="/technician" element={<TechnicianDashboardPage />} />
+          <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
+          <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
