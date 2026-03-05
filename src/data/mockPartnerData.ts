@@ -26,7 +26,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["col_01", "col_02", "col_03", "col_10", "col_11", "nugegoda"],
     categories: ["MOBILE", "CONSUMER_ELEC", "COPIER", "PRINT_SUPPLIES"] as CategoryCode[],
     serviceCodes: ["MOBILE_SCREEN", "MOBILE_BATTERY", "MOBILE_GENERAL", "COPIER_REPAIR", "COPIER_MAINTENANCE"],
-    responseSlaByCategory: { MOBILE: 60, COPIER: 120 },
+    responseSlaByCategory: { MOBILE: 60, COPIER: 120 }, tier: "pro" as ProviderTier,
   },
   {
     id: "P005", name: "SmartFix Pvt Ltd", companyName: "SmartFix (Pvt) Ltd",
