@@ -94,7 +94,7 @@ export default function PartnerDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-3 gap-3 text-center mb-3">
               <div>
                 <p className="text-xl font-bold text-success">{availableTechs.length}</p>
                 <p className="text-xs text-muted-foreground">Available</p>
@@ -107,6 +107,21 @@ export default function PartnerDashboardPage() {
                 <p className="text-xl font-bold text-muted-foreground">{offlineTechs.length}</p>
                 <p className="text-xs text-muted-foreground">Offline</p>
               </div>
+            </div>
+            {/* Dispatch-ready metrics */}
+            <div className="space-y-1 border-t pt-2">
+              {techs.slice(0, 3).map((t) => {
+                const perf = getTechPerformanceMetrics(t.technicianId || "");
+                return (
+                  <div key={t.technicianId} className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{t.name}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-success">{perf?.acceptanceRate ?? 0}% accept</span>
+                      <span className="text-muted-foreground">Profile: {perf?.profileStrength ?? 0}%</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
