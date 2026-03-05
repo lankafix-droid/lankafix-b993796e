@@ -87,6 +87,10 @@ interface BookingStore {
   opsAssignTechnician: (jobId: string, technicianId: string) => void;
   opsEscalateJob: (jobId: string, reason: string) => void;
   opsMoveToManualQueue: (jobId: string) => void;
+
+  // Chat & outcomes
+  addChatMessage: (jobId: string, msg: ChatMessage) => void;
+  setJobOutcome: (jobId: string, outcome: JobOutcome) => void;
 }
 
 const initialDraft: BookingDraft = {
