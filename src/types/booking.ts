@@ -298,7 +298,7 @@ export interface SosState {
 // Timeline
 // ============================================================
 
-export type TimelineActor = "system" | "technician" | "customer";
+export type TimelineActor = "system" | "technician" | "customer" | "partner" | "ops";
 
 export interface TimelineEventMeta {
   optionId?: string;
