@@ -34,10 +34,13 @@ export default function TechnicianJobDetailPage() {
   const attachTechnicianPhoto = useBookingStore((s) => s.attachTechnicianPhoto);
   const setInternalNote = useBookingStore((s) => s.setInternalNote);
   const updateBookingStatus = useBookingStore((s) => s.updateBookingStatus);
+  const addChatMessage = useBookingStore((s) => s.addChatMessage);
+  const setJobOutcome = useBookingStore((s) => s.setJobOutcome);
 
   const [showRejectReasons, setShowRejectReasons] = useState(false);
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
   const [techNote, setTechNote] = useState("");
+  const [chatMsg, setChatMsg] = useState("");
 
   useEffect(() => { if (jobId) track("technician_job_detail_view", { jobId }); }, [jobId]);
 
