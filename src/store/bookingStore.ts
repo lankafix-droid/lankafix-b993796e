@@ -673,6 +673,25 @@ export const useBookingStore = create<BookingStore>()(
           updated = logEvent(updated, jobId, "Ops: Moved to Manual Queue", "Job requires manual technician assignment", "ops");
           return { bookings: updated };
         }),
+
+      // ========== CHAT & OUTCOMES ==========
+
+      addChatMessage: (jobId, msg) =>
+        set((s) => ({
+          bookings: s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, chatMessages: [...(b.chatMessages || []), msg] } : b
+          ),
+        })),
+
+      setJobOutcome: (jobId, outcome) =>
+        set((s) => {
+          track("job_outcome_set", { jobId, outcome });
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, jobOutcome: outcome } : b
+          );
+          updated = logEvent(updated, jobId, `Job Outcome: ${outcome.replace(/_/g, " ")}`, `Outcome recorded`, "technician");
+          return { bookings: updated };
+        }),
     }),
     { name: "lankafix-bookings" }
   )
