@@ -29,11 +29,16 @@ import EvidenceCard from "@/components/tracker/EvidenceCard";
 import SOSPanel from "@/components/tracker/SOSPanel";
 import MatchingCard from "@/components/tracker/MatchingCard";
 import AssignmentCard from "@/components/tracker/AssignmentCard";
+import TechnicianMap from "@/components/tracking/TechnicianMap";
+import TechnicianLocationCard from "@/components/tracking/TechnicianLocationCard";
 import { toast } from "sonner";
 import { statusToMascotState, TRUST_ICONS, getRefundEligibility, type MascotMessageKey } from "@/brand/trustSystem";
 import { generateDemoQuote } from "@/engines/quoteEngine";
 import { getZoneIntelligence } from "@/engines/matchingEngine";
 import { track } from "@/lib/analytics";
+import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
+import type { TrackingSimulation } from "@/lib/trackingEngine";
+import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 
 const CANCEL_REASONS = [
   "Found another provider",
