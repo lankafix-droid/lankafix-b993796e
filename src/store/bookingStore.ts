@@ -448,6 +448,18 @@ export const useBookingStore = create<BookingStore>()(
               `Auto-transition after OTP ${type} verification`, "system");
           }
           if (newStatus === "completed") {
+            track("warranty_activated", { jobId });
+            const warrantyRecord: WarrantyRecord = {
+              providerId: booking.technician?.partnerId || "",
+              jobId: booking.jobId,
+              category: booking.categoryCode,
+              serviceType: booking.serviceCode,
+              startDate: now,
+              expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+            };
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, warranty: warrantyRecord } : b
+            );
             updated = logEvent(updated, jobId, "Warranty Activated", "Labor warranty now active from this date", "system");
           }
           return { bookings: updated };
