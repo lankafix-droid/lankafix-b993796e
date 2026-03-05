@@ -9,7 +9,7 @@ import {
   XCircle, FileText, AlertTriangle, Phone, MessageCircle,
   CreditCard, Play, Flag,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS,
   BOOKING_TIMELINE_STEPS, QUOTE_TIMELINE_STEPS,
