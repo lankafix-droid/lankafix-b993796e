@@ -45,7 +45,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 2.0 },
     depositRequired: false,
     depositAmount: 0,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
   },
   CCTV: {
     visitFee: 0,
@@ -54,7 +54,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 3.0 },
     depositRequired: true,
     depositAmount: 3000,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
   },
   MOBILE: {
     visitFee: 0,
@@ -63,7 +63,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 2.5 },
     depositRequired: false,
     depositAmount: 0,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
   },
   IT: {
     visitFee: 1000,
@@ -72,7 +72,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 3.0 },
     depositRequired: false,
     depositAmount: 0,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
   },
   SOLAR: {
     visitFee: 0,
@@ -81,7 +81,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 5.0 },
     depositRequired: true,
     depositAmount: 5000,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
   },
   CONSUMER_ELEC: {
     visitFee: 500,
@@ -90,7 +90,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 2.0 },
     depositRequired: false,
     depositAmount: 0,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
   },
   SMART_HOME_OFFICE: {
     visitFee: 0,
@@ -99,7 +99,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 4.0 },
     depositRequired: true,
     depositAmount: 3000,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
   },
   COPIER: {
     visitFee: 1000,
@@ -108,7 +108,7 @@ export const categoryPricingRules: Record<CategoryCode, CategoryPricingRule> = {
     estimateMultiplier: { min: 1.0, max: 2.5 },
     depositRequired: false,
     depositAmount: 0,
-    cancelPolicy: { freeCancelMinutes: 5, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
+    cancelPolicy: { freeCancelMinutes: 10, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 0 },
   },
   PRINT_SUPPLIES: {
     visitFee: 0,

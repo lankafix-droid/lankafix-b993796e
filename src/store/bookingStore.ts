@@ -49,7 +49,9 @@ interface BookingStore {
   verifyOtp: (jobId: string, type: "start" | "completion") => void;
   setPayment: (jobId: string, key: "deposit" | "completion", payment: PaymentIntent) => void;
   markArrived: (jobId: string) => void;
+  markDispatched: (jobId: string) => void;
   addTimelineEvent: (jobId: string, event: TimelineEvent) => void;
+  addBookingPhoto: (jobId: string, photo: BookingPhoto) => void;
   getBooking: (jobId: string) => BookingState | undefined;
   getRecentBookings: () => BookingState[];
 }
@@ -124,7 +126,7 @@ function createInitialTimeline(quoteRequired: boolean, matchMsg: string): Timeli
 }
 
 const DEFAULT_CANCEL_POLICY = {
-  freeCancelMinutes: 5,
+  freeCancelMinutes: 10,
   refundBeforeDispatchPercent: 100,
   refundAfterDispatchPercent: 0,
 };
@@ -429,10 +431,32 @@ export const useBookingStore = create<BookingStore>()(
           return { bookings: updated };
         }),
 
+      // Mark dispatched
+      markDispatched: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          const now = new Date().toISOString();
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, dispatchStatus: "dispatched" as const, dispatchedAt: now } : b
+          );
+          updated = logEvent(updated, jobId, "Technician Dispatched", "Technician is on the way to your location", "system");
+          return { bookings: updated };
+        }),
+
       addTimelineEvent: (jobId, event) =>
         set((s) => ({
           bookings: appendTimeline(s.bookings, jobId, event),
         })),
+
+      addBookingPhoto: (jobId, photo) =>
+        set((s) => {
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, photos: [...b.photos, photo] } : b
+          );
+          updated = logEvent(updated, jobId, `${photo.type.charAt(0).toUpperCase() + photo.type.slice(1)} Photo Uploaded`, "Evidence photo added", "customer");
+          return { bookings: updated };
+        }),
 
       getBooking: (jobId) => get().bookings.find((b) => b.jobId === jobId),
 

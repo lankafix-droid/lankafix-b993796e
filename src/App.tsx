@@ -8,8 +8,8 @@ import CategoriesPage from "./pages/CategoriesPage";
 import CategoryPage from "./pages/CategoryPage";
 import PrecheckPage from "./pages/PrecheckPage";
 import PricingBuilder from "./pages/PricingBuilder";
-import QuoteApproval from "./pages/QuoteApproval";
-import BookingTracker from "./pages/BookingTracker";
+import QuotePage from "./pages/QuotePage";
+import TrackerPage from "./pages/TrackerPage";
 import TrackJob from "./pages/TrackJob";
 import WaitlistPage from "./pages/WaitlistPage";
 import DiagnosePage from "./pages/DiagnosePage";
@@ -29,8 +29,8 @@ const App = () => (
           <Route path="/category/:code" element={<CategoryPage />} />
           <Route path="/precheck/:catCode/:svcCode" element={<PrecheckPage />} />
           <Route path="/pricing/:catCode/:svcCode" element={<PricingBuilder />} />
-          <Route path="/quote/:jobId" element={<QuoteApproval />} />
-          <Route path="/tracker/:jobId" element={<BookingTracker />} />
+          <Route path="/quote/:jobId" element={<QuotePage />} />
+          <Route path="/tracker/:jobId" element={<TrackerPage />} />
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/diagnose" element={<DiagnosePage />} />
