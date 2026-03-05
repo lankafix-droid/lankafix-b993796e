@@ -163,9 +163,9 @@ export interface SeasonalPattern {
 
 export const SEASONAL_PATTERNS: SeasonalPattern[] = [
   { season: "Hot Season", months: "Mar–May", affectedCategories: ["AC"], demandMultiplier: 1.6, description: "High AC servicing demand during peak heat" },
-  { season: "School Season", months: "Jan–Feb, Sep", affectedCategories: ["IT", "COPIER", "PRINT"], demandMultiplier: 1.3, description: "Increased printer and IT demand for school/office prep" },
-  { season: "Rainy Season", months: "May–Jul, Oct–Nov", affectedCategories: ["SOLAR", "ROUTER"], demandMultiplier: 1.4, description: "Electrical and connectivity issues from rain and lightning" },
-  { season: "Festive Season", months: "Dec, Apr", affectedCategories: ["ELECTRONICS", "SMART_HOME"], demandMultiplier: 1.3, description: "Consumer electronics surge during holidays" },
+  { season: "School Season", months: "Jan–Feb, Sep", affectedCategories: ["IT", "COPIER", "PRINT_SUPPLIES"], demandMultiplier: 1.3, description: "Increased printer and IT demand for school/office prep" },
+  { season: "Rainy Season", months: "May–Jul, Oct–Nov", affectedCategories: ["SOLAR"], demandMultiplier: 1.4, description: "Electrical and connectivity issues from rain and lightning" },
+  { season: "Festive Season", months: "Dec, Apr", affectedCategories: ["CONSUMER_ELEC", "SMART_HOME_OFFICE"], demandMultiplier: 1.3, description: "Consumer electronics surge during holidays" },
 ];
 
 // ─── District Expansion ─────────────────────────────────────────
