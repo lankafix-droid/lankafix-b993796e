@@ -741,6 +741,17 @@ export const useBookingStore = create<BookingStore>()(
           );
           return { bookings: updated };
         }),
+
+      // Stage 8: Repeat service detection (within 6 months)
+      getRepeatBooking: (categoryCode) => {
+        const sixMonthsAgo = Date.now() - 180 * 24 * 60 * 60 * 1000;
+        return get().bookings.find(
+          (b) =>
+            b.categoryCode === categoryCode &&
+            (b.status === "completed" || b.status === "rated") &&
+            new Date(b.createdAt).getTime() > sixMonthsAgo
+        );
+      },
     }),
     { name: "lankafix-bookings" }
   )
