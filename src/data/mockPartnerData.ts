@@ -8,7 +8,7 @@ export const MOCK_PARTNERS: Partner[] = [
     coverageZones: ["col_03", "col_04", "col_05", "col_06", "col_07", "col_08", "nugegoda", "maharagama"],
     categories: ["AC", "CONSUMER_ELEC"] as CategoryCode[],
     serviceCodes: ["AC_GAS_TOPUP", "AC_FULL_SERVICE", "AC_REPAIR", "AC_INSTALL", "CE_TV_REPAIR", "CE_APPLIANCE_REPAIR"],
-    responseSlaByCategory: { AC: 60, CONSUMER_ELEC: 90 },
+    responseSlaByCategory: { AC: 60, CONSUMER_ELEC: 90 }, tier: "elite" as ProviderTier,
   },
   {
     id: "P002", name: "Lanka Service Pro", companyName: "Lanka Service Pro (Pvt) Ltd",
