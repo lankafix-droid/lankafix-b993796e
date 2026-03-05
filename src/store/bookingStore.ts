@@ -12,6 +12,7 @@ import { runDispatch } from "@/lib/dispatchEngine";
 import type { DispatchResult } from "@/lib/dispatchEngine";
 import { getZoneByLabel } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
+import type { TrackingData } from "@/lib/trackingEngine";
 
 interface BookingDraft {
   categoryCode: CategoryCode | null;
@@ -91,6 +92,11 @@ interface BookingStore {
   // Chat & outcomes
   addChatMessage: (jobId: string, msg: ChatMessage) => void;
   setJobOutcome: (jobId: string, outcome: JobOutcome) => void;
+
+  // Tracking
+  startTravel: (jobId: string, techLat: number, techLng: number, custLat: number, custLng: number) => void;
+  updateTracking: (jobId: string, tracking: TrackingData) => void;
+  stopJobTracking: (jobId: string) => void;
 }
 
 const initialDraft: BookingDraft = {
@@ -690,6 +696,46 @@ export const useBookingStore = create<BookingStore>()(
             b.jobId === jobId ? { ...b, jobOutcome: outcome } : b
           );
           updated = logEvent(updated, jobId, `Job Outcome: ${outcome.replace(/_/g, " ")}`, `Outcome recorded`, "technician");
+          return { bookings: updated };
+        }),
+
+      // ========== TRACKING ==========
+
+      startTravel: (jobId, techLat, techLng, custLat, custLng) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking) return s;
+          track("technician_travel_started", { jobId, category: booking.categoryCode });
+          const { createTrackingData } = require("@/lib/trackingEngine");
+          const trackingData = createTrackingData(techLat, techLng, custLat, custLng);
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, trackingData, dispatchStatus: "dispatched" as const, dispatchedAt: new Date().toISOString() } : b
+          );
+          if (canTransition(booking.status, "tech_en_route")) {
+            updated = updated.map((b) =>
+              b.jobId === jobId ? { ...b, status: "tech_en_route" as BookingStatus } : b
+            );
+          }
+          updated = logEvent(updated, jobId, "Travel Started", "Technician is heading to your location", "technician");
+          return { bookings: updated };
+        }),
+
+      updateTracking: (jobId, tracking) =>
+        set((s) => ({
+          bookings: s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, trackingData: tracking, etaMinutes: tracking.etaMinutes } : b
+          ),
+        })),
+
+      stopJobTracking: (jobId) =>
+        set((s) => {
+          const booking = s.bookings.find((b) => b.jobId === jobId);
+          if (!booking?.trackingData) return s;
+          const { stopTracking } = require("@/lib/trackingEngine");
+          const stoppedTracking = stopTracking(booking.trackingData);
+          let updated = s.bookings.map((b) =>
+            b.jobId === jobId ? { ...b, trackingData: stoppedTracking } : b
+          );
           return { bookings: updated };
         }),
     }),

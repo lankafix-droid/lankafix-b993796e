@@ -36,6 +36,7 @@ export default function TechnicianJobDetailPage() {
   const updateBookingStatus = useBookingStore((s) => s.updateBookingStatus);
   const addChatMessage = useBookingStore((s) => s.addChatMessage);
   const setJobOutcome = useBookingStore((s) => s.setJobOutcome);
+  const startTravel = useBookingStore((s) => s.startTravel);
 
   const [showRejectReasons, setShowRejectReasons] = useState(false);
   const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
@@ -71,6 +72,7 @@ export default function TechnicianJobDetailPage() {
 
   const canAccept = ["matching", "awaiting_partner_confirmation", "assigned"].includes(status);
   const canDispatch = status === "assigned";
+  const canStartTravel = status === "assigned" && !booking.trackingData?.isTracking;
   const canArrive = status === "tech_en_route";
   const canInspect = status === "arrived";
   const canSubmitQuote = ["inspection_started", "in_progress"].includes(status) && booking.pricing.quoteRequired;
@@ -242,7 +244,18 @@ export default function TechnicianJobDetailPage() {
               </Button>
             </>
           )}
-          {canDispatch && (
+          {canStartTravel && (
+            <Button className="flex-1 bg-primary" size="sm" onClick={() => {
+              // Simulate: tech zone geo → customer zone geo
+              const techZoneGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
+              const custZoneGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
+              startTravel(booking.jobId, techZoneGeo.lat, techZoneGeo.lng, custZoneGeo.lat, custZoneGeo.lng);
+              track("technician_travel_started", { jobId: booking.jobId });
+            }}>
+              <Navigation className="w-4 h-4 mr-1" /> Start Travel
+            </Button>
+          )}
+          {canDispatch && !canStartTravel && (
             <Button className="flex-1" size="sm" onClick={() => { markDispatched(booking.jobId); track("technician_dispatch", { jobId: booking.jobId }); }}>
               <Navigation className="w-4 h-4 mr-1" /> Mark Dispatched
             </Button>

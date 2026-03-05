@@ -9,7 +9,7 @@ import {
   XCircle, FileText, AlertTriangle, Phone, MessageCircle,
   CreditCard, Play, Flag,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS,
   BOOKING_TIMELINE_STEPS, QUOTE_TIMELINE_STEPS,
@@ -29,11 +29,16 @@ import EvidenceCard from "@/components/tracker/EvidenceCard";
 import SOSPanel from "@/components/tracker/SOSPanel";
 import MatchingCard from "@/components/tracker/MatchingCard";
 import AssignmentCard from "@/components/tracker/AssignmentCard";
+import TechnicianMap from "@/components/tracking/TechnicianMap";
+import TechnicianLocationCard from "@/components/tracking/TechnicianLocationCard";
 import { toast } from "sonner";
 import { statusToMascotState, TRUST_ICONS, getRefundEligibility, type MascotMessageKey } from "@/brand/trustSystem";
 import { generateDemoQuote } from "@/engines/quoteEngine";
 import { getZoneIntelligence } from "@/engines/matchingEngine";
 import { track } from "@/lib/analytics";
+import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
+import type { TrackingSimulation } from "@/lib/trackingEngine";
+import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -73,7 +78,7 @@ const TrackerPage = () => {
   const {
     getBooking, cancelBooking, setBookingRating, verifyOtp,
     setPayment, markDispatched, markArrived, updateBookingStatus,
-    setBookingQuote, lastMatchResult,
+    setBookingQuote, lastMatchResult, updateTracking, startTravel,
   } = useBookingStore();
 
   const booking = getBooking(jobId || "");
@@ -83,6 +88,50 @@ const TrackerPage = () => {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [showOtp, setShowOtp] = useState<"start" | "completion" | null>(null);
   const [showSos, setShowSos] = useState(false);
+  const [simulation, setSimulation] = useState<TrackingSimulation | null>(null);
+  const simRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Auto-start tracking simulation when tech is en route and tracking data exists
+  useEffect(() => {
+    if (!booking) return;
+    const isEnRoute = booking.status === "tech_en_route";
+    const hasTracking = booking.trackingData?.isTracking;
+
+    if (isEnRoute && hasTracking && !simulation) {
+      // Create simulation from tracking data
+      const td = booking.trackingData!;
+      if (td.technicianLocation && td.customerLocation) {
+        const sim = createSimulation(
+          booking.jobId,
+          td.technicianLocation.lat, td.technicianLocation.lng,
+          td.customerLocation.lat, td.customerLocation.lng,
+          15
+        );
+        setSimulation(sim);
+      }
+    }
+  }, [booking?.status, booking?.trackingData?.isTracking]);
+
+  // Run simulation interval
+  useEffect(() => {
+    if (!simulation?.isRunning || !booking) return;
+
+    simRef.current = setInterval(() => {
+      setSimulation((prev) => {
+        if (!prev || !prev.isRunning) return prev;
+        const next = advanceSimulation(prev);
+        updateTracking(booking.jobId, next.tracking);
+
+        if (!next.isRunning && next.tracking.arrivedAt) {
+          markArrived(booking.jobId);
+          toast.success("Technician has arrived! 📍");
+        }
+        return next;
+      });
+    }, 2000); // 2s intervals for demo speed
+
+    return () => { if (simRef.current) clearInterval(simRef.current); };
+  }, [simulation?.isRunning]);
 
   if (!booking) {
     return (
@@ -248,6 +297,30 @@ const TrackerPage = () => {
             </div>
           )}
 
+          {/* Live Tracking Map */}
+          {booking.trackingData?.isTracking && booking.technician && (
+            <div className="mb-4 space-y-3">
+              <TechnicianMap
+                tracking={booking.trackingData}
+                technicianName={booking.technician.name}
+              />
+              <TechnicianLocationCard
+                technician={booking.technician}
+                tracking={booking.trackingData}
+              />
+            </div>
+          )}
+
+          {/* Arrived notification */}
+          {booking.trackingData?.arrivedAt && !booking.trackingData?.isTracking && booking.technician && (
+            <div className="mb-4">
+              <TechnicianLocationCard
+                technician={booking.technician}
+                tracking={booking.trackingData}
+              />
+            </div>
+          )}
+
           {/* Booking Info Card */}
           <div className="bg-card rounded-xl border p-5 mb-4 animate-fade-in">
             <div className="flex items-center justify-between mb-3">
@@ -339,8 +412,13 @@ const TrackerPage = () => {
 
             {/* Demo dispatch/arrival/inspection/repair */}
             {booking.status === "assigned" && booking.dispatchStatus === "pending" && (
-              <Button variant="outline" size="sm" className="w-full" onClick={() => { markDispatched(booking.jobId); updateBookingStatus(booking.jobId, "tech_en_route"); }}>
-                <Play className="w-4 h-4 mr-2" /> Dispatch Technician (Demo)
+              <Button variant="outline" size="sm" className="w-full" onClick={() => {
+                const techGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
+                const custGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
+                startTravel(booking.jobId, techGeo.lat, techGeo.lng, custGeo.lat, custGeo.lng);
+                toast.success("Technician is on the way! 🚗");
+              }}>
+                <Play className="w-4 h-4 mr-2" /> Start Live Tracking (Demo)
               </Button>
             )}
             {booking.status === "tech_en_route" && (
