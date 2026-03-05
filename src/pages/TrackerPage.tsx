@@ -297,6 +297,30 @@ const TrackerPage = () => {
             </div>
           )}
 
+          {/* Live Tracking Map */}
+          {booking.trackingData?.isTracking && booking.technician && (
+            <div className="mb-4 space-y-3">
+              <TechnicianMap
+                tracking={booking.trackingData}
+                technicianName={booking.technician.name}
+              />
+              <TechnicianLocationCard
+                technician={booking.technician}
+                tracking={booking.trackingData}
+              />
+            </div>
+          )}
+
+          {/* Arrived notification */}
+          {booking.trackingData?.arrivedAt && !booking.trackingData?.isTracking && booking.technician && (
+            <div className="mb-4">
+              <TechnicianLocationCard
+                technician={booking.technician}
+                tracking={booking.trackingData}
+              />
+            </div>
+          )}
+
           {/* Booking Info Card */}
           <div className="bg-card rounded-xl border p-5 mb-4 animate-fade-in">
             <div className="flex items-center justify-between mb-3">
