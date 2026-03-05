@@ -179,6 +179,10 @@ export function calculateTechnicianScore(
 
   let totalScore = Object.values(breakdown).reduce((sum, v) => sum + v, 0);
 
+  // Tier priority bonus
+  const techTier: ProviderTier = (tech as any).tier || "verified";
+  totalScore += PROVIDER_TIER_PRIORITY[techTier] || 0;
+
   // Emergency boost for nearby available techs
   if (isEmergency && tech.availabilityStatus === "available" && distanceKm < 5) {
     totalScore += 15;

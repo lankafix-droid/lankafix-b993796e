@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
-import { Star, ShieldCheck, MapPin, Clock, Briefcase, CheckCircle2 } from "lucide-react";
-import type { TechnicianInfo, ServiceMode } from "@/types/booking";
-import { SERVICE_MODE_LABELS } from "@/types/booking";
+import { Star, ShieldCheck, MapPin, Clock, Briefcase, CheckCircle2, Lock, Award } from "lucide-react";
+import type { TechnicianInfo, ServiceMode, ProviderTier } from "@/types/booking";
+import { SERVICE_MODE_LABELS, maskTechnicianName, PROVIDER_TIER_LABELS, PROVIDER_TIER_COLORS } from "@/types/booking";
 
 interface Props {
   technician: TechnicianInfo;
@@ -10,6 +10,8 @@ interface Props {
   extendedCoverage?: boolean;
   confidenceScore?: number;
   serviceMode?: ServiceMode;
+  /** Whether booking is confirmed (reveals masked identity) */
+  bookingConfirmed?: boolean;
 }
 
 function getYearsExperience(verifiedSince: string): number {
@@ -17,30 +19,41 @@ function getYearsExperience(verifiedSince: string): number {
   return Math.max(1, Math.round((Date.now() - start.getTime()) / (365.25 * 24 * 60 * 60 * 1000)));
 }
 
-const AssignmentCard = ({ technician, distanceKm, etaRange, extendedCoverage, confidenceScore, serviceMode }: Props) => {
+const AssignmentCard = ({ technician, distanceKm, etaRange, extendedCoverage, confidenceScore, serviceMode, bookingConfirmed = true }: Props) => {
   const years = getYearsExperience(technician.verifiedSince);
+  const displayName = bookingConfirmed ? maskTechnicianName(technician.name) : "Verified LankaFix Technician";
+  const tier = technician.tier || "verified";
 
   return (
     <div className="bg-card rounded-2xl border p-5 space-y-4 animate-fade-in">
       {/* Technician header */}
       <div className="flex items-start gap-3">
         <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0">
-          {technician.name.charAt(0)}
+          {bookingConfirmed ? technician.name.charAt(0) : <ShieldCheck className="w-6 h-6" />}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-bold text-foreground">{technician.name}</h3>
-          <p className="text-xs text-muted-foreground">{technician.partnerName}</p>
+          <h3 className="text-sm font-bold text-foreground">{displayName}</h3>
+          {bookingConfirmed ? (
+            <p className="text-xs text-muted-foreground">LankaFix Partner</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Identity revealed after booking</p>
+          )}
           <div className="flex items-center gap-1 mt-1">
             <Star className="w-3.5 h-3.5 text-warning fill-warning" />
             <span className="text-xs font-semibold text-foreground">{technician.rating}</span>
             <span className="text-xs text-muted-foreground">• {technician.jobsCompleted} jobs</span>
           </div>
         </div>
-        {confidenceScore !== undefined && confidenceScore >= 70 && (
-          <Badge className="bg-success/10 text-success border-success/20 text-[10px] shrink-0">
-            Best Match
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {confidenceScore !== undefined && confidenceScore >= 70 && (
+            <Badge className="bg-success/10 text-success border-success/20 text-[10px]">
+              Best Match
+            </Badge>
+          )}
+          <Badge className={`text-[10px] ${PROVIDER_TIER_COLORS[tier]}`}>
+            <Award className="w-3 h-3 mr-0.5" /> {PROVIDER_TIER_LABELS[tier]}
           </Badge>
-        )}
+        </div>
       </div>
 
       {/* Stats grid */}
@@ -90,7 +103,7 @@ const AssignmentCard = ({ technician, distanceKm, etaRange, extendedCoverage, co
           <CheckCircle2 className="w-3 h-3" /> Background Checked
         </Badge>
         <Badge variant="outline" className="text-[10px] gap-1">
-          LankaFix Partner
+          <Lock className="w-3 h-3" /> Communication via LankaFix
         </Badge>
       </div>
 
@@ -103,7 +116,7 @@ const AssignmentCard = ({ technician, distanceKm, etaRange, extendedCoverage, co
       {/* Trust microcopy */}
       <div className="flex items-center gap-2 text-xs text-success pt-1 border-t">
         <CheckCircle2 className="w-3.5 h-3.5" />
-        <span>No work starts without your approval</span>
+        <span>No work starts without your OTP approval</span>
       </div>
     </div>
   );
