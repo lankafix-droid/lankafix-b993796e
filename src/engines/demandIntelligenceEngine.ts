@@ -240,7 +240,7 @@ export interface CategoryTrend {
 
 // ─── Mock Data Generators ───────────────────────────────────────
 
-const CATEGORY_CODES: CategoryCode[] = ["AC", "CCTV", "IT", "MOBILE", "SOLAR", "COPIER", "SMART_HOME", "ELECTRONICS", "ROUTER", "PRINT"];
+const CATEGORY_CODES: CategoryCode[] = ["AC", "CCTV", "IT", "MOBILE", "SOLAR", "COPIER", "SMART_HOME_OFFICE", "CONSUMER_ELEC", "PRINT_SUPPLIES"];
 
 const MOCK_ZONES = [
   { id: "col_05", label: "Colombo 5 - Havelock Town" },
