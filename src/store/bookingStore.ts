@@ -12,6 +12,7 @@ import { runDispatch } from "@/lib/dispatchEngine";
 import type { DispatchResult } from "@/lib/dispatchEngine";
 import { getZoneByLabel } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
+import type { TrackingData } from "@/lib/trackingEngine";
 
 interface BookingDraft {
   categoryCode: CategoryCode | null;
