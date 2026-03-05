@@ -15,14 +15,17 @@ import WaitlistPage from "./pages/WaitlistPage";
 import DiagnosePage from "./pages/DiagnosePage";
 import NotFound from "./pages/NotFound";
 import DispatchBoardPage from "./pages/ops/DispatchBoardPage";
+import FinanceBoardPage from "./pages/ops/FinanceBoardPage";
 import PartnerDashboardPage from "./pages/partner/PartnerDashboardPage";
 import PartnerJobsPage from "./pages/partner/PartnerJobsPage";
 import PartnerJobDetailPage from "./pages/partner/PartnerJobDetailPage";
 import TechniciansPage from "./pages/partner/TechniciansPage";
 import PartnerProfilePage from "./pages/partner/PartnerProfilePage";
+import PartnerWalletPage from "./pages/partner/PartnerWalletPage";
 import TechnicianDashboardPage from "./pages/technician/TechnicianDashboardPage";
 import TechnicianJobsPage from "./pages/technician/TechnicianJobsPage";
 import TechnicianJobDetailPage from "./pages/technician/TechnicianJobDetailPage";
+import TechnicianEarningsPage from "./pages/technician/TechnicianEarningsPage";
 
 const queryClient = new QueryClient();
 
@@ -49,12 +52,15 @@ const App = () => (
           <Route path="/partner/job/:jobId" element={<PartnerJobDetailPage />} />
           <Route path="/partner/technicians" element={<TechniciansPage />} />
           <Route path="/partner/profile" element={<PartnerProfilePage />} />
+          <Route path="/partner/wallet" element={<PartnerWalletPage />} />
           {/* Technician routes */}
           <Route path="/technician" element={<TechnicianDashboardPage />} />
           <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
           <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
+          <Route path="/technician/earnings" element={<TechnicianEarningsPage />} />
           {/* Ops routes */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
+          <Route path="/ops/finance" element={<FinanceBoardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

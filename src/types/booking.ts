@@ -627,6 +627,10 @@ export interface BookingState {
   warranty?: WarrantyRecord;
   /** Stage 8: Communication relay */
   communicationRelay?: boolean;
+  /** Stage 10: Finance state */
+  finance?: BookingFinanceState;
+  /** Stage 10: Refund requests */
+  refundRequests?: RefundRequest[];
 }
 
 // ============================================================
