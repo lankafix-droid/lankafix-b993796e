@@ -35,6 +35,8 @@ import DiagnoseAnalyticsPage from "./pages/ops/DiagnoseAnalyticsPage";
 import DispatchAnalyticsPage from "./pages/ops/DispatchAnalyticsPage";
 import ControlTowerPage from "./pages/ops/ControlTowerPage";
 import ChatWidget from "./components/chat/ChatWidget";
+import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
+import DevicePassportPage from "./pages/devices/DevicePassportPage";
 
 const queryClient = new QueryClient();
 
