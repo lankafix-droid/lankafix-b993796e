@@ -59,6 +59,8 @@ const App = () => (
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/diagnose" element={<DiagnosePage />} />
+          {/* Provider onboarding */}
+          <Route path="/join" element={<ProviderOnboardingPage />} />
           {/* Partner routes */}
           <Route path="/partner" element={<PartnerDashboardPage />} />
           <Route path="/partner/jobs" element={<PartnerJobsPage />} />
