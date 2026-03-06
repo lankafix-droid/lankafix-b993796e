@@ -14,11 +14,11 @@ const Index = () => {
       <main className="flex-1">
         <HeroSection />
         <GeoStrip />
+        <CategoryGrid />
         {/* Diagnose CTA */}
         <div className="container py-6">
           <DiagnoseCard />
         </div>
-        <CategoryGrid />
         <HowItWorks />
         <TrustStrip />
       </main>

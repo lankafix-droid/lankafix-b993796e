@@ -1,23 +1,22 @@
-import { ClipboardList, MessageSquareText, Calculator, ShieldCheck } from "lucide-react";
+import { ClipboardList, MessageSquareText, ShieldCheck } from "lucide-react";
 
 const steps = [
-  { icon: <ClipboardList className="w-6 h-6" />, title: "Select Service", desc: "Choose category & service type", color: "from-primary to-primary/80" },
-  { icon: <MessageSquareText className="w-6 h-6" />, title: "Smart Diagnosis", desc: "Answer questions or talk to FixBuddy", color: "from-accent to-accent/80" },
-  { icon: <Calculator className="w-6 h-6" />, title: "Get Estimate", desc: "Transparent pricing upfront", color: "from-lankafix-green to-lankafix-green/80" },
-  { icon: <ShieldCheck className="w-6 h-6" />, title: "Verified Completion", desc: "OTP-confirmed + warranty", color: "from-primary to-accent" },
+  { icon: <ClipboardList className="w-6 h-6" />, title: "Select Your Service", desc: "Choose category & describe the issue", color: "from-primary to-primary/80" },
+  { icon: <MessageSquareText className="w-6 h-6" />, title: "Describe & Schedule", desc: "Add details, pick date & time", color: "from-accent to-accent/80" },
+  { icon: <ShieldCheck className="w-6 h-6" />, title: "Verified Technician Arrives", desc: "OTP-protected, warranty-backed service", color: "from-lankafix-green to-lankafix-green/80" },
 ];
 
 const HowItWorks = () => {
   return (
     <section className="py-16 md:py-20 bg-card">
       <div className="container">
-        <h2 className="text-3xl md:text-4xl font-bold text-foreground text-center mb-3">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center mb-3">
           How LankaFix Works
         </h2>
         <p className="text-sm text-muted-foreground text-center mb-12 max-w-md mx-auto">
           Simple, transparent, and trustworthy — every step of the way
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
           {steps.map((step, i) => (
             <div key={i} className="text-center space-y-4 group">
               <div className="relative">
