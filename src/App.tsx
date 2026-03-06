@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import DispatchBoardPage from "./pages/ops/DispatchBoardPage";
 import FinanceBoardPage from "./pages/ops/FinanceBoardPage";
 import PartnerDashboardPage from "./pages/partner/PartnerDashboardPage";
+import ProviderOnboardingPage from "./pages/provider/ProviderOnboardingPage";
 import PartnerJobsPage from "./pages/partner/PartnerJobsPage";
 import PartnerJobDetailPage from "./pages/partner/PartnerJobDetailPage";
 import TechniciansPage from "./pages/partner/TechniciansPage";
@@ -58,6 +59,8 @@ const App = () => (
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/diagnose" element={<DiagnosePage />} />
+          {/* Provider onboarding */}
+          <Route path="/join" element={<ProviderOnboardingPage />} />
           {/* Partner routes */}
           <Route path="/partner" element={<PartnerDashboardPage />} />
           <Route path="/partner/jobs" element={<PartnerJobsPage />} />
