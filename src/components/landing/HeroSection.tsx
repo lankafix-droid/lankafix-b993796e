@@ -2,8 +2,16 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Shield, ArrowRight, Stethoscope, LayoutGrid, MessageCircle, ShieldCheck, Eye, Award, KeyRound } from "lucide-react";
-import heroImage from "@/assets/hero-technician.jpg";
-import MascotIcon from "@/components/brand/MascotIcon";
+import mascotImg from "@/assets/lankafix-mascot.jpg";
+import heroAC from "@/assets/hero-ac-service.jpg";
+import heroCCTV from "@/assets/hero-cctv-service.jpg";
+import heroMobile from "@/assets/hero-mobile-repair.jpg";
+import heroIT from "@/assets/hero-it-repair.jpg";
+import heroSolar from "@/assets/hero-solar-service.jpg";
+import heroElectronics from "@/assets/hero-electronics-service.jpg";
+import heroCopier from "@/assets/hero-copier-service.jpg";
+import heroSmartHome from "@/assets/hero-smarthome-service.jpg";
+import heroSupplies from "@/assets/hero-supplies.jpg";
 import { track } from "@/lib/analytics";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 
@@ -26,17 +34,16 @@ const TRUST_ITEMS = [
   { icon: <Eye className="w-3.5 h-3.5" />, label: "Transparent Pricing" },
 ];
 
-/** Single hero image used for all pills — swap per-pill when assets are ready */
 const HERO_IMAGES: Record<string, string> = {
-  AC: heroImage,
-  CCTV: heroImage,
-  IT: heroImage,
-  MOBILE: heroImage,
-  SOLAR: heroImage,
-  CONSUMER_ELEC: heroImage,
-  COPIER: heroImage,
-  SMART_HOME_OFFICE: heroImage,
-  PRINT_SUPPLIES: heroImage,
+  AC: heroAC,
+  CCTV: heroCCTV,
+  IT: heroIT,
+  MOBILE: heroMobile,
+  SOLAR: heroSolar,
+  CONSUMER_ELEC: heroElectronics,
+  COPIER: heroCopier,
+  SMART_HOME_OFFICE: heroSmartHome,
+  PRINT_SUPPLIES: heroSupplies,
 };
 
 const HERO_ALT: Record<string, string> = {
@@ -62,10 +69,26 @@ const HeroSection = () => {
 
   return (
     <section className="relative overflow-hidden bg-card">
-      <div className="container py-12 md:py-20 grid md:grid-cols-2 gap-10 items-center">
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-accent/[0.03] pointer-events-none" />
+
+      <div className="container relative py-12 md:py-20 grid md:grid-cols-2 gap-10 items-center">
         {/* Left column */}
         <div className="space-y-5 animate-fade-in">
-          <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm font-medium px-3 py-1.5 rounded-full">
+          {/* Mascot welcome */}
+          <div className="flex items-center gap-3">
+            <img
+              src={mascotImg}
+              alt="LankaFix mascot"
+              className="w-12 h-12 rounded-full object-cover shadow-brand border-2 border-card"
+            />
+            <div className="bg-primary/8 border border-primary/15 rounded-2xl rounded-bl-sm px-4 py-2">
+              <p className="text-sm font-medium text-foreground">Hi! I'm FixBuddy 👋</p>
+              <p className="text-xs text-muted-foreground">Let me help you find the right service.</p>
+            </div>
+          </div>
+
+          <div className="inline-flex items-center gap-2 bg-gradient-brand text-primary-foreground text-sm font-medium px-3.5 py-1.5 rounded-full shadow-sm">
             <Shield className="w-3.5 h-3.5" />
             Verified & Warranty-Backed
           </div>
@@ -93,8 +116,8 @@ const HeroSection = () => {
                 }}
                 className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-all duration-200 ${
                   activePill === pill.code
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-card text-muted-foreground border-border hover:border-primary/30 hover:text-foreground"
                 }`}
               >
                 {pill.label}
@@ -104,7 +127,7 @@ const HeroSection = () => {
 
           {/* 3-action CTA row */}
           <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-            <Button variant="hero" size="lg" asChild>
+            <Button variant="hero" size="lg" className="shadow-brand" asChild>
               <Link to="/diagnose" aria-label="Diagnose my problem" onClick={() => track("hero_diagnose_click")}>
                 <Stethoscope className="w-4 h-4 mr-1" />
                 Diagnose My Problem
@@ -154,7 +177,7 @@ const HeroSection = () => {
             <div className="flex flex-wrap gap-3">
               {TRUST_ITEMS.map((item, i) => (
                 <div key={i} className="flex items-center gap-1.5 text-muted-foreground">
-                  <span className="text-success">{item.icon}</span>
+                  <span className="text-lankafix-green">{item.icon}</span>
                   <span className="text-xs font-medium">{item.label}</span>
                 </div>
               ))}
@@ -167,25 +190,28 @@ const HeroSection = () => {
 
         {/* Right column — hero image with crossfade */}
         <div className="relative animate-fade-in" style={{ animationDelay: "0.2s" }}>
-          <div className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/10">
+          <div className="rounded-2xl overflow-hidden shadow-2xl shadow-primary/15 border border-border/50">
             <img
               key={activePill}
-              src={HERO_IMAGES[activePill] || heroImage}
+              src={HERO_IMAGES[activePill] || heroAC}
               alt={HERO_ALT[activePill] || "LankaFix verified technician at work"}
-              className="w-full h-72 md:h-[400px] object-cover animate-fade-in"
+              className="w-full h-72 md:h-[420px] object-cover animate-fade-in"
             />
           </div>
-          <div className="absolute -top-3 -right-3">
-            <MascotIcon state="verified" badge="verified" size="sm" />
-          </div>
-          <div className="absolute -bottom-4 -left-4 bg-card rounded-xl shadow-lg p-3 border flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-success" />
+          {/* Trust floating card */}
+          <div className="absolute -bottom-4 -left-4 bg-card rounded-xl shadow-lg shadow-primary/10 p-3 border flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-gradient-brand flex items-center justify-center">
+              <Shield className="w-4 h-4 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-foreground">Verified Partner</p>
-              <p className="text-xs text-muted-foreground">Background checked</p>
+              <p className="text-xs font-bold text-foreground">Verified Partner</p>
+              <p className="text-[11px] text-muted-foreground">Background checked & certified</p>
             </div>
+          </div>
+          {/* Stats floating card */}
+          <div className="absolute -top-3 -right-3 bg-card rounded-xl shadow-lg shadow-primary/10 p-3 border">
+            <p className="text-xs font-bold text-foreground">4.8★ Rating</p>
+            <p className="text-[11px] text-muted-foreground">2,000+ jobs done</p>
           </div>
         </div>
       </div>

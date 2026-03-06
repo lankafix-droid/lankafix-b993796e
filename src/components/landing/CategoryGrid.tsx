@@ -17,6 +17,19 @@ const iconMap: Record<string, React.ReactNode> = {
   ShoppingBag: <ShoppingBag className="w-6 h-6" />,
 };
 
+// Category visual moods - gradient backgrounds
+const categoryMoods: Record<string, string> = {
+  AC: "from-primary/8 to-primary/3",
+  CCTV: "from-foreground/5 to-foreground/2",
+  MOBILE: "from-accent/8 to-accent/3",
+  IT: "from-primary/6 to-accent/3",
+  SOLAR: "from-warning/8 to-warning/3",
+  CONSUMER_ELEC: "from-primary/5 to-lankafix-green/3",
+  COPIER: "from-muted-foreground/8 to-muted-foreground/3",
+  SMART_HOME_OFFICE: "from-accent/6 to-primary/3",
+  PRINT_SUPPLIES: "from-lankafix-green/6 to-lankafix-green/2",
+};
+
 /** Derive standardized availability chip from category data */
 function getAvailabilityChip(cat: typeof categories[number]): { label: string; color: string } | null {
   const hasEmergency = cat.tags.includes("Emergency") || cat.services.some((s) => s.slaMinutesEmergency);
@@ -24,8 +37,8 @@ function getAvailabilityChip(cat: typeof categories[number]): { label: string; c
   const hasRemote = cat.tags.includes("Remote Available") || cat.services.some((s) => s.allowedModes.includes("remote"));
   const hasDelivery = cat.tags.includes("Delivery") || cat.tags.includes("Store");
 
-  if (hasEmergency) return { label: "Emergency", color: "border-success/30 text-success bg-success/5" };
-  if (hasSameDay) return { label: "Same Day", color: "border-success/30 text-success bg-success/5" };
+  if (hasEmergency) return { label: "Emergency", color: "border-lankafix-green/30 text-lankafix-green bg-lankafix-green/5" };
+  if (hasSameDay) return { label: "Same Day", color: "border-lankafix-green/30 text-lankafix-green bg-lankafix-green/5" };
   if (hasRemote) return { label: "Remote", color: "border-primary/30 text-primary bg-primary/5" };
   if (hasDelivery) return { label: "Delivery", color: "border-primary/30 text-primary bg-primary/5" };
   return null;
@@ -41,7 +54,7 @@ function getPricingChip(cat: typeof categories[number]): { label: string; color:
   }
   const hasDiagnostic = cat.services.some((s) => s.requiresDiagnostic);
   if (hasDiagnostic) return { label: "Estimate", color: "border-warning/30 text-warning bg-warning/5" };
-  return { label: "Fixed Price", color: "border-success/30 text-success bg-success/5" };
+  return { label: "Fixed Price", color: "border-lankafix-green/30 text-lankafix-green bg-lankafix-green/5" };
 }
 
 function getSelectedArea(): string {
@@ -81,6 +94,7 @@ const CategoryGrid = () => {
             const minSla = getMinSla(cat);
             const availChip = getAvailabilityChip(cat);
             const priceChip = getPricingChip(cat);
+            const mood = categoryMoods[cat.code] || "from-primary/5 to-primary/2";
 
             return (
               <Link
@@ -88,10 +102,10 @@ const CategoryGrid = () => {
                 to={`/category/${cat.code}`}
                 aria-label={`View ${cat.name} services`}
                 onClick={() => track("category_card_click", { category: cat.code })}
-                className="group bg-card rounded-xl border p-5 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/20 transition-all duration-300"
+                className={`group bg-gradient-to-br ${mood} bg-card rounded-xl border p-5 hover:shadow-lg hover:shadow-primary/8 hover:border-primary/25 transition-all duration-300`}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-11 h-11 rounded-lg bg-primary/10 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  <div className="w-11 h-11 rounded-lg bg-gradient-brand text-primary-foreground flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm">
                     {iconMap[cat.icon] || <Monitor className="w-6 h-6" />}
                   </div>
                   <div className="flex gap-1 flex-wrap justify-end max-w-[55%]">
