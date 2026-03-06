@@ -9,11 +9,46 @@ import SLAChip from "@/components/ui/SLAChip";
 import RepeatServiceBanner from "@/components/tracker/RepeatServiceBanner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, Zap, Stethoscope, FileText } from "lucide-react";
+import { ArrowLeft, ArrowRight, Zap, Stethoscope, FileText, ShieldCheck, KeyRound, Award, Eye } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { CategoryCode, ServiceMode } from "@/types/booking";
 import { SERVICE_MODE_LABELS } from "@/types/booking";
 import { track } from "@/lib/analytics";
+
+import heroAC from "@/assets/hero-ac-service.jpg";
+import heroCCTV from "@/assets/hero-cctv-service.jpg";
+import heroMobile from "@/assets/hero-mobile-repair.jpg";
+import heroIT from "@/assets/hero-it-repair.jpg";
+import heroSolar from "@/assets/hero-solar-service.jpg";
+import heroElectronics from "@/assets/hero-electronics-service.jpg";
+import heroCopier from "@/assets/hero-copier-service.jpg";
+import heroSmartHome from "@/assets/hero-smarthome-service.jpg";
+import heroSupplies from "@/assets/hero-supplies.jpg";
+
+const HERO_IMAGES: Record<string, string> = {
+  AC: heroAC, CCTV: heroCCTV, IT: heroIT, MOBILE: heroMobile,
+  SOLAR: heroSolar, CONSUMER_ELEC: heroElectronics, COPIER: heroCopier,
+  SMART_HOME_OFFICE: heroSmartHome, PRINT_SUPPLIES: heroSupplies,
+};
+
+const HERO_ALT: Record<string, string> = {
+  AC: "LankaFix AC technician servicing a split unit",
+  CCTV: "LankaFix CCTV installation specialist",
+  IT: "LankaFix IT support engineer repairing a laptop",
+  MOBILE: "LankaFix mobile repair technician fixing a phone",
+  SOLAR: "LankaFix solar panel technician on rooftop",
+  CONSUMER_ELEC: "LankaFix electronics repair technician",
+  COPIER: "LankaFix copier repair specialist",
+  SMART_HOME_OFFICE: "LankaFix smart home technician",
+  PRINT_SUPPLIES: "LankaFix printing supplies",
+};
+
+const TRUST_BADGES = [
+  { icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "Verified" },
+  { icon: <KeyRound className="w-3.5 h-3.5" />, label: "OTP Protected" },
+  { icon: <Award className="w-3.5 h-3.5" />, label: "Warranty" },
+  { icon: <Eye className="w-3.5 h-3.5" />, label: "Transparent Pricing" },
+];
 
 const CategoryPage = () => {
   const { code } = useParams<{ code: string }>();
@@ -33,6 +68,8 @@ const CategoryPage = () => {
     return (<div className="min-h-screen flex flex-col"><Header /><main className="flex-1 flex items-center justify-center"><div className="text-center"><h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1><Button asChild variant="outline"><Link to="/categories">View All Categories</Link></Button></div></main><Footer /></div>);
   }
 
+  const heroImg = HERO_IMAGES[category.code];
+  const heroAlt = HERO_ALT[category.code] || `LankaFix ${category.name} service`;
   const pricingRule = categoryPricingRules[category.code as CategoryCode];
   const hasEmergency = pricingRule && pricingRule.emergencySurchargePercent > 0;
   const allModes = Array.from(new Set(category.services.flatMap((s) => s.allowedModes)));
@@ -51,13 +88,46 @@ const CategoryPage = () => {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 bg-background">
-        <div className="container py-8 max-w-3xl">
-          <Link to="/categories" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"><ArrowLeft className="w-4 h-4" /> All Categories</Link>
+        {/* Hero image banner */}
+        {heroImg && (
+          <div className="relative w-full h-48 md:h-64 overflow-hidden">
+            <img
+              src={heroImg}
+              alt={heroAlt}
+              className="w-full h-full object-cover"
+              loading="eager"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 container pb-4">
+              <Link to="/categories" className="inline-flex items-center gap-1 text-sm text-white/80 hover:text-white mb-2 transition-colors drop-shadow-sm">
+                <ArrowLeft className="w-4 h-4" /> All Categories
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <div className="container py-6 max-w-3xl">
+          {!heroImg && (
+            <Link to="/categories" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
+              <ArrowLeft className="w-4 h-4" /> All Categories
+            </Link>
+          )}
+
           <h1 className="text-3xl font-bold text-foreground mb-1">{category.name}</h1>
           <p className="text-muted-foreground mb-3">{category.description}</p>
+
+          {/* Trust badges row */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            {TRUST_BADGES.map((badge, i) => (
+              <div key={i} className="flex items-center gap-1.5 text-muted-foreground">
+                <span className="text-lankafix-green">{badge.icon}</span>
+                <span className="text-xs font-medium">{badge.label}</span>
+              </div>
+            ))}
+          </div>
+
           <TrustRibbon />
 
-          {/* Repeat service protection */}
           {repeatBooking && (
             <RepeatServiceBanner previousBooking={repeatBooking} categoryCode={category.code} />
           )}
@@ -85,11 +155,7 @@ const CategoryPage = () => {
                         <span className="text-sm text-muted-foreground">From <span className="font-bold text-foreground">LKR {svc.fromPrice.toLocaleString()}</span></span>
                         {svc.requiresDiagnostic && <Badge variant="outline" className="text-xs border-primary/30 text-primary gap-1"><Stethoscope className="w-3 h-3" /> Diagnostic</Badge>}
                         {svc.requiresQuote && <Badge variant="outline" className="text-xs border-warning/30 text-warning gap-1"><FileText className="w-3 h-3" /> Quote Required</Badge>}
-                        <SLAChip
-                          normalMinutes={svc.slaMinutesNormal}
-                          emergencyMinutes={emergency ? svc.slaMinutesEmergency : undefined}
-                          typicalDurationMinutes={svc.typicalDurationMinutes}
-                        />
+                        <SLAChip normalMinutes={svc.slaMinutesNormal} emergencyMinutes={emergency ? svc.slaMinutesEmergency : undefined} typicalDurationMinutes={svc.typicalDurationMinutes} />
                       </div>
                     </div>
                     <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 mt-1" />
