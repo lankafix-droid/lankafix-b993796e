@@ -17,6 +17,7 @@ import NotFound from "./pages/NotFound";
 import DispatchBoardPage from "./pages/ops/DispatchBoardPage";
 import FinanceBoardPage from "./pages/ops/FinanceBoardPage";
 import PartnerDashboardPage from "./pages/partner/PartnerDashboardPage";
+import ProviderOnboardingPage from "./pages/provider/ProviderOnboardingPage";
 import PartnerJobsPage from "./pages/partner/PartnerJobsPage";
 import PartnerJobDetailPage from "./pages/partner/PartnerJobDetailPage";
 import TechniciansPage from "./pages/partner/TechniciansPage";
