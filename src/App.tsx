@@ -35,6 +35,8 @@ import DiagnoseAnalyticsPage from "./pages/ops/DiagnoseAnalyticsPage";
 import DispatchAnalyticsPage from "./pages/ops/DispatchAnalyticsPage";
 import ControlTowerPage from "./pages/ops/ControlTowerPage";
 import ChatWidget from "./components/chat/ChatWidget";
+import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
+import DevicePassportPage from "./pages/devices/DevicePassportPage";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +75,9 @@ const App = () => (
           <Route path="/care/subscribe/:planId" element={<SubscribePage />} />
           <Route path="/care/dashboard" element={<CareDashboardPage />} />
           <Route path="/care/device/:deviceId" element={<DeviceTimelinePage />} />
+          {/* Device Passport routes */}
+          <Route path="/devices" element={<DevicesDashboardPage />} />
+          <Route path="/device/:passportId" element={<DevicePassportPage />} />
           {/* Ops routes */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="/ops/finance" element={<FinanceBoardPage />} />
