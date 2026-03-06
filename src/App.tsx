@@ -75,6 +75,9 @@ const App = () => (
           <Route path="/care/subscribe/:planId" element={<SubscribePage />} />
           <Route path="/care/dashboard" element={<CareDashboardPage />} />
           <Route path="/care/device/:deviceId" element={<DeviceTimelinePage />} />
+          {/* Device Passport routes */}
+          <Route path="/devices" element={<DevicesDashboardPage />} />
+          <Route path="/device/:passportId" element={<DevicePassportPage />} />
           {/* Ops routes */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="/ops/finance" element={<FinanceBoardPage />} />
