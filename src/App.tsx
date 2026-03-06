@@ -27,6 +27,10 @@ import TechnicianDashboardPage from "./pages/technician/TechnicianDashboardPage"
 import TechnicianJobsPage from "./pages/technician/TechnicianJobsPage";
 import TechnicianJobDetailPage from "./pages/technician/TechnicianJobDetailPage";
 import TechnicianEarningsPage from "./pages/technician/TechnicianEarningsPage";
+import TechnicianPartsPage from "./pages/technician/TechnicianPartsPage";
+import TechnicianTrainingPage from "./pages/technician/TechnicianTrainingPage";
+import TechnicianSupportPage from "./pages/technician/TechnicianSupportPage";
+import TechnicianSafetyPage from "./pages/technician/TechnicianSafetyPage";
 import CarePlansPage from "./pages/care/CarePlansPage";
 import SubscribePage from "./pages/care/SubscribePage";
 import CareDashboardPage from "./pages/care/CareDashboardPage";
