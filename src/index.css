@@ -6,26 +6,32 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
-    --foreground: 215 25% 12%;
+    /* LankaFix Brand Tokens */
+    --background: 210 25% 97%;
+    --foreground: 215 50% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 12%;
+    --card-foreground: 215 50% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 12%;
+    --popover-foreground: 215 50% 10%;
 
-    --primary: 217 91% 50%;
+    /* LankaFix Blue */
+    --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 32% 94%;
-    --secondary-foreground: 215 25% 20%;
+    /* LankaFix Green (accent) */
+    --lankafix-green: 152 69% 40%;
+    --lankafix-green-foreground: 0 0% 100%;
 
-    --muted: 214 20% 95%;
+    --secondary: 199 25% 93%;
+    --secondary-foreground: 215 50% 15%;
+
+    --muted: 210 18% 94%;
     --muted-foreground: 215 14% 46%;
 
-    --accent: 214 32% 94%;
-    --accent-foreground: 215 25% 20%;
+    --accent: 168 76% 42%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -36,42 +42,55 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 214 20% 90%;
-    --input: 214 20% 90%;
-    --ring: 217 91% 50%;
+    --border: 210 18% 90%;
+    --input: 210 18% 90%;
+    --ring: 199 89% 48%;
 
     --radius: 0.75rem;
 
+    /* Deep Navy for footer/dark sections */
+    --navy: 215 50% 10%;
+    --navy-foreground: 210 40% 96%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 217 91% 50%;
+    --sidebar-primary: 199 89% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 50%;
+    --sidebar-ring: 199 89% 48%;
+
+    /* Brand gradients */
+    --gradient-brand: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(168, 76%, 42%), hsl(199, 89%, 48%));
+    --shadow-brand: 0 10px 40px -12px hsl(199 89% 48% / 0.25);
+    --shadow-card: 0 1px 3px 0 hsl(215 50% 10% / 0.06), 0 1px 2px -1px hsl(215 50% 10% / 0.06);
+    --shadow-card-hover: 0 10px 25px -5px hsl(199 89% 48% / 0.1), 0 8px 10px -6px hsl(199 89% 48% / 0.05);
   }
 
   .dark {
-    --background: 220 20% 8%;
+    --background: 215 50% 7%;
     --foreground: 210 40% 96%;
 
-    --card: 220 20% 12%;
+    --card: 215 45% 11%;
     --card-foreground: 210 40% 96%;
 
-    --popover: 220 20% 12%;
+    --popover: 215 45% 11%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 217 91% 55%;
+    --primary: 199 89% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 25% 18%;
+    --lankafix-green: 152 60% 38%;
+    --lankafix-green-foreground: 0 0% 100%;
+
+    --secondary: 215 30% 16%;
     --secondary-foreground: 210 40% 96%;
 
-    --muted: 217 25% 18%;
+    --muted: 215 30% 16%;
     --muted-foreground: 215 16% 60%;
 
-    --accent: 217 25% 18%;
+    --accent: 168 60% 36%;
     --accent-foreground: 210 40% 96%;
 
     --destructive: 0 62% 30%;
@@ -83,18 +102,21 @@
     --warning: 38 80% 45%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 217 20% 20%;
-    --input: 217 20% 20%;
-    --ring: 217 91% 55%;
+    --border: 215 25% 18%;
+    --input: 215 25% 18%;
+    --ring: 199 89% 52%;
 
-    --sidebar-background: 220 20% 10%;
+    --navy: 215 50% 7%;
+    --navy-foreground: 210 40% 96%;
+
+    --sidebar-background: 215 50% 8%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 217 91% 55%;
+    --sidebar-primary: 199 89% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217 91% 55%;
+    --sidebar-ring: 199 89% 52%;
   }
 }
 
@@ -106,11 +128,35 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer utilities {
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-400;
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(168, 76%, 42%), hsl(199, 89%, 48%));
+  }
+
+  .bg-gradient-brand {
+    background-image: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(168, 76%, 42%), hsl(199, 89%, 48%));
+  }
+
+  .bg-navy {
+    background-color: hsl(var(--navy));
+    color: hsl(var(--navy-foreground));
+  }
+
+  .shadow-brand {
+    box-shadow: var(--shadow-brand);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-card-hover {
+    box-shadow: var(--shadow-card-hover);
   }
 }
