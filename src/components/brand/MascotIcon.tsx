@@ -17,12 +17,12 @@ const sizeMap = {
 };
 
 const stateStyles: Record<MascotState, { bg: string; glow: string; accent: string }> = {
-  default: { bg: "from-primary to-blue-400", glow: "", accent: "text-primary-foreground" },
-  verified: { bg: "from-primary to-blue-400", glow: "", accent: "text-primary-foreground" },
+  default: { bg: "from-primary to-accent", glow: "", accent: "text-primary-foreground" },
+  verified: { bg: "from-primary to-accent", glow: "", accent: "text-primary-foreground" },
   emergency: { bg: "from-warning to-orange-400", glow: "shadow-warning/30", accent: "text-warning-foreground" },
-  on_the_way: { bg: "from-primary to-blue-400", glow: "shadow-primary/20", accent: "text-primary-foreground" },
-  in_progress: { bg: "from-primary to-blue-500", glow: "", accent: "text-primary-foreground" },
-  completed: { bg: "from-success to-emerald-400", glow: "shadow-success/30", accent: "text-success-foreground" },
+  on_the_way: { bg: "from-primary to-accent", glow: "shadow-primary/20", accent: "text-primary-foreground" },
+  in_progress: { bg: "from-primary to-accent", glow: "", accent: "text-primary-foreground" },
+  completed: { bg: "from-lankafix-green to-accent", glow: "shadow-lankafix-green/30", accent: "text-lankafix-green-foreground" },
 };
 
 const stateIcons: Record<MascotState, React.ReactNode> = {
@@ -35,7 +35,7 @@ const stateIcons: Record<MascotState, React.ReactNode> = {
 };
 
 const badgeConfig: Record<MascotBadge, { bg: string; icon: React.ReactNode }> = {
-  verified: { bg: "bg-success", icon: <ShieldCheck /> },
+  verified: { bg: "bg-lankafix-green", icon: <ShieldCheck /> },
   warranty: { bg: "bg-primary", icon: <Shield /> },
   emergency: { bg: "bg-warning", icon: <Zap /> },
   support: { bg: "bg-primary", icon: <Headphones /> },
@@ -48,51 +48,23 @@ const MascotIcon = ({ state = "default", badge, size = "md", className = "" }: M
 
   return (
     <div className={`relative inline-flex items-center justify-center ${className}`}>
-      {/* Outer ring / glow */}
       <div className={`${s.ring} rounded-full flex items-center justify-center ${style.glow ? `shadow-lg ${style.glow}` : ""}`}>
-        {/* Main circle */}
         <div className={`${s.container} rounded-full bg-gradient-to-br ${style.bg} flex items-center justify-center shadow-md relative overflow-hidden`}>
-          {/* Power button icon with LF notch */}
           <svg viewBox="0 0 40 40" className={s.icon} fill="none">
-            {/* Power circle */}
-            <path
-              d="M20 8 L20 14"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              className={style.accent}
-            />
-            <path
-              d="M12.5 13.5 A11 11 0 1 0 27.5 13.5"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              className={style.accent}
-              fill="none"
-            />
-            {/* LF notch - small text at bottom */}
-            <text x="20" y="35" textAnchor="middle" fontSize="6" fontWeight="bold" className={style.accent} fill="currentColor" opacity="0.6">
-              LF
-            </text>
+            <path d="M20 8 L20 14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className={style.accent} />
+            <path d="M12.5 13.5 A11 11 0 1 0 27.5 13.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={style.accent} fill="none" />
+            <text x="20" y="35" textAnchor="middle" fontSize="6" fontWeight="bold" className={style.accent} fill="currentColor" opacity="0.6">LF</text>
           </svg>
-
-          {/* State overlay icon */}
           {state !== "default" && stateIcons[state] && (
             <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-card border-2 border-card flex items-center justify-center">
-              <div className="w-3 h-3 text-foreground">
-                {stateIcons[state]}
-              </div>
+              <div className="w-3 h-3 text-foreground">{stateIcons[state]}</div>
             </div>
           )}
         </div>
       </div>
-
-      {/* Badge overlay (top-right) */}
       {badge && (
         <div className={`absolute -top-0.5 -right-0.5 ${s.badge} rounded-full ${badgeConfig[badge].bg} flex items-center justify-center shadow-sm border-2 border-card`}>
-          <div className={`${s.badgeIcon} text-white`}>
-            {badgeConfig[badge].icon}
-          </div>
+          <div className={`${s.badgeIcon} text-primary-foreground`}>{badgeConfig[badge].icon}</div>
         </div>
       )}
     </div>

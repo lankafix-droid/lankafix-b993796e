@@ -4,7 +4,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft } from "lucide-react";
-import MascotIcon from "@/components/brand/MascotIcon";
+import mascotImg from "@/assets/lankafix-mascot.jpg";
 import DiagnoseStepCategory from "@/components/diagnose/DiagnoseStepCategory";
 import DiagnoseStepProblem from "@/components/diagnose/DiagnoseStepProblem";
 import DiagnoseStepUrgency from "@/components/diagnose/DiagnoseStepUrgency";
@@ -25,7 +25,7 @@ const STEP_TITLES = [
 ];
 
 const MASCOT_COPY = [
-  "Choose what needs help",
+  "Let me help you find the right service! 🔍",
   "Tell us what's wrong — you can also speak or upload photos",
   "How soon do you need help?",
   "Let's check service availability in your area",
@@ -42,10 +42,8 @@ const DiagnosePage = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [voiceTranscript, setVoiceTranscript] = useState<string>("");
 
-  // Session tracking
   const [sessionId] = useState(() => `SES-${Date.now().toString(36).toUpperCase()}`);
 
-  // Load persisted area
   useEffect(() => {
     track("diagnose_start", { sessionId });
     const saved = localStorage.getItem("lankafix_area");
@@ -56,7 +54,6 @@ const DiagnosePage = () => {
     track("diagnose_step_view", { step, sessionId });
   }, [step]);
 
-  // Abandoned booking detection — 5 min inactivity
   useEffect(() => {
     const timer = setTimeout(() => {
       if (step > 0 && step < 4 && !result) {
@@ -76,9 +73,8 @@ const DiagnosePage = () => {
   const progress = showResult ? 100 : ((step + 1) / totalSteps) * 100;
 
   const handleBack = () => {
-    if (step === 0) {
-      navigate("/");
-    } else {
+    if (step === 0) navigate("/");
+    else {
       setStep(step - 1);
       if (step === 4) setResult(null);
     }
@@ -107,16 +103,10 @@ const DiagnosePage = () => {
     setSelectedArea(area);
     localStorage.setItem("lankafix_area", area);
     track("diagnose_area_select", { area, sessionId });
-
     if (selectedCategory && selectedProblem) {
       const rec = getDiagnoseRecommendation(selectedCategory, selectedProblem, selectedUrgency ?? "flexible", area);
       setResult(rec);
-      track("diagnose_result_view", {
-        ...rec,
-        sessionId,
-        photoCount: photos.length,
-        hasVoiceInput: !!voiceTranscript,
-      });
+      track("diagnose_result_view", { ...rec, sessionId, photoCount: photos.length, hasVoiceInput: !!voiceTranscript });
       setTimeout(() => setStep(4), 200);
     }
   };
@@ -160,13 +150,17 @@ const DiagnosePage = () => {
 
           <Progress value={progress} className="h-1.5 mb-6" />
 
-          {/* Mascot banner */}
+          {/* Mascot banner with real mascot image */}
           {!showResult && (
-            <div className="flex items-center gap-3 mb-5">
-              <MascotIcon state="default" size="md" />
+            <div className="flex items-center gap-3 mb-6 bg-gradient-to-r from-primary/5 to-accent/5 border border-primary/10 rounded-xl p-4">
+              <img
+                src={mascotImg}
+                alt="FixBuddy mascot"
+                className={`w-14 h-14 rounded-full object-cover shadow-md border-2 border-card shrink-0 ${step === 1 ? "animate-pulse-soft" : ""}`}
+              />
               <div>
-                <h1 className="text-xl font-bold text-foreground">{STEP_TITLES[step]}</h1>
-                <p className="text-xs text-muted-foreground">{MASCOT_COPY[step]}</p>
+                <h1 className="text-lg font-bold text-foreground">{STEP_TITLES[step]}</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">{MASCOT_COPY[step]}</p>
               </div>
             </div>
           )}
@@ -179,13 +173,9 @@ const DiagnosePage = () => {
             {step === 1 && selectedCategory && (
               <div className="space-y-6">
                 <DiagnoseStepProblem categoryCode={selectedCategory} onSelect={handleProblemSelect} selected={selectedProblem} />
-
-                {/* Voice input */}
                 <div className="border-t pt-4">
                   <DiagnoseVoiceInput onTranscript={handleVoiceTranscript} />
                 </div>
-
-                {/* Photo upload */}
                 <div className="border-t pt-4">
                   <DiagnosePhotoUpload photos={photos} onPhotosChange={setPhotos} />
                 </div>
