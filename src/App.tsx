@@ -77,6 +77,10 @@ const App = () => (
           <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
           <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
           <Route path="/technician/earnings" element={<TechnicianEarningsPage />} />
+          <Route path="/technician/parts" element={<TechnicianPartsPage />} />
+          <Route path="/technician/training" element={<TechnicianTrainingPage />} />
+          <Route path="/technician/support" element={<TechnicianSupportPage />} />
+          <Route path="/technician/safety" element={<TechnicianSafetyPage />} />
           {/* Care / Subscription routes */}
           <Route path="/care" element={<CarePlansPage />} />
           <Route path="/care/subscribe/:planId" element={<SubscribePage />} />
