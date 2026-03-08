@@ -528,16 +528,15 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         onClick={() => {
           if (phase === "matched") {
             dispatch.startAcceptance();
-            // Simulate partner accepting after 3-8 seconds
-            setTimeout(() => {
-              dispatch.confirmAcceptance();
-            }, 3000 + Math.random() * 5000);
           }
           if (phase === "confirmed") {
             onConfirm();
           }
+          if (phase === "timeout" || phase === "error") {
+            dispatch.refresh();
+          }
         }}
-        disabled={phase === "searching" || phase === "loading" || phase === "no_match" || phase === "accepting"}
+        disabled={phase === "searching" || phase === "loading" || phase === "no_match" || phase === "accepting" || phase === "escalated"}
         size="lg"
         className="w-full gap-2"
       >
@@ -545,7 +544,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}
         {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Waiting for response…</>}
         {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Continue</>}
-        {phase === "no_match" && <><Users className="w-4 h-4" /> No match — retrying…</>}
+        {(phase === "no_match" || phase === "escalated") && <><Users className="w-4 h-4" /> Waiting for operations…</>}
         {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Try again</>}
         {phase === "error" && <><RefreshCw className="w-4 h-4" /> Retry</>}
       </Button>
