@@ -1,8 +1,11 @@
 import type { V2CategoryFlow } from "@/data/v2CategoryFlows";
 import type { V2BookingState } from "@/pages/V2BookingPage";
+import { PART_GRADES } from "@/data/partsPricing";
+import { getServiceWarranty } from "@/data/partsPricing";
+import { TRAVEL_ZONES } from "@/data/travelFees";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone, MessageCircle, Shield, ArrowRight, Circle } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone, MessageCircle, Shield, ArrowRight, Circle, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { SUPPORT_PHONE, SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
@@ -31,7 +34,12 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
   const selectedService = flow.serviceTypes.find((s) => s.id === booking.serviceTypeId);
   const selectedPackage = flow.packages.find((p) => p.id === booking.packageId);
   const selectedMode = flow.serviceModes?.find((m) => m.id === booking.serviceModeId);
+  const selectedGrade = booking.partGrade ? PART_GRADES.find(g => g.code === booking.partGrade) : null;
+  const warranty = getServiceWarranty(flow.code, booking.serviceTypeId);
   const jobId = `LF-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
+  // Demo travel zone
+  const travelZone = TRAVEL_ZONES[0];
 
   const handleConfirm = () => {
     setConfirmed(true);
@@ -140,6 +148,12 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
               <span className="text-foreground">{selectedMode.label}</span>
             </div>
           )}
+          {selectedGrade && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Part Quality</span>
+              <span className="text-foreground">{selectedGrade.label}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Pricing</span>
             <Badge variant="outline" className={`text-[10px] ${
@@ -172,10 +186,11 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         </div>
       )}
 
-      {/* Selected package */}
-      {selectedPackage && (
-        <div className="bg-card rounded-xl border p-5 space-y-3">
-          <h3 className="font-semibold text-foreground text-sm">Estimated Cost</h3>
+      {/* Price breakdown */}
+      <div className="bg-card rounded-xl border p-5 space-y-3">
+        <h3 className="font-semibold text-foreground text-sm">Estimated Cost</h3>
+
+        {selectedPackage && (
           <div className="flex justify-between items-start">
             <div>
               <p className="font-medium text-foreground">{selectedPackage.name}</p>
@@ -183,18 +198,65 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
             </div>
             <div className="text-right">
               <p className="font-bold text-foreground">
-                {selectedPackage.price === 0 ? "Free" : `LKR ${selectedPackage.price.toLocaleString()}`}
+                {selectedPackage.price === 0 ? "Free" : selectedPackage.priceType === "starts_from"
+                  ? `From LKR ${selectedPackage.price.toLocaleString()}`
+                  : `LKR ${selectedPackage.price.toLocaleString()}`}
               </p>
               {selectedPackage.priceMax && (
-                <p className="text-xs text-muted-foreground">up to {selectedPackage.priceMax.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">up to LKR {selectedPackage.priceMax.toLocaleString()}</p>
               )}
             </div>
           </div>
-          {selectedMode?.extraFee && (
-            <div className="flex justify-between text-sm pt-2 border-t border-border/50">
-              <span className="text-muted-foreground">{selectedMode.label} fee</span>
-              <span className="text-foreground">+LKR {selectedMode.extraFee.toLocaleString()}</span>
+        )}
+
+        {selectedMode?.extraFee && (
+          <div className="flex justify-between text-sm pt-2 border-t border-border/50">
+            <span className="text-muted-foreground">{selectedMode.label} fee</span>
+            <span className="text-foreground">+LKR {selectedMode.extraFee.toLocaleString()}</span>
+          </div>
+        )}
+
+        {/* Travel fee */}
+        <div className="flex justify-between text-sm pt-2 border-t border-border/50">
+          <span className="text-muted-foreground flex items-center gap-1.5">
+            <MapPin className="w-3 h-3" /> Travel ({travelZone.label})
+          </span>
+          <span className="text-foreground">{travelZone.fee === 0 ? "Included" : `LKR ${travelZone.fee.toLocaleString()}`}</span>
+        </div>
+
+        {/* Starting from note for parts repairs */}
+        {selectedPackage?.priceType === "starts_from" && (
+          <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">Starting From Price</p>
+            <p>Final price depends on device model, spare part availability, part grade, and repair complexity. You will receive a detailed quote for approval before work begins.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Part grade & warranty */}
+      {(selectedGrade || warranty) && (
+        <div className="bg-card rounded-xl border p-5 space-y-3">
+          <h3 className="font-semibold text-foreground text-sm">Warranty Information</h3>
+          {selectedGrade && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Part Warranty ({selectedGrade.label})</span>
+              <span className="text-foreground">{selectedGrade.warrantyLabel}</span>
             </div>
+          )}
+          {warranty && (
+            <>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Labour Warranty</span>
+                <span className="text-foreground">{warranty.laborWarrantyLabel}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Parts</span>
+                <span className="text-foreground text-xs">{warranty.partsWarrantyNote}</span>
+              </div>
+            </>
+          )}
+          {!selectedGrade && !warranty && (
+            <p className="text-xs text-muted-foreground">{flow.warrantyNote}</p>
           )}
         </div>
       )}

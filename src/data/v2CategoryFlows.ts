@@ -107,11 +107,11 @@ const MOBILE_FLOW: V2CategoryFlow = {
   flowType: "fast_book",
   bookingModel: "fast_book",
   assignmentType: "partner_shop",
-  pricingArchetype: "fixed_price",
+  pricingArchetype: "diagnostic_first",
   heroTagline: "Broken Phone Screen? Fixed Today",
   heroSubtext: "Verified technicians · Genuine & OEM parts · Warranty on every repair",
   trustBadges: ["Verified Technician", "Data Safe", "Warranty Backed", "Transparent Pricing"],
-  priceExample: "Repairs from LKR 2,000",
+  priceExample: "Starting from LKR 5,000",
   serviceTypes: [
     { id: "screen", label: "Screen Broken", description: "Cracked, shattered or unresponsive display", icon: "Smartphone" },
     { id: "battery", label: "Battery Replacement", description: "Battery draining fast, swollen or dead", icon: "Battery" },
@@ -142,9 +142,9 @@ const MOBILE_FLOW: V2CategoryFlow = {
     { id: "genuine", name: "Genuine Display", description: "Original manufacturer display", priceType: "starts_from", price: 15000, priceMax: 45000, features: ["Genuine part", "12-month warranty", "Same-day service"] },
   ],
   quickServices: [
-    { label: "Broken Phone Screen", priceLabel: "From LKR 5,000", serviceTypeId: "screen", pricingArchetype: "fixed_price" },
-    { label: "Battery Replacement", priceLabel: "From LKR 2,000", serviceTypeId: "battery", pricingArchetype: "fixed_price" },
-    { label: "Charging Port Fix", priceLabel: "From LKR 1,500", serviceTypeId: "charging", pricingArchetype: "fixed_price" },
+    { label: "Broken Phone Screen", priceLabel: "From LKR 9,500", serviceTypeId: "screen", pricingArchetype: "diagnostic_first" },
+    { label: "Battery Replacement", priceLabel: "From LKR 3,500", serviceTypeId: "battery", pricingArchetype: "diagnostic_first" },
+    { label: "Charging Port Fix", priceLabel: "From LKR 2,500", serviceTypeId: "charging", pricingArchetype: "diagnostic_first" },
   ],
   partnerShops: [
     { name: "TechFix Colombo 7", location: "Colombo 7, near Majestic City", rating: 4.8, repairTimeEstimate: "1-2 hours", openHours: "9 AM – 7 PM", verified: true },
@@ -157,7 +157,7 @@ const MOBILE_FLOW: V2CategoryFlow = {
   dataRiskDisclaimer: "By proceeding, you acknowledge that LankaFix and the assigned technician are not responsible for any data loss during the repair process. We strongly recommend backing up your data before handing over your device. Do not share your PIN or passwords unless absolutely necessary.",
   cancellationNote: "Free cancellation within 10 minutes of booking",
   warrantyNote: "All repairs include warranty on parts and labor",
-  pricingExplanation: "Mobile repairs use Fixed Pricing. You'll see the exact price before confirming. Parts cost varies by quality tier (Compatible, OEM, Genuine).",
+  pricingExplanation: "Mobile repairs use Starting From pricing. Final price depends on your device model, spare part availability, and part grade selected. You choose your part quality (Original, OEM, A Grade, or Compatible) and receive a detailed quote for approval before any repair begins.",
 };
 
 // ─── AC SERVICES ──────────────────────────────────────────────
@@ -353,7 +353,7 @@ const CONSUMER_ELEC_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "brand", label: "Brand", type: "text", required: false },
-    { key: "model", label: "Model (if known)", type: "text", required: false },
+    { key: "model_number", label: "Model Number", type: "text", required: false },
     { key: "age", label: "Approximate Age", type: "select", options: [{ label: "Under 1 year", value: "lt_1y" }, { label: "1-3 years", value: "1_3y" }, { label: "3-5 years", value: "3_5y" }, { label: "Over 5 years", value: "gt_5y" }], required: true },
     { key: "issue_description", label: "Describe the problem", type: "text", required: true },
   ],

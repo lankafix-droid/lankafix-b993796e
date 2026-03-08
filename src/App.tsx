@@ -47,6 +47,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import V2HomePage from "./pages/V2HomePage";
 import V2BookingPage from "./pages/V2BookingPage";
 import V2QuoteApprovalPage from "./pages/V2QuoteApprovalPage";
+import PricingEditorPage from "./pages/ops/PricingEditorPage";
 
 const queryClient = new QueryClient();
 
@@ -104,6 +105,7 @@ const App = () => (
             <Route path="/ops/diagnose-analytics" element={<DiagnoseAnalyticsPage />} />
             <Route path="/ops/dispatch-analytics" element={<DispatchAnalyticsPage />} />
             <Route path="/ops/control-tower" element={<ControlTowerPage />} />
+            <Route path="/ops/pricing" element={<PricingEditorPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="*" element={<NotFound />} />
