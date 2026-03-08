@@ -46,6 +46,7 @@ import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import V2HomePage from "./pages/V2HomePage";
 import V2BookingPage from "./pages/V2BookingPage";
+import V2QuoteApprovalPage from "./pages/V2QuoteApprovalPage";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/v2" element={<V2HomePage />} />
           <Route path="/v2/book/:category" element={<V2BookingPage />} />
+          <Route path="/v2/quote/:jobId" element={<V2QuoteApprovalPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/category/:code" element={<CategoryPage />} />
           <Route path="/precheck/:catCode/:svcCode" element={<PrecheckPage />} />

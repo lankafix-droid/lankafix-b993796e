@@ -5,19 +5,19 @@ import { track } from "@/lib/analytics";
 const INTENTS = [
   {
     icon: <Wrench className="w-6 h-6" />,
-    label: "Repair Something",
+    label: "Repair",
     description: "Fix what's broken",
     color: "from-destructive/15 to-destructive/5 border-destructive/20",
     iconColor: "text-destructive",
-    link: "/categories?intent=repair",
+    link: "/v2#categories",
   },
   {
     icon: <PlusCircle className="w-6 h-6" />,
-    label: "Install Something",
+    label: "Install",
     description: "New setup or upgrade",
     color: "from-primary/15 to-primary/5 border-primary/20",
     iconColor: "text-primary",
-    link: "/categories?intent=install",
+    link: "/v2/book/CCTV",
   },
   {
     icon: <Sparkles className="w-6 h-6" />,
@@ -25,23 +25,23 @@ const INTENTS = [
     description: "Maintenance & cleaning",
     color: "from-lankafix-green/15 to-lankafix-green/5 border-lankafix-green/20",
     iconColor: "text-lankafix-green",
-    link: "/categories?intent=service",
+    link: "/v2/book/AC",
   },
   {
     icon: <ClipboardList className="w-6 h-6" />,
-    label: "Inspection / Quote",
+    label: "Inspection",
     description: "Get expert assessment",
     color: "from-warning/15 to-warning/5 border-warning/20",
     iconColor: "text-warning",
-    link: "/categories?intent=inspection",
+    link: "/v2/book/SOLAR",
   },
   {
     icon: <HelpCircle className="w-6 h-6" />,
     label: "Not Sure",
-    description: "Let us help you decide",
+    description: "We'll diagnose it",
     color: "from-accent/15 to-accent/5 border-accent/20",
     iconColor: "text-accent",
-    link: "/diagnose",
+    link: "/v2#diagnose",
   },
 ];
 
