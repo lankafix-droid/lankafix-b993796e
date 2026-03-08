@@ -1,1 +1,4 @@
 project_id = "avjqjnuxvdgifmiudynv"
+
+[functions.smart-dispatch]
+verify_jwt = false
