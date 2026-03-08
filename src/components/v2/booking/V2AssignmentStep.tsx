@@ -18,7 +18,7 @@ interface Props {
   onConfirm: () => void;
 }
 
-const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, onConfirm }: Props) => {
+const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, isEmergency = false, onConfirm }: Props) => {
   const [isMatching, setIsMatching] = useState(true);
   const [match, setMatch] = useState<ReturnType<typeof matchTechnician> | null>(null);
   const [shopSort, setShopSort] = useState<"nearest" | "rated" | "fastest">("nearest");
