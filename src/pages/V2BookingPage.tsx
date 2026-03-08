@@ -18,6 +18,8 @@ import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
 import SmartDiagnosisStep from "@/components/v2/booking/SmartDiagnosisStep";
 import DiagnosisSummaryCard from "@/components/v2/booking/DiagnosisSummaryCard";
 import LocationPicker from "@/components/v2/location/LocationPicker";
+import BookingProtectionCard from "@/components/v2/booking/BookingProtectionCard";
+import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -125,7 +127,7 @@ const V2BookingPage = () => {
       s.push("pricing");
     }
 
-    s.push("assignment", "confirmation");
+    s.push("booking_protection", "assignment", "confirmation");
     return s;
   }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation, diagBlock]);
 
@@ -295,6 +297,16 @@ const V2BookingPage = () => {
               onSelect={(id) => updateBooking({ packageId: id })}
               onContinue={goNext}
               categoryCode={flow.code}
+            />
+          )}
+          {currentStepName === "booking_protection" && (
+            <BookingProtectionCard
+              categoryCode={flow.code as CategoryCode}
+              isEmergency={booking.isEmergency}
+              onConfirmPayment={(_fee, _type) => {
+                track("booking_protection_paid", { category: flow.code, fee: _fee, type: _type });
+                goNext();
+              }}
             />
           )}
           {currentStepName === "assignment" && (
