@@ -42,7 +42,7 @@ const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: stri
 
 // All categories LIVE — ordered by priority
 const TOP_CODES = ["MOBILE", "AC"];
-const MORE_CODES = ["IT", "CCTV", "CONSUMER_ELEC", "SOLAR", "SMART_HOME_OFFICE"];
+const MORE_CODES = ["IT", "CCTV", "CONSUMER_ELEC", "SOLAR", "SMART_HOME_OFFICE", "COPIER", "PRINT_SUPPLIES"];
 
 const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
   const thumb = categoryThumbs[cat.code];
