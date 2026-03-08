@@ -69,12 +69,12 @@ const App = () => (
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
-          <Route path="/v2/book/:category" element={<Navigate to="/book/:category" replace />} />
-          <Route path="/v2/quote/:jobId" element={<Navigate to="/quote/:jobId" replace />} />
+          <Route path="/v2/book/:category" element={<RedirectBooking />} />
+          <Route path="/v2/quote/:jobId" element={<RedirectQuote />} />
 
           {/* ─── Legacy V1 redirects ─── */}
           <Route path="/categories" element={<Navigate to="/" replace />} />
-          <Route path="/category/:code" element={<Navigate to="/" replace />} />
+          <Route path="/category/:code" element={<RedirectCategory />} />
 
           {/* ─── Provider onboarding ─── */}
           <Route path="/join" element={<ProviderOnboardingPage />} />
