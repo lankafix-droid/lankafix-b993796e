@@ -15,6 +15,10 @@ export interface V2FlowOption {
   label: string;
   description: string;
   icon: string;
+  group?: string;
+  priceLabel?: string;
+  tag?: string;
+  estimatedTime?: string;
 }
 
 export interface V2DeviceQuestion {
