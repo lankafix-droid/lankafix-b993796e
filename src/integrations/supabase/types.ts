@@ -25,6 +25,7 @@ export type Database = {
           completed_at: string | null
           completion_otp: string | null
           completion_otp_expires_at: string | null
+          contact_unlocked: boolean | null
           created_at: string
           customer_address: Json | null
           customer_id: string | null
@@ -47,6 +48,11 @@ export type Database = {
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           photos: Json | null
           pricing_archetype: Database["public"]["Enums"]["pricing_archetype"]
+          protection_fee_lkr: number | null
+          protection_paid_at: string | null
+          protection_refundable: boolean | null
+          protection_status: string | null
+          protection_type: string | null
           revisit_count: number | null
           scheduled_at: string | null
           service_mode: Database["public"]["Enums"]["service_mode"] | null
@@ -72,6 +78,7 @@ export type Database = {
           completed_at?: string | null
           completion_otp?: string | null
           completion_otp_expires_at?: string | null
+          contact_unlocked?: boolean | null
           created_at?: string
           customer_address?: Json | null
           customer_id?: string | null
@@ -94,6 +101,11 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
+          protection_fee_lkr?: number | null
+          protection_paid_at?: string | null
+          protection_refundable?: boolean | null
+          protection_status?: string | null
+          protection_type?: string | null
           revisit_count?: number | null
           scheduled_at?: string | null
           service_mode?: Database["public"]["Enums"]["service_mode"] | null
@@ -119,6 +131,7 @@ export type Database = {
           completed_at?: string | null
           completion_otp?: string | null
           completion_otp_expires_at?: string | null
+          contact_unlocked?: boolean | null
           created_at?: string
           customer_address?: Json | null
           customer_id?: string | null
@@ -141,6 +154,11 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
+          protection_fee_lkr?: number | null
+          protection_paid_at?: string | null
+          protection_refundable?: boolean | null
+          protection_status?: string | null
+          protection_type?: string | null
           revisit_count?: number | null
           scheduled_at?: string | null
           service_mode?: Database["public"]["Enums"]["service_mode"] | null
