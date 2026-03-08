@@ -17,7 +17,7 @@ const INTENTS = [
     description: "New setup or upgrade",
     color: "from-primary/15 to-primary/5 border-primary/20",
     iconColor: "text-primary",
-    link: "/v2/book/CCTV",
+    link: "/book/CCTV",
   },
   {
     icon: <Sparkles className="w-6 h-6" />,
