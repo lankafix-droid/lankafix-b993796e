@@ -181,7 +181,9 @@ const AC_FLOW: V2CategoryFlow = {
     { id: "deep_clean", label: "Deep Clean", description: "Full chemical wash of indoor & outdoor units", icon: "Sparkles" },
     { id: "repair", label: "Repair", description: "Fix cooling, leak, noise or electrical issues", icon: "Wrench" },
     { id: "gas", label: "Gas Refill", description: "Refrigerant top-up for optimal cooling", icon: "Thermometer" },
-    { id: "install", label: "Installation / Relocation", description: "New AC installation or unit relocation", icon: "PlusCircle" },
+    { id: "install", label: "New Installation", description: "Professional AC installation with piping and bracket", icon: "PlusCircle", priceLabel: "Site inspection required", tag: "Inspection" },
+    { id: "relocation", label: "AC Relocation", description: "Move your existing AC to a new location", icon: "ArrowRight", priceLabel: "From LKR 8,000" },
+    { id: "water_leak", label: "Water Leakage Repair", description: "Water dripping from indoor unit, drain line issue", icon: "Droplets", priceLabel: "From LKR 3,500" },
     { id: "not_sure", label: "Diagnose My Problem", description: "Let our technician diagnose — takes less than 30 seconds", icon: "Stethoscope" },
   ],
   issueSelectors: [
