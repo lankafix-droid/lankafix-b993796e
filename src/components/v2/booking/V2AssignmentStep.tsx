@@ -400,8 +400,8 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-primary" />
                 <div>
-                  <p className="text-sm font-bold text-primary">ETA: {bestMatch.etaRange}</p>
-                  <p className="text-[10px] text-muted-foreground">{bestMatch.trafficLabel}</p>
+                  <p className="text-sm font-bold text-primary">ETA: {bestMatch.etaRangeLabel || `~${bestMatch.eta_minutes} min`}</p>
+                  <p className="text-[10px] text-muted-foreground">{bestMatch.traffic_label || "Normal traffic"}</p>
                 </div>
               </div>
               <div className="text-right">

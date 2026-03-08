@@ -1,13 +1,12 @@
 /**
- * useSmartDispatch — Calls the smart-dispatch edge function
- * and manages backend-driven acceptance flow with persistent state.
+ * useSmartDispatch — Backend-driven dispatch with ETA ranges,
+ * dynamic accept windows, and realtime status sync.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CategoryCode } from "@/types/booking";
 import { useLocationStore } from "@/store/locationStore";
 import { track } from "@/lib/analytics";
-import { getETARange, detectTrafficLevel, getTrafficLabel, type TrafficLevel } from "@/lib/etaEngine";
 
 export interface DispatchScoreBreakdown {
   proximity: number;
@@ -17,6 +16,9 @@ export interface DispatchScoreBreakdown {
   workload: number;
   completion_rate: number;
   emergency_priority: number;
+  new_partner_boost: number;
+  vehicle_bonus: number;
+  zone_preference: number;
   total: number;
 }
 
@@ -42,10 +44,14 @@ export interface SmartDispatchCandidate {
   };
   distance_km: number;
   eta_minutes: number;
+  eta_min: number;
+  eta_max: number;
   traffic: string;
+  traffic_label: string;
+  location_source: string;
   score: DispatchScoreBreakdown;
-  etaRange: string;
-  trafficLabel: string;
+  // Enriched client-side
+  etaRangeLabel: string;
   currentZoneName: string;
 }
 
@@ -59,12 +65,13 @@ export interface SmartDispatchState {
   totalEligible: number;
   dispatchRound: number;
   acceptCountdown: number;
+  acceptWindowSeconds: number;
   escalateToOps: boolean;
   error: string | null;
 }
 
-const ACCEPT_TIMEOUT = 60;
-const EMERGENCY_ACCEPT_TIMEOUT = 45;
+const DEFAULT_ACCEPT_TIMEOUT = 60;
+const EMERGENCY_ACCEPT_TIMEOUT = 30;
 
 export function useSmartDispatch(
   category: CategoryCode,
@@ -87,7 +94,8 @@ export function useSmartDispatch(
     dispatchMode: "auto",
     totalEligible: 0,
     dispatchRound: 1,
-    acceptCountdown: isEmergency ? EMERGENCY_ACCEPT_TIMEOUT : ACCEPT_TIMEOUT,
+    acceptCountdown: isEmergency ? EMERGENCY_ACCEPT_TIMEOUT : DEFAULT_ACCEPT_TIMEOUT,
+    acceptWindowSeconds: isEmergency ? EMERGENCY_ACCEPT_TIMEOUT : DEFAULT_ACCEPT_TIMEOUT,
     escalateToOps: false,
     error: null,
   });
@@ -101,11 +109,13 @@ export function useSmartDispatch(
   }, []);
 
   const enrichCandidate = useCallback((raw: any): SmartDispatchCandidate => {
-    const traffic = raw.traffic as TrafficLevel || detectTrafficLevel();
+    const etaMin = raw.eta_min || Math.round(raw.eta_minutes * 0.7);
+    const etaMax = raw.eta_max || Math.round(raw.eta_minutes * 1.3);
     return {
       ...raw,
-      etaRange: getETARange(raw.eta_minutes),
-      trafficLabel: getTrafficLabel(traffic),
+      eta_min: etaMin,
+      eta_max: etaMax,
+      etaRangeLabel: `${etaMin}–${etaMax} min`,
       currentZoneName: raw.partner?.service_zones?.[0]?.replace(/_/g, " ") || "Colombo",
     };
   }, []);
@@ -133,6 +143,8 @@ export function useSmartDispatch(
 
       const candidates = (data.candidates || []).map(enrichCandidate);
       const bestMatch = candidates[0] || null;
+      // Use server-provided accept window (§12)
+      const serverAcceptWindow = data.accept_window_seconds || (isEmergency ? EMERGENCY_ACCEPT_TIMEOUT : DEFAULT_ACCEPT_TIMEOUT);
 
       track("smart_dispatch_result", {
         category,
@@ -151,6 +163,7 @@ export function useSmartDispatch(
         dispatchMode: data.dispatch_mode || "auto",
         totalEligible: data.total_eligible || 0,
         dispatchRound: data.dispatch_round || 1,
+        acceptWindowSeconds: serverAcceptWindow,
         escalateToOps: data.escalate_to_ops || false,
         phase: bestMatch ? "matched" : data.escalate_to_ops ? "escalated" : "no_match",
       }));
@@ -173,13 +186,13 @@ export function useSmartDispatch(
   }, [enabled, runDispatch]);
 
   const startAcceptance = useCallback(() => {
-    const timeout = isEmergency ? EMERGENCY_ACCEPT_TIMEOUT : ACCEPT_TIMEOUT;
+    const timeout = state.acceptWindowSeconds;
     setState(prev => ({ ...prev, phase: "accepting", acceptCountdown: timeout }));
     acceptTimerRef.current = setInterval(() => {
       setState(prev => {
         if (prev.acceptCountdown <= 1) {
           if (acceptTimerRef.current) clearInterval(acceptTimerRef.current);
-          // Backend handles timeout — call dispatch-accept with timeout
+          // Backend handles timeout
           if (bookingId && prev.bestMatch) {
             supabase.functions.invoke("dispatch-accept", {
               body: {
@@ -192,12 +205,10 @@ export function useSmartDispatch(
               if (data?.status === "escalated") {
                 setState(p => ({ ...p, phase: "escalated", acceptCountdown: 0 }));
               } else if (data?.status === "next_round") {
-                // Re-run dispatch will be triggered by backend; poll or re-fetch
                 setState(p => ({
                   ...p, phase: "searching", acceptCountdown: 0,
                   dispatchRound: data.dispatch_round,
                 }));
-                // Re-fetch after backend dispatches next round
                 setTimeout(() => runDispatch(), 3000);
               }
             });
@@ -207,22 +218,20 @@ export function useSmartDispatch(
         return { ...prev, acceptCountdown: prev.acceptCountdown - 1 };
       });
     }, 1000);
-  }, [isEmergency, bookingId, runDispatch]);
+  }, [state.acceptWindowSeconds, bookingId, runDispatch]);
 
-  /** Backend-driven acceptance confirmation */
   const confirmAcceptance = useCallback(async () => {
     if (acceptTimerRef.current) clearInterval(acceptTimerRef.current);
 
     if (bookingId && state.bestMatch) {
       try {
-        const { data, error } = await supabase.functions.invoke("dispatch-accept", {
+        await supabase.functions.invoke("dispatch-accept", {
           body: {
             booking_id: bookingId,
             partner_id: state.bestMatch.partner_id,
             action: "accept",
           },
         });
-        if (error) throw error;
         setState(prev => ({ ...prev, phase: "confirmed" }));
         track("smart_dispatch_accepted", { category, bookingId });
       } catch (e) {
@@ -235,7 +244,6 @@ export function useSmartDispatch(
     }
   }, [category, bookingId, state.bestMatch]);
 
-  /** Customer selects from top-3 — persists to backend */
   const selectCandidate = useCallback(async (candidateId: string) => {
     const selected = state.candidates.find(c => c.partner_id === candidateId);
     if (!selected) return;
@@ -258,22 +266,17 @@ export function useSmartDispatch(
     }
   }, [state.candidates, bookingId, category]);
 
-  // Subscribe to booking dispatch_status changes via realtime
+  // Subscribe to realtime booking dispatch_status + ops_confirmed
   useEffect(() => {
     if (!bookingId) return;
     const channel = supabase
       .channel(`dispatch-${bookingId}`)
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "bookings",
-          filter: `id=eq.${bookingId}`,
-        },
+        { event: "UPDATE", schema: "public", table: "bookings", filter: `id=eq.${bookingId}` },
         (payload: any) => {
           const newStatus = payload.new?.dispatch_status;
-          if (newStatus === "accepted") {
+          if (newStatus === "accepted" || newStatus === "ops_confirmed") {
             if (acceptTimerRef.current) clearInterval(acceptTimerRef.current);
             setState(prev => ({ ...prev, phase: "confirmed" }));
           } else if (newStatus === "escalated") {
