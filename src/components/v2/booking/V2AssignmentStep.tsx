@@ -1,10 +1,13 @@
 import type { CategoryCode } from "@/types/booking";
 import type { V2AssignmentType, V2PartnerShopInfo } from "@/data/v2CategoryFlows";
 import { matchTechnician, getZoneIntelligence } from "@/engines/matchingEngine";
+import { useLocationStore, getTravelFeeForZone } from "@/store/locationStore";
+import { calculateDistance } from "@/lib/locationUtils";
+import { calculateETA, getETARange, detectTrafficLevel, getTrafficLabel } from "@/lib/etaEngine";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar, Monitor, ArrowRight } from "lucide-react";
-import { useState, useEffect } from "react";
+import { ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar, Monitor, ArrowRight, Navigation } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 
 interface Props {
   categoryCode: CategoryCode;
@@ -17,27 +20,48 @@ interface Props {
 const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, onConfirm }: Props) => {
   const [isMatching, setIsMatching] = useState(true);
   const [match, setMatch] = useState<ReturnType<typeof matchTechnician> | null>(null);
-  const zoneIntel = getZoneIntelligence("col_07");
+  const [shopSort, setShopSort] = useState<"nearest" | "rated" | "fastest">("nearest");
+  const { getActiveAddress } = useLocationStore();
+  const activeAddress = getActiveAddress();
 
-  // Determine effective assignment type based on service mode
+  const customerZoneId = activeAddress?.zoneId || "col_07";
+  const zoneIntel = getZoneIntelligence(customerZoneId);
+  const trafficLevel = detectTrafficLevel();
+
   const effectiveType = serviceModeId === "remote" ? "remote_support" as V2AssignmentType :
     (serviceModeId === "drop_off" && assignmentType === "partner_shop") ? "partner_shop" : assignmentType;
 
   useEffect(() => {
     setIsMatching(true);
     const timer = setTimeout(() => {
-      const result = matchTechnician(categoryCode, "col_07", false);
+      const result = matchTechnician(categoryCode, customerZoneId, false);
       setMatch(result);
       setIsMatching(false);
     }, 1500);
     return () => clearTimeout(timer);
-  }, [categoryCode]);
+  }, [categoryCode, customerZoneId]);
+
+  // Sort partner shops by distance from customer
+  const sortedShops = useMemo(() => {
+    if (!partnerShops || !activeAddress) return partnerShops || [];
+    // Demo: assign rough distances
+    const withDist = partnerShops.map((shop, i) => ({
+      ...shop,
+      distance: activeAddress.lat ? (2.5 + i * 1.8) : (3 + i * 2),
+    }));
+    if (shopSort === "nearest") return [...withDist].sort((a, b) => a.distance - b.distance);
+    if (shopSort === "rated") return [...withDist].sort((a, b) => b.rating - a.rating);
+    return withDist;
+  }, [partnerShops, activeAddress, shopSort]);
+
+  // Travel fee for active address
+  const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
 
   // ─── Partner Shop Match ─────────────────────────────
   if (effectiveType === "partner_shop") {
-    const shop = partnerShops?.[0] || {
+    const shop = sortedShops[0] || {
       name: "TechFix Colombo 7", location: "Near Majestic City",
-      rating: 4.8, repairTimeEstimate: "1-2 hours", openHours: "9 AM – 7 PM", verified: true
+      rating: 4.8, repairTimeEstimate: "1-2 hours", openHours: "9 AM – 7 PM", verified: true, distance: 3.2
     };
 
     return (
@@ -49,48 +73,65 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
         {isMatching ? <MatchingAnimation count={zoneIntel.techsNearby} label="Finding nearest partner shop..." /> : (
           <>
-            <div className="bg-card rounded-xl border p-5 space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <Store className="w-6 h-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h3 className="font-semibold text-foreground">{shop.name}</h3>
-                    {shop.verified && (
-                      <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20 gap-1">
-                        <ShieldCheck className="w-3 h-3" /> Verified
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5" /> {shop.location}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Star className="w-3.5 h-3.5 text-warning fill-warning" />
-                    <span className="text-sm font-bold text-foreground">{shop.rating}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground">Rating</div>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                  <div className="text-sm font-bold text-foreground">{shop.repairTimeEstimate}</div>
-                  <div className="text-xs text-muted-foreground">Est. Time</div>
-                </div>
-                <div className="bg-muted/50 rounded-lg p-3 text-center">
-                  <div className="text-sm font-bold text-foreground">{shop.openHours}</div>
-                  <div className="text-xs text-muted-foreground">Hours</div>
-                </div>
-              </div>
+            {/* Sort options */}
+            <div className="flex gap-2">
+              {(["nearest", "rated", "fastest"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setShopSort(s)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    shopSort === s ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {s === "nearest" ? "Nearest" : s === "rated" ? "Top Rated" : "Fastest"}
+                </button>
+              ))}
             </div>
 
-            <button className="w-full text-center text-sm text-primary font-medium py-2 hover:underline">
-              See other partner shops →
-            </button>
+            {sortedShops.map((s: any, i: number) => (
+              <div key={i} className={`bg-card rounded-xl border p-5 space-y-4 ${i === 0 ? "border-primary/30" : ""}`}>
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <Store className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h3 className="font-semibold text-foreground">{s.name}</h3>
+                      {s.verified && (
+                        <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20 gap-1">
+                          <ShieldCheck className="w-3 h-3" /> Verified
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="w-3.5 h-3.5" /> {s.location}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="bg-muted/50 rounded-lg p-2 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Star className="w-3 h-3 text-warning fill-warning" />
+                      <span className="text-sm font-bold text-foreground">{s.rating}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Rating</div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-2 text-center">
+                    <div className="text-sm font-bold text-foreground">{s.distance?.toFixed(1) || "?"} km</div>
+                    <div className="text-[10px] text-muted-foreground">Distance</div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-2 text-center">
+                    <div className="text-sm font-bold text-foreground">{s.repairTimeEstimate}</div>
+                    <div className="text-[10px] text-muted-foreground">Est. Time</div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-2 text-center">
+                    <div className="text-[10px] font-bold text-foreground">{s.openHours}</div>
+                    <div className="text-[10px] text-muted-foreground">Hours</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </>
         )}
 
@@ -122,6 +163,17 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
             </div>
 
+            {/* Service address */}
+            {activeAddress && (
+              <div className="bg-muted/30 rounded-lg p-3 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary shrink-0" />
+                <div>
+                  <p className="text-sm text-foreground">{activeAddress.displayName || activeAddress.area}</p>
+                  <p className="text-xs text-muted-foreground">{activeAddress.city}</p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted/50 rounded-lg p-4 text-center">
                 <div className="text-sm font-bold text-foreground">Tomorrow</div>
@@ -147,6 +199,16 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
                 <span>Visit fee deductible from project</span>
               </div>
             </div>
+
+            {/* Travel fee */}
+            {travelFee && travelFee.fee > 0 && (
+              <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Navigation className="w-3.5 h-3.5" /> Travel charge
+                </span>
+                <span className="font-medium text-foreground">LKR {travelFee.fee.toLocaleString()}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -220,6 +282,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   }
 
   // ─── Default: Technician Match ─────────────────────────────
+  const techEtaMinutes = match?.distanceKm ? calculateETA(match.distanceKm, trafficLevel) : null;
+  const techEtaRange = techEtaMinutes ? getETARange(techEtaMinutes) : null;
+
   return (
     <div className="space-y-5">
       <div>
@@ -248,9 +313,6 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
                   <Star className="w-3.5 h-3.5 fill-warning" /> {match.technician.rating}
                 </span>
                 <span className="text-muted-foreground">{match.technician.jobsCompleted} jobs</span>
-                <span className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className="w-3.5 h-3.5" /> {match.technician.eta}
-                </span>
               </div>
             </div>
           </div>
@@ -265,10 +327,39 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               <div className="text-xs text-muted-foreground">Distance</div>
             </div>
             <div className="bg-muted/50 rounded-lg p-3 text-center">
-              <div className="text-sm font-bold text-foreground">{match.etaRange}</div>
+              <div className="text-sm font-bold text-foreground">{techEtaRange || match.etaRange}</div>
               <div className="text-xs text-muted-foreground">ETA</div>
             </div>
           </div>
+
+          {/* Traffic & ETA detail */}
+          <div className="bg-muted/30 rounded-lg p-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Clock className="w-3 h-3" />
+              {getTrafficLabel(trafficLevel)}
+            </span>
+            {techEtaMinutes && (
+              <span className="text-foreground font-medium">~{techEtaMinutes} min estimated</span>
+            )}
+          </div>
+
+          {/* Travel fee */}
+          {travelFee && travelFee.fee > 0 && (
+            <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground flex items-center gap-1.5">
+                <Navigation className="w-3.5 h-3.5" /> Travel charge
+              </span>
+              <span className="font-medium text-foreground">LKR {travelFee.fee.toLocaleString()}</span>
+            </div>
+          )}
+
+          {/* Service address */}
+          {activeAddress && (
+            <div className="bg-muted/30 rounded-lg p-3 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm text-foreground">{activeAddress.displayName || activeAddress.area}</p>
+            </div>
+          )}
         </div>
       )}
 
