@@ -15,10 +15,14 @@ import V2PricingExpectation from "@/components/v2/booking/V2PricingExpectation";
 import V2AssignmentStep from "@/components/v2/booking/V2AssignmentStep";
 import V2PartGradeSelection from "@/components/v2/booking/V2PartGradeSelection";
 import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
+import SmartDiagnosisStep from "@/components/v2/booking/SmartDiagnosisStep";
+import DiagnosisSummaryCard from "@/components/v2/booking/DiagnosisSummaryCard";
 import LocationPicker from "@/components/v2/location/LocationPicker";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
+import type { DiagAnswer } from "@/data/diagnosticQuestions";
 
 export interface V2BookingState {
   serviceTypeId: string;
@@ -34,6 +38,7 @@ export interface V2BookingState {
   partGrade?: PartGradeCode;
   acInstallAddons?: Record<string, number>;
   isEmergency?: boolean;
+  diagnosticAnswers?: Record<string, DiagAnswer>;
 }
 
 const INITIAL_STATE: V2BookingState = {
