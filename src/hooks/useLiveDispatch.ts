@@ -93,7 +93,7 @@ function scoreTech(
     trafficLabel: getTrafficLabel(traffic),
     matchScore,
     currentZoneName: getZoneName(tech.currentZoneId || ""),
-    isOnline: tech.availabilityStatus !== "offline",
+    isOnline: tech.availabilityStatus === "available" || tech.availabilityStatus === "busy",
   };
 }
 
