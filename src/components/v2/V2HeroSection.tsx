@@ -14,11 +14,11 @@ import heroIT from "@/assets/hero-it-repair.jpg";
 import heroTechnician from "@/assets/hero-technician.jpg";
 
 const BANNERS = [
-  { image: heroTechnician, headline: "Sri Lanka's Trusted Service Marketplace", sub: "Verified technicians · Transparent pricing · Service warranty", cta: "Book a Service", link: "/v2#categories" },
-  { image: heroMobile, headline: "Broken Phone? Fixed Today", sub: "Genuine & OEM parts · Same-day repair · Data-safe process", cta: "Fix My Phone", link: "/v2/book/MOBILE" },
-  { image: heroAC, headline: "AC Repair in 2 Hours", sub: "Same-day service across Greater Colombo", cta: "Book AC Service", link: "/v2/book/AC" },
-  { image: heroCCTV, headline: "Professional CCTV Installation", sub: "Site inspection included · Residential & commercial", cta: "Get a Quote", link: "/v2/book/CCTV" },
-  { image: heroIT, headline: "IT Problems? Expert Help Fast", sub: "Remote & on-site support for homes and businesses", cta: "Get IT Help", link: "/v2/book/IT" },
+  { image: heroTechnician, headline: "Sri Lanka's Trusted Service Marketplace", sub: "Verified technicians · Transparent pricing · Service warranty", cta: "Book a Service", link: "/#categories" },
+  { image: heroMobile, headline: "Broken Phone? Fixed Today", sub: "Genuine & OEM parts · Same-day repair · Data-safe process", cta: "Fix My Phone", link: "/book/MOBILE" },
+  { image: heroAC, headline: "AC Repair in 2 Hours", sub: "Same-day service across Greater Colombo", cta: "Book AC Service", link: "/book/AC" },
+  { image: heroCCTV, headline: "Professional CCTV Installation", sub: "Site inspection included · Residential & commercial", cta: "Get a Quote", link: "/book/CCTV" },
+  { image: heroIT, headline: "IT Problems? Expert Help Fast", sub: "Remote & on-site support for homes and businesses", cta: "Get IT Help", link: "/book/IT" },
 ];
 
 interface Props {
