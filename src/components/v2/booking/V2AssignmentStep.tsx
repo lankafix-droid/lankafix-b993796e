@@ -435,8 +435,8 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
           <p className="text-xs font-medium text-muted-foreground">{candidates.length - 1} other technicians available</p>
           <div className="flex -space-x-2">
             {candidates.slice(1, 5).map((c) => (
-              <div key={c.tech.technicianId} className="w-8 h-8 rounded-full bg-primary/10 border-2 border-card flex items-center justify-center text-xs font-medium text-primary">
-                {c.tech.name.charAt(0)}
+              <div key={c.partner.id} className="w-8 h-8 rounded-full bg-primary/10 border-2 border-card flex items-center justify-center text-xs font-medium text-primary">
+                {c.partner.full_name.charAt(0)}
               </div>
             ))}
           </div>
