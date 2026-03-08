@@ -271,6 +271,7 @@ const V2BookingPage = () => {
               assignmentType={flow.assignmentType}
               serviceModeId={booking.serviceModeId}
               partnerShops={flow.partnerShops}
+              isEmergency={booking.isEmergency}
               onConfirm={goNext}
             />
           )}

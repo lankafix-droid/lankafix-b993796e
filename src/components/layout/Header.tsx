@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { MapPin, Menu, X, Wrench } from "lucide-react";
+import { MapPin, Menu, X, Wrench, User } from "lucide-react";
 import { useState } from "react";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 
@@ -20,6 +20,7 @@ const Header = () => {
           <Link to="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">Home</Link>
           <Link to="/diagnose" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Diagnose</Link>
           <Link to="/track" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Track Job</Link>
+          <Link to="/account" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Account</Link>
           <Button size="sm" className="bg-gradient-brand hover:opacity-90 shadow-sm" asChild>
             <Link to="/#categories">
               <Wrench className="w-3.5 h-3.5 mr-1" />
@@ -36,6 +37,9 @@ const Header = () => {
           <Link to="/" className="block text-sm font-medium py-2.5 px-3 rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link to="/diagnose" className="block text-sm font-medium py-2.5 px-3 rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Diagnose</Link>
           <Link to="/track" className="block text-sm font-medium py-2.5 px-3 text-muted-foreground rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Track Job</Link>
+          <Link to="/account" className="block text-sm font-medium py-2.5 px-3 text-muted-foreground rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>
+            <span className="flex items-center gap-2"><User className="w-4 h-4" /> Account</span>
+          </Link>
           <Button className="w-full bg-gradient-brand hover:opacity-90" size="sm" asChild>
             <Link to="/#categories" onClick={() => setMenuOpen(false)}>
               <Wrench className="w-3.5 h-3.5 mr-1" />

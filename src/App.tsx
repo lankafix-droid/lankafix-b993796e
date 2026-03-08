@@ -42,6 +42,7 @@ import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
 import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import AccountPage from "./pages/AccountPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -66,6 +67,7 @@ const App = () => (
           <Route path="/tracker/:jobId" element={<TrackerPage />} />
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
+          <Route path="/account" element={<AccountPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />

@@ -6,7 +6,7 @@ import { calculateDistance } from "@/lib/locationUtils";
 import { calculateETA, getETARange, detectTrafficLevel, getTrafficLabel } from "@/lib/etaEngine";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar, Monitor, ArrowRight, Navigation } from "lucide-react";
+import { ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar, Monitor, ArrowRight, Navigation, Zap } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 
 interface Props {
@@ -14,10 +14,11 @@ interface Props {
   assignmentType: V2AssignmentType;
   serviceModeId?: string;
   partnerShops?: V2PartnerShopInfo[];
+  isEmergency?: boolean;
   onConfirm: () => void;
 }
 
-const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, onConfirm }: Props) => {
+const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, isEmergency = false, onConfirm }: Props) => {
   const [isMatching, setIsMatching] = useState(true);
   const [match, setMatch] = useState<ReturnType<typeof matchTechnician> | null>(null);
   const [shopSort, setShopSort] = useState<"nearest" | "rated" | "fastest">("nearest");
@@ -34,7 +35,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   useEffect(() => {
     setIsMatching(true);
     const timer = setTimeout(() => {
-      const result = matchTechnician(categoryCode, customerZoneId, false);
+      const result = matchTechnician(categoryCode, customerZoneId, isEmergency);
       setMatch(result);
       setIsMatching(false);
     }, 1500);
@@ -289,10 +290,23 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
     <div className="space-y-5">
       <div>
         <h2 className="text-xl font-bold text-foreground">Technician Assignment</h2>
-        <p className="text-sm text-muted-foreground mt-1">We'll match you with the best available technician</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isEmergency ? "Priority matching — emergency response within 2 hours" : "We'll match you with the best available technician"}
+        </p>
       </div>
 
-      {isMatching ? <MatchingAnimation count={zoneIntel.techsNearby} label="Finding the best technician..." /> : null}
+      {/* Emergency mode banner */}
+      {isEmergency && (
+        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex items-start gap-3">
+          <Zap className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Emergency Mode Active</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Response within 2 hours · +25% surcharge applies · Priority dispatch</p>
+          </div>
+        </div>
+      )}
+
+      {isMatching ? <MatchingAnimation count={zoneIntel.techsNearby} label={isEmergency ? "Priority matching in progress..." : "Finding the best technician..."} /> : null}
 
       {!isMatching && match?.technician && (
         <div className="bg-card rounded-xl border p-5 space-y-4">

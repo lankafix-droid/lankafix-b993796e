@@ -1,0 +1,155 @@
+import Header from "@/components/layout/Header";
+import Footer from "@/components/landing/Footer";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useLocationStore, ADDRESS_LABEL_OPTIONS } from "@/store/locationStore";
+import {
+  User, MapPin, Clock, ShieldCheck, Phone, Settings, ChevronRight,
+  Smartphone, Monitor, Snowflake, Sun, Wrench, FileText,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+
+const MOCK_BOOKINGS = [
+  { id: "LF-A1B2C3", category: "AC Services", service: "Standard Service", status: "completed", date: "2026-02-28", icon: Snowflake },
+  { id: "LF-D4E5F6", category: "Mobile Phone Repairs", service: "Screen Replacement", status: "in_progress", date: "2026-03-07", icon: Smartphone },
+];
+
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  completed: { label: "Completed", className: "bg-success/10 text-success border-success/20" },
+  in_progress: { label: "In Progress", className: "bg-primary/10 text-primary border-primary/20" },
+  pending: { label: "Pending", className: "bg-warning/10 text-warning border-warning/20" },
+};
+
+const AccountPage = () => {
+  const { savedAddresses } = useLocationStore();
+
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+      <main className="flex-1 container max-w-2xl py-6 space-y-6">
+        {/* Profile header */}
+        <div className="bg-card rounded-2xl border p-6 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <User className="w-8 h-8 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold text-foreground">My Account</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Manage your bookings, addresses, and preferences</p>
+          </div>
+        </div>
+
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 gap-3">
+          <Link to="/track" className="bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
+            <Clock className="w-5 h-5 text-primary" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Track Job</p>
+              <p className="text-xs text-muted-foreground">Check live status</p>
+            </div>
+          </Link>
+          <Link to="/diagnose" className="bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
+            <Wrench className="w-5 h-5 text-primary" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Diagnose</p>
+              <p className="text-xs text-muted-foreground">AI problem finder</p>
+            </div>
+          </Link>
+        </div>
+
+        {/* Booking history */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Recent Bookings</h2>
+          {MOCK_BOOKINGS.map((booking) => {
+            const statusStyle = STATUS_STYLES[booking.status] || STATUS_STYLES.pending;
+            const Icon = booking.icon;
+            return (
+              <div key={booking.id} className="bg-card rounded-xl border p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground truncate">{booking.category}</p>
+                    <Badge variant="outline" className={`text-[10px] ${statusStyle.className}`}>
+                      {statusStyle.label}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{booking.service} · {booking.date}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{booking.id}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </div>
+            );
+          })}
+          {MOCK_BOOKINGS.length === 0 && (
+            <div className="bg-muted/30 rounded-xl border border-dashed p-8 text-center">
+              <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No bookings yet</p>
+              <Button asChild size="sm" className="mt-3">
+                <Link to="/">Book a Service</Link>
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Saved addresses */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Saved Addresses</h2>
+          {savedAddresses.length > 0 ? (
+            savedAddresses.map((addr) => (
+              <div key={addr.id} className="bg-card rounded-xl border p-4 flex items-center gap-3">
+                <MapPin className={`w-5 h-5 shrink-0 ${
+                  addr.zoneStatus === "inside" ? "text-success" :
+                  addr.zoneStatus === "edge" ? "text-warning" : "text-destructive"
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{addr.displayName}</p>
+                  <p className="text-xs text-muted-foreground">{addr.area}, {addr.city}</p>
+                </div>
+                <Badge variant="secondary" className="text-[10px] shrink-0">
+                  {ADDRESS_LABEL_OPTIONS.find((l) => l.value === addr.label)?.label || "Other"}
+                </Badge>
+              </div>
+            ))
+          ) : (
+            <div className="bg-muted/30 rounded-xl border border-dashed p-6 text-center">
+              <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No saved addresses</p>
+              <p className="text-xs text-muted-foreground mt-1">Addresses are saved when you book a service</p>
+            </div>
+          )}
+        </div>
+
+        {/* Trust features */}
+        <div className="bg-card rounded-xl border p-5 space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Your Protection</h2>
+          <div className="space-y-2.5">
+            {[
+              { icon: ShieldCheck, label: "Verified Technicians", desc: "All LankaFix technicians are background-checked and certified" },
+              { icon: FileText, label: "Quote Approval Required", desc: "No work begins without your explicit approval of the quote" },
+              { icon: Phone, label: "OTP Job Verification", desc: "Secure job start and completion with one-time passwords" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-start gap-3">
+                <item.icon className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Settings placeholder */}
+        <Link to="/" className="block bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
+          <Settings className="w-5 h-5 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground flex-1">Account Settings</span>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </Link>
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
+export default AccountPage;
