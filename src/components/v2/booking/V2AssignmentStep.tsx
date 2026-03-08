@@ -300,11 +300,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               <span className="text-[10px] text-muted-foreground">· Currently in {bestMatch.currentZoneName}</span>
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              {isRefreshing ? (
-                <><RefreshCw className="w-3 h-3 animate-spin" /> Refreshing…</>
-              ) : (
-                <><Wifi className="w-3 h-3" /> Live</>
-              )}
+              <Brain className="w-3 h-3 text-primary" />
+              <span>AI Dispatch</span>
+              {dispatchRound > 1 && <span>· Round {dispatchRound}</span>}
             </div>
           </div>
 
