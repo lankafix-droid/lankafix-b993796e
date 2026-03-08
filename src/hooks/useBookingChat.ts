@@ -80,7 +80,7 @@ export function useBookingChat(bookingId: string | null) {
         insertData.original_content = detection.originalContent;
       }
 
-      await supabase.from("booking_messages").insert(insertData);
+      await supabase.from("booking_messages").insert([insertData as any]);
 
       // Log bypass attempt if detected
       if (detection.detected) {
