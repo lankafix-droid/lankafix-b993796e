@@ -207,10 +207,14 @@ const AC_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "ac_type", label: "AC Type", type: "select", options: [{ label: "Wall Mount / Split", value: "split" }, { label: "Cassette", value: "cassette" }, { label: "Window", value: "window" }, { label: "Portable", value: "portable" }, { label: "Not Sure", value: "not_sure" }], required: true },
-    { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Daikin", value: "daikin" }, { label: "Mitsubishi", value: "mitsubishi" }, { label: "Panasonic", value: "panasonic" }, { label: "Haier", value: "haier" }, { label: "Other", value: "other" }], required: false },
+    { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Daikin", value: "daikin" }, { label: "Mitsubishi", value: "mitsubishi" }, { label: "Panasonic", value: "panasonic" }, { label: "Haier", value: "haier" }, { label: "Midea", value: "midea" }, { label: "Singer", value: "singer" }, { label: "Other", value: "other" }], required: false },
     { key: "capacity", label: "Capacity (BTU)", type: "select", options: [{ label: "9,000 BTU", value: "9000" }, { label: "12,000 BTU", value: "12000" }, { label: "18,000 BTU", value: "18000" }, { label: "24,000 BTU", value: "24000" }, { label: "Not Sure", value: "not_sure" }], required: false },
+    { key: "refrigerant", label: "Refrigerant Type (if known)", type: "select", options: [{ label: "R-22", value: "r22" }, { label: "R-32", value: "r32" }, { label: "R-410A", value: "r410a" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["gas", "repair"] },
     { key: "units", label: "Number of Units", type: "select", options: [{ label: "1 Unit", value: "1" }, { label: "2 Units", value: "2" }, { label: "3 Units", value: "3" }, { label: "4+ Units", value: "4_plus" }], required: true },
     { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }, { label: "Shop / Showroom", value: "shop" }], required: true },
+    // Installation-specific
+    { key: "install_floor", label: "Installation Floor", type: "select", options: [{ label: "Ground Floor", value: "ground" }, { label: "1st Floor", value: "1st" }, { label: "2nd Floor", value: "2nd" }, { label: "3rd Floor+", value: "3rd_plus" }], required: true, showForServiceTypes: ["install", "relocation"] },
+    { key: "piping_estimate", label: "Estimated piping distance", type: "select", options: [{ label: "Under 3 meters", value: "lt_3" }, { label: "3-5 meters", value: "3_5" }, { label: "Over 5 meters", value: "gt_5" }], required: false, showForServiceTypes: ["install", "relocation"] },
   ],
   siteConditions: [
     { key: "emergency", label: "Is this an emergency?", type: "toggle" },
