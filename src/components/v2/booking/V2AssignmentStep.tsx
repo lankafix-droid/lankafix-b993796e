@@ -239,10 +239,11 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
     );
   }
 
-  // ─── Default: Live Technician Match ─────────────────────────────
-  const { phase, bestMatch, candidates, searchingPartnerCount: searchingTechCount, acceptCountdown, isRefreshing, refreshCount, lastRefreshedAt } = dispatch;
+  // ─── Default: Smart Technician Match ─────────────────────────────
+  const { phase, bestMatch, candidates, totalEligible, acceptCountdown, dispatchMode, dispatchRound } = dispatch;
   const tech = bestMatch?.partner;
-  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type] || Car) : Car;
+  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type || "motorcycle"] || Car) : Car;
+  const searchingTechCount = totalEligible;
 
   return (
     <div className="space-y-5">
