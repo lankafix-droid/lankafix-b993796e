@@ -477,9 +477,15 @@ const SOLAR_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Office", value: "office" }, { label: "Factory", value: "factory" }, { label: "Warehouse", value: "warehouse" }], required: true },
-    { key: "bill_range", label: "Monthly Electricity Bill", type: "select", options: [{ label: "Under LKR 10,000", value: "lt_10k" }, { label: "LKR 10,000 - 20,000", value: "10_20k" }, { label: "LKR 20,000 - 40,000", value: "20_40k" }, { label: "Over LKR 40,000", value: "gt_40k" }], required: true },
-    { key: "backup", label: "Battery backup needed?", type: "toggle", required: true },
+    { key: "bill_range", label: "Monthly Electricity Bill", type: "select", options: [{ label: "Under LKR 10,000", value: "lt_10k" }, { label: "LKR 10,000 - 20,000", value: "10_20k" }, { label: "LKR 20,000 - 40,000", value: "20_40k" }, { label: "Over LKR 40,000", value: "gt_40k" }], required: true, showForServiceTypes: ["new_install", "expand"] },
+    { key: "roof_type", label: "Roof Type", type: "select", options: [{ label: "Tile", value: "tile" }, { label: "Concrete Slab", value: "slab" }, { label: "Metal Sheet", value: "metal" }, { label: "Asbestos", value: "asbestos" }], required: true, showForServiceTypes: ["new_install", "expand"] },
+    { key: "roof_condition", label: "Roof Condition", type: "select", options: [{ label: "Good — No leaks", value: "good" }, { label: "Minor repairs needed", value: "minor" }, { label: "Major repairs needed", value: "major" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["new_install"] },
+    { key: "backup", label: "Battery backup needed?", type: "toggle", required: true, showForServiceTypes: ["new_install", "expand"] },
     { key: "existing_solar", label: "Existing solar system?", type: "toggle", required: true },
+    // Troubleshoot/maintenance
+    { key: "system_capacity", label: "System Capacity (kW)", type: "select", options: [{ label: "Under 3 kW", value: "lt_3" }, { label: "3-5 kW", value: "3_5" }, { label: "5-10 kW", value: "5_10" }, { label: "Over 10 kW", value: "gt_10" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["troubleshoot", "maintenance", "expand"] },
+    { key: "inverter_brand", label: "Inverter Brand", type: "text", required: false, showForServiceTypes: ["troubleshoot", "maintenance"] },
+    { key: "panel_count", label: "Number of Panels", type: "select", options: [{ label: "1-5", value: "1_5" }, { label: "6-10", value: "6_10" }, { label: "10+", value: "10_plus" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["troubleshoot", "maintenance"] },
   ],
   siteConditions: [
     { key: "roof_type", label: "Roof Type", type: "select", options: [{ label: "Tile", value: "tile" }, { label: "Concrete Slab", value: "slab" }, { label: "Metal Sheet", value: "metal" }, { label: "Asbestos", value: "asbestos" }] },
