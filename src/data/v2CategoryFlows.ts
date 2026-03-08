@@ -537,9 +537,9 @@ const SMART_HOME_FLOW: V2CategoryFlow = {
     { key: "wifi_quality", label: "WiFi coverage quality", type: "select", options: [{ label: "Good everywhere", value: "good" }, { label: "Weak in some areas", value: "weak" }, { label: "No WiFi", value: "none" }, { label: "Not Sure", value: "not_sure" }], required: true },
   ],
   siteConditions: [
-    { key: "wifi_available", label: "WiFi available?", type: "toggle" },
     { key: "solar_available", label: "Solar power available?", type: "toggle" },
     { key: "backup_required", label: "Battery backup required?", type: "toggle" },
+    { key: "multi_floor", label: "Multi-floor property?", type: "toggle" },
   ],
   packages: [
     { id: "consultation", name: "Free Consultation", description: "Discuss your automation needs", priceType: "fixed", price: 0, features: ["Phone/video call", "Needs assessment", "System recommendation", "No obligation"] },
