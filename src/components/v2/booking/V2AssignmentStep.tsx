@@ -1,12 +1,13 @@
 import type { CategoryCode } from "@/types/booking";
 import type { V2AssignmentType, V2PartnerShopInfo } from "@/data/v2CategoryFlows";
 import { useLocationStore, getTravelFeeForZone } from "@/store/locationStore";
-import { useLiveDispatchDB, type LivePartnerCandidate } from "@/hooks/useLiveDispatchDB";
+import { useSmartDispatch, type SmartDispatchCandidate } from "@/hooks/useSmartDispatch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar,
-  Monitor, Navigation, Zap, Wifi, RefreshCw, Car, Bike, Truck, Timer, Award
+  Monitor, Navigation, Zap, Wifi, RefreshCw, Car, Bike, Truck, Timer, Award,
+  Brain, BarChart3, Target,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 
@@ -34,9 +35,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   const effectiveType = serviceModeId === "remote" ? "remote_support" as V2AssignmentType :
     (serviceModeId === "drop_off" && assignmentType === "partner_shop") ? "partner_shop" : assignmentType;
 
-  // Live dispatch — only for technician match type
+  // Smart dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
-  const dispatch = useLiveDispatchDB(categoryCode, isEmergency, isLiveMatch);
+  const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
@@ -238,10 +239,11 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
     );
   }
 
-  // ─── Default: Live Technician Match ─────────────────────────────
-  const { phase, bestMatch, candidates, searchingPartnerCount: searchingTechCount, acceptCountdown, isRefreshing, refreshCount, lastRefreshedAt } = dispatch;
+  // ─── Default: Smart Technician Match ─────────────────────────────
+  const { phase, bestMatch, candidates, totalEligible, acceptCountdown, dispatchMode, dispatchRound } = dispatch;
   const tech = bestMatch?.partner;
-  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type] || Car) : Car;
+  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type || "motorcycle"] || Car) : Car;
+  const searchingTechCount = totalEligible;
 
   return (
     <div className="space-y-5">
@@ -264,7 +266,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
       )}
 
       {/* ── Searching Phase ── */}
-      {phase === "searching" && (
+      {(phase === "searching" || phase === "loading") && (
         <LiveSearchingCard techCount={searchingTechCount} isEmergency={isEmergency} />
       )}
 
@@ -298,11 +300,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               <span className="text-[10px] text-muted-foreground">· Currently in {bestMatch.currentZoneName}</span>
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              {isRefreshing ? (
-                <><RefreshCw className="w-3 h-3 animate-spin" /> Refreshing…</>
-              ) : (
-                <><Wifi className="w-3 h-3" /> Live</>
-              )}
+              <Brain className="w-3 h-3 text-primary" />
+              <span>AI Dispatch</span>
+              {dispatchRound > 1 && <span>· Round {dispatchRound}</span>}
             </div>
           </div>
 
@@ -351,14 +351,14 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
             )}
 
-            {/* Live stats grid */}
+            {/* Smart dispatch stats grid */}
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">{bestMatch.matchScore}%</div>
-                <div className="text-[10px] text-muted-foreground">Match</div>
+                <div className="text-sm font-bold text-foreground">{bestMatch.score?.total || 0}%</div>
+                <div className="text-[10px] text-muted-foreground">AI Score</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">{bestMatch.distanceKm} km</div>
+                <div className="text-sm font-bold text-foreground">{bestMatch.distance_km} km</div>
                 <div className="text-[10px] text-muted-foreground">Distance</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
@@ -366,10 +366,27 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
                 <div className="text-[10px] text-muted-foreground capitalize">{tech.vehicle_type}</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">~{bestMatch.etaMinutes}</div>
+                <div className="text-sm font-bold text-foreground">~{bestMatch.eta_minutes}</div>
                 <div className="text-[10px] text-muted-foreground">min ETA</div>
               </div>
             </div>
+
+            {/* Score breakdown mini bar */}
+            {bestMatch.score && (
+              <div className="bg-muted/30 rounded-lg p-3 space-y-1.5">
+                <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                  <BarChart3 className="w-3 h-3" /> AI Match Breakdown
+                </p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[10px]">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Proximity</span><span className="font-medium text-foreground">{bestMatch.score.proximity}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Skill</span><span className="font-medium text-foreground">{bestMatch.score.specialization}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Rating</span><span className="font-medium text-foreground">{bestMatch.score.rating}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Speed</span><span className="font-medium text-foreground">{bestMatch.score.response_speed}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Load</span><span className="font-medium text-foreground">{bestMatch.score.workload}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Reliability</span><span className="font-medium text-foreground">{bestMatch.score.completion_rate}</span></div>
+                </div>
+              </div>
+            )}
 
             {/* ETA & Traffic detail */}
             <div className="bg-primary/5 rounded-lg p-3 flex items-center justify-between">
@@ -381,7 +398,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-muted-foreground">Updated {refreshCount > 1 ? `${refreshCount}x` : "just now"}</p>
+                <Badge variant="secondary" className="text-[9px] gap-1"><Target className="w-3 h-3" /> {dispatchMode === "top_3" ? "Top 3" : dispatchMode === "manual" ? "Ops Review" : "Auto"}</Badge>
               </div>
             </div>
 
@@ -429,10 +446,53 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         </div>
       )}
 
-      {/* Other candidates preview */}
-      {(phase === "matched" || phase === "accepting") && candidates.length > 1 && (
+      {/* ── Top 3 Mode: Selectable candidates ── */}
+      {dispatchMode === "top_3" && phase === "matched" && candidates.length > 1 && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-primary" /> Choose your preferred technician
+          </p>
+          {candidates.slice(0, 3).map((c, i) => (
+            <button
+              key={c.partner_id}
+              onClick={() => dispatch.selectCandidate(c.partner_id)}
+              className={`w-full text-left rounded-xl border p-4 transition-all ${
+                bestMatch?.partner_id === c.partner_id
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                  : "border-border hover:border-primary/30"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                  {c.partner.full_name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground text-sm truncate">{c.partner.full_name}</span>
+                    {i === 0 && <Badge className="text-[9px] bg-primary/10 text-primary border-0">Best Match</Badge>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-0.5"><Star className="w-3 h-3 fill-warning text-warning" /> {c.partner.rating_average}</span>
+                    <span>·</span>
+                    <span>{c.distance_km} km</span>
+                    <span>·</span>
+                    <span>~{c.eta_minutes} min</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-primary">{c.score?.total}%</div>
+                  <div className="text-[10px] text-muted-foreground">AI Score</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Other candidates preview (auto mode only) */}
+      {dispatchMode === "auto" && (phase === "matched" || phase === "accepting") && candidates.length > 1 && (
         <div className="bg-muted/30 rounded-xl p-4 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">{candidates.length - 1} other technicians available</p>
+          <p className="text-xs font-medium text-muted-foreground">{candidates.length - 1} other technicians available as backup</p>
           <div className="flex -space-x-2">
             {candidates.slice(1, 5).map((c) => (
               <div key={c.partner.id} className="w-8 h-8 rounded-full bg-primary/10 border-2 border-card flex items-center justify-center text-xs font-medium text-primary">
@@ -470,16 +530,17 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             onConfirm();
           }
         }}
-        disabled={phase === "searching" || phase === "no_match" || phase === "accepting"}
+        disabled={phase === "searching" || phase === "loading" || phase === "no_match" || phase === "accepting"}
         size="lg"
         className="w-full gap-2"
       >
-        {phase === "searching" && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding technician…</>}
+        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> AI finding best technician…</>}
         {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}
         {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Waiting for response…</>}
         {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Continue</>}
         {phase === "no_match" && <><Users className="w-4 h-4" /> No match — retrying…</>}
         {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Try again</>}
+        {phase === "error" && <><RefreshCw className="w-4 h-4" /> Retry</>}
       </Button>
     </div>
   );

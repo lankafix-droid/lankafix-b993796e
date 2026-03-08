@@ -233,37 +233,46 @@ export type Database = {
         Row: {
           booking_id: string
           created_at: string
+          dispatch_round: number | null
           distance_km: number | null
           eta_minutes: number | null
           id: string
           partner_id: string
           responded_at: string | null
           response: string | null
+          response_time_seconds: number | null
           score: number | null
+          score_breakdown: Json | null
           status: string | null
         }
         Insert: {
           booking_id: string
           created_at?: string
+          dispatch_round?: number | null
           distance_km?: number | null
           eta_minutes?: number | null
           id?: string
           partner_id: string
           responded_at?: string | null
           response?: string | null
+          response_time_seconds?: number | null
           score?: number | null
+          score_breakdown?: Json | null
           status?: string | null
         }
         Update: {
           booking_id?: string
           created_at?: string
+          dispatch_round?: number | null
           distance_km?: number | null
           eta_minutes?: number | null
           id?: string
           partner_id?: string
           responded_at?: string | null
           response?: string | null
+          response_time_seconds?: number | null
           score?: number | null
+          score_breakdown?: Json | null
           status?: string | null
         }
         Relationships: [
