@@ -351,14 +351,14 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
             )}
 
-            {/* Live stats grid */}
+            {/* Smart dispatch stats grid */}
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">{bestMatch.matchScore}%</div>
-                <div className="text-[10px] text-muted-foreground">Match</div>
+                <div className="text-sm font-bold text-foreground">{bestMatch.score?.total || 0}%</div>
+                <div className="text-[10px] text-muted-foreground">AI Score</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">{bestMatch.distanceKm} km</div>
+                <div className="text-sm font-bold text-foreground">{bestMatch.distance_km} km</div>
                 <div className="text-[10px] text-muted-foreground">Distance</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
@@ -366,10 +366,27 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
                 <div className="text-[10px] text-muted-foreground capitalize">{tech.vehicle_type}</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">~{bestMatch.etaMinutes}</div>
+                <div className="text-sm font-bold text-foreground">~{bestMatch.eta_minutes}</div>
                 <div className="text-[10px] text-muted-foreground">min ETA</div>
               </div>
             </div>
+
+            {/* Score breakdown mini bar */}
+            {bestMatch.score && (
+              <div className="bg-muted/30 rounded-lg p-3 space-y-1.5">
+                <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                  <BarChart3 className="w-3 h-3" /> AI Match Breakdown
+                </p>
+                <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[10px]">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Proximity</span><span className="font-medium text-foreground">{bestMatch.score.proximity}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Skill</span><span className="font-medium text-foreground">{bestMatch.score.specialization}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Rating</span><span className="font-medium text-foreground">{bestMatch.score.rating}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Speed</span><span className="font-medium text-foreground">{bestMatch.score.response_speed}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Load</span><span className="font-medium text-foreground">{bestMatch.score.workload}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Reliability</span><span className="font-medium text-foreground">{bestMatch.score.completion_rate}</span></div>
+                </div>
+              </div>
+            )}
 
             {/* ETA & Traffic detail */}
             <div className="bg-primary/5 rounded-lg p-3 flex items-center justify-between">
@@ -381,7 +398,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-muted-foreground">Updated {refreshCount > 1 ? `${refreshCount}x` : "just now"}</p>
+                <Badge variant="secondary" className="text-[9px] gap-1"><Target className="w-3 h-3" /> {dispatchMode === "top_3" ? "Top 3" : dispatchMode === "manual" ? "Ops Review" : "Auto"}</Badge>
               </div>
             </div>
 
