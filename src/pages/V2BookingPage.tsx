@@ -33,6 +33,7 @@ export interface V2BookingState {
   dataRiskAccepted?: boolean;
   partGrade?: PartGradeCode;
   acInstallAddons?: Record<string, number>;
+  isEmergency?: boolean;
 }
 
 const INITIAL_STATE: V2BookingState = {
@@ -43,6 +44,7 @@ const INITIAL_STATE: V2BookingState = {
   siteConditions: {},
   technicianFilter: "auto",
   photoUrls: [],
+  isEmergency: false,
 };
 
 const PART_GRADE_CATEGORIES = ["MOBILE"];
