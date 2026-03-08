@@ -109,6 +109,11 @@ const V2BookingPage = () => {
 
     s.push("device_details");
 
+    // Smart diagnosis + summary (only if diagnostic block exists for this category+service)
+    if (diagBlock) {
+      s.push("smart_diagnosis", "diagnosis_summary");
+    }
+
     if (showACAddons) s.push("ac_install_addons");
 
     if (flow.siteConditions && flow.siteConditions.length > 0) {
