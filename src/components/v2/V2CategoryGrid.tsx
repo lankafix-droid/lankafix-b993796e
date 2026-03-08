@@ -119,12 +119,14 @@ const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
 
 // ─── Quick Book Cards ──────────────────────────────────────────────
 const QUICK_BOOKS = [
-  { label: "Broken Phone Screen", price: "From Rs 5,000", pricingType: "Fixed Price", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
+  { label: "Broken Phone Screen", price: "From Rs 5,000", pricingType: "Diagnostic First", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
   { label: "AC Not Cooling", price: "Inspection Rs 2,500", pricingType: "Diagnostic", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
   { label: "Laptop Screen Fix", price: "From Rs 8,000", pricingType: "Diagnostic", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "SSD Upgrade", price: "From Rs 2,500", pricingType: "Diagnostic", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "SSD Upgrade", price: "From Rs 2,500", pricingType: "Fixed Price", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
   { label: "WiFi / Router Issue", price: "From Rs 2,000", pricingType: "Fixed Price", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
   { label: "Appliance Inspection", price: "From Rs 1,500", pricingType: "Diagnostic", link: "/book/CONSUMER_ELEC", icon: <Tv className="w-5 h-5" /> },
+  { label: "Printer Repair", price: "Inspection Rs 2,500", pricingType: "Diagnostic", link: "/book/COPIER", icon: <Printer className="w-5 h-5" /> },
+  { label: "Toner / Ink Order", price: "From Rs 1,500", pricingType: "Fixed Price", link: "/book/PRINT_SUPPLIES", icon: <Package className="w-5 h-5" /> },
 ];
 
 const V2CategoryGrid = () => {
