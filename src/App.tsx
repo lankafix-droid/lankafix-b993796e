@@ -42,6 +42,8 @@ import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
 import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import WarrantyPage from "./pages/WarrantyPage";
+import RefundPage from "./pages/RefundPage";
 import AccountPage from "./pages/AccountPage";
 
 // Redirect helpers for legacy routes with params
@@ -65,6 +67,7 @@ const App = () => (
           <Route path="/quote/:jobId" element={<QuoteApprovalPage />} />
           <Route path="/diagnose" element={<DiagnosePage />} />
           <Route path="/tracker/:jobId" element={<TrackerPage />} />
+          <Route path="/track/:jobId" element={<TrackerPage />} />
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/account" element={<AccountPage />} />
@@ -121,6 +124,9 @@ const App = () => (
           {/* ─── Legal ─── */}
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/warranty" element={<WarrantyPage />} />
+          <Route path="/refund" element={<RefundPage />} />
+          <Route path="*" element={<NotFound />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
