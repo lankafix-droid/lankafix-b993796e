@@ -33,6 +33,7 @@ export interface V2BookingState {
   dataRiskAccepted?: boolean;
   partGrade?: PartGradeCode;
   acInstallAddons?: Record<string, number>;
+  isEmergency?: boolean;
 }
 
 const INITIAL_STATE: V2BookingState = {
@@ -43,6 +44,7 @@ const INITIAL_STATE: V2BookingState = {
   siteConditions: {},
   technicianFilter: "auto",
   photoUrls: [],
+  isEmergency: false,
 };
 
 const PART_GRADE_CATEGORIES = ["MOBILE"];
@@ -119,7 +121,7 @@ const V2BookingPage = () => {
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1>
-            <Button variant="outline" onClick={() => navigate("/v2")}>Back to Home</Button>
+            <Button variant="outline" onClick={() => navigate("/")}>Back to Home</Button>
           </div>
         </main>
         <Footer />
@@ -140,7 +142,7 @@ const V2BookingPage = () => {
 
   const goBack = () => {
     if (step > 0) setStep(step - 1);
-    else navigate("/v2");
+    else navigate("/");
   };
 
   const updateBooking = (updates: Partial<V2BookingState>) => {
@@ -174,7 +176,14 @@ const V2BookingPage = () => {
         )}
 
         <div className="container max-w-2xl py-6">
-          {currentStepName === "landing" && <V2CategoryLanding flow={flow} onContinue={goNext} />}
+          {currentStepName === "landing" && (
+            <V2CategoryLanding
+              flow={flow}
+              onContinue={goNext}
+              isEmergency={booking.isEmergency}
+              onEmergencyToggle={(v) => updateBooking({ isEmergency: v })}
+            />
+          )}
           {currentStepName === "service_type" && (
             <V2ServiceSelection
               options={flow.serviceTypes}

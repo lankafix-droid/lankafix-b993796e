@@ -9,7 +9,7 @@ const INTENTS = [
     description: "Fix what's broken",
     color: "from-destructive/15 to-destructive/5 border-destructive/20",
     iconColor: "text-destructive",
-    link: "/v2#categories",
+    link: "/#categories",
   },
   {
     icon: <PlusCircle className="w-6 h-6" />,
@@ -17,7 +17,7 @@ const INTENTS = [
     description: "New setup or upgrade",
     color: "from-primary/15 to-primary/5 border-primary/20",
     iconColor: "text-primary",
-    link: "/v2/book/CCTV",
+    link: "/book/CCTV",
   },
   {
     icon: <Sparkles className="w-6 h-6" />,
@@ -25,7 +25,7 @@ const INTENTS = [
     description: "Maintenance & cleaning",
     color: "from-lankafix-green/15 to-lankafix-green/5 border-lankafix-green/20",
     iconColor: "text-lankafix-green",
-    link: "/v2/book/AC",
+    link: "/book/AC",
   },
   {
     icon: <ClipboardList className="w-6 h-6" />,
@@ -33,7 +33,7 @@ const INTENTS = [
     description: "Get expert assessment",
     color: "from-warning/15 to-warning/5 border-warning/20",
     iconColor: "text-warning",
-    link: "/v2/book/SOLAR",
+    link: "/book/SOLAR",
   },
   {
     icon: <HelpCircle className="w-6 h-6" />,
@@ -41,7 +41,7 @@ const INTENTS = [
     description: "We'll diagnose it",
     color: "from-accent/15 to-accent/5 border-accent/20",
     iconColor: "text-accent",
-    link: "/v2#diagnose",
+    link: "/#diagnose",
   },
 ];
 

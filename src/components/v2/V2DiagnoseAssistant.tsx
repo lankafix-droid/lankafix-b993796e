@@ -220,7 +220,7 @@ const V2DiagnoseAssistant = () => {
   const handleBook = () => {
     if (!recommendation) return;
     track("v2_diagnose_book", { ...answers, category: recommendation.category });
-    navigate(`/v2/book/${recommendation.category}`);
+    navigate(`/book/${recommendation.category}`);
   };
 
   const handleReset = () => {

@@ -18,11 +18,10 @@ const Header = () => {
         </div>
         <nav className="hidden md:flex items-center gap-6">
           <Link to="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">Home</Link>
-          <Link to="/categories" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Categories</Link>
           <Link to="/diagnose" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Diagnose</Link>
           <Link to="/track" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Track Job</Link>
           <Button size="sm" className="bg-gradient-brand hover:opacity-90 shadow-sm" asChild>
-            <Link to="/categories">
+            <Link to="/#categories">
               <Wrench className="w-3.5 h-3.5 mr-1" />
               Book Now
             </Link>
@@ -35,11 +34,10 @@ const Header = () => {
       {menuOpen && (
         <div className="md:hidden border-t bg-card p-4 space-y-3 animate-fade-in">
           <Link to="/" className="block text-sm font-medium py-2.5 px-3 rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Home</Link>
-          <Link to="/categories" className="block text-sm font-medium py-2.5 px-3 rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Categories</Link>
           <Link to="/diagnose" className="block text-sm font-medium py-2.5 px-3 rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Diagnose</Link>
           <Link to="/track" className="block text-sm font-medium py-2.5 px-3 text-muted-foreground rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Track Job</Link>
           <Button className="w-full bg-gradient-brand hover:opacity-90" size="sm" asChild>
-            <Link to="/categories" onClick={() => setMenuOpen(false)}>
+            <Link to="/#categories" onClick={() => setMenuOpen(false)}>
               <Wrench className="w-3.5 h-3.5 mr-1" />
               Book Now
             </Link>

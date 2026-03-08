@@ -111,7 +111,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </a>
         </div>
 
-        <Button onClick={() => navigate("/v2")} variant="secondary" className="w-full">
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full">
           Back to Home
         </Button>
       </div>

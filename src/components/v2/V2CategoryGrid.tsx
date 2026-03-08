@@ -50,7 +50,7 @@ const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
 
   return (
     <Link
-      to={`/v2/book/${cat.code}`}
+      to={`/book/${cat.code}`}
       onClick={() => track("v2_category_click", { category: cat.code })}
       className="group bg-card rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/8 hover:border-primary/25"
     >
@@ -116,12 +116,12 @@ const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
 
 // ─── Quick Book Cards ──────────────────────────────────────────────
 const QUICK_BOOKS = [
-  { label: "Broken Phone Screen", price: "From Rs 5,000", pricingType: "Fixed Price", link: "/v2/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
-  { label: "AC Not Cooling", price: "Inspection Rs 2,500", pricingType: "Diagnostic", link: "/v2/book/AC", icon: <Snowflake className="w-5 h-5" /> },
-  { label: "Laptop Screen Fix", price: "From Rs 8,000", pricingType: "Diagnostic", link: "/v2/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "SSD Upgrade", price: "From Rs 2,500", pricingType: "Diagnostic", link: "/v2/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "WiFi / Router Issue", price: "From Rs 2,000", pricingType: "Fixed Price", link: "/v2/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "Appliance Inspection", price: "From Rs 1,500", pricingType: "Diagnostic", link: "/v2/book/CONSUMER_ELEC", icon: <Tv className="w-5 h-5" /> },
+  { label: "Broken Phone Screen", price: "From Rs 5,000", pricingType: "Fixed Price", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
+  { label: "AC Not Cooling", price: "Inspection Rs 2,500", pricingType: "Diagnostic", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
+  { label: "Laptop Screen Fix", price: "From Rs 8,000", pricingType: "Diagnostic", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "SSD Upgrade", price: "From Rs 2,500", pricingType: "Diagnostic", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "WiFi / Router Issue", price: "From Rs 2,000", pricingType: "Fixed Price", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "Appliance Inspection", price: "From Rs 1,500", pricingType: "Diagnostic", link: "/book/CONSUMER_ELEC", icon: <Tv className="w-5 h-5" /> },
 ];
 
 const V2CategoryGrid = () => {

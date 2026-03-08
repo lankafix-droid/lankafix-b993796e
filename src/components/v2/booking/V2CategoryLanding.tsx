@@ -1,7 +1,7 @@
 import type { V2CategoryFlow, V2PricingArchetype } from "@/data/v2CategoryFlows";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle } from "lucide-react";
+import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle, Zap } from "lucide-react";
 import { SUPPORT_PHONE } from "@/config/contact";
 import { Link } from "react-router-dom";
 
@@ -30,14 +30,20 @@ const BOOKING_MODEL_LABELS: Record<string, string> = {
   inspection_consultation: "Site inspection required before final quote",
 };
 
+// Categories that support emergency mode
+const EMERGENCY_CATEGORIES = ["AC", "MOBILE", "IT", "CONSUMER_ELEC"];
+
 interface Props {
   flow: V2CategoryFlow;
   onContinue: () => void;
+  isEmergency?: boolean;
+  onEmergencyToggle?: (v: boolean) => void;
 }
 
-const V2CategoryLanding = ({ flow, onContinue }: Props) => {
+const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }: Props) => {
   const heroImg = HERO_IMAGES[flow.code];
   const pricingBadge = PRICING_BADGES[flow.pricingArchetype];
+  const supportsEmergency = EMERGENCY_CATEGORIES.includes(flow.code);
 
   return (
     <div className="space-y-6">
@@ -50,7 +56,7 @@ const V2CategoryLanding = ({ flow, onContinue }: Props) => {
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">{flow.heroTagline}</h1>
             <p className="text-white/80 text-sm">{flow.heroSubtext}</p>
           </div>
-          {flow.availabilityLabel && (
+      {flow.availabilityLabel && (
             <div className="absolute top-3 right-3">
               <Badge className="bg-warning/90 text-warning-foreground border-none text-xs">
                 {flow.availabilityLabel}
@@ -83,7 +89,27 @@ const V2CategoryLanding = ({ flow, onContinue }: Props) => {
         ))}
       </div>
 
-      {/* Common services / quick picks */}
+      {/* Emergency Mode Toggle */}
+      {supportsEmergency && onEmergencyToggle && (
+        <button
+          onClick={() => onEmergencyToggle(!isEmergency)}
+          className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border w-full transition-all text-sm font-medium ${
+            isEmergency
+              ? "bg-warning/10 border-warning/30 text-warning"
+              : "bg-card border-border text-muted-foreground hover:border-warning/20"
+          }`}
+        >
+          <Zap className={`w-4 h-4 ${isEmergency ? "text-warning" : ""}`} />
+          <div className="flex-1 text-left">
+            <span>Emergency — Within 2 Hours</span>
+            {isEmergency && <span className="text-xs block mt-0.5 text-warning/80">+25% surcharge applies</span>}
+          </div>
+          {isEmergency && (
+            <Badge className="bg-warning/20 text-warning border-0 text-xs">Active</Badge>
+          )}
+        </button>
+      )}
+
       {flow.quickServices.length > 0 && (
         <div className="bg-card rounded-xl border p-5 space-y-3">
           <h2 className="font-semibold text-foreground">Common Services</h2>
