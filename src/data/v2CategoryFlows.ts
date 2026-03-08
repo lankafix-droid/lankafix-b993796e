@@ -674,6 +674,14 @@ const SEARCH_INDEX: SearchResult[] = [
   // Smart Home
   { categoryCode: "SMART_HOME_OFFICE", categoryName: "Smart Home", serviceTypeId: "security", serviceLabel: "Smart Locks", keywords: ["smart lock", "smart home", "home automation", "smart door", "access control"] },
   { categoryCode: "SMART_HOME_OFFICE", categoryName: "Smart Home", serviceTypeId: "automation", serviceLabel: "Smart Lighting", keywords: ["smart light", "smart bulb", "smart home automation", "voice control", "alexa", "google home"] },
+  // Copier / Printer
+  { categoryCode: "COPIER", categoryName: "Printer Repairs", serviceTypeId: "paper_jam", serviceLabel: "Paper Jam Fix", keywords: ["printer not printing", "paper jam", "printer jam", "printer error", "copier jam"] },
+  { categoryCode: "COPIER", categoryName: "Printer Repairs", serviceTypeId: "print_quality", serviceLabel: "Print Quality Fix", keywords: ["faded print", "printer streaks", "blank pages", "print quality", "smudge print"] },
+  { categoryCode: "COPIER", categoryName: "Printer Repairs", serviceTypeId: "wifi_setup", serviceLabel: "Printer WiFi Setup", keywords: ["printer wifi", "printer wireless", "printer network", "printer offline", "printer setup"] },
+  { categoryCode: "COPIER", categoryName: "Printer Repairs", serviceTypeId: "installation", serviceLabel: "New Printer Setup", keywords: ["new printer", "printer install", "printer setup", "unbox printer"] },
+  // Print Supplies
+  { categoryCode: "PRINT_SUPPLIES", categoryName: "Printing Supplies", serviceTypeId: "toner_order", serviceLabel: "Toner Cartridge", keywords: ["toner", "toner cartridge", "laser toner", "printer toner", "toner refill"] },
+  { categoryCode: "PRINT_SUPPLIES", categoryName: "Printing Supplies", serviceTypeId: "ink_order", serviceLabel: "Ink Cartridge", keywords: ["ink", "ink cartridge", "printer ink", "ink refill", "ink bottle", "ink tank"] },
 ];
 
 export function searchServices(query: string): SearchResult[] {
