@@ -119,7 +119,7 @@ const V2BookingPage = () => {
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1>
-            <Button variant="outline" onClick={() => navigate("/v2")}>Back to Home</Button>
+            <Button variant="outline" onClick={() => navigate("/")}>Back to Home</Button>
           </div>
         </main>
         <Footer />
