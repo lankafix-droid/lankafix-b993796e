@@ -27,7 +27,7 @@ const VEHICLE_ICONS: Record<string, typeof Car> = {
   van: Truck,
 };
 
-const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, isEmergency = false, onConfirm }: Props) => {
+const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, isEmergency = false, bookingId, onConfirm }: Props) => {
   const [shopSort, setShopSort] = useState<"nearest" | "rated" | "fastest">("nearest");
   const { getActiveAddress } = useLocationStore();
   const activeAddress = getActiveAddress();
@@ -38,7 +38,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
   // Smart dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
-  const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch);
+  const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch, bookingId);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
