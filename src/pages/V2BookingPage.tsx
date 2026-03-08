@@ -18,6 +18,8 @@ import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
 import SmartDiagnosisStep from "@/components/v2/booking/SmartDiagnosisStep";
 import DiagnosisSummaryCard from "@/components/v2/booking/DiagnosisSummaryCard";
 import LocationPicker from "@/components/v2/location/LocationPicker";
+import BookingProtectionCard from "@/components/v2/booking/BookingProtectionCard";
+import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
