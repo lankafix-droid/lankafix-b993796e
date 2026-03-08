@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import logoHorizontal from "@/assets/lankafix-logo-horizontal.jpg";
 
 interface LankaFixLogoProps {
@@ -12,16 +13,20 @@ const heights = {
   lg: "h-14",
 };
 
-const LankaFixLogo = ({ size = "md", variant = "dark" }: LankaFixLogoProps) => {
-  return (
-    <div className="flex items-center gap-2">
-      <img
-        src={logoHorizontal}
-        alt="LankaFix by Smart Office"
-        className={`${heights[size]} w-auto object-contain ${variant === "light" ? "brightness-0 invert" : ""}`}
-      />
-    </div>
-  );
-};
+const LankaFixLogo = forwardRef<HTMLDivElement, LankaFixLogoProps>(
+  ({ size = "md", variant = "dark" }, ref) => {
+    return (
+      <div ref={ref} className="flex items-center gap-2">
+        <img
+          src={logoHorizontal}
+          alt="LankaFix by Smart Office"
+          className={`${heights[size]} w-auto object-contain ${variant === "light" ? "brightness-0 invert" : ""}`}
+        />
+      </div>
+    );
+  }
+);
+
+LankaFixLogo.displayName = "LankaFixLogo";
 
 export default LankaFixLogo;
