@@ -326,14 +326,14 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
                     <ShieldCheck className="w-3 h-3" /> Verified
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{tech.partnerName}</p>
+                <p className="text-sm text-muted-foreground">{tech.business_name}</p>
                 <div className="flex items-center gap-3 mt-1.5 text-sm">
                   <span className="flex items-center gap-1 text-warning">
-                    <Star className="w-3.5 h-3.5 fill-warning" /> {tech.rating}
+                    <Star className="w-3.5 h-3.5 fill-warning" /> {tech.rating_average}
                   </span>
-                  <span className="text-muted-foreground">{tech.jobsCompleted} jobs</span>
+                  <span className="text-muted-foreground">{tech.completed_jobs_count} jobs</span>
                   <span className="flex items-center gap-1 text-muted-foreground">
-                    <Award className="w-3.5 h-3.5" /> {tech.experienceYears}y exp
+                    <Award className="w-3.5 h-3.5" /> {tech.experience_years}y exp
                   </span>
                 </div>
               </div>
