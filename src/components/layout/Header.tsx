@@ -20,6 +20,7 @@ const Header = () => {
           <Link to="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">Home</Link>
           <Link to="/diagnose" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Diagnose</Link>
           <Link to="/track" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Track Job</Link>
+          <Link to="/account" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Account</Link>
           <Button size="sm" className="bg-gradient-brand hover:opacity-90 shadow-sm" asChild>
             <Link to="/#categories">
               <Wrench className="w-3.5 h-3.5 mr-1" />
