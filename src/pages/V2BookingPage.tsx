@@ -48,22 +48,38 @@ const V2BookingPage = () => {
 
   const flow = getV2Flow(category || "");
 
-  const hasIssueStep = flow?.issueSelectors && flow.issueSelectors.length > 0;
-  const hasSiteConditions = flow?.siteConditions && flow.siteConditions.length > 0;
-  const hasServiceModes = flow?.serviceModes && flow.serviceModes.length > 0;
-
-  // New step order: landing → service_type → issue? → pricing_expectation → service_mode? → device_details → site_conditions? → pricing → assignment → confirmation
+  // Build steps dynamically based on category config AND selected service mode
   const steps = useMemo(() => {
     if (!flow) return ["landing"];
     const s: string[] = ["landing", "service_type"];
-    if (hasIssueStep) s.push("issue");
+
+    // Issue step only for categories with issue selectors
+    if (flow.issueSelectors && flow.issueSelectors.length > 0) s.push("issue");
+
+    // Always show pricing expectation
     s.push("pricing_expectation");
-    if (hasServiceModes) s.push("service_mode");
+
+    // Service mode only if category has modes
+    if (flow.serviceModes && flow.serviceModes.length > 0) s.push("service_mode");
+
+    // Device details always
     s.push("device_details");
-    if (hasSiteConditions) s.push("site_conditions");
-    s.push("pricing", "assignment", "confirmation");
+
+    // Site conditions only for installation/property categories
+    if (flow.siteConditions && flow.siteConditions.length > 0) {
+      // Skip site conditions for remote support mode
+      const isRemote = booking.serviceModeId === "remote";
+      if (!isRemote) s.push("site_conditions");
+    }
+
+    // Pricing step only for categories that show packages (skip for quote_required)
+    if (flow.pricingArchetype !== "quote_required") {
+      s.push("pricing");
+    }
+
+    s.push("assignment", "confirmation");
     return s;
-  }, [flow, hasIssueStep, hasSiteConditions, hasServiceModes]);
+  }, [flow, booking.serviceModeId]);
 
   if (!flow) {
     return (

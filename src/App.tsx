@@ -61,6 +61,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/v2" element={<V2HomePage />} />
           <Route path="/v2/book/:category" element={<V2BookingPage />} />
+          <Route path="/v2/quote/:jobId" element={<V2QuoteApprovalPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/category/:code" element={<CategoryPage />} />
           <Route path="/precheck/:catCode/:svcCode" element={<PrecheckPage />} />
