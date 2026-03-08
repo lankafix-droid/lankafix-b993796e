@@ -1,7 +1,7 @@
 import type { CategoryCode } from "@/types/booking";
 import type { V2AssignmentType, V2PartnerShopInfo } from "@/data/v2CategoryFlows";
 import { useLocationStore, getTravelFeeForZone } from "@/store/locationStore";
-import { useLiveDispatch, type LiveTechCandidate } from "@/hooks/useLiveDispatch";
+import { useLiveDispatchDB, type LivePartnerCandidate } from "@/hooks/useLiveDispatchDB";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -36,7 +36,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
   // Live dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
-  const dispatch = useLiveDispatch(categoryCode, customerZoneId, isEmergency, isLiveMatch);
+  const dispatch = useLiveDispatchDB(categoryCode, isEmergency, isLiveMatch);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
@@ -239,9 +239,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   }
 
   // ─── Default: Live Technician Match ─────────────────────────────
-  const { phase, bestMatch, candidates, searchingTechCount, acceptCountdown, isRefreshing, refreshCount, lastRefreshedAt } = dispatch;
-  const tech = bestMatch?.tech;
-  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicleType] || Car) : Car;
+  const { phase, bestMatch, candidates, searchingPartnerCount: searchingTechCount, acceptCountdown, isRefreshing, refreshCount, lastRefreshedAt } = dispatch;
+  const tech = bestMatch?.partner;
+  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type] || Car) : Car;
 
   return (
     <div className="space-y-5">
@@ -311,7 +311,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             <div className="flex items-start gap-4">
               <div className="relative">
                 <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                  {tech.name.charAt(0)}
+                  {tech.full_name.charAt(0)}
                 </div>
                 {/* Online pulse dot */}
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
@@ -321,32 +321,32 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-foreground">{tech.name}</h3>
+                  <h3 className="font-semibold text-foreground">{tech.full_name}</h3>
                   <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20 gap-1">
                     <ShieldCheck className="w-3 h-3" /> Verified
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{tech.partnerName}</p>
+                <p className="text-sm text-muted-foreground">{tech.business_name}</p>
                 <div className="flex items-center gap-3 mt-1.5 text-sm">
                   <span className="flex items-center gap-1 text-warning">
-                    <Star className="w-3.5 h-3.5 fill-warning" /> {tech.rating}
+                    <Star className="w-3.5 h-3.5 fill-warning" /> {tech.rating_average}
                   </span>
-                  <span className="text-muted-foreground">{tech.jobsCompleted} jobs</span>
+                  <span className="text-muted-foreground">{tech.completed_jobs_count} jobs</span>
                   <span className="flex items-center gap-1 text-muted-foreground">
-                    <Award className="w-3.5 h-3.5" /> {tech.experienceYears}y exp
+                    <Award className="w-3.5 h-3.5" /> {tech.experience_years}y exp
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Specialization badges */}
-            {tech.brandSpecializations.length > 0 && (
+            {tech.brand_specializations && tech.brand_specializations.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {tech.brandSpecializations.slice(0, 4).map((brand) => (
+                {tech.brand_specializations.slice(0, 4).map((brand) => (
                   <Badge key={brand} variant="secondary" className="text-[10px] font-normal">{brand}</Badge>
                 ))}
-                {tech.brandSpecializations.length > 4 && (
-                  <Badge variant="secondary" className="text-[10px] font-normal">+{tech.brandSpecializations.length - 4}</Badge>
+                {tech.brand_specializations.length > 4 && (
+                  <Badge variant="secondary" className="text-[10px] font-normal">+{tech.brand_specializations.length - 4}</Badge>
                 )}
               </div>
             )}
@@ -363,7 +363,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
                 <VehicleIcon className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
-                <div className="text-[10px] text-muted-foreground capitalize">{tech.vehicleType}</div>
+                <div className="text-[10px] text-muted-foreground capitalize">{tech.vehicle_type}</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
                 <div className="text-sm font-bold text-foreground">~{bestMatch.etaMinutes}</div>
@@ -435,8 +435,8 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
           <p className="text-xs font-medium text-muted-foreground">{candidates.length - 1} other technicians available</p>
           <div className="flex -space-x-2">
             {candidates.slice(1, 5).map((c) => (
-              <div key={c.tech.technicianId} className="w-8 h-8 rounded-full bg-primary/10 border-2 border-card flex items-center justify-center text-xs font-medium text-primary">
-                {c.tech.name.charAt(0)}
+              <div key={c.partner.id} className="w-8 h-8 rounded-full bg-primary/10 border-2 border-card flex items-center justify-center text-xs font-medium text-primary">
+                {c.partner.full_name.charAt(0)}
               </div>
             ))}
           </div>
