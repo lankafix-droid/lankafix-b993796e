@@ -15,6 +15,10 @@ export interface V2FlowOption {
   label: string;
   description: string;
   icon: string;
+  group?: string;
+  priceLabel?: string;
+  tag?: string;
+  estimatedTime?: string;
 }
 
 export interface V2DeviceQuestion {
@@ -225,49 +229,81 @@ const AC_FLOW: V2CategoryFlow = {
 const IT_FLOW: V2CategoryFlow = {
   code: "IT",
   name: "IT Repairs & Support",
-  flowType: "fast_book",
-  bookingModel: "fast_book",
+  flowType: "hybrid",
+  bookingModel: "diagnostic_first",
   assignmentType: "technician",
   pricingArchetype: "diagnostic_first",
-  heroTagline: "IT Problems? Expert Help Fast",
-  heroSubtext: "Remote & on-site support for homes, offices and businesses",
-  trustBadges: ["Verified Technician", "Data Safe", "Transparent Pricing", "Business Ready"],
-  priceExample: "Support from LKR 2,000",
+  heroTagline: "Laptop & IT Repairs — Expert Help Fast",
+  heroSubtext: "Screen replacement · Battery · SSD upgrade · Motherboard repair · Remote & on-site support",
+  trustBadges: ["Verified Technician", "Data Safe", "Transparent Pricing", "Warranty Backed"],
+  priceExample: "Laptop repairs from LKR 2,500",
   serviceTypes: [
-    { id: "laptop", label: "Laptop Repair", description: "Hardware or software issues with your laptop", icon: "Laptop" },
-    { id: "desktop", label: "Desktop Repair", description: "PC not working, slow or crashing", icon: "Monitor" },
-    { id: "network", label: "Network Issue", description: "WiFi, router, LAN or internet problems", icon: "Wifi" },
-    { id: "printer", label: "Printer / Scanner", description: "Setup, paper jam or print quality issues", icon: "Printer" },
-    { id: "software", label: "Software Help", description: "Installation, virus removal, backup", icon: "Code" },
-    { id: "data_recovery", label: "Data Recovery", description: "Recover lost or deleted files", icon: "HardDrive" },
+    // ── Laptop Repairs ──
+    { id: "laptop_screen", label: "Screen Replacement", description: "Cracked screen, flickering display, black screen, damaged LCD or LED panel", icon: "Monitor", group: "Laptop Repairs", priceLabel: "From LKR 8,000", tag: "Diagnostic Required", estimatedTime: "1–2 hours" },
+    { id: "laptop_battery", label: "Battery Replacement", description: "Battery not charging, draining quickly, laptop shuts down without power", icon: "Battery", group: "Laptop Repairs", priceLabel: "From LKR 2,500", estimatedTime: "30–60 min" },
+    { id: "laptop_storage", label: "HDD / SSD Replacement", description: "Hard drive failure, slow performance, upgrade from HDD to SSD", icon: "HardDrive", group: "Laptop Repairs", priceLabel: "From LKR 2,500", estimatedTime: "1–2 hours" },
+    { id: "laptop_motherboard", label: "Motherboard Repair", description: "Laptop not powering on, charging issues, short circuit or component damage", icon: "Cpu", group: "Laptop Repairs", priceLabel: "From LKR 6,000", tag: "Diagnostic Required", estimatedTime: "2–5 days" },
+    { id: "laptop_hinge", label: "Hinge Repair", description: "Broken hinges, loose screen frame, hinge stuck or laptop body crack", icon: "Wrench", group: "Laptop Repairs", priceLabel: "From LKR 3,500", estimatedTime: "1–3 hours" },
+    { id: "laptop_keyboard", label: "Keyboard Replacement", description: "Keys not working, liquid damage, keyboard malfunction", icon: "Keyboard", group: "Laptop Repairs", priceLabel: "From LKR 2,500", estimatedTime: "1–2 hours" },
+    { id: "laptop_overheating", label: "Overheating / Fan Repair", description: "Laptop overheating, loud fan noise, thermal shutdown, cooling issues", icon: "Thermometer", group: "Laptop Repairs", priceLabel: "From LKR 3,000", estimatedTime: "1–2 hours" },
+    // ── Desktop Repairs ──
+    { id: "desktop_power", label: "Not Powering On", description: "Desktop won't start, no display, power button unresponsive", icon: "PowerOff", group: "Desktop Repairs", priceLabel: "From LKR 2,500", tag: "Diagnostic Required" },
+    { id: "desktop_motherboard", label: "Motherboard Repair", description: "Desktop motherboard failure, component damage, no POST", icon: "Cpu", group: "Desktop Repairs", priceLabel: "From LKR 5,000", tag: "Diagnostic Required" },
+    { id: "desktop_ram", label: "RAM Upgrade / Replacement", description: "Add more RAM, replace faulty memory, fix blue screen errors", icon: "MemoryStick", group: "Desktop Repairs", priceLabel: "From LKR 2,500" },
+    { id: "desktop_gpu", label: "GPU Troubleshooting", description: "No display, graphics artifacts, GPU fan not spinning", icon: "Monitor", group: "Desktop Repairs", priceLabel: "From LKR 3,000", tag: "Diagnostic Required" },
+    { id: "desktop_psu", label: "Power Supply Replacement", description: "Random shutdowns, burning smell, PSU failure", icon: "Zap", group: "Desktop Repairs", priceLabel: "From LKR 3,500" },
+    // ── Network & Other ──
+    { id: "network", label: "Network / WiFi Issue", description: "WiFi, router, LAN or internet problems", icon: "Wifi", group: "Network & Other" },
+    { id: "printer", label: "Printer / Scanner", description: "Setup, paper jam or print quality issues", icon: "Printer", group: "Network & Other", priceLabel: "Service LKR 2,500" },
+    { id: "software", label: "Software Help", description: "OS install, virus removal, backup & recovery", icon: "Code", group: "Network & Other" },
+    { id: "data_recovery", label: "Data Recovery", description: "Recover lost or deleted files from any device", icon: "HardDrive", group: "Network & Other", priceLabel: "From LKR 5,000", tag: "Diagnostic Required" },
     { id: "not_sure", label: "Diagnose My Problem", description: "Let our IT specialist assess — takes less than 30 seconds", icon: "Stethoscope" },
   ],
+  issueSelectors: [
+    { id: "not_powering_on", label: "Not Powering On", description: "Device won't start or shows no display", icon: "PowerOff" },
+    { id: "slow_performance", label: "Slow / Freezing", description: "System is slow, hangs or freezes frequently", icon: "Clock" },
+    { id: "screen_damage", label: "Screen Damage", description: "Cracked, flickering or black screen", icon: "Monitor" },
+    { id: "overheating", label: "Overheating", description: "Device gets very hot or shuts down from heat", icon: "Thermometer" },
+    { id: "virus_malware", label: "Virus / Malware", description: "Suspicious popups, browser hijacked, ransomware", icon: "Bug" },
+    { id: "hardware_upgrade", label: "Hardware Upgrade", description: "SSD, RAM, battery or other component upgrade", icon: "ArrowUpCircle" },
+    { id: "connectivity", label: "Connectivity Issue", description: "WiFi, Bluetooth or network not working", icon: "Wifi" },
+    { id: "other", label: "Other / Not Sure", description: "Something else — we'll diagnose it", icon: "HelpCircle" },
+  ],
   deviceQuestions: [
-    { key: "environment", label: "Where do you need support?", type: "select", options: [{ label: "Home", value: "home" }, { label: "Office", value: "office" }, { label: "Retail / Shop", value: "retail" }, { label: "School / Institute", value: "school" }, { label: "Warehouse", value: "warehouse" }], required: true },
-    { key: "issue", label: "Main Issue", type: "select", options: [{ label: "Slow System", value: "slow" }, { label: "Virus / Malware", value: "virus" }, { label: "Not Powering On", value: "no_power" }, { label: "WiFi Problem", value: "wifi" }, { label: "Printer Not Working", value: "printer" }, { label: "Setup / Install", value: "setup" }, { label: "Data Recovery", value: "data" }, { label: "Other", value: "other" }], required: true },
+    { key: "device_type", label: "Device Type", type: "select", options: [{ label: "Laptop", value: "laptop" }, { label: "Desktop", value: "desktop" }, { label: "Network Equipment", value: "network" }, { label: "Printer", value: "printer" }], required: true },
+    { key: "brand", label: "Device Brand", type: "select", options: [{ label: "HP", value: "hp" }, { label: "Dell", value: "dell" }, { label: "Lenovo", value: "lenovo" }, { label: "ASUS", value: "asus" }, { label: "Acer", value: "acer" }, { label: "MSI", value: "msi" }, { label: "Apple MacBook", value: "apple" }, { label: "Other", value: "other" }], required: true },
+    { key: "model", label: "Model (e.g. HP Pavilion 15)", type: "text", required: false },
+    { key: "environment", label: "Where do you need support?", type: "select", options: [{ label: "Home", value: "home" }, { label: "Office", value: "office" }, { label: "Retail / Shop", value: "retail" }, { label: "School / Institute", value: "school" }], required: true },
     { key: "device_count", label: "Number of Devices", type: "select", options: [{ label: "1 Device", value: "1" }, { label: "2-5 Devices", value: "2_5" }, { label: "5+ Devices", value: "5_plus" }], required: false },
   ],
   serviceModes: [
-    { id: "remote", label: "Remote Support", description: "Expert help via screen sharing — no visit needed", icon: "Monitor", skipLocation: true, details: ["Available time slots shown", "30-min session", "Lower cost than on-site"] },
     { id: "onsite", label: "On-Site Visit", description: "Technician comes to your home or office", icon: "MapPin", details: ["Technician dispatched to you", "Full diagnosis on-site", "Same-day availability"] },
-    { id: "inspection", label: "Inspection Only", description: "Diagnose the issue and get a detailed report", icon: "Search", details: ["Written diagnosis report", "Repair quote provided", "No obligation to proceed"] },
+    { id: "pickup_return", label: "Pick-Up & Return", description: "We collect and deliver your device", icon: "Truck", extraFee: 500, details: ["Scheduled pickup slot", "Secure handling", "Device returned after repair"] },
+    { id: "remote", label: "Remote Support", description: "Expert help via screen sharing — no visit needed", icon: "Monitor", skipLocation: true, details: ["Available time slots shown", "30-min session", "Lower cost than on-site"] },
+    { id: "inspection", label: "Diagnostic Only", description: "Full inspection and written report — no obligation", icon: "Search", details: ["Written diagnosis report", "Repair quote provided", "Fee deducted if you proceed"] },
   ],
   packages: [
+    { id: "diagnostic", name: "Diagnostic Visit", description: "Full inspection and written report", priceType: "fixed", price: 2500, features: ["On-site diagnosis", "Written report", "Repair quote", "Fee deducted from repair cost"] },
     { id: "remote", name: "Remote Support", description: "Expert help via remote access", priceType: "fixed", price: 2000, features: ["Screen sharing session", "30-min support", "Software fixes", "No visit needed"] },
-    { id: "onsite", name: "On-Site Visit", description: "Technician visits your location", priceType: "starts_from", price: 3500, features: ["Home/office visit", "Hardware check", "Software diagnosis", "Network check"], popular: true },
+    { id: "onsite_repair", name: "On-Site Repair", description: "Technician visits and repairs on the spot", priceType: "starts_from", price: 3500, features: ["Home/office visit", "Hardware & software check", "Parts quoted separately", "Warranty on labour"], popular: true },
     { id: "data_recovery", name: "Data Recovery", description: "Recover lost or deleted files", priceType: "inspection_required", price: 5000, priceMax: 15000, features: ["Drive assessment", "Recovery attempt", "Detailed report", "Quote before proceeding"] },
   ],
   quickServices: [
-    { label: "Laptop Repair", priceLabel: "From LKR 3,500", serviceTypeId: "laptop", pricingArchetype: "diagnostic_first" },
+    { label: "Laptop Screen Replacement", priceLabel: "From LKR 8,000", serviceTypeId: "laptop_screen", pricingArchetype: "diagnostic_first" },
+    { label: "Battery Replacement", priceLabel: "From LKR 2,500", serviceTypeId: "laptop_battery", pricingArchetype: "diagnostic_first" },
+    { label: "SSD Upgrade", priceLabel: "From LKR 2,500", serviceTypeId: "laptop_storage", pricingArchetype: "diagnostic_first" },
+    { label: "Keyboard Replacement", priceLabel: "From LKR 2,500", serviceTypeId: "laptop_keyboard", pricingArchetype: "diagnostic_first" },
     { label: "WiFi / Router Fix", priceLabel: "From LKR 2,000", serviceTypeId: "network", pricingArchetype: "fixed_price" },
     { label: "Virus Removal", priceLabel: "From LKR 2,000", serviceTypeId: "software", pricingArchetype: "fixed_price" },
   ],
   requiresCommitmentFee: false,
   commitmentFeeAmount: 0,
   commitmentFeeNote: "",
+  photoUploadHint: "Upload a photo of the issue to help the technician prepare",
+  dataRiskDisclaimer: "By proceeding, you acknowledge that LankaFix and the assigned technician are not responsible for any data loss during the repair process. We strongly recommend backing up your data before handing over your device.",
   cancellationNote: "Free cancellation within 10 minutes of booking",
-  warrantyNote: "Software fixes warranted for 7 days. Hardware repairs per quote terms.",
-  pricingExplanation: "Remote support is Fixed Price. On-site visits include a diagnostic fee. Parts and hardware repairs are quoted separately after diagnosis.",
+  warrantyNote: "Software fixes: 7-day warranty. Hardware repairs: 30-day warranty on labour. Parts warranty depends on part grade.",
+  pricingExplanation: "IT repairs use Starting From pricing. The base price covers diagnostic and labour. Parts are quoted separately based on your device model and availability. You will receive a detailed quote for approval before any repair work begins. Remote support sessions have fixed pricing.",
 };
 
 // ─── CCTV SOLUTIONS ──────────────────────────────────────────────
