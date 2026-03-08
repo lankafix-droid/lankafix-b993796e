@@ -256,6 +256,7 @@ const V2BookingPage = () => {
               dataDisclaimer={flow.dataRiskDisclaimer}
               dataRiskAccepted={booking.dataRiskAccepted}
               onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
+              activeServiceTypeId={booking.serviceTypeId}
             />
           )}
           {currentStepName === "smart_diagnosis" && diagBlock && (

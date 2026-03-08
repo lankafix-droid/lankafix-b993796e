@@ -27,6 +27,10 @@ export interface V2DeviceQuestion {
   type: "select" | "text" | "toggle";
   options?: { label: string; value: string }[];
   required: boolean;
+  /** Only show this question when one of these serviceTypeIds is selected. Omit = always show. */
+  showForServiceTypes?: string[];
+  /** Only show when another device answer matches. E.g. { key: "device_type", value: "laptop" } */
+  showIfAnswer?: { key: string; value: string | string[] };
 }
 
 export interface V2ServiceMode {
@@ -128,9 +132,17 @@ const MOBILE_FLOW: V2CategoryFlow = {
   deviceQuestions: [
     { key: "brand", label: "Phone Brand", type: "select", options: [{ label: "Apple iPhone", value: "apple" }, { label: "Samsung", value: "samsung" }, { label: "Huawei", value: "huawei" }, { label: "Xiaomi", value: "xiaomi" }, { label: "Oppo", value: "oppo" }, { label: "Vivo", value: "vivo" }, { label: "Infinix", value: "infinix" }, { label: "Tecno", value: "tecno" }, { label: "Other", value: "other" }], required: true },
     { key: "model", label: "Phone Model", type: "text", required: true },
-    { key: "touch_working", label: "Is touch still working?", type: "toggle", required: true },
-    { key: "display_visible", label: "Is the display still visible?", type: "toggle", required: true },
-    { key: "powers_on", label: "Does the phone power on?", type: "toggle", required: true },
+    // Screen-specific
+    { key: "touch_working", label: "Is touch still working?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
+    { key: "display_visible", label: "Is the display still visible?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
+    // Battery-specific
+    { key: "battery_swollen", label: "Is the back cover raised or swollen?", type: "toggle", required: false, showForServiceTypes: ["battery"] },
+    // Charging-specific
+    { key: "port_loose", label: "Does the cable feel loose in the port?", type: "toggle", required: false, showForServiceTypes: ["charging"] },
+    // Water damage
+    { key: "still_powers_on", label: "Does the phone still power on?", type: "toggle", required: true, showForServiceTypes: ["water"] },
+    { key: "when_exposed", label: "When did this happen?", type: "select", options: [{ label: "Less than 24 hours", value: "lt_24h" }, { label: "1-3 days ago", value: "1_3d" }, { label: "More than 3 days", value: "gt_3d" }], required: true, showForServiceTypes: ["water"] },
+    // General
     { key: "previously_repaired", label: "Has it been repaired before?", type: "toggle", required: false },
   ],
   serviceModes: [
@@ -195,10 +207,14 @@ const AC_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "ac_type", label: "AC Type", type: "select", options: [{ label: "Wall Mount / Split", value: "split" }, { label: "Cassette", value: "cassette" }, { label: "Window", value: "window" }, { label: "Portable", value: "portable" }, { label: "Not Sure", value: "not_sure" }], required: true },
-    { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Daikin", value: "daikin" }, { label: "Mitsubishi", value: "mitsubishi" }, { label: "Panasonic", value: "panasonic" }, { label: "Haier", value: "haier" }, { label: "Other", value: "other" }], required: false },
+    { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Daikin", value: "daikin" }, { label: "Mitsubishi", value: "mitsubishi" }, { label: "Panasonic", value: "panasonic" }, { label: "Haier", value: "haier" }, { label: "Midea", value: "midea" }, { label: "Singer", value: "singer" }, { label: "Other", value: "other" }], required: false },
     { key: "capacity", label: "Capacity (BTU)", type: "select", options: [{ label: "9,000 BTU", value: "9000" }, { label: "12,000 BTU", value: "12000" }, { label: "18,000 BTU", value: "18000" }, { label: "24,000 BTU", value: "24000" }, { label: "Not Sure", value: "not_sure" }], required: false },
+    { key: "refrigerant", label: "Refrigerant Type (if known)", type: "select", options: [{ label: "R-22", value: "r22" }, { label: "R-32", value: "r32" }, { label: "R-410A", value: "r410a" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["gas", "repair"] },
     { key: "units", label: "Number of Units", type: "select", options: [{ label: "1 Unit", value: "1" }, { label: "2 Units", value: "2" }, { label: "3 Units", value: "3" }, { label: "4+ Units", value: "4_plus" }], required: true },
     { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }, { label: "Shop / Showroom", value: "shop" }], required: true },
+    // Installation-specific
+    { key: "install_floor", label: "Installation Floor", type: "select", options: [{ label: "Ground Floor", value: "ground" }, { label: "1st Floor", value: "1st" }, { label: "2nd Floor", value: "2nd" }, { label: "3rd Floor+", value: "3rd_plus" }], required: true, showForServiceTypes: ["install", "relocation"] },
+    { key: "piping_estimate", label: "Estimated piping distance", type: "select", options: [{ label: "Under 3 meters", value: "lt_3" }, { label: "3-5 meters", value: "3_5" }, { label: "Over 5 meters", value: "gt_5" }], required: false, showForServiceTypes: ["install", "relocation"] },
   ],
   siteConditions: [
     { key: "emergency", label: "Is this an emergency?", type: "toggle" },
@@ -216,7 +232,7 @@ const AC_FLOW: V2CategoryFlow = {
   quickServices: [
     { label: "AC Not Cooling", priceLabel: "Inspection LKR 2,500", serviceTypeId: "repair", pricingArchetype: "diagnostic_first" },
     { label: "AC Service & Clean", priceLabel: "From LKR 4,500", serviceTypeId: "service", pricingArchetype: "fixed_price" },
-    { label: "Gas Refill", priceLabel: "From LKR 3,500", serviceTypeId: "gas", pricingArchetype: "fixed_price" },
+    { label: "Gas Refill", priceLabel: "From LKR 3,500", serviceTypeId: "gas", pricingArchetype: "diagnostic_first" },
   ],
   requiresCommitmentFee: false,
   commitmentFeeAmount: 0,
@@ -273,10 +289,15 @@ const IT_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "device_type", label: "Device Type", type: "select", options: [{ label: "Laptop", value: "laptop" }, { label: "Desktop", value: "desktop" }, { label: "Network Equipment", value: "network" }, { label: "Printer", value: "printer" }], required: true },
-    { key: "brand", label: "Device Brand", type: "select", options: [{ label: "HP", value: "hp" }, { label: "Dell", value: "dell" }, { label: "Lenovo", value: "lenovo" }, { label: "ASUS", value: "asus" }, { label: "Acer", value: "acer" }, { label: "MSI", value: "msi" }, { label: "Apple MacBook", value: "apple" }, { label: "Other", value: "other" }], required: true },
-    { key: "model", label: "Model (e.g. HP Pavilion 15)", type: "text", required: false },
+    { key: "brand", label: "Device Brand", type: "select", options: [{ label: "HP", value: "hp" }, { label: "Dell", value: "dell" }, { label: "Lenovo", value: "lenovo" }, { label: "ASUS", value: "asus" }, { label: "Acer", value: "acer" }, { label: "MSI", value: "msi" }, { label: "Apple MacBook", value: "apple" }, { label: "Other", value: "other" }], required: true, showForServiceTypes: ["laptop_screen", "laptop_battery", "laptop_storage", "laptop_motherboard", "laptop_hinge", "laptop_keyboard", "laptop_overheating", "desktop_power", "desktop_motherboard", "desktop_ram", "desktop_gpu", "desktop_psu"] },
+    { key: "model", label: "Model (e.g. HP Pavilion 15)", type: "text", required: false, showForServiceTypes: ["laptop_screen", "laptop_battery", "laptop_storage", "laptop_motherboard", "laptop_hinge", "laptop_keyboard", "laptop_overheating", "desktop_power", "desktop_motherboard", "desktop_ram", "desktop_gpu", "desktop_psu"] },
     { key: "environment", label: "Where do you need support?", type: "select", options: [{ label: "Home", value: "home" }, { label: "Office", value: "office" }, { label: "Retail / Shop", value: "retail" }, { label: "School / Institute", value: "school" }], required: true },
-    { key: "device_count", label: "Number of Devices", type: "select", options: [{ label: "1 Device", value: "1" }, { label: "2-5 Devices", value: "2_5" }, { label: "5+ Devices", value: "5_plus" }], required: false },
+    { key: "device_count", label: "Number of Devices", type: "select", options: [{ label: "1 Device", value: "1" }, { label: "2-5 Devices", value: "2_5" }, { label: "5+ Devices", value: "5_plus" }], required: false, showForServiceTypes: ["network", "software"] },
+    // Network-specific
+    { key: "router_brand", label: "Router Brand", type: "text", required: false, showForServiceTypes: ["network"] },
+    { key: "internet_provider", label: "Internet Provider", type: "select", options: [{ label: "SLT Fiber", value: "slt" }, { label: "Dialog", value: "dialog" }, { label: "Mobitel", value: "mobitel" }, { label: "Hutch", value: "hutch" }, { label: "Other", value: "other" }], required: false, showForServiceTypes: ["network"] },
+    // Remote support — minimal device info
+    { key: "os_type", label: "Operating System", type: "select", options: [{ label: "Windows 10/11", value: "windows" }, { label: "macOS", value: "macos" }, { label: "Linux", value: "linux" }], required: true, showForServiceTypes: ["software"] },
   ],
   serviceModes: [
     { id: "onsite", label: "On-Site Visit", description: "Technician comes to your home or office", icon: "MapPin", details: ["Technician dispatched to you", "Full diagnosis on-site", "Same-day availability"] },
@@ -328,9 +349,12 @@ const CCTV_FLOW: V2CategoryFlow = {
     { id: "not_sure", label: "Diagnose My Problem", description: "Get expert advice on your security needs", icon: "Stethoscope" },
   ],
   deviceQuestions: [
-    { key: "property_type", label: "Property Type", type: "select", options: [{ label: "Home", value: "home" }, { label: "Apartment", value: "apartment" }, { label: "Shop", value: "shop" }, { label: "Office", value: "office" }, { label: "Warehouse", value: "warehouse" }], required: true },
-    { key: "camera_count", label: "Number of Cameras Needed", type: "select", options: [{ label: "2 Cameras", value: "2" }, { label: "4 Cameras", value: "4" }, { label: "8 Cameras", value: "8" }, { label: "16+ Cameras", value: "16_plus" }, { label: "Not Sure", value: "not_sure" }], required: true },
+    { key: "property_type", label: "Property Type", type: "select", options: [{ label: "Home", value: "home" }, { label: "Apartment", value: "apartment" }, { label: "Shop", value: "shop" }, { label: "Office", value: "office" }, { label: "Warehouse", value: "warehouse" }, { label: "Factory", value: "factory" }], required: true },
+    { key: "camera_count", label: "Number of Cameras", type: "select", options: [{ label: "2 Cameras", value: "2" }, { label: "4 Cameras", value: "4" }, { label: "8 Cameras", value: "8" }, { label: "16+ Cameras", value: "16_plus" }, { label: "Not Sure", value: "not_sure" }], required: true },
+    { key: "camera_type", label: "Camera Type Preference", type: "select", options: [{ label: "Bullet (wall/ceiling)", value: "bullet" }, { label: "Dome (indoor ceiling)", value: "dome" }, { label: "PTZ (pan-tilt-zoom)", value: "ptz" }, { label: "Mix / Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["new_install", "upgrade"] },
+    { key: "coverage_area", label: "Coverage Area", type: "select", options: [{ label: "Entrance only", value: "entrance" }, { label: "Perimeter / Outdoor", value: "perimeter" }, { label: "Indoor common areas", value: "indoor" }, { label: "Full property (indoor + outdoor)", value: "full" }], required: true, showForServiceTypes: ["new_install", "upgrade", "inspection"] },
     { key: "indoor_outdoor", label: "Camera Location", type: "select", options: [{ label: "Indoor Only", value: "indoor" }, { label: "Outdoor Only", value: "outdoor" }, { label: "Both Indoor & Outdoor", value: "both" }], required: true },
+    { key: "recorder_type", label: "Recorder Type", type: "select", options: [{ label: "DVR (Analog)", value: "dvr" }, { label: "NVR (IP/Network)", value: "nvr" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["repair", "upgrade"] },
     { key: "mobile_viewing", label: "Mobile viewing needed?", type: "toggle", required: true },
     { key: "night_vision", label: "Night vision needed?", type: "toggle", required: true },
     { key: "existing_system", label: "Existing CCTV system?", type: "toggle", required: true },
@@ -390,10 +414,24 @@ const CONSUMER_ELEC_FLOW: V2CategoryFlow = {
     { id: "display", label: "Display Issue", description: "Screen problems, flickering, blank", icon: "Monitor" },
   ],
   deviceQuestions: [
-    { key: "brand", label: "Brand", type: "text", required: true },
-    { key: "model_number", label: "Model Number", type: "text", required: true },
+    // Appliance-specific brand selectors
+    { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Sony", value: "sony" }, { label: "Panasonic", value: "panasonic" }, { label: "Singer", value: "singer" }, { label: "Abans", value: "abans" }, { label: "Sisil", value: "sisil" }, { label: "Haier", value: "haier" }, { label: "Hisense", value: "hisense" }, { label: "Other", value: "other" }], required: true },
+    { key: "model_number", label: "Model Number (check label on back)", type: "text", required: true },
     { key: "age", label: "Approximate Age", type: "select", options: [{ label: "Under 1 year", value: "lt_1y" }, { label: "1-3 years", value: "1_3y" }, { label: "3-5 years", value: "3_5y" }, { label: "Over 5 years", value: "gt_5y" }], required: true },
-    { key: "issue_description", label: "Describe the problem", type: "text", required: true },
+    // TV-specific
+    { key: "tv_type", label: "TV Type", type: "select", options: [{ label: "LED / LCD", value: "led" }, { label: "OLED", value: "oled" }, { label: "Smart TV", value: "smart" }, { label: "Not Sure", value: "not_sure" }], required: true, showForServiceTypes: ["tv"] },
+    { key: "tv_size", label: "Screen Size (approx.)", type: "select", options: [{ label: "32\" or smaller", value: "lt_32" }, { label: "40\"-50\"", value: "40_50" }, { label: "55\"-65\"", value: "55_65" }, { label: "75\" or larger", value: "gt_75" }], required: false, showForServiceTypes: ["tv"] },
+    { key: "tv_issue", label: "What's the issue?", type: "select", options: [{ label: "No picture", value: "no_picture" }, { label: "No sound", value: "no_sound" }, { label: "Lines on screen", value: "lines" }, { label: "Cracked panel", value: "cracked" }, { label: "Smart features not working", value: "smart_issue" }, { label: "Not turning on", value: "no_power" }], required: true, showForServiceTypes: ["tv"] },
+    // Fridge-specific
+    { key: "fridge_type", label: "Refrigerator Type", type: "select", options: [{ label: "Single Door", value: "single" }, { label: "Double Door", value: "double" }, { label: "Side by Side", value: "side_by_side" }, { label: "Mini Fridge", value: "mini" }], required: true, showForServiceTypes: ["fridge"] },
+    { key: "fridge_issue", label: "What's the issue?", type: "select", options: [{ label: "Not cooling", value: "not_cooling" }, { label: "Compressor noise", value: "compressor" }, { label: "Water leak", value: "leak" }, { label: "Not powering on", value: "no_power" }, { label: "Ice buildup", value: "ice" }, { label: "Door seal problem", value: "seal" }], required: true, showForServiceTypes: ["fridge"] },
+    // Washing machine-specific
+    { key: "washer_type", label: "Washing Machine Type", type: "select", options: [{ label: "Top Load", value: "top" }, { label: "Front Load", value: "front" }, { label: "Semi-Automatic", value: "semi" }], required: true, showForServiceTypes: ["washing"] },
+    { key: "washer_issue", label: "What's the issue?", type: "select", options: [{ label: "Not spinning", value: "not_spinning" }, { label: "Not draining", value: "not_draining" }, { label: "Water leaking", value: "leaking" }, { label: "Excessive vibration", value: "vibration" }, { label: "Error code on display", value: "error_code" }, { label: "Not turning on", value: "no_power" }], required: true, showForServiceTypes: ["washing"] },
+    // Microwave-specific
+    { key: "microwave_issue", label: "What's the issue?", type: "select", options: [{ label: "Not heating", value: "not_heating" }, { label: "Not turning on", value: "no_power" }, { label: "Sparking inside", value: "sparking" }, { label: "Turntable not rotating", value: "turntable" }, { label: "Display/buttons not working", value: "display" }], required: true, showForServiceTypes: ["microwave"] },
+    // Generic fallback
+    { key: "issue_description", label: "Describe the problem", type: "text", required: true, showForServiceTypes: ["fan", "other"] },
   ],
   serviceModes: [
     { id: "onsite", label: "On-Site Inspection", description: "Technician visits your home to diagnose", icon: "MapPin", details: ["Home visit included", "Diagnosis on the spot", "Quote before repair"] },
@@ -439,9 +477,15 @@ const SOLAR_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Office", value: "office" }, { label: "Factory", value: "factory" }, { label: "Warehouse", value: "warehouse" }], required: true },
-    { key: "bill_range", label: "Monthly Electricity Bill", type: "select", options: [{ label: "Under LKR 10,000", value: "lt_10k" }, { label: "LKR 10,000 - 20,000", value: "10_20k" }, { label: "LKR 20,000 - 40,000", value: "20_40k" }, { label: "Over LKR 40,000", value: "gt_40k" }], required: true },
-    { key: "backup", label: "Battery backup needed?", type: "toggle", required: true },
+    { key: "bill_range", label: "Monthly Electricity Bill", type: "select", options: [{ label: "Under LKR 10,000", value: "lt_10k" }, { label: "LKR 10,000 - 20,000", value: "10_20k" }, { label: "LKR 20,000 - 40,000", value: "20_40k" }, { label: "Over LKR 40,000", value: "gt_40k" }], required: true, showForServiceTypes: ["new_install", "expand"] },
+    { key: "roof_type", label: "Roof Type", type: "select", options: [{ label: "Tile", value: "tile" }, { label: "Concrete Slab", value: "slab" }, { label: "Metal Sheet", value: "metal" }, { label: "Asbestos", value: "asbestos" }], required: true, showForServiceTypes: ["new_install", "expand"] },
+    { key: "roof_condition", label: "Roof Condition", type: "select", options: [{ label: "Good — No leaks", value: "good" }, { label: "Minor repairs needed", value: "minor" }, { label: "Major repairs needed", value: "major" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["new_install"] },
+    { key: "backup", label: "Battery backup needed?", type: "toggle", required: true, showForServiceTypes: ["new_install", "expand"] },
     { key: "existing_solar", label: "Existing solar system?", type: "toggle", required: true },
+    // Troubleshoot/maintenance
+    { key: "system_capacity", label: "System Capacity (kW)", type: "select", options: [{ label: "Under 3 kW", value: "lt_3" }, { label: "3-5 kW", value: "3_5" }, { label: "5-10 kW", value: "5_10" }, { label: "Over 10 kW", value: "gt_10" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["troubleshoot", "maintenance", "expand"] },
+    { key: "inverter_brand", label: "Inverter Brand", type: "text", required: false, showForServiceTypes: ["troubleshoot", "maintenance"] },
+    { key: "panel_count", label: "Number of Panels", type: "select", options: [{ label: "1-5", value: "1_5" }, { label: "6-10", value: "6_10" }, { label: "10+", value: "10_plus" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["troubleshoot", "maintenance"] },
   ],
   siteConditions: [
     { key: "roof_type", label: "Roof Type", type: "select", options: [{ label: "Tile", value: "tile" }, { label: "Concrete Slab", value: "slab" }, { label: "Metal Sheet", value: "metal" }, { label: "Asbestos", value: "asbestos" }] },
@@ -487,13 +531,15 @@ const SMART_HOME_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "environment", label: "Environment", type: "select", options: [{ label: "Home", value: "home" }, { label: "SME Office", value: "sme" }, { label: "Retail", value: "retail" }, { label: "Warehouse", value: "warehouse" }], required: true },
+    { key: "goals", label: "Primary Goal", type: "select", options: [{ label: "Security & Access Control", value: "security" }, { label: "Energy Savings", value: "energy" }, { label: "Convenience / Automation", value: "convenience" }, { label: "Complete Smart Setup", value: "full" }], required: true },
     { key: "requirements", label: "What do you need?", type: "select", options: [{ label: "Smart Lighting", value: "lighting" }, { label: "Access Control", value: "access" }, { label: "Smart Locks", value: "locks" }, { label: "Energy Monitoring", value: "energy" }, { label: "Full Package", value: "full" }], required: true },
-    { key: "wifi", label: "WiFi available?", type: "toggle", required: true },
+    { key: "existing_smart_devices", label: "Any existing smart devices?", type: "select", options: [{ label: "None", value: "none" }, { label: "Smart speakers (Alexa/Google)", value: "speakers" }, { label: "Smart lights", value: "lights" }, { label: "Multiple devices", value: "multiple" }], required: false },
+    { key: "wifi_quality", label: "WiFi coverage quality", type: "select", options: [{ label: "Good everywhere", value: "good" }, { label: "Weak in some areas", value: "weak" }, { label: "No WiFi", value: "none" }, { label: "Not Sure", value: "not_sure" }], required: true },
   ],
   siteConditions: [
-    { key: "wifi_available", label: "WiFi available?", type: "toggle" },
     { key: "solar_available", label: "Solar power available?", type: "toggle" },
     { key: "backup_required", label: "Battery backup required?", type: "toggle" },
+    { key: "multi_floor", label: "Multi-floor property?", type: "toggle" },
   ],
   packages: [
     { id: "consultation", name: "Free Consultation", description: "Discuss your automation needs", priceType: "fixed", price: 0, features: ["Phone/video call", "Needs assessment", "System recommendation", "No obligation"] },
