@@ -176,7 +176,14 @@ const V2BookingPage = () => {
         )}
 
         <div className="container max-w-2xl py-6">
-          {currentStepName === "landing" && <V2CategoryLanding flow={flow} onContinue={goNext} />}
+          {currentStepName === "landing" && (
+            <V2CategoryLanding
+              flow={flow}
+              onContinue={goNext}
+              isEmergency={booking.isEmergency}
+              onEmergencyToggle={(v) => updateBooking({ isEmergency: v })}
+            />
+          )}
           {currentStepName === "service_type" && (
             <V2ServiceSelection
               options={flow.serviceTypes}

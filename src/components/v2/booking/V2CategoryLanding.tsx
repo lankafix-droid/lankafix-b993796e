@@ -89,7 +89,27 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
         ))}
       </div>
 
-      {/* Common services / quick picks */}
+      {/* Emergency Mode Toggle */}
+      {supportsEmergency && onEmergencyToggle && (
+        <button
+          onClick={() => onEmergencyToggle(!isEmergency)}
+          className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border w-full transition-all text-sm font-medium ${
+            isEmergency
+              ? "bg-warning/10 border-warning/30 text-warning"
+              : "bg-card border-border text-muted-foreground hover:border-warning/20"
+          }`}
+        >
+          <Zap className={`w-4 h-4 ${isEmergency ? "text-warning" : ""}`} />
+          <div className="flex-1 text-left">
+            <span>Emergency — Within 2 Hours</span>
+            {isEmergency && <span className="text-xs block mt-0.5 text-warning/80">+25% surcharge applies</span>}
+          </div>
+          {isEmergency && (
+            <Badge className="bg-warning/20 text-warning border-0 text-xs">Active</Badge>
+          )}
+        </button>
+      )}
+
       {flow.quickServices.length > 0 && (
         <div className="bg-card rounded-xl border p-5 space-y-3">
           <h2 className="font-semibold text-foreground">Common Services</h2>
