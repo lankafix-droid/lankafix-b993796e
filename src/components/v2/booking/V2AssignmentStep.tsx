@@ -321,7 +321,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-foreground">{tech.name}</h3>
+                  <h3 className="font-semibold text-foreground">{tech.full_name}</h3>
                   <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20 gap-1">
                     <ShieldCheck className="w-3 h-3" /> Verified
                   </Badge>
