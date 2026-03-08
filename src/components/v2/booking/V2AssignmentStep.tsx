@@ -272,14 +272,20 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
       )}
 
       {/* ── No Match ── */}
-      {phase === "no_match" && (
+      {(phase === "no_match" || phase === "escalated") && (
         <div className="bg-card rounded-xl border p-6 text-center space-y-3">
           <div className="w-14 h-14 mx-auto rounded-full bg-warning/10 flex items-center justify-center">
             <Users className="w-6 h-6 text-warning" />
           </div>
           <div>
-            <p className="font-medium text-foreground">Searching for available technician…</p>
-            <p className="text-sm text-muted-foreground mt-1">All technicians are currently busy. We're notifying the Operations team.</p>
+            <p className="font-medium text-foreground">
+              {phase === "escalated" ? "Escalated to Operations" : "Searching for available technician…"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {phase === "escalated"
+                ? "Our operations team has been notified and will assign a technician shortly."
+                : "All technicians are currently busy. We're notifying the Operations team."}
+            </p>
           </div>
           <Button variant="outline" size="sm" onClick={dispatch.refresh} className="gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Retry
