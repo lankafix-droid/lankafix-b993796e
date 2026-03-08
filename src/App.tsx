@@ -125,6 +125,9 @@ const App = () => (
           {/* ─── Legal ─── */}
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/warranty" element={<WarrantyPage />} />
+          <Route path="/refund" element={<RefundPage />} />
+          <Route path="*" element={<NotFound />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
