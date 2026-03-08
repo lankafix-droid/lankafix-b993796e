@@ -35,9 +35,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   const effectiveType = serviceModeId === "remote" ? "remote_support" as V2AssignmentType :
     (serviceModeId === "drop_off" && assignmentType === "partner_shop") ? "partner_shop" : assignmentType;
 
-  // Live dispatch — only for technician match type
+  // Smart dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
-  const dispatch = useLiveDispatchDB(categoryCode, isEmergency, isLiveMatch);
+  const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
