@@ -58,7 +58,7 @@ function scoreTech(
 ): LiveTechCandidate | null {
   // Must match category
   if (!tech.specializations.includes(category)) return null;
-  if (tech.availabilityStatus === "offline") return null;
+  if (tech.availabilityStatus !== "available" && tech.availabilityStatus !== "busy") return null;
   if (isEmergency && !tech.emergencyAvailable) return null;
 
   // Simulate current position with drift
