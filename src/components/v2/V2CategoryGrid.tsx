@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
 import { v2CategoryFlows, type V2PricingArchetype } from "@/data/v2CategoryFlows";
-import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck } from "lucide-react";
+import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 
@@ -24,11 +24,14 @@ import heroIT from "@/assets/hero-it-repair.jpg";
 import heroSolar from "@/assets/hero-solar-service.jpg";
 import heroElectronics from "@/assets/hero-electronics-service.jpg";
 import heroSmartHome from "@/assets/hero-smarthome-service.jpg";
+import heroCopier from "@/assets/hero-copier-service.jpg";
+import heroSupplies from "@/assets/hero-supplies.jpg";
 
 const categoryThumbs: Record<string, string> = {
   AC: heroAC, CCTV: heroCCTV, IT: heroIT, MOBILE: heroMobile,
   SOLAR: heroSolar, CONSUMER_ELEC: heroElectronics,
-  SMART_HOME_OFFICE: heroSmartHome,
+  SMART_HOME_OFFICE: heroSmartHome, COPIER: heroCopier,
+  PRINT_SUPPLIES: heroSupplies,
 };
 
 const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
@@ -39,7 +42,7 @@ const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: stri
 
 // All categories LIVE — ordered by priority
 const TOP_CODES = ["MOBILE", "AC"];
-const MORE_CODES = ["IT", "CCTV", "CONSUMER_ELEC", "SOLAR", "SMART_HOME_OFFICE"];
+const MORE_CODES = ["IT", "CCTV", "CONSUMER_ELEC", "SOLAR", "SMART_HOME_OFFICE", "COPIER", "PRINT_SUPPLIES"];
 
 const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
   const thumb = categoryThumbs[cat.code];
@@ -116,12 +119,14 @@ const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
 
 // ─── Quick Book Cards ──────────────────────────────────────────────
 const QUICK_BOOKS = [
-  { label: "Broken Phone Screen", price: "From Rs 5,000", pricingType: "Fixed Price", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
+  { label: "Broken Phone Screen", price: "From Rs 5,000", pricingType: "Diagnostic First", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
   { label: "AC Not Cooling", price: "Inspection Rs 2,500", pricingType: "Diagnostic", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
   { label: "Laptop Screen Fix", price: "From Rs 8,000", pricingType: "Diagnostic", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "SSD Upgrade", price: "From Rs 2,500", pricingType: "Diagnostic", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "SSD Upgrade", price: "From Rs 2,500", pricingType: "Fixed Price", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
   { label: "WiFi / Router Issue", price: "From Rs 2,000", pricingType: "Fixed Price", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
   { label: "Appliance Inspection", price: "From Rs 1,500", pricingType: "Diagnostic", link: "/book/CONSUMER_ELEC", icon: <Tv className="w-5 h-5" /> },
+  { label: "Printer Repair", price: "Inspection Rs 2,500", pricingType: "Diagnostic", link: "/book/COPIER", icon: <Printer className="w-5 h-5" /> },
+  { label: "Toner / Ink Order", price: "From Rs 1,500", pricingType: "Fixed Price", link: "/book/PRINT_SUPPLIES", icon: <Package className="w-5 h-5" /> },
 ];
 
 const V2CategoryGrid = () => {

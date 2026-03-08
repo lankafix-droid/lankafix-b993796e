@@ -1,12 +1,13 @@
-import { ShieldCheck, Eye, Award, Lock, HeartHandshake, FileText, MessageCircle } from "lucide-react";
+import { ShieldCheck, Eye, Award, Lock, HeartHandshake, FileText, MessageCircle, KeyRound } from "lucide-react";
 
 const badges = [
   { icon: <ShieldCheck className="w-5 h-5" />, label: "Verified Technicians", desc: "Background checked & certified" },
   { icon: <Eye className="w-5 h-5" />, label: "Transparent Pricing", desc: "No hidden fees, ever" },
+  { icon: <KeyRound className="w-5 h-5" />, label: "OTP Job Verification", desc: "Secure start & completion" },
   { icon: <Award className="w-5 h-5" />, label: "Approval Before Extra Work", desc: "No surprises on your bill" },
   { icon: <FileText className="w-5 h-5" />, label: "Digital Invoice", desc: "Complete breakdown after service" },
   { icon: <Lock className="w-5 h-5" />, label: "Warranty Where Applicable", desc: "Parts and labor guaranteed" },
-  { icon: <HeartHandshake className="w-5 h-5" />, label: "Dispute Mediation", desc: "LankaFix resolves issues" },
+  { icon: <HeartHandshake className="w-5 h-5" />, label: "LankaFix Mediation", desc: "We resolve disputes fairly" },
   { icon: <MessageCircle className="w-5 h-5" />, label: "WhatsApp Support", desc: "Help when you need it" },
 ];
 
