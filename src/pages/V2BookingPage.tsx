@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { getV2Flow } from "@/data/v2CategoryFlows";
+import type { PartGradeCode } from "@/data/partsPricing";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import V2CategoryLanding from "@/components/v2/booking/V2CategoryLanding";
@@ -12,6 +13,8 @@ import V2SiteConditions from "@/components/v2/booking/V2SiteConditions";
 import V2ServiceModeSelection from "@/components/v2/booking/V2ServiceModeSelection";
 import V2PricingExpectation from "@/components/v2/booking/V2PricingExpectation";
 import V2AssignmentStep from "@/components/v2/booking/V2AssignmentStep";
+import V2PartGradeSelection from "@/components/v2/booking/V2PartGradeSelection";
+import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -27,6 +30,8 @@ export interface V2BookingState {
   preferredTime?: string;
   photoUrls: string[];
   dataRiskAccepted?: boolean;
+  partGrade?: PartGradeCode;
+  acInstallAddons?: Record<string, number>;
 }
 
 const INITIAL_STATE: V2BookingState = {
@@ -39,6 +44,17 @@ const INITIAL_STATE: V2BookingState = {
   photoUrls: [],
 };
 
+// Categories that require part grade selection (repairs involving spare parts)
+const PART_GRADE_CATEGORIES = ["MOBILE"];
+
+// Service types within categories that need part grade (repairs, not cleaning/service)
+const PART_GRADE_SERVICE_TYPES: Record<string, string[]> = {
+  MOBILE: ["screen", "battery", "charging", "camera", "water"],
+};
+
+// AC install service type trigger
+const AC_INSTALL_SERVICE = "install";
+
 const V2BookingPage = () => {
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
@@ -47,6 +63,22 @@ const V2BookingPage = () => {
   const [booking, setBooking] = useState<V2BookingState>({ ...INITIAL_STATE });
 
   const flow = getV2Flow(category || "");
+
+  // Should show part grade step?
+  const showPartGrade = useMemo(() => {
+    if (!flow) return false;
+    const catCode = flow.code;
+    if (!PART_GRADE_CATEGORIES.includes(catCode)) return false;
+    const eligible = PART_GRADE_SERVICE_TYPES[catCode];
+    if (!eligible) return false;
+    return !booking.serviceTypeId || eligible.includes(booking.serviceTypeId);
+  }, [flow, booking.serviceTypeId]);
+
+  // Should show AC install addons?
+  const showACAddons = useMemo(() => {
+    if (!flow) return false;
+    return flow.code === "AC" && booking.serviceTypeId === AC_INSTALL_SERVICE;
+  }, [flow, booking.serviceTypeId]);
 
   // Build steps dynamically based on category config AND selected service mode
   const steps = useMemo(() => {
@@ -59,15 +91,20 @@ const V2BookingPage = () => {
     // Always show pricing expectation
     s.push("pricing_expectation");
 
+    // Part grade selection for mobile repairs with parts
+    if (showPartGrade) s.push("part_grade");
+
     // Service mode only if category has modes
     if (flow.serviceModes && flow.serviceModes.length > 0) s.push("service_mode");
 
     // Device details always
     s.push("device_details");
 
+    // AC installation add-ons
+    if (showACAddons) s.push("ac_install_addons");
+
     // Site conditions only for installation/property categories
     if (flow.siteConditions && flow.siteConditions.length > 0) {
-      // Skip site conditions for remote support mode
       const isRemote = booking.serviceModeId === "remote";
       if (!isRemote) s.push("site_conditions");
     }
@@ -79,7 +116,7 @@ const V2BookingPage = () => {
 
     s.push("assignment", "confirmation");
     return s;
-  }, [flow, booking.serviceModeId]);
+  }, [flow, booking.serviceModeId, showPartGrade, showACAddons]);
 
   if (!flow) {
     return (
@@ -114,6 +151,12 @@ const V2BookingPage = () => {
 
   const updateBooking = (updates: Partial<V2BookingState>) => {
     setBooking((prev) => ({ ...prev, ...updates }));
+  };
+
+  // Get base price for part grade estimates
+  const getBasePrice = () => {
+    const service = flow.packages.find(p => p.id !== "diagnostic");
+    return service?.price || 10000;
   };
 
   return (
@@ -162,6 +205,14 @@ const V2BookingPage = () => {
               onContinue={goNext}
             />
           )}
+          {currentStepName === "part_grade" && (
+            <V2PartGradeSelection
+              selectedGrade={booking.partGrade || ""}
+              onSelect={(grade) => updateBooking({ partGrade: grade })}
+              onContinue={goNext}
+              basePrice={getBasePrice()}
+            />
+          )}
           {currentStepName === "service_mode" && flow.serviceModes && (
             <V2ServiceModeSelection
               modes={flow.serviceModes}
@@ -179,6 +230,11 @@ const V2BookingPage = () => {
               dataDisclaimer={flow.dataRiskDisclaimer}
               dataRiskAccepted={booking.dataRiskAccepted}
               onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
+            />
+          )}
+          {currentStepName === "ac_install_addons" && (
+            <V2ACInstallAddons
+              onContinue={(addons) => { updateBooking({ acInstallAddons: addons }); goNext(); }}
             />
           )}
           {currentStepName === "site_conditions" && flow.siteConditions && (
