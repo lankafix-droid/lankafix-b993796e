@@ -258,6 +258,22 @@ const V2BookingPage = () => {
               onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
             />
           )}
+          {currentStepName === "smart_diagnosis" && diagBlock && (
+            <SmartDiagnosisStep
+              block={diagBlock}
+              answers={booking.diagnosticAnswers || {}}
+              onUpdate={(answers) => updateBooking({ diagnosticAnswers: answers })}
+              onContinue={goNext}
+              photos={booking.photoUrls}
+              onPhotosChange={(photos) => updateBooking({ photoUrls: photos })}
+            />
+          )}
+          {currentStepName === "diagnosis_summary" && diagBlock && (
+            <DiagnosisSummaryCard
+              summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
+              onContinue={goNext}
+            />
+          )}
           {currentStepName === "ac_install_addons" && (
             <V2ACInstallAddons
               onContinue={(addons) => { updateBooking({ acInstallAddons: addons }); goNext(); }}
