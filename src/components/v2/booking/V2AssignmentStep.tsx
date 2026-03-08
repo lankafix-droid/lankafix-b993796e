@@ -1,7 +1,7 @@
 import type { CategoryCode } from "@/types/booking";
 import type { V2AssignmentType, V2PartnerShopInfo } from "@/data/v2CategoryFlows";
 import { useLocationStore, getTravelFeeForZone } from "@/store/locationStore";
-import { useLiveDispatch, type LiveTechCandidate } from "@/hooks/useLiveDispatch";
+import { useLiveDispatchDB, type LivePartnerCandidate } from "@/hooks/useLiveDispatchDB";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
