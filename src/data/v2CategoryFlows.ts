@@ -512,6 +512,103 @@ const SMART_HOME_FLOW: V2CategoryFlow = {
   pricingExplanation: "Smart Home & Office projects require a consultation first. After understanding your needs, we provide a detailed quote with equipment, installation, and configuration costs.",
 };
 
+// ─── COPIER REPAIRS ──────────────────────────────────────────────
+const COPIER_FLOW: V2CategoryFlow = {
+  code: "COPIER",
+  name: "Printer & Copier Repairs",
+  flowType: "hybrid",
+  bookingModel: "diagnostic_first",
+  assignmentType: "technician",
+  pricingArchetype: "diagnostic_first",
+  heroTagline: "Printer or Copier Not Working?",
+  heroSubtext: "Laser, inkjet, dot matrix & thermal — all brands serviced",
+  trustBadges: ["Verified Technician", "Transparent Pricing", "Warranty Backed", "LankaFix Approved"],
+  priceExample: "Inspection from LKR 2,500",
+  serviceTypes: [
+    { id: "paper_jam", label: "Paper Jam / Feed Issue", description: "Paper jamming, misfeeding, or multi-feed problems", icon: "FileText", group: "Common Issues", priceLabel: "Inspection LKR 2,500" },
+    { id: "print_quality", label: "Print Quality Issue", description: "Faded prints, streaks, smudges, or blank pages", icon: "Printer", group: "Common Issues", priceLabel: "Inspection LKR 2,500" },
+    { id: "not_printing", label: "Not Printing", description: "Printer not responding, error lights, offline status", icon: "AlertTriangle", group: "Common Issues", priceLabel: "Inspection LKR 2,500" },
+    { id: "wifi_setup", label: "WiFi / Network Setup", description: "Wireless printing setup, network configuration", icon: "Wifi", group: "Setup & Config", priceLabel: "LKR 2,000" },
+    { id: "installation", label: "New Printer Setup", description: "Unbox, install drivers, configure and test new printer", icon: "PlusCircle", group: "Setup & Config", priceLabel: "LKR 2,500" },
+    { id: "toner_drum", label: "Toner / Drum Replacement", description: "Replace toner cartridge, drum unit, or fuser", icon: "Package", group: "Parts & Maintenance", priceLabel: "Parts quoted separately" },
+    { id: "roller_service", label: "Roller / Maintenance Kit", description: "Replace pickup rollers, separation pads, fuser kit", icon: "Settings", group: "Parts & Maintenance", priceLabel: "Parts quoted separately" },
+    { id: "copier_service", label: "Copier Full Service", description: "Full cleaning, calibration, and maintenance of copier", icon: "Wrench", group: "Parts & Maintenance", priceLabel: "From LKR 5,000" },
+    { id: "not_sure", label: "Diagnose My Problem", description: "Let our technician diagnose — takes less than 30 seconds", icon: "Stethoscope" },
+  ],
+  deviceQuestions: [
+    { key: "printer_type", label: "Printer Type", type: "select", options: [{ label: "Laser Printer", value: "laser" }, { label: "Ink Tank / Inkjet", value: "inkjet" }, { label: "Dot Matrix", value: "dot_matrix" }, { label: "Thermal Printer", value: "thermal" }, { label: "Copier / MFP", value: "copier" }, { label: "Large Format / Plotter", value: "large_format" }, { label: "Not Sure", value: "not_sure" }], required: true },
+    { key: "brand", label: "Brand", type: "select", options: [{ label: "HP", value: "hp" }, { label: "Canon", value: "canon" }, { label: "Epson", value: "epson" }, { label: "Brother", value: "brother" }, { label: "Ricoh", value: "ricoh" }, { label: "Kyocera", value: "kyocera" }, { label: "Samsung", value: "samsung" }, { label: "Xerox", value: "xerox" }, { label: "Other", value: "other" }], required: true },
+    { key: "model", label: "Model Number", type: "text", required: false },
+    { key: "connectivity", label: "Connection Type", type: "select", options: [{ label: "USB", value: "usb" }, { label: "WiFi", value: "wifi" }, { label: "Ethernet", value: "ethernet" }, { label: "Not Sure", value: "not_sure" }], required: false },
+    { key: "environment", label: "Location", type: "select", options: [{ label: "Home", value: "home" }, { label: "Office", value: "office" }, { label: "Retail / Shop", value: "retail" }], required: true },
+  ],
+  serviceModes: [
+    { id: "onsite", label: "On-Site Visit", description: "Technician comes to your location", icon: "MapPin", details: ["Diagnosis on-site", "Same-day availability", "Parts quoted separately"] },
+    { id: "pickup_return", label: "Pick-Up & Return", description: "We collect, repair and return your printer", icon: "Truck", extraFee: 500, details: ["Scheduled pickup", "Workshop repair", "Returned after completion"] },
+  ],
+  packages: [
+    { id: "diagnostic", name: "Diagnostic Visit", description: "Technician inspects and diagnoses the issue", priceType: "fixed", price: 2500, features: ["On-site inspection", "Written diagnosis", "Parts quote", "Fee deducted from repair"] },
+    { id: "setup", name: "Printer Setup", description: "New printer installation and configuration", priceType: "fixed", price: 2500, features: ["Unbox & assemble", "Driver installation", "Network setup", "Test print"] },
+    { id: "service", name: "Full Service", description: "Complete printer cleaning and maintenance", priceType: "starts_from", price: 4000, priceMax: 8000, features: ["Internal cleaning", "Roller check", "Calibration", "Test print"], popular: true },
+    { id: "major_repair", name: "Major Repair", description: "Fuser, board, or motor replacement", priceType: "starts_from", price: 5000, priceMax: 15000, features: ["Full diagnosis", "Parts sourced", "Repair & testing", "Warranty on parts"] },
+  ],
+  quickServices: [
+    { label: "Paper Jam Fix", priceLabel: "Inspection LKR 2,500", serviceTypeId: "paper_jam", pricingArchetype: "diagnostic_first" },
+    { label: "Print Quality Fix", priceLabel: "Inspection LKR 2,500", serviceTypeId: "print_quality", pricingArchetype: "diagnostic_first" },
+    { label: "New Printer Setup", priceLabel: "LKR 2,500", serviceTypeId: "installation", pricingArchetype: "fixed_price" },
+  ],
+  requiresCommitmentFee: false,
+  commitmentFeeAmount: 0,
+  commitmentFeeNote: "",
+  photoUploadHint: "Upload a photo of the printer and the error display if visible",
+  cancellationNote: "Free cancellation within 10 minutes of booking",
+  warrantyNote: "90-day warranty on repairs. Parts warranty depends on component.",
+  pricingExplanation: "Printer repairs use Diagnostic First pricing. The technician inspects the device, then provides a detailed parts and labor quote for your approval. No work begins without your consent.",
+};
+
+// ─── PRINT SUPPLIES ──────────────────────────────────────────────
+const PRINT_SUPPLIES_FLOW: V2CategoryFlow = {
+  code: "PRINT_SUPPLIES",
+  name: "Printing Supplies",
+  flowType: "fast_book",
+  bookingModel: "fast_book",
+  assignmentType: "technician",
+  pricingArchetype: "fixed_price",
+  heroTagline: "Toner & Ink Delivered Fast",
+  heroSubtext: "Genuine, compatible & refilled cartridges for all major brands",
+  trustBadges: ["Genuine Products", "Fast Delivery", "Compatible Options", "LankaFix Approved"],
+  priceExample: "Cartridges from LKR 2,500",
+  serviceTypes: [
+    { id: "toner_order", label: "Toner Cartridge", description: "Laser printer toner — genuine & compatible options", icon: "Package", priceLabel: "From LKR 3,500" },
+    { id: "ink_order", label: "Ink Cartridge / Bottles", description: "Inkjet and ink tank refills", icon: "Droplets", priceLabel: "From LKR 1,500" },
+    { id: "drum_unit", label: "Drum Unit", description: "Replacement drum for laser printers", icon: "Circle", priceLabel: "From LKR 4,000" },
+    { id: "ribbon", label: "Dot Matrix Ribbon", description: "Printer ribbon for dot matrix machines", icon: "FileText", priceLabel: "From LKR 800" },
+    { id: "thermal_roll", label: "Thermal Paper Rolls", description: "Thermal receipt and label rolls", icon: "Receipt", priceLabel: "From LKR 250/roll" },
+    { id: "maintenance_kit", label: "Maintenance Kit", description: "Fuser, rollers, and maintenance parts", icon: "Settings", priceLabel: "From LKR 8,000" },
+  ],
+  deviceQuestions: [
+    { key: "printer_brand", label: "Printer Brand", type: "select", options: [{ label: "HP", value: "hp" }, { label: "Canon", value: "canon" }, { label: "Epson", value: "epson" }, { label: "Brother", value: "brother" }, { label: "Ricoh", value: "ricoh" }, { label: "Kyocera", value: "kyocera" }, { label: "Samsung", value: "samsung" }, { label: "Other", value: "other" }], required: true },
+    { key: "printer_model", label: "Printer Model Number", type: "text", required: true },
+    { key: "quantity", label: "Quantity", type: "select", options: [{ label: "1", value: "1" }, { label: "2", value: "2" }, { label: "3-5", value: "3_5" }, { label: "5+", value: "5_plus" }], required: true },
+    { key: "quality_preference", label: "Quality Preference", type: "select", options: [{ label: "Genuine / Original", value: "genuine" }, { label: "Compatible / OEM", value: "compatible" }, { label: "Refilled", value: "refilled" }, { label: "Best value option", value: "best_value" }], required: true },
+  ],
+  packages: [
+    { id: "delivery", name: "Supply Delivery", description: "Cartridge/toner delivered to your location", priceType: "starts_from", price: 2500, features: ["Delivery included", "Correct model confirmed", "Installation help available"], popular: true },
+    { id: "install_included", name: "Delivery + Installation", description: "Supply delivered and installed by technician", priceType: "starts_from", price: 3500, features: ["Delivery included", "Technician installs", "Test print", "Old cartridge disposed"] },
+  ],
+  quickServices: [
+    { label: "Toner Cartridge", priceLabel: "From LKR 3,500", serviceTypeId: "toner_order", pricingArchetype: "fixed_price" },
+    { label: "Ink Refill", priceLabel: "From LKR 1,500", serviceTypeId: "ink_order", pricingArchetype: "fixed_price" },
+    { label: "Thermal Paper", priceLabel: "From LKR 250/roll", serviceTypeId: "thermal_roll", pricingArchetype: "fixed_price" },
+  ],
+  requiresCommitmentFee: false,
+  commitmentFeeAmount: 0,
+  commitmentFeeNote: "",
+  cancellationNote: "Free cancellation before dispatch",
+  warrantyNote: "Genuine products include manufacturer warranty. Compatible supplies include 30-day replacement guarantee.",
+  pricingExplanation: "Printing supplies have fixed pricing based on your printer model and the quality tier you choose (genuine, compatible, or refilled). Prices are confirmed before order placement.",
+};
+
 // ─── EXPORTS ──────────────────────────────────────────────
 
 export const v2CategoryFlows: Record<string, V2CategoryFlow> = {
@@ -522,6 +619,8 @@ export const v2CategoryFlows: Record<string, V2CategoryFlow> = {
   CONSUMER_ELEC: CONSUMER_ELEC_FLOW,
   SOLAR: SOLAR_FLOW,
   SMART_HOME_OFFICE: SMART_HOME_FLOW,
+  COPIER: COPIER_FLOW,
+  PRINT_SUPPLIES: PRINT_SUPPLIES_FLOW,
 };
 
 export function getV2Flow(code: string): V2CategoryFlow | undefined {
