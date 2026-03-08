@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
 import { v2CategoryFlows, type V2PricingArchetype } from "@/data/v2CategoryFlows";
-import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck } from "lucide-react";
+import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 
