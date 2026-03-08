@@ -487,16 +487,17 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             onConfirm();
           }
         }}
-        disabled={phase === "searching" || phase === "no_match" || phase === "accepting"}
+        disabled={phase === "searching" || phase === "loading" || phase === "no_match" || phase === "accepting"}
         size="lg"
         className="w-full gap-2"
       >
-        {phase === "searching" && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding technician…</>}
+        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> AI finding best technician…</>}
         {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}
         {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Waiting for response…</>}
         {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Continue</>}
         {phase === "no_match" && <><Users className="w-4 h-4" /> No match — retrying…</>}
         {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Try again</>}
+        {phase === "error" && <><RefreshCw className="w-4 h-4" /> Retry</>}
       </Button>
     </div>
   );
