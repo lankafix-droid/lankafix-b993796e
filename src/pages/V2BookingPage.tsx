@@ -21,10 +21,11 @@ import LocationPicker from "@/components/v2/location/LocationPicker";
 import BookingProtectionCard from "@/components/v2/booking/BookingProtectionCard";
 import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
 import type { DiagAnswer } from "@/data/diagnosticQuestions";
+import { motion, AnimatePresence } from "framer-motion";
 
 export interface V2BookingState {
   serviceTypeId: string;
@@ -60,6 +61,26 @@ const PART_GRADE_SERVICE_TYPES: Record<string, string[]> = {
 };
 const AC_INSTALL_SERVICE = "install";
 
+// Step labels for the stepper
+const STEP_LABELS: Record<string, string> = {
+  landing: "Overview",
+  service_type: "Service",
+  issue: "Issue",
+  pricing_expectation: "Pricing",
+  part_grade: "Part Quality",
+  service_mode: "Mode",
+  location: "Location",
+  device_details: "Details",
+  smart_diagnosis: "Diagnosis",
+  diagnosis_summary: "Summary",
+  ac_install_addons: "Add-ons",
+  site_conditions: "Site",
+  pricing: "Package",
+  booking_protection: "Protection",
+  assignment: "Technician",
+  confirmation: "Confirm",
+};
+
 const V2BookingPage = () => {
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
@@ -69,7 +90,6 @@ const V2BookingPage = () => {
 
   const flow = getV2Flow(category || "");
 
-  // Determine if smart diagnosis is available for the current selection
   const diagBlock = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
     return getDiagnosticBlock(flow.code, booking.serviceTypeId);
@@ -87,7 +107,6 @@ const V2BookingPage = () => {
     return flow.code === "AC" && booking.serviceTypeId === AC_INSTALL_SERVICE;
   }, [flow, booking.serviceTypeId]);
 
-  // Skip location step for remote/drop-off modes
   const needsLocation = useMemo(() => {
     if (booking.serviceModeId === "remote") return false;
     if (booking.serviceModeId === "drop_off") return false;
@@ -99,34 +118,22 @@ const V2BookingPage = () => {
     const s: string[] = ["landing", "service_type"];
 
     if (flow.issueSelectors && flow.issueSelectors.length > 0) s.push("issue");
-
     s.push("pricing_expectation");
-
     if (showPartGrade) s.push("part_grade");
-
     if (flow.serviceModes && flow.serviceModes.length > 0) s.push("service_mode");
-
-    // Location step — after service mode so we know if remote/drop-off
     if (needsLocation) s.push("location");
-
     s.push("device_details");
-
-    // Smart diagnosis + summary (only if diagnostic block exists for this category+service)
     if (diagBlock) {
       s.push("smart_diagnosis", "diagnosis_summary");
     }
-
     if (showACAddons) s.push("ac_install_addons");
-
     if (flow.siteConditions && flow.siteConditions.length > 0) {
       const isRemote = booking.serviceModeId === "remote";
       if (!isRemote) s.push("site_conditions");
     }
-
     if (flow.pricingArchetype !== "quote_required") {
       s.push("pricing");
     }
-
     s.push("booking_protection", "assignment", "confirmation");
     return s;
   }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation, diagBlock]);
@@ -175,151 +182,199 @@ const V2BookingPage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
+        {/* Premium progress stepper */}
         {step > 0 && (
-          <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b">
+          <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b shadow-sm">
             <div className="container max-w-2xl py-3">
-              <div className="flex items-center gap-3 mb-2">
-                <button onClick={goBack} className="p-1 rounded-lg hover:bg-muted transition-colors">
-                  <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+              {/* Top row: back + category + step count */}
+              <div className="flex items-center gap-3 mb-3">
+                <button onClick={goBack} className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors">
+                  <ArrowLeft className="w-4 h-4 text-foreground" />
                 </button>
-                <span className="text-sm font-medium text-foreground">{flow.name}</span>
-                <span className="text-xs text-muted-foreground ml-auto">Step {step} of {totalSteps - 1}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate">{flow.name}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {STEP_LABELS[currentStepName] || currentStepName}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-primary">{step}</span>
+                  <span className="text-xs text-muted-foreground">/ {totalSteps - 1}</span>
+                </div>
               </div>
-              <div className="h-1 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+
+              {/* Progress bar with animated fill */}
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-primary rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                />
+              </div>
+
+              {/* Step dots — show key milestones */}
+              <div className="flex items-center justify-between mt-2 px-0.5">
+                {steps.filter((_, i) => i > 0).map((s, i) => {
+                  const realIndex = i + 1;
+                  const isDone = realIndex < step;
+                  const isCurrent = realIndex === step;
+                  // Only show dots for every ~nth step to avoid clutter
+                  if (steps.length > 8 && realIndex % 2 !== 0 && !isCurrent && !isDone) return null;
+                  return (
+                    <div key={s} className="flex flex-col items-center">
+                      <div
+                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                          isDone ? "bg-success" : isCurrent ? "bg-primary scale-125" : "bg-muted-foreground/20"
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
         )}
 
+        {/* Step content with animated transitions */}
         <div className="container max-w-2xl py-6">
-          {currentStepName === "landing" && (
-            <V2CategoryLanding
-              flow={flow}
-              onContinue={goNext}
-              isEmergency={booking.isEmergency}
-              onEmergencyToggle={(v) => updateBooking({ isEmergency: v })}
-            />
-          )}
-          {currentStepName === "service_type" && (
-            <V2ServiceSelection
-              options={flow.serviceTypes}
-              selected={booking.serviceTypeId}
-              onSelect={(id) => { updateBooking({ serviceTypeId: id }); goNext(); }}
-              title="What do you need?"
-            />
-          )}
-          {currentStepName === "issue" && flow.issueSelectors && (
-            <V2ServiceSelection
-              options={flow.issueSelectors}
-              selected={booking.issueId || ""}
-              onSelect={(id) => { updateBooking({ issueId: id }); goNext(); }}
-              title="What's the problem?"
-            />
-          )}
-          {currentStepName === "pricing_expectation" && (
-            <V2PricingExpectation
-              archetype={flow.pricingArchetype}
-              explanation={flow.pricingExplanation}
-              onContinue={goNext}
-            />
-          )}
-          {currentStepName === "part_grade" && (
-            <V2PartGradeSelection
-              selectedGrade={booking.partGrade || ""}
-              onSelect={(grade) => updateBooking({ partGrade: grade })}
-              onContinue={goNext}
-              basePrice={getBasePrice()}
-            />
-          )}
-          {currentStepName === "service_mode" && flow.serviceModes && (
-            <V2ServiceModeSelection
-              modes={flow.serviceModes}
-              selected={booking.serviceModeId}
-              onSelect={(id) => { updateBooking({ serviceModeId: id }); goNext(); }}
-            />
-          )}
-          {currentStepName === "location" && (
-            <div className="space-y-5">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Service Location</h2>
-                <p className="text-sm text-muted-foreground mt-1">Where do you need this service?</p>
-              </div>
-              <LocationPicker onContinue={goNext} showTravelFee={true} />
-            </div>
-          )}
-          {currentStepName === "device_details" && (
-            <V2DeviceDetails
-              questions={flow.deviceQuestions}
-              answers={booking.deviceAnswers}
-              onUpdate={(answers) => updateBooking({ deviceAnswers: answers })}
-              onContinue={goNext}
-              photoHint={flow.photoUploadHint}
-              dataDisclaimer={flow.dataRiskDisclaimer}
-              dataRiskAccepted={booking.dataRiskAccepted}
-              onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
-              activeServiceTypeId={booking.serviceTypeId}
-            />
-          )}
-          {currentStepName === "smart_diagnosis" && diagBlock && (
-            <SmartDiagnosisStep
-              block={diagBlock}
-              answers={booking.diagnosticAnswers || {}}
-              onUpdate={(answers) => updateBooking({ diagnosticAnswers: answers })}
-              onContinue={goNext}
-              photos={booking.photoUrls}
-              onPhotosChange={(photos) => updateBooking({ photoUrls: photos })}
-            />
-          )}
-          {currentStepName === "diagnosis_summary" && diagBlock && (
-            <DiagnosisSummaryCard
-              summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
-              onContinue={goNext}
-            />
-          )}
-          {currentStepName === "ac_install_addons" && (
-            <V2ACInstallAddons
-              onContinue={(addons) => { updateBooking({ acInstallAddons: addons }); goNext(); }}
-            />
-          )}
-          {currentStepName === "site_conditions" && flow.siteConditions && (
-            <V2SiteConditions
-              conditions={flow.siteConditions}
-              answers={booking.siteConditions}
-              onUpdate={(a) => updateBooking({ siteConditions: a })}
-              onContinue={goNext}
-            />
-          )}
-          {currentStepName === "pricing" && (
-            <V2PricingBuilder
-              packages={flow.packages}
-              selectedId={booking.packageId}
-              onSelect={(id) => updateBooking({ packageId: id })}
-              onContinue={goNext}
-              categoryCode={flow.code}
-            />
-          )}
-          {currentStepName === "booking_protection" && (
-            <BookingProtectionCard
-              categoryCode={flow.code as CategoryCode}
-              isEmergency={booking.isEmergency}
-              onConfirmPayment={(_fee, _type, _method) => {
-                track("booking_protection_paid", { category: flow.code, fee: _fee, type: _type, method: _method });
-                goNext();
-              }}
-            />
-          )}
-          {currentStepName === "assignment" && (
-            <V2AssignmentStep
-              categoryCode={flow.code}
-              assignmentType={flow.assignmentType}
-              serviceModeId={booking.serviceModeId}
-              partnerShops={flow.partnerShops}
-              isEmergency={booking.isEmergency}
-              onConfirm={goNext}
-            />
-          )}
-          {currentStepName === "confirmation" && <V2BookingConfirmation flow={flow} booking={booking} />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentStepName}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            >
+              {currentStepName === "landing" && (
+                <V2CategoryLanding
+                  flow={flow}
+                  onContinue={goNext}
+                  isEmergency={booking.isEmergency}
+                  onEmergencyToggle={(v) => updateBooking({ isEmergency: v })}
+                />
+              )}
+              {currentStepName === "service_type" && (
+                <V2ServiceSelection
+                  options={flow.serviceTypes}
+                  selected={booking.serviceTypeId}
+                  onSelect={(id) => { updateBooking({ serviceTypeId: id }); goNext(); }}
+                  title="What do you need?"
+                />
+              )}
+              {currentStepName === "issue" && flow.issueSelectors && (
+                <V2ServiceSelection
+                  options={flow.issueSelectors}
+                  selected={booking.issueId || ""}
+                  onSelect={(id) => { updateBooking({ issueId: id }); goNext(); }}
+                  title="What's the problem?"
+                />
+              )}
+              {currentStepName === "pricing_expectation" && (
+                <V2PricingExpectation
+                  archetype={flow.pricingArchetype}
+                  explanation={flow.pricingExplanation}
+                  onContinue={goNext}
+                />
+              )}
+              {currentStepName === "part_grade" && (
+                <V2PartGradeSelection
+                  selectedGrade={booking.partGrade || ""}
+                  onSelect={(grade) => updateBooking({ partGrade: grade })}
+                  onContinue={goNext}
+                  basePrice={getBasePrice()}
+                />
+              )}
+              {currentStepName === "service_mode" && flow.serviceModes && (
+                <V2ServiceModeSelection
+                  modes={flow.serviceModes}
+                  selected={booking.serviceModeId}
+                  onSelect={(id) => { updateBooking({ serviceModeId: id }); goNext(); }}
+                />
+              )}
+              {currentStepName === "location" && (
+                <div className="space-y-5">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Service Location</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Where do you need this service?</p>
+                  </div>
+                  <LocationPicker onContinue={goNext} showTravelFee={true} />
+                </div>
+              )}
+              {currentStepName === "device_details" && (
+                <V2DeviceDetails
+                  questions={flow.deviceQuestions}
+                  answers={booking.deviceAnswers}
+                  onUpdate={(answers) => updateBooking({ deviceAnswers: answers })}
+                  onContinue={goNext}
+                  photoHint={flow.photoUploadHint}
+                  dataDisclaimer={flow.dataRiskDisclaimer}
+                  dataRiskAccepted={booking.dataRiskAccepted}
+                  onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
+                  activeServiceTypeId={booking.serviceTypeId}
+                />
+              )}
+              {currentStepName === "smart_diagnosis" && diagBlock && (
+                <SmartDiagnosisStep
+                  block={diagBlock}
+                  answers={booking.diagnosticAnswers || {}}
+                  onUpdate={(answers) => updateBooking({ diagnosticAnswers: answers })}
+                  onContinue={goNext}
+                  photos={booking.photoUrls}
+                  onPhotosChange={(photos) => updateBooking({ photoUrls: photos })}
+                />
+              )}
+              {currentStepName === "diagnosis_summary" && diagBlock && (
+                <DiagnosisSummaryCard
+                  summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
+                  onContinue={goNext}
+                />
+              )}
+              {currentStepName === "ac_install_addons" && (
+                <V2ACInstallAddons
+                  onContinue={(addons) => { updateBooking({ acInstallAddons: addons }); goNext(); }}
+                />
+              )}
+              {currentStepName === "site_conditions" && flow.siteConditions && (
+                <V2SiteConditions
+                  conditions={flow.siteConditions}
+                  answers={booking.siteConditions}
+                  onUpdate={(a) => updateBooking({ siteConditions: a })}
+                  onContinue={goNext}
+                />
+              )}
+              {currentStepName === "pricing" && (
+                <V2PricingBuilder
+                  packages={flow.packages}
+                  selectedId={booking.packageId}
+                  onSelect={(id) => updateBooking({ packageId: id })}
+                  onContinue={goNext}
+                  categoryCode={flow.code}
+                />
+              )}
+              {currentStepName === "booking_protection" && (
+                <BookingProtectionCard
+                  categoryCode={flow.code as CategoryCode}
+                  isEmergency={booking.isEmergency}
+                  onConfirmPayment={(_fee, _type, _method) => {
+                    track("booking_protection_paid", { category: flow.code, fee: _fee, type: _type, method: _method });
+                    goNext();
+                  }}
+                />
+              )}
+              {currentStepName === "assignment" && (
+                <V2AssignmentStep
+                  categoryCode={flow.code}
+                  assignmentType={flow.assignmentType}
+                  serviceModeId={booking.serviceModeId}
+                  partnerShops={flow.partnerShops}
+                  isEmergency={booking.isEmergency}
+                  onConfirm={goNext}
+                />
+              )}
+              {currentStepName === "confirmation" && <V2BookingConfirmation flow={flow} booking={booking} />}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
       {step === 0 && <Footer />}
