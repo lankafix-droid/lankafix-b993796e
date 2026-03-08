@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
+import { v2CategoryFlows } from "@/data/v2CategoryFlows";
 import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, Clock, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
