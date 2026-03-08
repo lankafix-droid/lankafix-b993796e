@@ -132,9 +132,17 @@ const MOBILE_FLOW: V2CategoryFlow = {
   deviceQuestions: [
     { key: "brand", label: "Phone Brand", type: "select", options: [{ label: "Apple iPhone", value: "apple" }, { label: "Samsung", value: "samsung" }, { label: "Huawei", value: "huawei" }, { label: "Xiaomi", value: "xiaomi" }, { label: "Oppo", value: "oppo" }, { label: "Vivo", value: "vivo" }, { label: "Infinix", value: "infinix" }, { label: "Tecno", value: "tecno" }, { label: "Other", value: "other" }], required: true },
     { key: "model", label: "Phone Model", type: "text", required: true },
-    { key: "touch_working", label: "Is touch still working?", type: "toggle", required: true },
-    { key: "display_visible", label: "Is the display still visible?", type: "toggle", required: true },
-    { key: "powers_on", label: "Does the phone power on?", type: "toggle", required: true },
+    // Screen-specific
+    { key: "touch_working", label: "Is touch still working?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
+    { key: "display_visible", label: "Is the display still visible?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
+    // Battery-specific
+    { key: "battery_swollen", label: "Is the back cover raised or swollen?", type: "toggle", required: false, showForServiceTypes: ["battery"] },
+    // Charging-specific
+    { key: "port_loose", label: "Does the cable feel loose in the port?", type: "toggle", required: false, showForServiceTypes: ["charging"] },
+    // Water damage
+    { key: "still_powers_on", label: "Does the phone still power on?", type: "toggle", required: true, showForServiceTypes: ["water"] },
+    { key: "when_exposed", label: "When did this happen?", type: "select", options: [{ label: "Less than 24 hours", value: "lt_24h" }, { label: "1-3 days ago", value: "1_3d" }, { label: "More than 3 days", value: "gt_3d" }], required: true, showForServiceTypes: ["water"] },
+    // General
     { key: "previously_repaired", label: "Has it been repaired before?", type: "toggle", required: false },
   ],
   serviceModes: [
