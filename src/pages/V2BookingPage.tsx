@@ -7,10 +7,11 @@ import V2CategoryLanding from "@/components/v2/booking/V2CategoryLanding";
 import V2ServiceSelection from "@/components/v2/booking/V2ServiceSelection";
 import V2DeviceDetails from "@/components/v2/booking/V2DeviceDetails";
 import V2PricingBuilder from "@/components/v2/booking/V2PricingBuilder";
-import V2TechnicianMatching from "@/components/v2/booking/V2TechnicianMatching";
 import V2BookingConfirmation from "@/components/v2/booking/V2BookingConfirmation";
 import V2SiteConditions from "@/components/v2/booking/V2SiteConditions";
 import V2ServiceModeSelection from "@/components/v2/booking/V2ServiceModeSelection";
+import V2PricingExpectation from "@/components/v2/booking/V2PricingExpectation";
+import V2AssignmentStep from "@/components/v2/booking/V2AssignmentStep";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -51,14 +52,16 @@ const V2BookingPage = () => {
   const hasSiteConditions = flow?.siteConditions && flow.siteConditions.length > 0;
   const hasServiceModes = flow?.serviceModes && flow.serviceModes.length > 0;
 
+  // New step order: landing → service_type → issue? → pricing_expectation → service_mode? → device_details → site_conditions? → pricing → assignment → confirmation
   const steps = useMemo(() => {
     if (!flow) return ["landing"];
     const s: string[] = ["landing", "service_type"];
     if (hasIssueStep) s.push("issue");
-    s.push("device_details");
+    s.push("pricing_expectation");
     if (hasServiceModes) s.push("service_mode");
+    s.push("device_details");
     if (hasSiteConditions) s.push("site_conditions");
-    s.push("pricing", "technician", "confirmation");
+    s.push("pricing", "assignment", "confirmation");
     return s;
   }, [flow, hasIssueStep, hasSiteConditions, hasServiceModes]);
 
@@ -70,29 +73,6 @@ const V2BookingPage = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1>
             <Button variant="outline" onClick={() => navigate("/v2")}>Back to Home</Button>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // Coming soon gate
-  if (flow.launchTier === "coming_soon") {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center px-4">
-          <div className="text-center max-w-md space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-              <span className="text-3xl">🚀</span>
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">{flow.name}</h1>
-            <p className="text-muted-foreground">This service is coming soon to LankaFix. Join the waitlist to be notified when it launches in your area.</p>
-            <div className="flex gap-3 justify-center">
-              <Button onClick={() => navigate("/waitlist")}>Join Waitlist</Button>
-              <Button variant="outline" onClick={() => navigate("/v2")}>Back to Home</Button>
-            </div>
           </div>
         </main>
         <Footer />
@@ -159,6 +139,20 @@ const V2BookingPage = () => {
               title="What's the problem?"
             />
           )}
+          {currentStepName === "pricing_expectation" && (
+            <V2PricingExpectation
+              archetype={flow.pricingArchetype}
+              explanation={flow.pricingExplanation}
+              onContinue={goNext}
+            />
+          )}
+          {currentStepName === "service_mode" && flow.serviceModes && (
+            <V2ServiceModeSelection
+              modes={flow.serviceModes}
+              selected={booking.serviceModeId}
+              onSelect={(id) => { updateBooking({ serviceModeId: id }); goNext(); }}
+            />
+          )}
           {currentStepName === "device_details" && (
             <V2DeviceDetails
               questions={flow.deviceQuestions}
@@ -169,13 +163,6 @@ const V2BookingPage = () => {
               dataDisclaimer={flow.dataRiskDisclaimer}
               dataRiskAccepted={booking.dataRiskAccepted}
               onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
-            />
-          )}
-          {currentStepName === "service_mode" && flow.serviceModes && (
-            <V2ServiceModeSelection
-              modes={flow.serviceModes}
-              selected={booking.serviceModeId}
-              onSelect={(id) => { updateBooking({ serviceModeId: id }); goNext(); }}
             />
           )}
           {currentStepName === "site_conditions" && flow.siteConditions && (
@@ -195,11 +182,12 @@ const V2BookingPage = () => {
               categoryCode={flow.code}
             />
           )}
-          {currentStepName === "technician" && (
-            <V2TechnicianMatching
+          {currentStepName === "assignment" && (
+            <V2AssignmentStep
               categoryCode={flow.code}
-              filter={booking.technicianFilter}
-              onFilterChange={(f) => updateBooking({ technicianFilter: f })}
+              assignmentType={flow.assignmentType}
+              serviceModeId={booking.serviceModeId}
+              partnerShops={flow.partnerShops}
               onConfirm={goNext}
             />
           )}
