@@ -299,6 +299,16 @@ const V2BookingPage = () => {
               categoryCode={flow.code}
             />
           )}
+          {currentStepName === "booking_protection" && (
+            <BookingProtectionCard
+              categoryCode={flow.code as CategoryCode}
+              isEmergency={booking.isEmergency}
+              onConfirmPayment={(_fee, _type) => {
+                track("booking_protection_paid", { category: flow.code, fee: _fee, type: _type });
+                goNext();
+              }}
+            />
+          )}
           {currentStepName === "assignment" && (
             <V2AssignmentStep
               categoryCode={flow.code}
