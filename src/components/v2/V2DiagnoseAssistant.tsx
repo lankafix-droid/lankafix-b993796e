@@ -49,11 +49,15 @@ const SYMPTOM_MAP: Record<string, DiagnoseStep> = {
   laptop: {
     question: "What is happening?",
     options: [
-      { id: "slow", label: "Running very slow" },
+      { id: "screen", label: "Screen cracked or flickering" },
       { id: "no_power", label: "Won't turn on" },
+      { id: "battery", label: "Battery draining fast or not charging" },
+      { id: "slow", label: "Running very slow" },
+      { id: "overheating", label: "Overheating or loud fan" },
+      { id: "keyboard", label: "Keyboard not working" },
+      { id: "hinge", label: "Broken hinge or loose screen" },
       { id: "virus", label: "Virus or malware suspected" },
-      { id: "wifi", label: "WiFi / internet not working" },
-      { id: "screen", label: "Screen issue" },
+      { id: "storage", label: "Need SSD / storage upgrade" },
       { id: "other", label: "Something else" },
     ],
   },

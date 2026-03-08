@@ -118,7 +118,8 @@ const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
 const QUICK_BOOKS = [
   { label: "Broken Phone Screen", price: "From Rs 5,000", pricingType: "Fixed Price", link: "/v2/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
   { label: "AC Not Cooling", price: "Inspection Rs 2,500", pricingType: "Diagnostic", link: "/v2/book/AC", icon: <Snowflake className="w-5 h-5" /> },
-  { label: "Laptop Repair", price: "From Rs 3,500", pricingType: "Diagnostic", link: "/v2/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "Laptop Screen Fix", price: "From Rs 8,000", pricingType: "Diagnostic", link: "/v2/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "SSD Upgrade", price: "From Rs 2,500", pricingType: "Diagnostic", link: "/v2/book/IT", icon: <Monitor className="w-5 h-5" /> },
   { label: "WiFi / Router Issue", price: "From Rs 2,000", pricingType: "Fixed Price", link: "/v2/book/IT", icon: <Monitor className="w-5 h-5" /> },
   { label: "Appliance Inspection", price: "From Rs 1,500", pricingType: "Diagnostic", link: "/v2/book/CONSUMER_ELEC", icon: <Tv className="w-5 h-5" /> },
 ];
