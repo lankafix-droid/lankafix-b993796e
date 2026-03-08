@@ -49,7 +49,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
     track("v2_search_select", { category: result.categoryCode, service: result.serviceTypeId, query: searchQuery });
     setShowResults(false);
     setSearchQuery("");
-    navigate(`/v2/book/${result.categoryCode}`);
+    navigate(`/book/${result.categoryCode}`);
   };
 
   return (

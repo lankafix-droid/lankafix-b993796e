@@ -41,7 +41,7 @@ const INTENTS = [
     description: "We'll diagnose it",
     color: "from-accent/15 to-accent/5 border-accent/20",
     iconColor: "text-accent",
-    link: "/v2#diagnose",
+    link: "/#diagnose",
   },
 ];
 

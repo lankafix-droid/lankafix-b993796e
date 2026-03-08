@@ -2,17 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import CategoriesPage from "./pages/CategoriesPage";
-import CategoryPage from "./pages/CategoryPage";
-import PrecheckPage from "./pages/PrecheckPage";
-import PricingBuilder from "./pages/PricingBuilder";
-import QuotePage from "./pages/QuotePage";
-import TrackerPage from "./pages/TrackerPage";
-import TrackJob from "./pages/TrackJob";
-import WaitlistPage from "./pages/WaitlistPage";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import HomePage from "./pages/V2HomePage";
+import BookingPage from "./pages/V2BookingPage";
+import QuoteApprovalPage from "./pages/V2QuoteApprovalPage";
 import DiagnosePage from "./pages/DiagnosePage";
+import TrackJob from "./pages/TrackJob";
+import TrackerPage from "./pages/TrackerPage";
+import WaitlistPage from "./pages/WaitlistPage";
 import NotFound from "./pages/NotFound";
 import DispatchBoardPage from "./pages/ops/DispatchBoardPage";
 import FinanceBoardPage from "./pages/ops/FinanceBoardPage";
@@ -39,15 +36,12 @@ import SubscriptionAnalyticsPage from "./pages/ops/SubscriptionAnalyticsPage";
 import DiagnoseAnalyticsPage from "./pages/ops/DiagnoseAnalyticsPage";
 import DispatchAnalyticsPage from "./pages/ops/DispatchAnalyticsPage";
 import ControlTowerPage from "./pages/ops/ControlTowerPage";
+import PricingEditorPage from "./pages/ops/PricingEditorPage";
 import ChatWidget from "./components/chat/ChatWidget";
 import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
 import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
-import V2HomePage from "./pages/V2HomePage";
-import V2BookingPage from "./pages/V2BookingPage";
-import V2QuoteApprovalPage from "./pages/V2QuoteApprovalPage";
-import PricingEditorPage from "./pages/ops/PricingEditorPage";
 
 const queryClient = new QueryClient();
 
@@ -59,29 +53,36 @@ const App = () => (
       <ChatWidget />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/v2" element={<V2HomePage />} />
-          <Route path="/v2/book/:category" element={<V2BookingPage />} />
-          <Route path="/v2/quote/:jobId" element={<V2QuoteApprovalPage />} />
-          <Route path="/categories" element={<CategoriesPage />} />
-          <Route path="/category/:code" element={<CategoryPage />} />
-          <Route path="/precheck/:catCode/:svcCode" element={<PrecheckPage />} />
-          <Route path="/pricing/:catCode/:svcCode" element={<PricingBuilder />} />
-          <Route path="/quote/:jobId" element={<QuotePage />} />
+          {/* ─── V3 Customer Marketplace ─── */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/book/:category" element={<BookingPage />} />
+          <Route path="/quote/:jobId" element={<QuoteApprovalPage />} />
+          <Route path="/diagnose" element={<DiagnosePage />} />
           <Route path="/tracker/:jobId" element={<TrackerPage />} />
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
-          <Route path="/diagnose" element={<DiagnosePage />} />
-          {/* Provider onboarding */}
+
+          {/* ─── Legacy V2 redirects ─── */}
+          <Route path="/v2" element={<Navigate to="/" replace />} />
+          <Route path="/v2/book/:category" element={<Navigate to="/book/:category" replace />} />
+          <Route path="/v2/quote/:jobId" element={<Navigate to="/quote/:jobId" replace />} />
+
+          {/* ─── Legacy V1 redirects ─── */}
+          <Route path="/categories" element={<Navigate to="/" replace />} />
+          <Route path="/category/:code" element={<Navigate to="/" replace />} />
+
+          {/* ─── Provider onboarding ─── */}
           <Route path="/join" element={<ProviderOnboardingPage />} />
-          {/* Partner routes */}
+
+          {/* ─── Partner routes ─── */}
           <Route path="/partner" element={<PartnerDashboardPage />} />
           <Route path="/partner/jobs" element={<PartnerJobsPage />} />
           <Route path="/partner/job/:jobId" element={<PartnerJobDetailPage />} />
           <Route path="/partner/technicians" element={<TechniciansPage />} />
           <Route path="/partner/profile" element={<PartnerProfilePage />} />
           <Route path="/partner/wallet" element={<PartnerWalletPage />} />
-          {/* Technician routes */}
+
+          {/* ─── Technician routes ─── */}
           <Route path="/technician" element={<TechnicianDashboardPage />} />
           <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
           <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
@@ -90,22 +91,27 @@ const App = () => (
           <Route path="/technician/training" element={<TechnicianTrainingPage />} />
           <Route path="/technician/support" element={<TechnicianSupportPage />} />
           <Route path="/technician/safety" element={<TechnicianSafetyPage />} />
-          {/* Care / Subscription routes */}
+
+          {/* ─── Care / Subscription ─── */}
           <Route path="/care" element={<CarePlansPage />} />
           <Route path="/care/subscribe/:planId" element={<SubscribePage />} />
           <Route path="/care/dashboard" element={<CareDashboardPage />} />
           <Route path="/care/device/:deviceId" element={<DeviceTimelinePage />} />
-          {/* Device Passport routes */}
+
+          {/* ─── Device Passport ─── */}
           <Route path="/devices" element={<DevicesDashboardPage />} />
           <Route path="/device/:passportId" element={<DevicePassportPage />} />
-          {/* Ops routes */}
+
+          {/* ─── Ops Dashboard ─── */}
           <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
           <Route path="/ops/finance" element={<FinanceBoardPage />} />
-            <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
-            <Route path="/ops/diagnose-analytics" element={<DiagnoseAnalyticsPage />} />
-            <Route path="/ops/dispatch-analytics" element={<DispatchAnalyticsPage />} />
-            <Route path="/ops/control-tower" element={<ControlTowerPage />} />
-            <Route path="/ops/pricing" element={<PricingEditorPage />} />
+          <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
+          <Route path="/ops/diagnose-analytics" element={<DiagnoseAnalyticsPage />} />
+          <Route path="/ops/dispatch-analytics" element={<DispatchAnalyticsPage />} />
+          <Route path="/ops/control-tower" element={<ControlTowerPage />} />
+          <Route path="/ops/pricing" element={<PricingEditorPage />} />
+
+          {/* ─── Legal ─── */}
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="*" element={<NotFound />} />
