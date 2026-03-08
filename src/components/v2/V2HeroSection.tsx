@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Zap, ArrowRight, User, Phone } from "lucide-react";
+import { Search, Zap, ArrowRight, User, Phone } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { SUPPORT_PHONE } from "@/config/contact";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
+import LocationBar from "@/components/v2/location/LocationBar";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -20,7 +21,11 @@ const BANNERS = [
   { image: heroIT, headline: "IT Problems? Expert Help Fast", sub: "Remote & on-site support for homes and businesses", cta: "Get IT Help", link: "/v2/book/IT" },
 ];
 
-const V2HeroSection = () => {
+interface Props {
+  onSetupLocation?: () => void;
+}
+
+const V2HeroSection = ({ onSetupLocation }: Props) => {
   const navigate = useNavigate();
   const [active, setActive] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -49,13 +54,10 @@ const V2HeroSection = () => {
 
   return (
     <section className="relative">
-      {/* Top utility bar */}
+      {/* Top utility bar with LocationBar */}
       <div className="bg-card border-b">
         <div className="container flex items-center justify-between py-2">
-          <button className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            <span className="font-medium">Greater Colombo</span>
-          </button>
+          <LocationBar onSetupLocation={onSetupLocation} />
           <div className="flex items-center gap-3">
             <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
               <Phone className="w-3 h-3" /> Support
