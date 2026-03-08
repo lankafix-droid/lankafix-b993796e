@@ -303,8 +303,8 @@ const V2BookingPage = () => {
             <BookingProtectionCard
               categoryCode={flow.code as CategoryCode}
               isEmergency={booking.isEmergency}
-              onConfirmPayment={(_fee, _type) => {
-                track("booking_protection_paid", { category: flow.code, fee: _fee, type: _type });
+              onConfirmPayment={(_fee, _type, _method) => {
+                track("booking_protection_paid", { category: flow.code, fee: _fee, type: _type, method: _method });
                 goNext();
               }}
             />
