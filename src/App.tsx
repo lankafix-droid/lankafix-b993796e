@@ -121,6 +121,7 @@ const App = () => (
           <Route path="/ops/dispatch-analytics" element={<DispatchAnalyticsPage />} />
           <Route path="/ops/control-tower" element={<ControlTowerPage />} />
           <Route path="/ops/pricing" element={<PricingEditorPage />} />
+          <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
 
           {/* ─── Legal ─── */}
           <Route path="/terms" element={<TermsPage />} />
