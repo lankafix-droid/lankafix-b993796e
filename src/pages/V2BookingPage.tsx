@@ -63,10 +63,15 @@ const V2BookingPage = () => {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
-  const [booking, setBooking] = useState<V2BookingState>({ ...INITIAL_STATE });
+  const [booking, setBooking] = useState<V2BookingState>({ ...INITIAL_STATE, diagnosticAnswers: {} });
 
   const flow = getV2Flow(category || "");
 
+  // Determine if smart diagnosis is available for the current selection
+  const diagBlock = useMemo(() => {
+    if (!flow || !booking.serviceTypeId) return undefined;
+    return getDiagnosticBlock(flow.code, booking.serviceTypeId);
+  }, [flow, booking.serviceTypeId]);
   const showPartGrade = useMemo(() => {
     if (!flow) return false;
     if (!PART_GRADE_CATEGORIES.includes(flow.code)) return false;
