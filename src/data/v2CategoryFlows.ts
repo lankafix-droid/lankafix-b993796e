@@ -157,7 +157,7 @@ const MOBILE_FLOW: V2CategoryFlow = {
   dataRiskDisclaimer: "By proceeding, you acknowledge that LankaFix and the assigned technician are not responsible for any data loss during the repair process. We strongly recommend backing up your data before handing over your device. Do not share your PIN or passwords unless absolutely necessary.",
   cancellationNote: "Free cancellation within 10 minutes of booking",
   warrantyNote: "All repairs include warranty on parts and labor",
-  pricingExplanation: "Mobile repairs use Fixed Pricing. You'll see the exact price before confirming. Parts cost varies by quality tier (Compatible, OEM, Genuine).",
+  pricingExplanation: "Mobile repairs use Starting From pricing. Final price depends on your device model, spare part availability, and part grade selected. You choose your part quality (Original, OEM, A Grade, or Compatible) and receive a detailed quote for approval before any repair begins.",
 };
 
 // ─── AC SERVICES ──────────────────────────────────────────────
