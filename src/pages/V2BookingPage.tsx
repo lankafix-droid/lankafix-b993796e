@@ -15,10 +15,14 @@ import V2PricingExpectation from "@/components/v2/booking/V2PricingExpectation";
 import V2AssignmentStep from "@/components/v2/booking/V2AssignmentStep";
 import V2PartGradeSelection from "@/components/v2/booking/V2PartGradeSelection";
 import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
+import SmartDiagnosisStep from "@/components/v2/booking/SmartDiagnosisStep";
+import DiagnosisSummaryCard from "@/components/v2/booking/DiagnosisSummaryCard";
 import LocationPicker from "@/components/v2/location/LocationPicker";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
+import type { DiagAnswer } from "@/data/diagnosticQuestions";
 
 export interface V2BookingState {
   serviceTypeId: string;
@@ -34,6 +38,7 @@ export interface V2BookingState {
   partGrade?: PartGradeCode;
   acInstallAddons?: Record<string, number>;
   isEmergency?: boolean;
+  diagnosticAnswers?: Record<string, DiagAnswer>;
 }
 
 const INITIAL_STATE: V2BookingState = {
@@ -58,10 +63,15 @@ const V2BookingPage = () => {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
-  const [booking, setBooking] = useState<V2BookingState>({ ...INITIAL_STATE });
+  const [booking, setBooking] = useState<V2BookingState>({ ...INITIAL_STATE, diagnosticAnswers: {} });
 
   const flow = getV2Flow(category || "");
 
+  // Determine if smart diagnosis is available for the current selection
+  const diagBlock = useMemo(() => {
+    if (!flow || !booking.serviceTypeId) return undefined;
+    return getDiagnosticBlock(flow.code, booking.serviceTypeId);
+  }, [flow, booking.serviceTypeId]);
   const showPartGrade = useMemo(() => {
     if (!flow) return false;
     if (!PART_GRADE_CATEGORIES.includes(flow.code)) return false;
@@ -99,6 +109,11 @@ const V2BookingPage = () => {
 
     s.push("device_details");
 
+    // Smart diagnosis + summary (only if diagnostic block exists for this category+service)
+    if (diagBlock) {
+      s.push("smart_diagnosis", "diagnosis_summary");
+    }
+
     if (showACAddons) s.push("ac_install_addons");
 
     if (flow.siteConditions && flow.siteConditions.length > 0) {
@@ -112,7 +127,7 @@ const V2BookingPage = () => {
 
     s.push("assignment", "confirmation");
     return s;
-  }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation]);
+  }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation, diagBlock]);
 
   if (!flow) {
     return (
@@ -241,6 +256,22 @@ const V2BookingPage = () => {
               dataDisclaimer={flow.dataRiskDisclaimer}
               dataRiskAccepted={booking.dataRiskAccepted}
               onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
+            />
+          )}
+          {currentStepName === "smart_diagnosis" && diagBlock && (
+            <SmartDiagnosisStep
+              block={diagBlock}
+              answers={booking.diagnosticAnswers || {}}
+              onUpdate={(answers) => updateBooking({ diagnosticAnswers: answers })}
+              onContinue={goNext}
+              photos={booking.photoUrls}
+              onPhotosChange={(photos) => updateBooking({ photoUrls: photos })}
+            />
+          )}
+          {currentStepName === "diagnosis_summary" && diagBlock && (
+            <DiagnosisSummaryCard
+              summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
+              onContinue={goNext}
             />
           )}
           {currentStepName === "ac_install_addons" && (
