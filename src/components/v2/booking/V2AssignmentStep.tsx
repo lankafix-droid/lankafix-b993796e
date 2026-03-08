@@ -6,7 +6,7 @@ import { calculateDistance } from "@/lib/locationUtils";
 import { calculateETA, getETARange, detectTrafficLevel, getTrafficLabel } from "@/lib/etaEngine";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar, Monitor, ArrowRight, Navigation } from "lucide-react";
+import { ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar, Monitor, ArrowRight, Navigation, Zap } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 
 interface Props {
