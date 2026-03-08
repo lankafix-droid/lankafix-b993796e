@@ -24,11 +24,14 @@ import heroIT from "@/assets/hero-it-repair.jpg";
 import heroSolar from "@/assets/hero-solar-service.jpg";
 import heroElectronics from "@/assets/hero-electronics-service.jpg";
 import heroSmartHome from "@/assets/hero-smarthome-service.jpg";
+import heroCopier from "@/assets/hero-copier-service.jpg";
+import heroSupplies from "@/assets/hero-supplies.jpg";
 
 const categoryThumbs: Record<string, string> = {
   AC: heroAC, CCTV: heroCCTV, IT: heroIT, MOBILE: heroMobile,
   SOLAR: heroSolar, CONSUMER_ELEC: heroElectronics,
-  SMART_HOME_OFFICE: heroSmartHome,
+  SMART_HOME_OFFICE: heroSmartHome, COPIER: heroCopier,
+  PRINT_SUPPLIES: heroSupplies,
 };
 
 const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
