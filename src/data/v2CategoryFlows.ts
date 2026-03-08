@@ -107,11 +107,11 @@ const MOBILE_FLOW: V2CategoryFlow = {
   flowType: "fast_book",
   bookingModel: "fast_book",
   assignmentType: "partner_shop",
-  pricingArchetype: "fixed_price",
+  pricingArchetype: "diagnostic_first",
   heroTagline: "Broken Phone Screen? Fixed Today",
   heroSubtext: "Verified technicians · Genuine & OEM parts · Warranty on every repair",
   trustBadges: ["Verified Technician", "Data Safe", "Warranty Backed", "Transparent Pricing"],
-  priceExample: "Repairs from LKR 2,000",
+  priceExample: "Starting from LKR 5,000",
   serviceTypes: [
     { id: "screen", label: "Screen Broken", description: "Cracked, shattered or unresponsive display", icon: "Smartphone" },
     { id: "battery", label: "Battery Replacement", description: "Battery draining fast, swollen or dead", icon: "Battery" },
