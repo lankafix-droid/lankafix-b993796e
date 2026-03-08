@@ -44,6 +44,7 @@ import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
 import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import V2HomePage from "./pages/V2HomePage";
 
 const queryClient = new QueryClient();
 
