@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.validate-quote-price]
 verify_jwt = false
+
+[functions.booking-watchdog]
+verify_jwt = false
