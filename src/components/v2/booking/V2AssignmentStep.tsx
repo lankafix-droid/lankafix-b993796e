@@ -266,7 +266,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
       )}
 
       {/* ── Searching Phase ── */}
-      {phase === "searching" && (
+      {(phase === "searching" || phase === "loading") && (
         <LiveSearchingCard techCount={searchingTechCount} isEmergency={isEmergency} />
       )}
 
