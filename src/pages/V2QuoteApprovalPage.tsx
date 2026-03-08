@@ -140,7 +140,7 @@ const V2QuoteApprovalPage = () => {
               </div>
             </div>
             <p className="text-sm text-muted-foreground">Work will begin shortly. You'll receive updates via SMS.</p>
-            <Button onClick={() => navigate("/v2")} className="w-full">Back to Home</Button>
+            <Button onClick={() => navigate("/")} className="w-full">Back to Home</Button>
           </div>
         </main>
         <Footer />
