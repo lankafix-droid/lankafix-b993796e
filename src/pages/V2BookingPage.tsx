@@ -127,7 +127,7 @@ const V2BookingPage = () => {
 
     s.push("assignment", "confirmation");
     return s;
-  }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation]);
+  }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation, diagBlock]);
 
   if (!flow) {
     return (
