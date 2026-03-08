@@ -127,7 +127,7 @@ const V2BookingPage = () => {
       s.push("pricing");
     }
 
-    s.push("assignment", "confirmation");
+    s.push("booking_protection", "assignment", "confirmation");
     return s;
   }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation, diagBlock]);
 
