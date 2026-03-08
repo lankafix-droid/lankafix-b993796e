@@ -1,6 +1,6 @@
 /**
  * useSmartDispatch — Calls the smart-dispatch edge function
- * and manages acceptance timer, fallback rounds, and dispatch mode.
+ * and manages backend-driven acceptance flow with persistent state.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,7 +44,6 @@ export interface SmartDispatchCandidate {
   eta_minutes: number;
   traffic: string;
   score: DispatchScoreBreakdown;
-  // Enriched client-side
   etaRange: string;
   trafficLabel: string;
   currentZoneName: string;
@@ -53,7 +52,7 @@ export interface SmartDispatchCandidate {
 export type DispatchMode = "auto" | "top_3" | "manual";
 
 export interface SmartDispatchState {
-  phase: "loading" | "searching" | "matched" | "accepting" | "confirmed" | "no_match" | "timeout" | "error";
+  phase: "loading" | "searching" | "matched" | "accepting" | "confirmed" | "no_match" | "timeout" | "escalated" | "error";
   candidates: SmartDispatchCandidate[];
   bestMatch: SmartDispatchCandidate | null;
   dispatchMode: DispatchMode;
@@ -73,6 +72,7 @@ export function useSmartDispatch(
   serviceType?: string,
   brand?: string,
   enabled: boolean = true,
+  bookingId?: string,
 ) {
   const { getActiveAddress } = useLocationStore();
   const activeAddress = getActiveAddress();
@@ -124,6 +124,7 @@ export function useSmartDispatch(
           customer_lng: custLng,
           customer_zone: custZone,
           is_emergency: isEmergency,
+          booking_id: bookingId,
         },
       });
 
@@ -140,6 +141,7 @@ export function useSmartDispatch(
         totalEligible: data.total_eligible,
         bestScore: bestMatch?.score?.total,
         bestDistance: bestMatch?.distance_km,
+        dispatchRound: data.dispatch_round,
       });
 
       setState(prev => ({
@@ -148,8 +150,9 @@ export function useSmartDispatch(
         bestMatch,
         dispatchMode: data.dispatch_mode || "auto",
         totalEligible: data.total_eligible || 0,
+        dispatchRound: data.dispatch_round || 1,
         escalateToOps: data.escalate_to_ops || false,
-        phase: bestMatch ? "matched" : "no_match",
+        phase: bestMatch ? "matched" : data.escalate_to_ops ? "escalated" : "no_match",
       }));
     } catch (e) {
       console.error("[SmartDispatch] Error:", e);
@@ -160,12 +163,11 @@ export function useSmartDispatch(
         error: e instanceof Error ? e.message : "Dispatch failed",
       }));
     }
-  }, [enabled, category, serviceType, brand, custLat, custLng, custZone, isEmergency, enrichCandidate]);
+  }, [enabled, category, serviceType, brand, custLat, custLng, custZone, isEmergency, enrichCandidate, bookingId]);
 
   // Initial dispatch
   useEffect(() => {
     if (!enabled) return;
-    // Small delay for UX searching animation
     const timer = setTimeout(runDispatch, 2000);
     return () => clearTimeout(timer);
   }, [enabled, runDispatch]);
@@ -177,36 +179,113 @@ export function useSmartDispatch(
       setState(prev => {
         if (prev.acceptCountdown <= 1) {
           if (acceptTimerRef.current) clearInterval(acceptTimerRef.current);
-          // Fallback to next candidate
-          const nextCandidates = prev.candidates.slice(1);
-          const nextBest = nextCandidates[0] || null;
-          return {
-            ...prev,
-            acceptCountdown: 0,
-            phase: nextBest ? "matched" : "timeout",
-            candidates: nextCandidates,
-            bestMatch: nextBest,
-            dispatchRound: prev.dispatchRound + 1,
-          };
+          // Backend handles timeout — call dispatch-accept with timeout
+          if (bookingId && prev.bestMatch) {
+            supabase.functions.invoke("dispatch-accept", {
+              body: {
+                booking_id: bookingId,
+                partner_id: prev.bestMatch.partner_id,
+                action: "timeout",
+              },
+            }).then(({ data }) => {
+              if (!mountedRef.current) return;
+              if (data?.status === "escalated") {
+                setState(p => ({ ...p, phase: "escalated", acceptCountdown: 0 }));
+              } else if (data?.status === "next_round") {
+                // Re-run dispatch will be triggered by backend; poll or re-fetch
+                setState(p => ({
+                  ...p, phase: "searching", acceptCountdown: 0,
+                  dispatchRound: data.dispatch_round,
+                }));
+                // Re-fetch after backend dispatches next round
+                setTimeout(() => runDispatch(), 3000);
+              }
+            });
+          }
+          return { ...prev, acceptCountdown: 0, phase: "searching" };
         }
         return { ...prev, acceptCountdown: prev.acceptCountdown - 1 };
       });
     }, 1000);
-  }, [isEmergency]);
+  }, [isEmergency, bookingId, runDispatch]);
 
-  const confirmAcceptance = useCallback(() => {
+  /** Backend-driven acceptance confirmation */
+  const confirmAcceptance = useCallback(async () => {
     if (acceptTimerRef.current) clearInterval(acceptTimerRef.current);
-    setState(prev => ({ ...prev, phase: "confirmed" }));
-    track("smart_dispatch_accepted", { category });
-  }, [category]);
 
-  const selectCandidate = useCallback((candidateId: string) => {
-    setState(prev => {
-      const selected = prev.candidates.find(c => c.partner_id === candidateId);
-      if (!selected) return prev;
-      return { ...prev, bestMatch: selected };
-    });
-  }, []);
+    if (bookingId && state.bestMatch) {
+      try {
+        const { data, error } = await supabase.functions.invoke("dispatch-accept", {
+          body: {
+            booking_id: bookingId,
+            partner_id: state.bestMatch.partner_id,
+            action: "accept",
+          },
+        });
+        if (error) throw error;
+        setState(prev => ({ ...prev, phase: "confirmed" }));
+        track("smart_dispatch_accepted", { category, bookingId });
+      } catch (e) {
+        console.error("[SmartDispatch] Accept error:", e);
+        setState(prev => ({ ...prev, phase: "confirmed" }));
+      }
+    } else {
+      setState(prev => ({ ...prev, phase: "confirmed" }));
+      track("smart_dispatch_accepted", { category });
+    }
+  }, [category, bookingId, state.bestMatch]);
+
+  /** Customer selects from top-3 — persists to backend */
+  const selectCandidate = useCallback(async (candidateId: string) => {
+    const selected = state.candidates.find(c => c.partner_id === candidateId);
+    if (!selected) return;
+
+    setState(prev => ({ ...prev, bestMatch: selected }));
+
+    if (bookingId) {
+      try {
+        await supabase.functions.invoke("dispatch-select", {
+          body: {
+            booking_id: bookingId,
+            partner_id: candidateId,
+            eta_minutes: selected.eta_minutes,
+          },
+        });
+        track("smart_dispatch_customer_selected", { category, partnerId: candidateId, bookingId });
+      } catch (e) {
+        console.error("[SmartDispatch] Select error:", e);
+      }
+    }
+  }, [state.candidates, bookingId, category]);
+
+  // Subscribe to booking dispatch_status changes via realtime
+  useEffect(() => {
+    if (!bookingId) return;
+    const channel = supabase
+      .channel(`dispatch-${bookingId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
+          filter: `id=eq.${bookingId}`,
+        },
+        (payload: any) => {
+          const newStatus = payload.new?.dispatch_status;
+          if (newStatus === "accepted") {
+            if (acceptTimerRef.current) clearInterval(acceptTimerRef.current);
+            setState(prev => ({ ...prev, phase: "confirmed" }));
+          } else if (newStatus === "escalated") {
+            if (acceptTimerRef.current) clearInterval(acceptTimerRef.current);
+            setState(prev => ({ ...prev, phase: "escalated" }));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [bookingId]);
 
   useEffect(() => {
     return () => {

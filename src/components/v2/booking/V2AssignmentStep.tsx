@@ -17,6 +17,7 @@ interface Props {
   serviceModeId?: string;
   partnerShops?: V2PartnerShopInfo[];
   isEmergency?: boolean;
+  bookingId?: string;
   onConfirm: () => void;
 }
 
@@ -26,7 +27,7 @@ const VEHICLE_ICONS: Record<string, typeof Car> = {
   van: Truck,
 };
 
-const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, isEmergency = false, onConfirm }: Props) => {
+const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partnerShops, isEmergency = false, bookingId, onConfirm }: Props) => {
   const [shopSort, setShopSort] = useState<"nearest" | "rated" | "fastest">("nearest");
   const { getActiveAddress } = useLocationStore();
   const activeAddress = getActiveAddress();
@@ -37,7 +38,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
   // Smart dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
-  const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch);
+  const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch, bookingId);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
@@ -271,14 +272,20 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
       )}
 
       {/* ── No Match ── */}
-      {phase === "no_match" && (
+      {(phase === "no_match" || phase === "escalated") && (
         <div className="bg-card rounded-xl border p-6 text-center space-y-3">
           <div className="w-14 h-14 mx-auto rounded-full bg-warning/10 flex items-center justify-center">
             <Users className="w-6 h-6 text-warning" />
           </div>
           <div>
-            <p className="font-medium text-foreground">Searching for available technician…</p>
-            <p className="text-sm text-muted-foreground mt-1">All technicians are currently busy. We're notifying the Operations team.</p>
+            <p className="font-medium text-foreground">
+              {phase === "escalated" ? "Escalated to Operations" : "Searching for available technician…"}
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {phase === "escalated"
+                ? "Our operations team has been notified and will assign a technician shortly."
+                : "All technicians are currently busy. We're notifying the Operations team."}
+            </p>
           </div>
           <Button variant="outline" size="sm" onClick={dispatch.refresh} className="gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" /> Retry
@@ -521,16 +528,15 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         onClick={() => {
           if (phase === "matched") {
             dispatch.startAcceptance();
-            // Simulate partner accepting after 3-8 seconds
-            setTimeout(() => {
-              dispatch.confirmAcceptance();
-            }, 3000 + Math.random() * 5000);
           }
           if (phase === "confirmed") {
             onConfirm();
           }
+          if (phase === "timeout" || phase === "error") {
+            dispatch.refresh();
+          }
         }}
-        disabled={phase === "searching" || phase === "loading" || phase === "no_match" || phase === "accepting"}
+        disabled={phase === "searching" || phase === "loading" || phase === "no_match" || phase === "accepting" || phase === "escalated"}
         size="lg"
         className="w-full gap-2"
       >
@@ -538,7 +544,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}
         {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Waiting for response…</>}
         {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Continue</>}
-        {phase === "no_match" && <><Users className="w-4 h-4" /> No match — retrying…</>}
+        {(phase === "no_match" || phase === "escalated") && <><Users className="w-4 h-4" /> Waiting for operations…</>}
         {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Try again</>}
         {phase === "error" && <><RefreshCw className="w-4 h-4" /> Retry</>}
       </Button>

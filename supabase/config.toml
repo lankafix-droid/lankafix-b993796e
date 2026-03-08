@@ -2,3 +2,9 @@ project_id = "avjqjnuxvdgifmiudynv"
 
 [functions.smart-dispatch]
 verify_jwt = false
+
+[functions.dispatch-accept]
+verify_jwt = false
+
+[functions.dispatch-select]
+verify_jwt = false

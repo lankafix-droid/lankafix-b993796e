@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       bookings: {
         Row: {
+          actual_arrival_at: string | null
           assigned_at: string | null
           assignment_mode: string | null
           booking_source: string | null
@@ -37,6 +38,9 @@ export type Database = {
           device_details: Json | null
           diagnostic_answers: Json | null
           diagnostic_summary: Json | null
+          dispatch_mode: string | null
+          dispatch_round: number | null
+          dispatch_status: string | null
           emergency_surcharge_lkr: number | null
           estimated_price_lkr: number | null
           final_price_lkr: number | null
@@ -48,6 +52,7 @@ export type Database = {
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           photos: Json | null
           pricing_archetype: Database["public"]["Enums"]["pricing_archetype"]
+          promised_eta_minutes: number | null
           protection_fee_lkr: number | null
           protection_paid_at: string | null
           protection_refundable: boolean | null
@@ -55,6 +60,7 @@ export type Database = {
           protection_type: string | null
           revisit_count: number | null
           scheduled_at: string | null
+          selected_partner_id: string | null
           service_mode: Database["public"]["Enums"]["service_mode"] | null
           service_type: string | null
           sla_breached: boolean | null
@@ -69,6 +75,7 @@ export type Database = {
           zone_code: string | null
         }
         Insert: {
+          actual_arrival_at?: string | null
           assigned_at?: string | null
           assignment_mode?: string | null
           booking_source?: string | null
@@ -90,6 +97,9 @@ export type Database = {
           device_details?: Json | null
           diagnostic_answers?: Json | null
           diagnostic_summary?: Json | null
+          dispatch_mode?: string | null
+          dispatch_round?: number | null
+          dispatch_status?: string | null
           emergency_surcharge_lkr?: number | null
           estimated_price_lkr?: number | null
           final_price_lkr?: number | null
@@ -101,6 +111,7 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
+          promised_eta_minutes?: number | null
           protection_fee_lkr?: number | null
           protection_paid_at?: string | null
           protection_refundable?: boolean | null
@@ -108,6 +119,7 @@ export type Database = {
           protection_type?: string | null
           revisit_count?: number | null
           scheduled_at?: string | null
+          selected_partner_id?: string | null
           service_mode?: Database["public"]["Enums"]["service_mode"] | null
           service_type?: string | null
           sla_breached?: boolean | null
@@ -122,6 +134,7 @@ export type Database = {
           zone_code?: string | null
         }
         Update: {
+          actual_arrival_at?: string | null
           assigned_at?: string | null
           assignment_mode?: string | null
           booking_source?: string | null
@@ -143,6 +156,9 @@ export type Database = {
           device_details?: Json | null
           diagnostic_answers?: Json | null
           diagnostic_summary?: Json | null
+          dispatch_mode?: string | null
+          dispatch_round?: number | null
+          dispatch_status?: string | null
           emergency_surcharge_lkr?: number | null
           estimated_price_lkr?: number | null
           final_price_lkr?: number | null
@@ -154,6 +170,7 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
+          promised_eta_minutes?: number | null
           protection_fee_lkr?: number | null
           protection_paid_at?: string | null
           protection_refundable?: boolean | null
@@ -161,6 +178,7 @@ export type Database = {
           protection_type?: string | null
           revisit_count?: number | null
           scheduled_at?: string | null
+          selected_partner_id?: string | null
           service_mode?: Database["public"]["Enums"]["service_mode"] | null
           service_type?: string | null
           sla_breached?: boolean | null
@@ -178,6 +196,13 @@ export type Database = {
           {
             foreignKeyName: "bookings_partner_id_fkey"
             columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_selected_partner_id_fkey"
+            columns: ["selected_partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
             referencedColumns: ["id"]
@@ -228,6 +253,47 @@ export type Database = {
           zone_code?: string | null
         }
         Relationships: []
+      }
+      dispatch_escalations: {
+        Row: {
+          booking_id: string
+          created_at: string
+          dispatch_rounds_attempted: number | null
+          id: string
+          reason: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          dispatch_rounds_attempted?: number | null
+          id?: string
+          reason?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          dispatch_rounds_attempted?: number | null
+          id?: string
+          reason?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_escalations_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dispatch_log: {
         Row: {
@@ -367,6 +433,66 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "partner_documents_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_notifications: {
+        Row: {
+          action_taken: string | null
+          actioned_at: string | null
+          body: string | null
+          booking_id: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          notification_type: string
+          partner_id: string
+          read_at: string | null
+          title: string
+        }
+        Insert: {
+          action_taken?: string | null
+          actioned_at?: string | null
+          body?: string | null
+          booking_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          partner_id: string
+          read_at?: string | null
+          title: string
+        }
+        Update: {
+          action_taken?: string | null
+          actioned_at?: string | null
+          body?: string | null
+          booking_id?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          partner_id?: string
+          read_at?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_notifications_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
