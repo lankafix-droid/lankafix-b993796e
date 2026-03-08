@@ -50,7 +50,7 @@ const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
 
   return (
     <Link
-      to={`/v2/book/${cat.code}`}
+      to={`/book/${cat.code}`}
       onClick={() => track("v2_category_click", { category: cat.code })}
       className="group bg-card rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/8 hover:border-primary/25"
     >
