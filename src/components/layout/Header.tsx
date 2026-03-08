@@ -37,6 +37,9 @@ const Header = () => {
           <Link to="/" className="block text-sm font-medium py-2.5 px-3 rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Home</Link>
           <Link to="/diagnose" className="block text-sm font-medium py-2.5 px-3 rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Diagnose</Link>
           <Link to="/track" className="block text-sm font-medium py-2.5 px-3 text-muted-foreground rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>Track Job</Link>
+          <Link to="/account" className="block text-sm font-medium py-2.5 px-3 text-muted-foreground rounded-lg hover:bg-muted transition-colors" onClick={() => setMenuOpen(false)}>
+            <span className="flex items-center gap-2"><User className="w-4 h-4" /> Account</span>
+          </Link>
           <Button className="w-full bg-gradient-brand hover:opacity-90" size="sm" asChild>
             <Link to="/#categories" onClick={() => setMenuOpen(false)}>
               <Wrench className="w-3.5 h-3.5 mr-1" />

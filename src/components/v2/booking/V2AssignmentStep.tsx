@@ -35,7 +35,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   useEffect(() => {
     setIsMatching(true);
     const timer = setTimeout(() => {
-      const result = matchTechnician(categoryCode, customerZoneId, false);
+      const result = matchTechnician(categoryCode, customerZoneId, isEmergency);
       setMatch(result);
       setIsMatching(false);
     }, 1500);

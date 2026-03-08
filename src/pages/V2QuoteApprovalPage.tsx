@@ -287,7 +287,7 @@ const V2QuoteApprovalPage = () => {
             <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-5 text-center space-y-3">
               <p className="font-medium text-foreground">Quote Rejected</p>
               <p className="text-sm text-muted-foreground">LankaFix support will contact you to discuss alternatives.</p>
-              <Button onClick={() => navigate("/v2")} variant="outline">Back to Home</Button>
+              <Button onClick={() => navigate("/")} variant="outline">Back to Home</Button>
             </div>
           )}
 
