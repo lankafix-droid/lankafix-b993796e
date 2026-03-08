@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
+import { v2CategoryFlows } from "@/data/v2CategoryFlows";
 import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, Clock, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
@@ -42,7 +43,7 @@ const CategoryCard = ({ cat }: { cat: typeof categories[0] }) => {
 
   return (
     <Link
-      to={`/category/${cat.code}`}
+      to={v2CategoryFlows[cat.code] ? `/v2/book/${cat.code}` : `/category/${cat.code}`}
       onClick={() => track("v2_category_click", { category: cat.code })}
       className="group bg-card rounded-2xl border overflow-hidden hover:shadow-lg hover:shadow-primary/8 hover:border-primary/25 transition-all duration-300"
     >
