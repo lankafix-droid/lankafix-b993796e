@@ -289,10 +289,15 @@ const IT_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "device_type", label: "Device Type", type: "select", options: [{ label: "Laptop", value: "laptop" }, { label: "Desktop", value: "desktop" }, { label: "Network Equipment", value: "network" }, { label: "Printer", value: "printer" }], required: true },
-    { key: "brand", label: "Device Brand", type: "select", options: [{ label: "HP", value: "hp" }, { label: "Dell", value: "dell" }, { label: "Lenovo", value: "lenovo" }, { label: "ASUS", value: "asus" }, { label: "Acer", value: "acer" }, { label: "MSI", value: "msi" }, { label: "Apple MacBook", value: "apple" }, { label: "Other", value: "other" }], required: true },
-    { key: "model", label: "Model (e.g. HP Pavilion 15)", type: "text", required: false },
+    { key: "brand", label: "Device Brand", type: "select", options: [{ label: "HP", value: "hp" }, { label: "Dell", value: "dell" }, { label: "Lenovo", value: "lenovo" }, { label: "ASUS", value: "asus" }, { label: "Acer", value: "acer" }, { label: "MSI", value: "msi" }, { label: "Apple MacBook", value: "apple" }, { label: "Other", value: "other" }], required: true, showForServiceTypes: ["laptop_screen", "laptop_battery", "laptop_storage", "laptop_motherboard", "laptop_hinge", "laptop_keyboard", "laptop_overheating", "desktop_power", "desktop_motherboard", "desktop_ram", "desktop_gpu", "desktop_psu"] },
+    { key: "model", label: "Model (e.g. HP Pavilion 15)", type: "text", required: false, showForServiceTypes: ["laptop_screen", "laptop_battery", "laptop_storage", "laptop_motherboard", "laptop_hinge", "laptop_keyboard", "laptop_overheating", "desktop_power", "desktop_motherboard", "desktop_ram", "desktop_gpu", "desktop_psu"] },
     { key: "environment", label: "Where do you need support?", type: "select", options: [{ label: "Home", value: "home" }, { label: "Office", value: "office" }, { label: "Retail / Shop", value: "retail" }, { label: "School / Institute", value: "school" }], required: true },
-    { key: "device_count", label: "Number of Devices", type: "select", options: [{ label: "1 Device", value: "1" }, { label: "2-5 Devices", value: "2_5" }, { label: "5+ Devices", value: "5_plus" }], required: false },
+    { key: "device_count", label: "Number of Devices", type: "select", options: [{ label: "1 Device", value: "1" }, { label: "2-5 Devices", value: "2_5" }, { label: "5+ Devices", value: "5_plus" }], required: false, showForServiceTypes: ["network", "software"] },
+    // Network-specific
+    { key: "router_brand", label: "Router Brand", type: "text", required: false, showForServiceTypes: ["network"] },
+    { key: "internet_provider", label: "Internet Provider", type: "select", options: [{ label: "SLT Fiber", value: "slt" }, { label: "Dialog", value: "dialog" }, { label: "Mobitel", value: "mobitel" }, { label: "Hutch", value: "hutch" }, { label: "Other", value: "other" }], required: false, showForServiceTypes: ["network"] },
+    // Remote support — minimal device info
+    { key: "os_type", label: "Operating System", type: "select", options: [{ label: "Windows 10/11", value: "windows" }, { label: "macOS", value: "macos" }, { label: "Linux", value: "linux" }], required: true, showForServiceTypes: ["software"] },
   ],
   serviceModes: [
     { id: "onsite", label: "On-Site Visit", description: "Technician comes to your home or office", icon: "MapPin", details: ["Technician dispatched to you", "Full diagnosis on-site", "Same-day availability"] },
