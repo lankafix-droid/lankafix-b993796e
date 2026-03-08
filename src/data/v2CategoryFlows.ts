@@ -353,7 +353,7 @@ const CONSUMER_ELEC_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "brand", label: "Brand", type: "text", required: false },
-    { key: "model", label: "Model (if known)", type: "text", required: false },
+    { key: "model_number", label: "Model Number", type: "text", required: false },
     { key: "age", label: "Approximate Age", type: "select", options: [{ label: "Under 1 year", value: "lt_1y" }, { label: "1-3 years", value: "1_3y" }, { label: "3-5 years", value: "3_5y" }, { label: "Over 5 years", value: "gt_5y" }], required: true },
     { key: "issue_description", label: "Describe the problem", type: "text", required: true },
   ],
