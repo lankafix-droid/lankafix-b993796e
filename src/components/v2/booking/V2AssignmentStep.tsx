@@ -14,6 +14,7 @@ interface Props {
   assignmentType: V2AssignmentType;
   serviceModeId?: string;
   partnerShops?: V2PartnerShopInfo[];
+  isEmergency?: boolean;
   onConfirm: () => void;
 }
 
