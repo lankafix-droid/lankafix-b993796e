@@ -47,6 +47,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import V2HomePage from "./pages/V2HomePage";
 import V2BookingPage from "./pages/V2BookingPage";
 import V2QuoteApprovalPage from "./pages/V2QuoteApprovalPage";
+import PricingEditorPage from "./pages/ops/PricingEditorPage";
 
 const queryClient = new QueryClient();
 
