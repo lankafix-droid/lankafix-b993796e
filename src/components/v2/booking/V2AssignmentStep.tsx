@@ -17,6 +17,7 @@ interface Props {
   serviceModeId?: string;
   partnerShops?: V2PartnerShopInfo[];
   isEmergency?: boolean;
+  bookingId?: string;
   onConfirm: () => void;
 }
 
