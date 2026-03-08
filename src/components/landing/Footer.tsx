@@ -13,7 +13,7 @@ const Footer = () => {
               <LankaFixLogo size="md" variant="light" />
             </div>
             <p className="text-sm leading-relaxed mt-2 text-navy-foreground/90">Verified Tech. Fixed Fast.</p>
-            <p className="text-xs leading-relaxed mt-1 text-navy-foreground/50">Sri Lanka's structured smart service ecosystem.</p>
+            <p className="text-xs leading-relaxed mt-1 text-navy-foreground/50">Sri Lanka's trusted tech service marketplace.</p>
             <div className="flex gap-2 mt-4">
               <span className="text-[10px] px-2 py-1 rounded-full bg-lankafix-green/20 text-lankafix-green font-medium">Verified</span>
               <span className="text-[10px] px-2 py-1 rounded-full bg-primary/20 text-primary font-medium">Warranty-backed</span>
@@ -42,7 +42,10 @@ const Footer = () => {
         </div>
         <div className="border-t border-navy-foreground/10 mt-10 pt-6 flex flex-wrap gap-4 justify-between text-xs text-navy-foreground/50">
           <span>© 2026 LankaFix by Smart Office. All rights reserved.</span>
-          <div className="flex gap-4"><a href="#" className="hover:text-navy-foreground transition-colors">Terms</a><a href="#" className="hover:text-navy-foreground transition-colors">Privacy</a></div>
+          <div className="flex gap-4">
+            <Link to="/terms" className="hover:text-navy-foreground transition-colors">Terms</Link>
+            <Link to="/privacy" className="hover:text-navy-foreground transition-colors">Privacy</Link>
+          </div>
         </div>
       </div>
     </footer>

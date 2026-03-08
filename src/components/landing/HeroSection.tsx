@@ -29,7 +29,7 @@ const HeroSection = () => {
           <div className="flex items-center gap-3">
             <img
               src={mascotImg}
-              alt="LankaFix mascot"
+              alt="LankaFix FixBuddy mascot"
               className="w-12 h-12 rounded-full object-cover shadow-brand border-2 border-card"
             />
             <div className="bg-primary/8 border border-primary/15 rounded-2xl rounded-bl-sm px-4 py-2">
@@ -49,7 +49,7 @@ const HeroSection = () => {
           </h1>
 
           <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-            Book trusted technicians for repairs, installations, and technical support — all verified, warranty-backed, and OTP-protected.
+            Book trusted technicians for mobile repairs, laptop fixes, AC servicing & CCTV installation — all verified, warranty-backed, and OTP-protected.
           </p>
 
           {/* 3-action CTA row */}
@@ -66,10 +66,10 @@ const HeroSection = () => {
                 Describe My Problem
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive" asChild>
+            <Button variant="destructive" size="lg" className="shadow-sm" asChild>
               <Link to="/diagnose?emergency=true" aria-label="Emergency repair needed" onClick={() => track("hero_emergency_click")}>
                 <Zap className="w-4 h-4 mr-1" />
-                Emergency Repair
+                ⚡ Emergency Repair
               </Link>
             </Button>
           </div>
