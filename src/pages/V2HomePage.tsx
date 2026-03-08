@@ -14,7 +14,6 @@ const V2HomePage = () => {
   const { locationSetupComplete } = useLocationStore();
   const [showLocationSetup, setShowLocationSetup] = useState(false);
 
-  // Show location setup modal/inline
   if (showLocationSetup && !locationSetupComplete) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -40,8 +39,8 @@ const V2HomePage = () => {
         <V2IntentLayer />
         <V2CategoryGrid />
 
-        {/* Diagnose My Problem section */}
-        <section className="py-8 md:py-10">
+        {/* Diagnose section */}
+        <section id="diagnose" className="py-8 md:py-10">
           <div className="container max-w-2xl">
             <V2DiagnoseAssistant />
           </div>

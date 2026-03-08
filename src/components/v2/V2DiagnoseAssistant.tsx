@@ -51,7 +51,7 @@ const SYMPTOM_MAP: Record<string, DiagnoseStep> = {
     options: [
       { id: "screen", label: "Screen cracked or flickering" },
       { id: "no_power", label: "Won't turn on" },
-      { id: "battery", label: "Battery draining fast or not charging" },
+      { id: "battery", label: "Battery draining fast" },
       { id: "slow", label: "Running very slow" },
       { id: "overheating", label: "Overheating or loud fan" },
       { id: "keyboard", label: "Keyboard not working" },
@@ -120,13 +120,7 @@ const DAMAGE_STEP: DiagnoseStep = {
   ],
 };
 
-// Route mapping from diagnosis answers to booking flow
-function getRecommendation(device: string, symptom: string): {
-  category: string;
-  serviceType: string;
-  pricingLabel: string;
-  description: string;
-} {
+function getRecommendation(device: string, symptom: string) {
   const routes: Record<string, Record<string, { category: string; serviceType: string; pricingLabel: string; description: string }>> = {
     phone: {
       screen_broken: { category: "MOBILE", serviceType: "screen", pricingLabel: "Fixed Price — from LKR 5,000", description: "Screen replacement by a verified repair partner" },
@@ -148,7 +142,6 @@ function getRecommendation(device: string, symptom: string): {
       slow: { category: "IT", serviceType: "software", pricingLabel: "From LKR 2,000", description: "Performance optimization and cleanup" },
       no_power: { category: "IT", serviceType: "laptop", pricingLabel: "Diagnostic First — LKR 3,500", description: "Hardware diagnosis for power issue" },
       virus: { category: "IT", serviceType: "software", pricingLabel: "Fixed Price — LKR 2,000", description: "Virus removal and security setup" },
-      wifi: { category: "IT", serviceType: "network", pricingLabel: "From LKR 2,000", description: "WiFi troubleshooting and fix" },
       screen: { category: "IT", serviceType: "laptop", pricingLabel: "Diagnostic First — LKR 3,500", description: "Screen assessment and replacement quote" },
       other: { category: "IT", serviceType: "not_sure", pricingLabel: "Diagnostic First — LKR 3,500", description: "Full IT diagnosis" },
     },
@@ -231,15 +224,15 @@ const V2DiagnoseAssistant = () => {
   const step = steps[currentStep];
 
   return (
-    <div className="space-y-5">
+    <div className="bg-card rounded-2xl border p-5 md:p-6 space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-          <Stethoscope className="w-6 h-6 text-primary" />
+        <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+          <Stethoscope className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-foreground">Diagnose My Problem</h2>
-          <p className="text-sm text-muted-foreground">Answer 4 quick questions — takes less than 30 seconds</p>
+          <h2 className="text-lg font-bold text-foreground">Diagnose My Problem</h2>
+          <p className="text-xs text-muted-foreground">Answer 4 quick questions — takes less than 30 seconds</p>
         </div>
       </div>
 
@@ -248,23 +241,23 @@ const V2DiagnoseAssistant = () => {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className={`h-1.5 flex-1 rounded-full transition-all ${
+            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
               i < currentStep ? "bg-success" : i === currentStep ? "bg-primary" : "bg-muted"
             }`}
           />
         ))}
       </div>
 
-      {/* Show result or current step */}
+      {/* Result or step */}
       {isComplete && recommendation ? (
         <div className="space-y-4">
-          <div className="bg-success/5 border border-success/20 rounded-2xl p-5 space-y-3">
+          <div className="bg-success/5 border border-success/20 rounded-xl p-5 space-y-3">
             <Badge className="bg-success/10 text-success border-success/20 text-xs">Diagnosis Complete</Badge>
-            <h3 className="text-lg font-bold text-foreground">{recommendation.description}</h3>
+            <h3 className="text-base font-bold text-foreground">{recommendation.description}</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Pricing</span>
-                <span className="font-medium text-foreground">{recommendation.pricingLabel}</span>
+                <span className="text-muted-foreground">Estimated Cost</span>
+                <span className="font-semibold text-foreground">{recommendation.pricingLabel}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Urgency</span>
@@ -273,13 +266,16 @@ const V2DiagnoseAssistant = () => {
                 </span>
               </div>
             </div>
+            <p className="text-[11px] text-muted-foreground pt-2 border-t border-border/50">
+              Final price confirmed after technician diagnosis. No work starts without your approval.
+            </p>
           </div>
 
-          <Button onClick={handleBook} size="lg" className="w-full gap-2">
+          <Button onClick={handleBook} size="lg" className="w-full gap-2 min-h-[48px]">
             Book This Service <ArrowRight className="w-4 h-4" />
           </Button>
 
-          <button onClick={handleReset} className="w-full text-center text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5">
+          <button onClick={handleReset} className="w-full text-center text-sm text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 py-2">
             <RotateCcw className="w-3.5 h-3.5" /> Start Over
           </button>
         </div>
@@ -291,7 +287,7 @@ const V2DiagnoseAssistant = () => {
               <button
                 key={opt.id}
                 onClick={() => handleSelect(currentStep, opt.id)}
-                className="w-full text-left rounded-xl border border-border bg-card p-4 hover:border-primary/30 hover:shadow-sm transition-all flex items-center gap-3"
+                className="w-full text-left rounded-xl border border-border bg-background p-4 hover:border-primary/30 hover:bg-primary/5 transition-all flex items-center gap-3 min-h-[48px] active:scale-[0.99]"
               >
                 {opt.icon && (
                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -307,7 +303,7 @@ const V2DiagnoseAssistant = () => {
           {currentStep > 0 && (
             <button
               onClick={() => setCurrentStep(currentStep - 1)}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-sm text-muted-foreground hover:text-foreground py-2"
             >
               ← Back
             </button>
