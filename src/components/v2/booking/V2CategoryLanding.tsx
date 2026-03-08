@@ -1,8 +1,9 @@
-import type { V2CategoryFlow } from "@/data/v2CategoryFlows";
+import type { V2CategoryFlow, V2PricingArchetype } from "@/data/v2CategoryFlows";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, ArrowRight, HelpCircle, Phone, MessageCircle } from "lucide-react";
+import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle } from "lucide-react";
 import { SUPPORT_PHONE } from "@/config/contact";
+import { Link } from "react-router-dom";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -17,6 +18,18 @@ const HERO_IMAGES: Record<string, string> = {
   SOLAR: heroSolar, CONSUMER_ELEC: heroElectronics, SMART_HOME_OFFICE: heroSmartHome,
 };
 
+const PRICING_BADGES: Record<V2PricingArchetype, { label: string; className: string }> = {
+  fixed_price: { label: "Fixed Price", className: "bg-success/10 text-success border-success/20" },
+  diagnostic_first: { label: "Diagnostic First", className: "bg-warning/10 text-warning border-warning/20" },
+  quote_required: { label: "Quote Required", className: "bg-primary/10 text-primary border-primary/20" },
+};
+
+const BOOKING_MODEL_LABELS: Record<string, string> = {
+  fast_book: "Book instantly — fixed pricing",
+  diagnostic_first: "Technician diagnoses first, then quotes",
+  inspection_consultation: "Site inspection required before final quote",
+};
+
 interface Props {
   flow: V2CategoryFlow;
   onContinue: () => void;
@@ -24,6 +37,7 @@ interface Props {
 
 const V2CategoryLanding = ({ flow, onContinue }: Props) => {
   const heroImg = HERO_IMAGES[flow.code];
+  const pricingBadge = PRICING_BADGES[flow.pricingArchetype];
 
   return (
     <div className="space-y-6">
@@ -46,6 +60,19 @@ const V2CategoryLanding = ({ flow, onContinue }: Props) => {
         </div>
       )}
 
+      {/* Zone + pricing archetype */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">📍 Greater Colombo</span>
+        <Badge variant="outline" className={`text-xs ${pricingBadge.className}`}>
+          {pricingBadge.label}
+        </Badge>
+      </div>
+
+      {/* Booking model explanation */}
+      <div className="bg-muted/30 rounded-xl p-3 text-sm text-muted-foreground">
+        {BOOKING_MODEL_LABELS[flow.bookingModel]}
+      </div>
+
       {/* Trust badges */}
       <div className="flex flex-wrap gap-2">
         {flow.trustBadges.map((badge) => (
@@ -63,32 +90,22 @@ const V2CategoryLanding = ({ flow, onContinue }: Props) => {
           <div className="space-y-2">
             {flow.quickServices.map((qs) => (
               <div key={qs.serviceTypeId} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                <span className="text-sm text-foreground">{qs.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-foreground">{qs.label}</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${
+                    qs.pricingArchetype === "fixed_price" ? "bg-success/10 text-success" :
+                    qs.pricingArchetype === "diagnostic_first" ? "bg-warning/10 text-warning" :
+                    "bg-primary/10 text-primary"
+                  }`}>
+                    {qs.pricingArchetype === "fixed_price" ? "Fixed" : qs.pricingArchetype === "diagnostic_first" ? "Diagnostic" : "Quote"}
+                  </span>
+                </div>
                 <span className="text-xs font-medium text-primary">{qs.priceLabel}</span>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="bg-card rounded-xl border p-4 text-center">
-          <div className="text-2xl font-bold text-foreground">4.8</div>
-          <div className="text-xs text-muted-foreground">Avg Rating</div>
-        </div>
-        <div className="bg-card rounded-xl border p-4 text-center">
-          <div className="text-2xl font-bold text-foreground">500+</div>
-          <div className="text-xs text-muted-foreground">Jobs Done</div>
-        </div>
-        <div className="bg-card rounded-xl border p-4 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <Clock className="w-4 h-4 text-primary" />
-            <span className="text-2xl font-bold text-foreground">2h</span>
-          </div>
-          <div className="text-xs text-muted-foreground">Avg Response</div>
-        </div>
-      </div>
 
       {/* Service overview */}
       <div className="bg-card rounded-xl border p-5 space-y-3">
@@ -103,16 +120,22 @@ const V2CategoryLanding = ({ flow, onContinue }: Props) => {
         </div>
       </div>
 
-      {/* Not Sure CTA */}
-      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-          <HelpCircle className="w-5 h-5 text-primary" />
+      {/* Diagnose My Problem CTA */}
+      <Link
+        to="/diagnose"
+        className="block bg-primary/5 border border-primary/20 rounded-xl p-4 hover:bg-primary/8 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Stethoscope className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-foreground">Diagnose My Problem</p>
+            <p className="text-xs text-muted-foreground">Takes less than 30 seconds</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-primary" />
         </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">Not sure what you need?</p>
-          <p className="text-xs text-muted-foreground">Our technician will diagnose and recommend the right service</p>
-        </div>
-      </div>
+      </Link>
 
       {/* Support strip */}
       <div className="flex gap-2">
