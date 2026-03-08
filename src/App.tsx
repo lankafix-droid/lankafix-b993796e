@@ -45,6 +45,7 @@ import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import V2HomePage from "./pages/V2HomePage";
+import V2BookingPage from "./pages/V2BookingPage";
 
 const queryClient = new QueryClient();
 
