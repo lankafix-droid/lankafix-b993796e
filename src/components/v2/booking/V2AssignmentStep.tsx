@@ -36,7 +36,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
   // Live dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
-  const dispatch = useLiveDispatch(categoryCode, customerZoneId, isEmergency, isLiveMatch);
+  const dispatch = useLiveDispatchDB(categoryCode, isEmergency, isLiveMatch);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
