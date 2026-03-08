@@ -44,6 +44,7 @@ import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
 import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import V2HomePage from "./pages/V2HomePage";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/v2" element={<V2HomePage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route path="/category/:code" element={<CategoryPage />} />
           <Route path="/precheck/:catCode/:svcCode" element={<PrecheckPage />} />
