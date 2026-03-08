@@ -531,8 +531,10 @@ const SMART_HOME_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "environment", label: "Environment", type: "select", options: [{ label: "Home", value: "home" }, { label: "SME Office", value: "sme" }, { label: "Retail", value: "retail" }, { label: "Warehouse", value: "warehouse" }], required: true },
+    { key: "goals", label: "Primary Goal", type: "select", options: [{ label: "Security & Access Control", value: "security" }, { label: "Energy Savings", value: "energy" }, { label: "Convenience / Automation", value: "convenience" }, { label: "Complete Smart Setup", value: "full" }], required: true },
     { key: "requirements", label: "What do you need?", type: "select", options: [{ label: "Smart Lighting", value: "lighting" }, { label: "Access Control", value: "access" }, { label: "Smart Locks", value: "locks" }, { label: "Energy Monitoring", value: "energy" }, { label: "Full Package", value: "full" }], required: true },
-    { key: "wifi", label: "WiFi available?", type: "toggle", required: true },
+    { key: "existing_smart_devices", label: "Any existing smart devices?", type: "select", options: [{ label: "None", value: "none" }, { label: "Smart speakers (Alexa/Google)", value: "speakers" }, { label: "Smart lights", value: "lights" }, { label: "Multiple devices", value: "multiple" }], required: false },
+    { key: "wifi_quality", label: "WiFi coverage quality", type: "select", options: [{ label: "Good everywhere", value: "good" }, { label: "Weak in some areas", value: "weak" }, { label: "No WiFi", value: "none" }, { label: "Not Sure", value: "not_sure" }], required: true },
   ],
   siteConditions: [
     { key: "wifi_available", label: "WiFi available?", type: "toggle" },
