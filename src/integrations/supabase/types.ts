@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_messages: {
+        Row: {
+          booking_id: string
+          content: string
+          created_at: string
+          id: string
+          original_content: string | null
+          sender_id: string
+          sender_role: string
+          was_masked: boolean
+        }
+        Insert: {
+          booking_id: string
+          content: string
+          created_at?: string
+          id?: string
+          original_content?: string | null
+          sender_id: string
+          sender_role?: string
+          was_masked?: boolean
+        }
+        Update: {
+          booking_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          original_content?: string | null
+          sender_id?: string
+          sender_role?: string
+          was_masked?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_messages_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           actual_arrival_at: string | null
@@ -209,6 +250,47 @@ export type Database = {
           },
         ]
       }
+      bypass_attempts: {
+        Row: {
+          action_taken: string | null
+          actor_id: string
+          actor_role: string
+          attempt_type: string
+          booking_id: string | null
+          created_at: string
+          detected_content: string | null
+          id: string
+        }
+        Insert: {
+          action_taken?: string | null
+          actor_id: string
+          actor_role?: string
+          attempt_type?: string
+          booking_id?: string | null
+          created_at?: string
+          detected_content?: string | null
+          id?: string
+        }
+        Update: {
+          action_taken?: string | null
+          actor_id?: string
+          actor_role?: string
+          attempt_type?: string
+          booking_id?: string | null
+          created_at?: string
+          detected_content?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bypass_attempts_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_addresses: {
         Row: {
           address_line_1: string | null
@@ -396,6 +478,41 @@ export type Database = {
           },
         ]
       }
+      loyalty_points: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          points: number
+          reason: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          points?: number
+          reason?: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          points?: number
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_points_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_documents: {
         Row: {
           created_at: string
@@ -544,6 +661,47 @@ export type Database = {
           },
           {
             foreignKeyName: "partner_settlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_warnings: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          issued_by: string | null
+          partner_id: string
+          resolved_at: string | null
+          severity: string
+          warning_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          issued_by?: string | null
+          partner_id: string
+          resolved_at?: string | null
+          severity?: string
+          warning_type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          issued_by?: string | null
+          partner_id?: string
+          resolved_at?: string | null
+          severity?: string
+          warning_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_warnings_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
@@ -953,6 +1111,54 @@ export type Database = {
           },
           {
             foreignKeyName: "quotes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_relationships: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          last_booking_at: string | null
+          last_booking_id: string | null
+          partner_id: string
+          total_bookings: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          last_booking_at?: string | null
+          last_booking_id?: string | null
+          partner_id: string
+          total_bookings?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          last_booking_at?: string | null
+          last_booking_id?: string | null
+          partner_id?: string
+          total_bookings?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_relationships_last_booking_id_fkey"
+            columns: ["last_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_relationships_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
