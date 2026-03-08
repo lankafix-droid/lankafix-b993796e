@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { MapPin, Menu, X, Wrench } from "lucide-react";
+import { MapPin, Menu, X, Wrench, User } from "lucide-react";
 import { useState } from "react";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 
