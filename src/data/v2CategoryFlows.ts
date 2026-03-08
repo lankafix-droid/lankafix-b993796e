@@ -27,6 +27,10 @@ export interface V2DeviceQuestion {
   type: "select" | "text" | "toggle";
   options?: { label: string; value: string }[];
   required: boolean;
+  /** Only show this question when one of these serviceTypeIds is selected. Omit = always show. */
+  showForServiceTypes?: string[];
+  /** Only show when another device answer matches. E.g. { key: "device_type", value: "laptop" } */
+  showIfAnswer?: { key: string; value: string | string[] };
 }
 
 export interface V2ServiceMode {

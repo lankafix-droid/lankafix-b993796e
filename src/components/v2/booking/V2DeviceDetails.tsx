@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { V2DeviceQuestion } from "@/data/v2CategoryFlows";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,17 +15,44 @@ interface Props {
   dataDisclaimer?: string;
   dataRiskAccepted?: boolean;
   onDataRiskAccept?: (v: boolean) => void;
+  /** Currently selected service type — used to filter conditional questions */
+  activeServiceTypeId?: string;
+}
+
+/** Check if a question should be visible based on service type and answer conditions */
+function isQuestionVisible(
+  q: V2DeviceQuestion,
+  activeServiceTypeId: string | undefined,
+  answers: Record<string, string | boolean>
+): boolean {
+  // Filter by service type
+  if (q.showForServiceTypes && q.showForServiceTypes.length > 0) {
+    if (!activeServiceTypeId || !q.showForServiceTypes.includes(activeServiceTypeId)) return false;
+  }
+  // Filter by dependent answer
+  if (q.showIfAnswer) {
+    const currentVal = answers[q.showIfAnswer.key];
+    const expected = Array.isArray(q.showIfAnswer.value) ? q.showIfAnswer.value : [q.showIfAnswer.value];
+    if (!currentVal || !expected.includes(String(currentVal))) return false;
+  }
+  return true;
 }
 
 const V2DeviceDetails = ({
   questions, answers, onUpdate, onContinue,
   photoHint, dataDisclaimer, dataRiskAccepted, onDataRiskAccept,
+  activeServiceTypeId,
 }: Props) => {
   const setAnswer = (key: string, value: string | boolean) => {
     onUpdate({ ...answers, [key]: value });
   };
 
-  const requiredFilled = questions
+  const visibleQuestions = useMemo(() =>
+    questions.filter(q => isQuestionVisible(q, activeServiceTypeId, answers)),
+    [questions, activeServiceTypeId, answers]
+  );
+
+  const requiredFilled = visibleQuestions
     .filter((q) => q.required)
     .every((q) => {
       const val = answers[q.key];
@@ -40,7 +68,7 @@ const V2DeviceDetails = ({
       <p className="text-sm text-muted-foreground">Help us prepare the right tools and parts</p>
 
       <div className="space-y-4">
-        {questions.map((q) => (
+        {visibleQuestions.map((q) => (
           <div key={q.key} className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">
               {q.label}
