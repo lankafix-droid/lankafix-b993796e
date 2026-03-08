@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
 import LocationBar from "@/components/v2/location/LocationBar";
