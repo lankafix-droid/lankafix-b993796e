@@ -2,9 +2,10 @@ import type { V2CategoryFlow } from "@/data/v2CategoryFlows";
 import type { V2BookingState } from "@/pages/V2BookingPage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone, MessageCircle } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone, MessageCircle, Shield, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { SUPPORT_PHONE, SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 
 interface Props {
   flow: V2CategoryFlow;
@@ -17,6 +18,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
 
   const selectedService = flow.serviceTypes.find((s) => s.id === booking.serviceTypeId);
   const selectedPackage = flow.packages.find((p) => p.id === booking.packageId);
+  const selectedMode = flow.serviceModes?.find((m) => m.id === booking.serviceModeId);
   const jobId = `LF-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 
   const handleConfirm = () => {
@@ -57,6 +59,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
             { label: "Technician Assigned", done: true },
             { label: "Technician En Route", done: false },
             { label: "Service Started", done: false },
+            { label: "Awaiting Approval", done: false },
             { label: "Service Completed", done: false },
             { label: "Invoice Issued", done: false },
           ].map((stage, i) => (
@@ -73,12 +76,16 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
 
         {/* Contact */}
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 gap-2">
-            <Phone className="w-4 h-4" /> Call
-          </Button>
-          <Button variant="outline" className="flex-1 gap-2">
-            <MessageCircle className="w-4 h-4" /> Chat
-          </Button>
+          <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex-1">
+            <Button variant="outline" className="w-full gap-2">
+              <Phone className="w-4 h-4" /> Call
+            </Button>
+          </a>
+          <a href={whatsappLink(SUPPORT_WHATSAPP, `Job ${jobId} - Need help`)} target="_blank" rel="noopener noreferrer" className="flex-1">
+            <Button variant="outline" className="w-full gap-2">
+              <MessageCircle className="w-4 h-4" /> WhatsApp
+            </Button>
+          </a>
         </div>
 
         <Button onClick={() => navigate("/v2")} variant="secondary" className="w-full">
@@ -110,6 +117,12 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Issue</span>
               <span className="text-foreground">{flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label}</span>
+            </div>
+          )}
+          {selectedMode && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Service Mode</span>
+              <span className="text-foreground">{selectedMode.label}</span>
             </div>
           )}
         </div>
@@ -152,6 +165,12 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
               )}
             </div>
           </div>
+          {selectedMode?.extraFee && (
+            <div className="flex justify-between text-sm pt-2 border-t border-border/50">
+              <span className="text-muted-foreground">{selectedMode.label} fee</span>
+              <span className="text-foreground">+LKR {selectedMode.extraFee.toLocaleString()}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -166,15 +185,24 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         </div>
       )}
 
+      {/* Trust guarantee */}
+      <div className="bg-success/5 border border-success/20 rounded-xl p-4 flex items-start gap-3">
+        <Shield className="w-5 h-5 text-success shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium text-foreground">No extra work will proceed without your approval.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">If the technician identifies additional issues, you'll receive a revised quote for approval before any work begins.</p>
+        </div>
+      </div>
+
       {/* Policies */}
       <div className="bg-muted/30 rounded-xl p-4 space-y-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-          <span>Warranty on all eligible repairs</span>
+          <Clock className="w-3.5 h-3.5 text-primary" />
+          <span>{flow.cancellationNote}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-primary" />
-          <span>Free cancellation within 10 minutes</span>
+          <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+          <span>{flow.warrantyNote}</span>
         </div>
         <div className="flex items-center gap-2">
           <FileText className="w-3.5 h-3.5 text-primary" />
@@ -182,8 +210,18 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         </div>
       </div>
 
-      <Button onClick={handleConfirm} size="lg" className="w-full">
-        Confirm Booking
+      {/* Support */}
+      <div className="flex gap-2">
+        <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex-1 flex items-center justify-center gap-2 bg-card border rounded-xl py-2.5 text-xs text-muted-foreground hover:border-primary/30 transition-colors">
+          <Phone className="w-3.5 h-3.5" /> Call LankaFix
+        </a>
+        <a href={whatsappLink(SUPPORT_WHATSAPP)} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 bg-card border rounded-xl py-2.5 text-xs text-muted-foreground hover:border-primary/30 transition-colors">
+          <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+        </a>
+      </div>
+
+      <Button onClick={handleConfirm} size="lg" className="w-full gap-2">
+        Confirm Booking <ArrowRight className="w-4 h-4" />
       </Button>
     </div>
   );

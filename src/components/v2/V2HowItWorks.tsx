@@ -1,10 +1,10 @@
-import { MousePointerClick, MessageSquareText, UserCheck, ShieldCheck } from "lucide-react";
+import { MousePointerClick, UserCheck, ShieldCheck, FileCheck } from "lucide-react";
 
 const steps = [
-  { icon: <MousePointerClick className="w-6 h-6" />, title: "Tell Us What You Need", desc: "Pick your service or describe your problem", color: "from-primary to-primary/80" },
-  { icon: <MessageSquareText className="w-6 h-6" />, title: "Get Price & Confirm", desc: "See transparent pricing before you commit", color: "from-lankafix-green to-lankafix-green/80" },
-  { icon: <UserCheck className="w-6 h-6" />, title: "Technician Assigned", desc: "Best-matched verified tech dispatched to you", color: "from-accent to-accent/80" },
-  { icon: <ShieldCheck className="w-6 h-6" />, title: "Job Done & Guaranteed", desc: "OTP-verified completion with warranty", color: "from-warning to-warning/80" },
+  { icon: <MousePointerClick className="w-6 h-6" />, title: "Select Service", desc: "Pick your service or describe the problem", color: "from-primary to-primary/80" },
+  { icon: <UserCheck className="w-6 h-6" />, title: "Get Verified Technician", desc: "Best-matched, verified tech dispatched to you", color: "from-success to-success/80" },
+  { icon: <FileCheck className="w-6 h-6" />, title: "Approve & Track Job", desc: "Approve the quote, track progress in real-time", color: "from-warning to-warning/80" },
+  { icon: <ShieldCheck className="w-6 h-6" />, title: "Pay After Completion", desc: "Pay only after the job is done to your satisfaction", color: "from-accent to-accent/80" },
 ];
 
 const V2HowItWorks = () => {
@@ -15,7 +15,7 @@ const V2HowItWorks = () => {
           How LankaFix Works
         </h2>
         <p className="text-xs text-muted-foreground text-center mb-10 max-w-sm mx-auto">
-          Book in under 60 seconds — 4 simple steps
+          Simple, transparent, trusted — 4 easy steps
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5 max-w-4xl mx-auto">
           {steps.map((step, i) => (
