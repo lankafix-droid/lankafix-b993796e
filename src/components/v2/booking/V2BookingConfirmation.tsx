@@ -2,7 +2,7 @@ import type { V2CategoryFlow } from "@/data/v2CategoryFlows";
 import type { V2BookingState } from "@/pages/V2BookingPage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone, MessageCircle, Shield, ArrowRight } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone, MessageCircle, Shield, ArrowRight, Circle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { SUPPORT_PHONE, SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
@@ -11,6 +11,18 @@ interface Props {
   flow: V2CategoryFlow;
   booking: V2BookingState;
 }
+
+const TRACKING_STAGES = [
+  { label: "Booking Confirmed", key: "confirmed" },
+  { label: "Technician Assigned", key: "assigned" },
+  { label: "On the Way", key: "en_route" },
+  { label: "Diagnosis / Inspection", key: "diagnosis" },
+  { label: "Quote Awaiting Approval", key: "quote" },
+  { label: "Repair in Progress", key: "repair" },
+  { label: "Quality Check", key: "quality" },
+  { label: "Invoice Ready", key: "invoice" },
+  { label: "Completed", key: "completed" },
+];
 
 const V2BookingConfirmation = ({ flow, booking }: Props) => {
   const navigate = useNavigate();
@@ -51,27 +63,30 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </div>
         </div>
 
-        {/* Tracking stages */}
-        <div className="bg-card rounded-xl border p-5 text-left space-y-3">
-          <h3 className="font-semibold text-foreground text-sm">Service Progress</h3>
-          {[
-            { label: "Booking Confirmed", done: true },
-            { label: "Technician Assigned", done: true },
-            { label: "Technician En Route", done: false },
-            { label: "Service Started", done: false },
-            { label: "Awaiting Approval", done: false },
-            { label: "Service Completed", done: false },
-            { label: "Invoice Issued", done: false },
-          ].map((stage, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${stage.done ? "bg-success" : "bg-muted"}`}>
-                {stage.done && <CheckCircle2 className="w-3.5 h-3.5 text-success-foreground" />}
+        {/* Job Timeline */}
+        <div className="bg-card rounded-xl border p-5 text-left space-y-1">
+          <h3 className="font-semibold text-foreground text-sm mb-3">Job Timeline</h3>
+          {TRACKING_STAGES.map((stage, i) => {
+            const isDone = i <= 1;
+            const isCurrent = i === 1;
+            return (
+              <div key={stage.key} className="flex items-center gap-3 py-1.5">
+                <div className="flex flex-col items-center">
+                  {isDone ? (
+                    <CheckCircle2 className={`w-5 h-5 ${isCurrent ? "text-primary" : "text-success"}`} />
+                  ) : (
+                    <Circle className="w-5 h-5 text-muted-foreground/30" />
+                  )}
+                  {i < TRACKING_STAGES.length - 1 && (
+                    <div className={`w-0.5 h-4 ${isDone ? "bg-success/50" : "bg-muted"}`} />
+                  )}
+                </div>
+                <span className={`text-sm ${isDone ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                  {stage.label}
+                </span>
               </div>
-              <span className={`text-sm ${stage.done ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                {stage.label}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Contact */}
@@ -125,6 +140,16 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
               <span className="text-foreground">{selectedMode.label}</span>
             </div>
           )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Pricing</span>
+            <Badge variant="outline" className={`text-[10px] ${
+              flow.pricingArchetype === "fixed_price" ? "bg-success/10 text-success border-success/20" :
+              flow.pricingArchetype === "diagnostic_first" ? "bg-warning/10 text-warning border-warning/20" :
+              "bg-primary/10 text-primary border-primary/20"
+            }`}>
+              {flow.pricingArchetype === "fixed_price" ? "Fixed Price" : flow.pricingArchetype === "diagnostic_first" ? "Diagnostic First" : "Quote Required"}
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -150,7 +175,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
       {/* Selected package */}
       {selectedPackage && (
         <div className="bg-card rounded-xl border p-5 space-y-3">
-          <h3 className="font-semibold text-foreground text-sm">Selected Package</h3>
+          <h3 className="font-semibold text-foreground text-sm">Estimated Cost</h3>
           <div className="flex justify-between items-start">
             <div>
               <p className="font-medium text-foreground">{selectedPackage.name}</p>
@@ -207,6 +232,16 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         <div className="flex items-center gap-2">
           <FileText className="w-3.5 h-3.5 text-primary" />
           <span>Digital invoice after service completion</span>
+        </div>
+      </div>
+
+      {/* Payment methods */}
+      <div className="bg-card rounded-xl border p-4 space-y-2">
+        <h4 className="text-sm font-medium text-foreground">Payment Options</h4>
+        <div className="flex flex-wrap gap-2">
+          {["Cash", "Card", "LankaQR", "Bank Transfer"].map((m) => (
+            <Badge key={m} variant="secondary" className="text-xs">{m}</Badge>
+          ))}
         </div>
       </div>
 
