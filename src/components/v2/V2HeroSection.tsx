@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
 import LocationBar from "@/components/v2/location/LocationBar";
@@ -92,24 +93,37 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
           </div>
 
           {/* Headline with text shadow */}
-          <h1
-            className="text-2xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-2 transition-all duration-500"
-            style={{ color: "#FFFFFF", textShadow: "0px 2px 8px rgba(0,0,0,0.5)" }}
-          >
-            {banner.headline}
-          </h1>
-          <p
-            className="text-sm md:text-base mb-5 max-w-lg"
-            style={{ color: "rgba(255,255,255,0.8)", textShadow: "0px 1px 4px rgba(0,0,0,0.4)" }}
-          >
-            {banner.sub}
-          </p>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            >
+              <h1
+                className="text-2xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-2"
+                style={{ color: "#FFFFFF", textShadow: "0px 2px 8px rgba(0,0,0,0.5)" }}
+              >
+                {banner.headline}
+              </h1>
+              <p
+                className="text-sm md:text-base mb-5 max-w-lg"
+                style={{ color: "rgba(255,255,255,0.8)", textShadow: "0px 1px 4px rgba(0,0,0,0.4)" }}
+              >
+                {banner.sub}
+              </p>
+            </motion.div>
+          </AnimatePresence>
 
-          {/* Trust pills with dark backdrop */}
+          {/* Trust pills with staggered entrance */}
           <div className="flex flex-wrap gap-2 mb-1">
-            {TRUST_PILLS.map((pill) => (
-              <span
+            {TRUST_PILLS.map((pill, i) => (
+              <motion.span
                 key={pill.label}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.1, duration: 0.4, ease: "easeOut" }}
                 className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-full px-3 py-1.5"
                 style={{
                   color: "#FFFFFF",
@@ -121,7 +135,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
               >
                 {pill.icon}
                 {pill.label}
-              </span>
+              </motion.span>
             ))}
           </div>
 

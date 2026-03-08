@@ -1,4 +1,5 @@
 import { Star, Clock, ShieldCheck, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 const TECHNICIANS = [
   { name: "Nimal Perera", specialty: "AC Specialist", rating: 4.8, jobs: 132, eta: "20–30 min", avatar: "NP" },
@@ -11,16 +12,26 @@ const V2NearbyTechnicians = () => {
   return (
     <section className="py-8 md:py-10">
       <div className="container">
-        <h2 className="text-lg md:text-xl font-bold text-foreground mb-1">Technicians Near You</h2>
-        <p className="text-xs text-muted-foreground mb-5">Verified professionals ready to help</p>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.4 }}
+        >
+          <h2 className="text-lg md:text-xl font-bold text-foreground mb-1">Technicians Near You</h2>
+          <p className="text-xs text-muted-foreground mb-5">Verified professionals ready to help</p>
+        </motion.div>
 
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-4">
-          {TECHNICIANS.map((tech) => (
-            <div
+          {TECHNICIANS.map((tech, i) => (
+            <motion.div
               key={tech.name}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
               className="flex-shrink-0 w-[200px] md:w-auto bg-card rounded-2xl border p-4 space-y-3 hover:shadow-card-hover hover:border-primary/20 transition-all"
             >
-              {/* Avatar + Verified */}
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">
                   {tech.avatar}
@@ -34,7 +45,6 @@ const V2NearbyTechnicians = () => {
                 </div>
               </div>
 
-              {/* Stats */}
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <Star className="w-3 h-3 text-warning fill-warning" />
@@ -43,7 +53,6 @@ const V2NearbyTechnicians = () => {
                 <span>{tech.jobs} jobs</span>
               </div>
 
-              {/* ETA */}
               <div className="flex items-center justify-between pt-2 border-t border-border/50">
                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Clock className="w-3 h-3" />
@@ -51,7 +60,7 @@ const V2NearbyTechnicians = () => {
                 </span>
                 <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
