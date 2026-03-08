@@ -44,7 +44,8 @@ function scorePartner(
   isEmergency: boolean
 ): LivePartnerCandidate | null {
   if (!partner.categories_supported.includes(category)) return null;
-  if (partner.availability_status === "offline") return null;
+  // Partners already filtered to online/busy by query, but guard anyway
+  if ((partner.availability_status as string) === "offline") return null;
   if (isEmergency && !partner.emergency_available) return null;
 
   const pLat = partner.current_latitude ?? partner.base_latitude;
