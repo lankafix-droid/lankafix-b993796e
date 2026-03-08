@@ -50,7 +50,7 @@ const V2CategoryLanding = ({ flow, onContinue }: Props) => {
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">{flow.heroTagline}</h1>
             <p className="text-white/80 text-sm">{flow.heroSubtext}</p>
           </div>
-          {flow.availabilityLabel && (
+      {flow.availabilityLabel && (
             <div className="absolute top-3 right-3">
               <Badge className="bg-warning/90 text-warning-foreground border-none text-xs">
                 {flow.availabilityLabel}
