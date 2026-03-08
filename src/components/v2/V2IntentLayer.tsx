@@ -25,7 +25,7 @@ const INTENTS = [
     description: "Maintenance & cleaning",
     color: "from-lankafix-green/15 to-lankafix-green/5 border-lankafix-green/20",
     iconColor: "text-lankafix-green",
-    link: "/v2/book/AC",
+    link: "/book/AC",
   },
   {
     icon: <ClipboardList className="w-6 h-6" />,
