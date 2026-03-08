@@ -43,6 +43,11 @@ import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 
+// Redirect helpers for legacy routes with params
+const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
+const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
+const RedirectCategory = () => { const { code } = useParams(); return <Navigate to={`/book/${code}`} replace />; };
+
 const queryClient = new QueryClient();
 
 const App = () => (
