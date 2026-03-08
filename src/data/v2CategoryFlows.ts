@@ -232,7 +232,7 @@ const AC_FLOW: V2CategoryFlow = {
   quickServices: [
     { label: "AC Not Cooling", priceLabel: "Inspection LKR 2,500", serviceTypeId: "repair", pricingArchetype: "diagnostic_first" },
     { label: "AC Service & Clean", priceLabel: "From LKR 4,500", serviceTypeId: "service", pricingArchetype: "fixed_price" },
-    { label: "Gas Refill", priceLabel: "From LKR 3,500", serviceTypeId: "gas", pricingArchetype: "fixed_price" },
+    { label: "Gas Refill", priceLabel: "From LKR 3,500", serviceTypeId: "gas", pricingArchetype: "diagnostic_first" },
   ],
   requiresCommitmentFee: false,
   commitmentFeeAmount: 0,
