@@ -9,7 +9,7 @@ const INTENTS = [
     description: "Fix what's broken",
     color: "from-destructive/15 to-destructive/5 border-destructive/20",
     iconColor: "text-destructive",
-    link: "/v2#categories",
+    link: "/#categories",
   },
   {
     icon: <PlusCircle className="w-6 h-6" />,
