@@ -3,6 +3,7 @@ import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2IntentLayer from "@/components/v2/V2IntentLayer";
 import V2CategoryGrid from "@/components/v2/V2CategoryGrid";
+import V2NearbyTechnicians from "@/components/v2/V2NearbyTechnicians";
 import V2TrustStrip from "@/components/v2/V2TrustStrip";
 import V2HowItWorks from "@/components/v2/V2HowItWorks";
 import V2DiagnoseAssistant from "@/components/v2/V2DiagnoseAssistant";
@@ -38,6 +39,7 @@ const V2HomePage = () => {
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
         <V2IntentLayer />
         <V2CategoryGrid />
+        <V2NearbyTechnicians />
 
         {/* Diagnose section */}
         <section id="diagnose" className="py-8 md:py-10">
