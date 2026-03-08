@@ -140,7 +140,7 @@ const V2BookingPage = () => {
 
   const goBack = () => {
     if (step > 0) setStep(step - 1);
-    else navigate("/v2");
+    else navigate("/");
   };
 
   const updateBooking = (updates: Partial<V2BookingState>) => {
