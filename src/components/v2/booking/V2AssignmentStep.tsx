@@ -446,10 +446,53 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         </div>
       )}
 
-      {/* Other candidates preview */}
-      {(phase === "matched" || phase === "accepting") && candidates.length > 1 && (
+      {/* ── Top 3 Mode: Selectable candidates ── */}
+      {dispatchMode === "top_3" && phase === "matched" && candidates.length > 1 && (
+        <div className="space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-primary" /> Choose your preferred technician
+          </p>
+          {candidates.slice(0, 3).map((c, i) => (
+            <button
+              key={c.partner_id}
+              onClick={() => dispatch.selectCandidate(c.partner_id)}
+              className={`w-full text-left rounded-xl border p-4 transition-all ${
+                bestMatch?.partner_id === c.partner_id
+                  ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                  : "border-border hover:border-primary/30"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
+                  {c.partner.full_name.charAt(0)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground text-sm truncate">{c.partner.full_name}</span>
+                    {i === 0 && <Badge className="text-[9px] bg-primary/10 text-primary border-0">Best Match</Badge>}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-0.5"><Star className="w-3 h-3 fill-warning text-warning" /> {c.partner.rating_average}</span>
+                    <span>·</span>
+                    <span>{c.distance_km} km</span>
+                    <span>·</span>
+                    <span>~{c.eta_minutes} min</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-bold text-primary">{c.score?.total}%</div>
+                  <div className="text-[10px] text-muted-foreground">AI Score</div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Other candidates preview (auto mode only) */}
+      {dispatchMode === "auto" && (phase === "matched" || phase === "accepting") && candidates.length > 1 && (
         <div className="bg-muted/30 rounded-xl p-4 space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">{candidates.length - 1} other technicians available</p>
+          <p className="text-xs font-medium text-muted-foreground">{candidates.length - 1} other technicians available as backup</p>
           <div className="flex -space-x-2">
             {candidates.slice(1, 5).map((c) => (
               <div key={c.partner.id} className="w-8 h-8 rounded-full bg-primary/10 border-2 border-card flex items-center justify-center text-xs font-medium text-primary">
