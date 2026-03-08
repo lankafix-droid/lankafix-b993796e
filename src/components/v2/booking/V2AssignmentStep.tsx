@@ -311,7 +311,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             <div className="flex items-start gap-4">
               <div className="relative">
                 <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                  {tech.name.charAt(0)}
+                  {tech.full_name.charAt(0)}
                 </div>
                 {/* Online pulse dot */}
                 <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
