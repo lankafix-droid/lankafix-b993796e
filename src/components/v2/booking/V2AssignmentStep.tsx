@@ -239,9 +239,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   }
 
   // ─── Default: Live Technician Match ─────────────────────────────
-  const { phase, bestMatch, candidates, searchingTechCount, acceptCountdown, isRefreshing, refreshCount, lastRefreshedAt } = dispatch;
-  const tech = bestMatch?.tech;
-  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicleType] || Car) : Car;
+  const { phase, bestMatch, candidates, searchingPartnerCount: searchingTechCount, acceptCountdown, isRefreshing, refreshCount, lastRefreshedAt } = dispatch;
+  const tech = bestMatch?.partner;
+  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type] || Car) : Car;
 
   return (
     <div className="space-y-5">
