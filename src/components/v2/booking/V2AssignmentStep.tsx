@@ -363,7 +363,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
                 <VehicleIcon className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
-                <div className="text-[10px] text-muted-foreground capitalize">{tech.vehicleType}</div>
+                <div className="text-[10px] text-muted-foreground capitalize">{tech.vehicle_type}</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
                 <div className="text-sm font-bold text-foreground">~{bestMatch.etaMinutes}</div>
