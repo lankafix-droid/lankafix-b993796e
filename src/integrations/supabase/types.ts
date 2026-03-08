@@ -17,11 +17,14 @@ export type Database = {
       bookings: {
         Row: {
           assigned_at: string | null
+          assignment_mode: string | null
+          booking_source: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
           category_code: string
           completed_at: string | null
           completion_otp: string | null
+          completion_otp_expires_at: string | null
           created_at: string
           customer_address: Json | null
           customer_id: string | null
@@ -29,6 +32,7 @@ export type Database = {
           customer_longitude: number | null
           customer_rating: number | null
           customer_review: string | null
+          deposit_lkr: number | null
           device_details: Json | null
           diagnostic_answers: Json | null
           diagnostic_summary: Json | null
@@ -39,26 +43,35 @@ export type Database = {
           is_emergency: boolean | null
           notes: string | null
           partner_id: string | null
+          payment_method: string | null
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           photos: Json | null
           pricing_archetype: Database["public"]["Enums"]["pricing_archetype"]
+          revisit_count: number | null
           scheduled_at: string | null
           service_mode: Database["public"]["Enums"]["service_mode"] | null
           service_type: string | null
+          sla_breached: boolean | null
+          sla_eta_minutes: number | null
           start_otp: string | null
+          start_otp_expires_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["booking_status"]
           travel_fee_lkr: number | null
+          under_mediation: boolean | null
           updated_at: string
           zone_code: string | null
         }
         Insert: {
           assigned_at?: string | null
+          assignment_mode?: string | null
+          booking_source?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           category_code: string
           completed_at?: string | null
           completion_otp?: string | null
+          completion_otp_expires_at?: string | null
           created_at?: string
           customer_address?: Json | null
           customer_id?: string | null
@@ -66,6 +79,7 @@ export type Database = {
           customer_longitude?: number | null
           customer_rating?: number | null
           customer_review?: string | null
+          deposit_lkr?: number | null
           device_details?: Json | null
           diagnostic_answers?: Json | null
           diagnostic_summary?: Json | null
@@ -76,26 +90,35 @@ export type Database = {
           is_emergency?: boolean | null
           notes?: string | null
           partner_id?: string | null
+          payment_method?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
+          revisit_count?: number | null
           scheduled_at?: string | null
           service_mode?: Database["public"]["Enums"]["service_mode"] | null
           service_type?: string | null
+          sla_breached?: boolean | null
+          sla_eta_minutes?: number | null
           start_otp?: string | null
+          start_otp_expires_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           travel_fee_lkr?: number | null
+          under_mediation?: boolean | null
           updated_at?: string
           zone_code?: string | null
         }
         Update: {
           assigned_at?: string | null
+          assignment_mode?: string | null
+          booking_source?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
           category_code?: string
           completed_at?: string | null
           completion_otp?: string | null
+          completion_otp_expires_at?: string | null
           created_at?: string
           customer_address?: Json | null
           customer_id?: string | null
@@ -103,6 +126,7 @@ export type Database = {
           customer_longitude?: number | null
           customer_rating?: number | null
           customer_review?: string | null
+          deposit_lkr?: number | null
           device_details?: Json | null
           diagnostic_answers?: Json | null
           diagnostic_summary?: Json | null
@@ -113,16 +137,22 @@ export type Database = {
           is_emergency?: boolean | null
           notes?: string | null
           partner_id?: string | null
+          payment_method?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
+          revisit_count?: number | null
           scheduled_at?: string | null
           service_mode?: Database["public"]["Enums"]["service_mode"] | null
           service_type?: string | null
+          sla_breached?: boolean | null
+          sla_eta_minutes?: number | null
           start_otp?: string | null
+          start_otp_expires_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           travel_fee_lkr?: number | null
+          under_mediation?: boolean | null
           updated_at?: string
           zone_code?: string | null
         }
@@ -135,6 +165,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      customer_addresses: {
+        Row: {
+          address_line_1: string | null
+          address_line_2: string | null
+          city: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          is_default: boolean | null
+          label: string
+          landmark: string | null
+          latitude: number | null
+          longitude: number | null
+          zone_code: string | null
+        }
+        Insert: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_default?: boolean | null
+          label?: string
+          landmark?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          zone_code?: string | null
+        }
+        Update: {
+          address_line_1?: string | null
+          address_line_2?: string | null
+          city?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_default?: boolean | null
+          label?: string
+          landmark?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          zone_code?: string | null
+        }
+        Relationships: []
       }
       dispatch_log: {
         Row: {
@@ -228,8 +303,104 @@ export type Database = {
           },
         ]
       }
+      partner_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_url: string
+          id: string
+          notes: string | null
+          partner_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          verification_status: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          file_url: string
+          id?: string
+          notes?: string | null
+          partner_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          verification_status?: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_url?: string
+          id?: string
+          notes?: string | null
+          partner_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_documents_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_settlements: {
+        Row: {
+          booking_id: string
+          created_at: string
+          gross_amount_lkr: number
+          id: string
+          net_payout_lkr: number
+          partner_id: string
+          platform_commission_lkr: number
+          settled_at: string | null
+          settlement_status: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          gross_amount_lkr?: number
+          id?: string
+          net_payout_lkr?: number
+          partner_id: string
+          platform_commission_lkr?: number
+          settled_at?: string | null
+          settlement_status?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          gross_amount_lkr?: number
+          id?: string
+          net_payout_lkr?: number
+          partner_id?: string
+          platform_commission_lkr?: number
+          settled_at?: string | null
+          settlement_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_settlements_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_settlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
+          acceptance_rate: number | null
           active_job_id: string | null
           availability_status: Database["public"]["Enums"]["partner_availability"]
           average_response_time_minutes: number | null
@@ -237,15 +408,22 @@ export type Database = {
           base_longitude: number | null
           brand_specializations: string[] | null
           business_name: string | null
+          cancellation_rate: number | null
           categories_supported: string[]
           completed_jobs_count: number | null
           created_at: string
+          current_job_count: number | null
           current_latitude: number | null
           current_longitude: number | null
           emergency_available: boolean | null
           experience_years: number | null
           full_name: string
           id: string
+          last_location_ping_at: string | null
+          late_arrival_count: number | null
+          max_concurrent_jobs: number | null
+          max_jobs_per_day: number | null
+          performance_score: number | null
           phone_number: string
           profile_photo_url: string | null
           rating_average: number | null
@@ -258,6 +436,7 @@ export type Database = {
           verification_status: Database["public"]["Enums"]["partner_verification_status"]
         }
         Insert: {
+          acceptance_rate?: number | null
           active_job_id?: string | null
           availability_status?: Database["public"]["Enums"]["partner_availability"]
           average_response_time_minutes?: number | null
@@ -265,15 +444,22 @@ export type Database = {
           base_longitude?: number | null
           brand_specializations?: string[] | null
           business_name?: string | null
+          cancellation_rate?: number | null
           categories_supported?: string[]
           completed_jobs_count?: number | null
           created_at?: string
+          current_job_count?: number | null
           current_latitude?: number | null
           current_longitude?: number | null
           emergency_available?: boolean | null
           experience_years?: number | null
           full_name: string
           id?: string
+          last_location_ping_at?: string | null
+          late_arrival_count?: number | null
+          max_concurrent_jobs?: number | null
+          max_jobs_per_day?: number | null
+          performance_score?: number | null
           phone_number: string
           profile_photo_url?: string | null
           rating_average?: number | null
@@ -286,6 +472,7 @@ export type Database = {
           verification_status?: Database["public"]["Enums"]["partner_verification_status"]
         }
         Update: {
+          acceptance_rate?: number | null
           active_job_id?: string | null
           availability_status?: Database["public"]["Enums"]["partner_availability"]
           average_response_time_minutes?: number | null
@@ -293,15 +480,22 @@ export type Database = {
           base_longitude?: number | null
           brand_specializations?: string[] | null
           business_name?: string | null
+          cancellation_rate?: number | null
           categories_supported?: string[]
           completed_jobs_count?: number | null
           created_at?: string
+          current_job_count?: number | null
           current_latitude?: number | null
           current_longitude?: number | null
           emergency_available?: boolean | null
           experience_years?: number | null
           full_name?: string
           id?: string
+          last_location_ping_at?: string | null
+          late_arrival_count?: number | null
+          max_concurrent_jobs?: number | null
+          max_jobs_per_day?: number | null
+          performance_score?: number | null
           phone_number?: string
           profile_photo_url?: string | null
           rating_average?: number | null
@@ -312,6 +506,110 @@ export type Database = {
           user_id?: string | null
           vehicle_type?: string | null
           verification_status?: Database["public"]["Enums"]["partner_verification_status"]
+        }
+        Relationships: []
+      }
+      parts_catalog: {
+        Row: {
+          brand: string | null
+          category_code: string
+          id: string
+          last_updated_at: string | null
+          model: string | null
+          part_grade: string | null
+          part_type: string
+          price_lkr: number
+          stock_status: string | null
+          supplier_name: string | null
+        }
+        Insert: {
+          brand?: string | null
+          category_code: string
+          id?: string
+          last_updated_at?: string | null
+          model?: string | null
+          part_grade?: string | null
+          part_type: string
+          price_lkr?: number
+          stock_status?: string | null
+          supplier_name?: string | null
+        }
+        Update: {
+          brand?: string | null
+          category_code?: string
+          id?: string
+          last_updated_at?: string | null
+          model?: string | null
+          part_grade?: string | null
+          part_type?: string
+          price_lkr?: number
+          stock_status?: string | null
+          supplier_name?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_lkr: number
+          booking_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          paid_at: string | null
+          paid_by: string | null
+          payment_status: string
+          payment_type: string
+          transaction_ref: string | null
+        }
+        Insert: {
+          amount_lkr: number
+          booking_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_status?: string
+          payment_type?: string
+          transaction_ref?: string | null
+        }
+        Update: {
+          amount_lkr?: number
+          booking_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_status?: string
+          payment_type?: string
+          transaction_ref?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: Json
         }
         Relationships: []
       }
@@ -386,6 +684,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      quote_items: {
+        Row: {
+          id: string
+          item_type: string
+          label: string
+          metadata: Json | null
+          qty: number | null
+          quote_id: string
+          total_price_lkr: number
+          unit_price_lkr: number
+        }
+        Insert: {
+          id?: string
+          item_type?: string
+          label: string
+          metadata?: Json | null
+          qty?: number | null
+          quote_id: string
+          total_price_lkr?: number
+          unit_price_lkr?: number
+        }
+        Update: {
+          id?: string
+          item_type?: string
+          label?: string
+          metadata?: Json | null
+          qty?: number | null
+          quote_id?: string
+          total_price_lkr?: number
+          unit_price_lkr?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quotes: {
         Row: {
@@ -506,6 +845,66 @@ export type Database = {
           zone_name?: string
         }
         Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          attachments: Json | null
+          booking_id: string | null
+          created_at: string
+          customer_id: string | null
+          description: string | null
+          id: string
+          issue_type: string
+          partner_id: string | null
+          resolution_notes: string | null
+          resolution_type: string | null
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          attachments?: Json | null
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          issue_type: string
+          partner_id?: string | null
+          resolution_notes?: string | null
+          resolution_type?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          attachments?: Json | null
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          description?: string | null
+          id?: string
+          issue_type?: string
+          partner_id?: string | null
+          resolution_notes?: string | null
+          resolution_type?: string | null
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
