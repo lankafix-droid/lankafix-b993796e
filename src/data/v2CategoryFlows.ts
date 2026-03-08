@@ -142,9 +142,9 @@ const MOBILE_FLOW: V2CategoryFlow = {
     { id: "genuine", name: "Genuine Display", description: "Original manufacturer display", priceType: "starts_from", price: 15000, priceMax: 45000, features: ["Genuine part", "12-month warranty", "Same-day service"] },
   ],
   quickServices: [
-    { label: "Broken Phone Screen", priceLabel: "From LKR 5,000", serviceTypeId: "screen", pricingArchetype: "fixed_price" },
-    { label: "Battery Replacement", priceLabel: "From LKR 2,000", serviceTypeId: "battery", pricingArchetype: "fixed_price" },
-    { label: "Charging Port Fix", priceLabel: "From LKR 1,500", serviceTypeId: "charging", pricingArchetype: "fixed_price" },
+    { label: "Broken Phone Screen", priceLabel: "From LKR 9,500", serviceTypeId: "screen", pricingArchetype: "diagnostic_first" },
+    { label: "Battery Replacement", priceLabel: "From LKR 3,500", serviceTypeId: "battery", pricingArchetype: "diagnostic_first" },
+    { label: "Charging Port Fix", priceLabel: "From LKR 2,500", serviceTypeId: "charging", pricingArchetype: "diagnostic_first" },
   ],
   partnerShops: [
     { name: "TechFix Colombo 7", location: "Colombo 7, near Majestic City", rating: 4.8, repairTimeEstimate: "1-2 hours", openHours: "9 AM – 7 PM", verified: true },
