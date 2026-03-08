@@ -24,19 +24,18 @@ const ARCHETYPE_CONFIG: Record<V2PricingArchetype, {
     points: [
       "Price shown is the price you pay",
       "No hidden fees or surprise charges",
-      "Parts cost varies by quality tier",
       "Pay only after job completion",
     ],
   },
   diagnostic_first: {
-    title: "Diagnostic First",
+    title: "Starting From Price",
     badge: "Diagnostic First",
     badgeClass: "bg-warning/10 text-warning border-warning/20",
     icon: <Eye className="w-8 h-8 text-warning" />,
     points: [
-      "Technician visits to inspect and diagnose",
-      "You receive a detailed quote with options",
-      "No repair starts without your approval",
+      "Starting price shown — final depends on device model & parts",
+      "You choose part quality: Original, OEM, A Grade, or Compatible",
+      "Detailed quote provided for your approval before work begins",
       "Diagnostic fee deducted from repair cost",
     ],
   },
