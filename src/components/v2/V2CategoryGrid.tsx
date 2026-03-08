@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
 import { v2CategoryFlows, type V2PricingArchetype } from "@/data/v2CategoryFlows";
-import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package } from "lucide-react";
+import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 
@@ -34,6 +34,12 @@ const categoryThumbs: Record<string, string> = {
   PRINT_SUPPLIES: heroSupplies,
 };
 
+const ESTIMATED_TIMES: Record<string, string> = {
+  AC: "60–90 min", MOBILE: "45–90 min", IT: "60–120 min", CCTV: "2–4 hrs",
+  SOLAR: "Half day", CONSUMER_ELEC: "60–120 min", SMART_HOME_OFFICE: "2–3 hrs",
+  COPIER: "60–90 min", PRINT_SUPPLIES: "Delivery",
+};
+
 const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
   fixed_price: { label: "Fixed Price", className: "bg-success/90 text-success-foreground" },
   diagnostic_first: { label: "Diagnostic First", className: "bg-warning/90 text-warning-foreground" },
@@ -49,6 +55,7 @@ const CategoryCard = ({ cat, featured = false }: { cat: typeof categories[0]; fe
   const hasEmergency = cat.tags.includes("Emergency");
   const hasSameDay = cat.tags.includes("Same Day");
   const pricingChip = flow ? PRICING_CHIPS[flow.pricingArchetype] : null;
+  const estTime = ESTIMATED_TIMES[cat.code];
 
   return (
     <Link
@@ -64,7 +71,8 @@ const CategoryCard = ({ cat, featured = false }: { cat: typeof categories[0]; fe
             {iconMap[cat.icon] || <Monitor className="w-8 h-8 text-muted-foreground" />}
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent" />
+        {/* Dark gradient for text over image */}
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)" }} />
 
         {/* Badges */}
         <div className="absolute top-2.5 left-2.5 flex gap-1">
@@ -100,10 +108,16 @@ const CategoryCard = ({ cat, featured = false }: { cat: typeof categories[0]; fe
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t border-border/50">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-xs text-muted-foreground">
               From <span className="font-bold text-foreground">Rs {cat.fromPrice.toLocaleString("en-LK")}</span>
             </span>
+            {estTime && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                {estTime}
+              </span>
+            )}
             <div className="flex items-center gap-0.5 text-muted-foreground">
               <ShieldCheck className="w-3 h-3 text-success" />
               <span className="text-[10px]">Verified</span>
