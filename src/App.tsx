@@ -42,6 +42,9 @@ import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
 import DevicePassportPage from "./pages/devices/DevicePassportPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
+import WarrantyPage from "./pages/WarrantyPage";
+import RefundPage from "./pages/RefundPage";
+import AccountPage from "./pages/AccountPage";
 import AccountPage from "./pages/AccountPage";
 
 // Redirect helpers for legacy routes with params
