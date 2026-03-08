@@ -42,6 +42,8 @@ import ControlTowerPage from "./pages/ops/ControlTowerPage";
 import ChatWidget from "./components/chat/ChatWidget";
 import DevicesDashboardPage from "./pages/devices/DevicesDashboardPage";
 import DevicePassportPage from "./pages/devices/DevicePassportPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
 
 const queryClient = new QueryClient();
 
