@@ -1,4 +1,4 @@
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { getV2Flow } from "@/data/v2CategoryFlows";
 import Header from "@/components/layout/Header";
@@ -10,6 +10,7 @@ import V2PricingBuilder from "@/components/v2/booking/V2PricingBuilder";
 import V2TechnicianMatching from "@/components/v2/booking/V2TechnicianMatching";
 import V2BookingConfirmation from "@/components/v2/booking/V2BookingConfirmation";
 import V2SiteConditions from "@/components/v2/booking/V2SiteConditions";
+import V2ServiceModeSelection from "@/components/v2/booking/V2ServiceModeSelection";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -18,6 +19,7 @@ export interface V2BookingState {
   serviceTypeId: string;
   issueId?: string;
   deviceAnswers: Record<string, string | boolean>;
+  serviceModeId: string;
   packageId: string;
   siteConditions: Record<string, string | boolean>;
   technicianFilter: "auto" | "fastest" | "top_rated" | "preferred_time";
@@ -29,6 +31,7 @@ export interface V2BookingState {
 const INITIAL_STATE: V2BookingState = {
   serviceTypeId: "",
   deviceAnswers: {},
+  serviceModeId: "",
   packageId: "",
   siteConditions: {},
   technicianFilter: "auto",
@@ -37,7 +40,6 @@ const INITIAL_STATE: V2BookingState = {
 
 const V2BookingPage = () => {
   const { category } = useParams<{ category: string }>();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
@@ -47,16 +49,18 @@ const V2BookingPage = () => {
 
   const hasIssueStep = flow?.issueSelectors && flow.issueSelectors.length > 0;
   const hasSiteConditions = flow?.siteConditions && flow.siteConditions.length > 0;
+  const hasServiceModes = flow?.serviceModes && flow.serviceModes.length > 0;
 
   const steps = useMemo(() => {
     if (!flow) return ["landing"];
     const s: string[] = ["landing", "service_type"];
     if (hasIssueStep) s.push("issue");
     s.push("device_details");
+    if (hasServiceModes) s.push("service_mode");
     if (hasSiteConditions) s.push("site_conditions");
     s.push("pricing", "technician", "confirmation");
     return s;
-  }, [flow, hasIssueStep, hasSiteConditions]);
+  }, [flow, hasIssueStep, hasSiteConditions, hasServiceModes]);
 
   if (!flow) {
     return (
@@ -66,6 +70,29 @@ const V2BookingPage = () => {
           <div className="text-center">
             <h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1>
             <Button variant="outline" onClick={() => navigate("/v2")}>Back to Home</Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Coming soon gate
+  if (flow.launchTier === "coming_soon") {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center max-w-md space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+              <span className="text-3xl">🚀</span>
+            </div>
+            <h1 className="text-2xl font-bold text-foreground">{flow.name}</h1>
+            <p className="text-muted-foreground">This service is coming soon to LankaFix. Join the waitlist to be notified when it launches in your area.</p>
+            <div className="flex gap-3 justify-center">
+              <Button onClick={() => navigate("/waitlist")}>Join Waitlist</Button>
+              <Button variant="outline" onClick={() => navigate("/v2")}>Back to Home</Button>
+            </div>
           </div>
         </main>
         <Footer />
@@ -117,10 +144,20 @@ const V2BookingPage = () => {
         <div className="container max-w-2xl py-6">
           {currentStepName === "landing" && <V2CategoryLanding flow={flow} onContinue={goNext} />}
           {currentStepName === "service_type" && (
-            <V2ServiceSelection options={flow.serviceTypes} selected={booking.serviceTypeId} onSelect={(id) => { updateBooking({ serviceTypeId: id }); goNext(); }} title="What do you need?" />
+            <V2ServiceSelection
+              options={flow.serviceTypes}
+              selected={booking.serviceTypeId}
+              onSelect={(id) => { updateBooking({ serviceTypeId: id }); goNext(); }}
+              title="What do you need?"
+            />
           )}
           {currentStepName === "issue" && flow.issueSelectors && (
-            <V2ServiceSelection options={flow.issueSelectors} selected={booking.issueId || ""} onSelect={(id) => { updateBooking({ issueId: id }); goNext(); }} title="What's the problem?" />
+            <V2ServiceSelection
+              options={flow.issueSelectors}
+              selected={booking.issueId || ""}
+              onSelect={(id) => { updateBooking({ issueId: id }); goNext(); }}
+              title="What's the problem?"
+            />
           )}
           {currentStepName === "device_details" && (
             <V2DeviceDetails
@@ -134,14 +171,37 @@ const V2BookingPage = () => {
               onDataRiskAccept={(v) => updateBooking({ dataRiskAccepted: v })}
             />
           )}
+          {currentStepName === "service_mode" && flow.serviceModes && (
+            <V2ServiceModeSelection
+              modes={flow.serviceModes}
+              selected={booking.serviceModeId}
+              onSelect={(id) => { updateBooking({ serviceModeId: id }); goNext(); }}
+            />
+          )}
           {currentStepName === "site_conditions" && flow.siteConditions && (
-            <V2SiteConditions conditions={flow.siteConditions} answers={booking.siteConditions} onUpdate={(a) => updateBooking({ siteConditions: a })} onContinue={goNext} />
+            <V2SiteConditions
+              conditions={flow.siteConditions}
+              answers={booking.siteConditions}
+              onUpdate={(a) => updateBooking({ siteConditions: a })}
+              onContinue={goNext}
+            />
           )}
           {currentStepName === "pricing" && (
-            <V2PricingBuilder packages={flow.packages} selectedId={booking.packageId} onSelect={(id) => updateBooking({ packageId: id })} onContinue={goNext} categoryCode={flow.code} />
+            <V2PricingBuilder
+              packages={flow.packages}
+              selectedId={booking.packageId}
+              onSelect={(id) => updateBooking({ packageId: id })}
+              onContinue={goNext}
+              categoryCode={flow.code}
+            />
           )}
           {currentStepName === "technician" && (
-            <V2TechnicianMatching categoryCode={flow.code} filter={booking.technicianFilter} onFilterChange={(f) => updateBooking({ technicianFilter: f })} onConfirm={goNext} />
+            <V2TechnicianMatching
+              categoryCode={flow.code}
+              filter={booking.technicianFilter}
+              onFilterChange={(f) => updateBooking({ technicianFilter: f })}
+              onConfirm={goNext}
+            />
           )}
           {currentStepName === "confirmation" && <V2BookingConfirmation flow={flow} booking={booking} />}
         </div>
