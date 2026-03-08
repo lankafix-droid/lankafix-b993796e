@@ -340,13 +340,13 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             </div>
 
             {/* Specialization badges */}
-            {tech.brandSpecializations.length > 0 && (
+            {tech.brand_specializations && tech.brand_specializations.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {tech.brandSpecializations.slice(0, 4).map((brand) => (
+                {tech.brand_specializations.slice(0, 4).map((brand) => (
                   <Badge key={brand} variant="secondary" className="text-[10px] font-normal">{brand}</Badge>
                 ))}
-                {tech.brandSpecializations.length > 4 && (
-                  <Badge variant="secondary" className="text-[10px] font-normal">+{tech.brandSpecializations.length - 4}</Badge>
+                {tech.brand_specializations.length > 4 && (
+                  <Badge variant="secondary" className="text-[10px] font-normal">+{tech.brand_specializations.length - 4}</Badge>
                 )}
               </div>
             )}
