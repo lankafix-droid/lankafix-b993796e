@@ -1,7 +1,7 @@
 import type { V2CategoryFlow, V2PricingArchetype } from "@/data/v2CategoryFlows";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle } from "lucide-react";
+import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle, Zap } from "lucide-react";
 import { SUPPORT_PHONE } from "@/config/contact";
 import { Link } from "react-router-dom";
 
@@ -30,14 +30,20 @@ const BOOKING_MODEL_LABELS: Record<string, string> = {
   inspection_consultation: "Site inspection required before final quote",
 };
 
+// Categories that support emergency mode
+const EMERGENCY_CATEGORIES = ["AC", "MOBILE", "IT", "CONSUMER_ELEC"];
+
 interface Props {
   flow: V2CategoryFlow;
   onContinue: () => void;
+  isEmergency?: boolean;
+  onEmergencyToggle?: (v: boolean) => void;
 }
 
-const V2CategoryLanding = ({ flow, onContinue }: Props) => {
+const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }: Props) => {
   const heroImg = HERO_IMAGES[flow.code];
   const pricingBadge = PRICING_BADGES[flow.pricingArchetype];
+  const supportsEmergency = EMERGENCY_CATEGORIES.includes(flow.code);
 
   return (
     <div className="space-y-6">
