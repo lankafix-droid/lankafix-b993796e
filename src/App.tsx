@@ -45,7 +45,6 @@ import PrivacyPage from "./pages/PrivacyPage";
 import WarrantyPage from "./pages/WarrantyPage";
 import RefundPage from "./pages/RefundPage";
 import AccountPage from "./pages/AccountPage";
-import AccountPage from "./pages/AccountPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
