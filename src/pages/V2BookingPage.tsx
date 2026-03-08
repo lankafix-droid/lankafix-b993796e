@@ -15,6 +15,7 @@ import V2PricingExpectation from "@/components/v2/booking/V2PricingExpectation";
 import V2AssignmentStep from "@/components/v2/booking/V2AssignmentStep";
 import V2PartGradeSelection from "@/components/v2/booking/V2PartGradeSelection";
 import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
+import LocationPicker from "@/components/v2/location/LocationPicker";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -44,15 +45,10 @@ const INITIAL_STATE: V2BookingState = {
   photoUrls: [],
 };
 
-// Categories that require part grade selection (repairs involving spare parts)
 const PART_GRADE_CATEGORIES = ["MOBILE"];
-
-// Service types within categories that need part grade (repairs, not cleaning/service)
 const PART_GRADE_SERVICE_TYPES: Record<string, string[]> = {
   MOBILE: ["screen", "battery", "charging", "camera", "water"],
 };
-
-// AC install service type trigger
 const AC_INSTALL_SERVICE = "install";
 
 const V2BookingPage = () => {
@@ -64,59 +60,57 @@ const V2BookingPage = () => {
 
   const flow = getV2Flow(category || "");
 
-  // Should show part grade step?
   const showPartGrade = useMemo(() => {
     if (!flow) return false;
-    const catCode = flow.code;
-    if (!PART_GRADE_CATEGORIES.includes(catCode)) return false;
-    const eligible = PART_GRADE_SERVICE_TYPES[catCode];
+    if (!PART_GRADE_CATEGORIES.includes(flow.code)) return false;
+    const eligible = PART_GRADE_SERVICE_TYPES[flow.code];
     if (!eligible) return false;
     return !booking.serviceTypeId || eligible.includes(booking.serviceTypeId);
   }, [flow, booking.serviceTypeId]);
 
-  // Should show AC install addons?
   const showACAddons = useMemo(() => {
     if (!flow) return false;
     return flow.code === "AC" && booking.serviceTypeId === AC_INSTALL_SERVICE;
   }, [flow, booking.serviceTypeId]);
 
-  // Build steps dynamically based on category config AND selected service mode
+  // Skip location step for remote/drop-off modes
+  const needsLocation = useMemo(() => {
+    if (booking.serviceModeId === "remote") return false;
+    if (booking.serviceModeId === "drop_off") return false;
+    return true;
+  }, [booking.serviceModeId]);
+
   const steps = useMemo(() => {
     if (!flow) return ["landing"];
     const s: string[] = ["landing", "service_type"];
 
-    // Issue step only for categories with issue selectors
     if (flow.issueSelectors && flow.issueSelectors.length > 0) s.push("issue");
 
-    // Always show pricing expectation
     s.push("pricing_expectation");
 
-    // Part grade selection for mobile repairs with parts
     if (showPartGrade) s.push("part_grade");
 
-    // Service mode only if category has modes
     if (flow.serviceModes && flow.serviceModes.length > 0) s.push("service_mode");
 
-    // Device details always
+    // Location step — after service mode so we know if remote/drop-off
+    if (needsLocation) s.push("location");
+
     s.push("device_details");
 
-    // AC installation add-ons
     if (showACAddons) s.push("ac_install_addons");
 
-    // Site conditions only for installation/property categories
     if (flow.siteConditions && flow.siteConditions.length > 0) {
       const isRemote = booking.serviceModeId === "remote";
       if (!isRemote) s.push("site_conditions");
     }
 
-    // Pricing step only for categories that show packages (skip for quote_required)
     if (flow.pricingArchetype !== "quote_required") {
       s.push("pricing");
     }
 
     s.push("assignment", "confirmation");
     return s;
-  }, [flow, booking.serviceModeId, showPartGrade, showACAddons]);
+  }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation]);
 
   if (!flow) {
     return (
@@ -153,7 +147,6 @@ const V2BookingPage = () => {
     setBooking((prev) => ({ ...prev, ...updates }));
   };
 
-  // Get base price for part grade estimates
   const getBasePrice = () => {
     const service = flow.packages.find(p => p.id !== "diagnostic");
     return service?.price || 10000;
@@ -219,6 +212,15 @@ const V2BookingPage = () => {
               selected={booking.serviceModeId}
               onSelect={(id) => { updateBooking({ serviceModeId: id }); goNext(); }}
             />
+          )}
+          {currentStepName === "location" && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Service Location</h2>
+                <p className="text-sm text-muted-foreground mt-1">Where do you need this service?</p>
+              </div>
+              <LocationPicker onContinue={goNext} showTravelFee={true} />
+            </div>
           )}
           {currentStepName === "device_details" && (
             <V2DeviceDetails
