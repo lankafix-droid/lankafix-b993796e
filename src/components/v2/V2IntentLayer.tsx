@@ -33,7 +33,7 @@ const INTENTS = [
     description: "Get expert assessment",
     color: "from-warning/15 to-warning/5 border-warning/20",
     iconColor: "text-warning",
-    link: "/v2/book/SOLAR",
+    link: "/book/SOLAR",
   },
   {
     icon: <HelpCircle className="w-6 h-6" />,
