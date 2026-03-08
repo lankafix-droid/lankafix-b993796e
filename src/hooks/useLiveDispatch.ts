@@ -131,7 +131,7 @@ export function useLiveDispatch(
       .sort((a, b) => b.matchScore - a.matchScore);
 
     const bestMatch = candidates[0] || null;
-    const onlineTechs = MOCK_TECHNICIANS.filter(t => t.availabilityStatus !== "offline").length;
+    const onlineTechs = MOCK_TECHNICIANS.filter(t => t.availabilityStatus === "available" || t.availabilityStatus === "busy").length;
 
     setState(prev => ({
       ...prev,
