@@ -225,7 +225,21 @@ const V2BookingPage = () => {
                 <V2ServiceSelection
                   options={flow.serviceTypes}
                   selected={booking.serviceTypeId}
-                  onSelect={(id) => { updateBooking({ serviceTypeId: id }); goNext(); }}
+                  onSelect={(id) => {
+                    // Reset downstream answers when service type changes
+                    updateBooking({
+                      serviceTypeId: id,
+                      issueId: undefined,
+                      deviceAnswers: {},
+                      siteConditions: {},
+                      diagnosticAnswers: {},
+                      acInstallAddons: undefined,
+                      partGrade: undefined,
+                    });
+                    // Always advance to next step (step index stays at 1 = service_type)
+                    setStep(2);
+                    track("v2_booking_step", { category: flow.code, step: "service_selected", serviceType: id });
+                  }}
                   title="What do you need?"
                 />
               )}
