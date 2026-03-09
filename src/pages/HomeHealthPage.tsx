@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useDevicePassportStore, getHealthLabel } from "@/store/devicePassportStore";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
-import { getMaintenanceSchedule } from "@/engines/retentionEngine";
+import { MAINTENANCE_SCHEDULES } from "@/engines/retentionEngine";
 
 const CATEGORY_ICONS: Record<string, string> = {
   AC: "❄️", CCTV: "📹", IT: "💻", MOBILE: "📱", SOLAR: "☀️",
@@ -33,18 +33,20 @@ const Section = ({ title, action, children }: { title: string; action?: React.Re
 
 export default function HomeHealthPage() {
   const { passports, getAlerts } = useDevicePassportStore();
-  const { subscriptions, devices } = useSubscriptionStore();
+  const { subscriptions } = useSubscriptionStore();
 
   const allAlerts = passports.flatMap((p) => getAlerts(p.devicePassportId));
   const activeAlerts = allAlerts.filter((a) => !a.dismissed);
   const activeSubs = subscriptions.filter((s) => s.status === "active");
   const needsMaintenance = passports.filter((p) => p.healthScore < 60);
 
-  // Upcoming maintenance from retention engine
+  // Find matching maintenance schedules for registered devices
   const upcomingMaint = passports
     .map((p) => {
-      const sched = getMaintenanceSchedule(p.category);
-      return sched ? { device: p, schedule: sched } : null;
+      const matchingSchedule = Object.values(MAINTENANCE_SCHEDULES).find(
+        (s) => s.category === p.deviceCategory
+      );
+      return matchingSchedule ? { device: p, schedule: matchingSchedule } : null;
     })
     .filter(Boolean)
     .slice(0, 4);
@@ -58,7 +60,6 @@ export default function HomeHealthPage() {
       <Header />
       <main className="flex-1">
         <div className="container max-w-lg py-6 px-4">
-          {/* Header */}
           <div className="flex items-center gap-2 mb-6">
             <Home className="w-6 h-6 text-primary" />
             <div>
@@ -107,9 +108,6 @@ export default function HomeHealthPage() {
                       <span className="text-muted-foreground">{a.message}</span>
                     </div>
                   ))}
-                  {activeAlerts.length > 3 && (
-                    <p className="text-xs text-muted-foreground">+{activeAlerts.length - 3} more</p>
-                  )}
                 </CardContent>
               </Card>
             </Section>
@@ -159,12 +157,12 @@ export default function HomeHealthPage() {
                     <Link key={p.devicePassportId} to={`/device/${p.devicePassportId}`}>
                       <Card className="hover:border-primary/20 transition-colors">
                         <CardContent className="p-3 flex items-center gap-3">
-                          <span className="text-xl">{CATEGORY_ICONS[p.category] || "🔧"}</span>
+                          <span className="text-xl">{CATEGORY_ICONS[p.deviceCategory] || "🔧"}</span>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate text-foreground">{p.brand} {p.model}</div>
-                            <div className="text-xs text-muted-foreground">{p.category}</div>
+                            <div className="text-xs text-muted-foreground">{p.deviceCategory}</div>
                           </div>
-                          <Badge variant={health.variant as any} className="text-[10px]">{p.healthScore}%</Badge>
+                          <Badge variant="outline" className="text-[10px]" style={{ color: health.color }}>{p.healthScore}%</Badge>
                         </CardContent>
                       </Card>
                     </Link>
@@ -191,7 +189,7 @@ export default function HomeHealthPage() {
                         </div>
                       </div>
                       <Button size="sm" variant="outline" asChild>
-                        <Link to={`/book/${item.device.category}`}>Book</Link>
+                        <Link to={`/book/${item.device.deviceCategory}`}>Book</Link>
                       </Button>
                     </CardContent>
                   </Card>
@@ -222,12 +220,12 @@ export default function HomeHealthPage() {
             ) : (
               <div className="space-y-2">
                 {activeSubs.map((sub) => (
-                  <Card key={sub.subscriptionId}>
+                  <Card key={sub.id}>
                     <CardContent className="p-3 flex items-center gap-3">
                       <Shield className="w-4 h-4 text-primary shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground">{sub.planName}</div>
-                        <div className="text-xs text-muted-foreground capitalize">{sub.tier} tier</div>
+                        <div className="text-sm font-medium text-foreground">{sub.planId}</div>
+                        <div className="text-xs text-muted-foreground capitalize">{sub.status}</div>
                       </div>
                       <Badge variant="default" className="text-[10px]">Active</Badge>
                     </CardContent>
