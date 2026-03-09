@@ -104,8 +104,13 @@ const V2BookingPage = () => {
       hasDiagBlock: !!diagBlock,
     });
   }, [flow, booking.serviceTypeId, booking.serviceModeId, diagBlock]);
+  // Clamp step index when steps array shrinks (e.g., after mode change)
+  useEffect(() => {
+    if (step >= steps.length) {
+      setStep(steps.length - 1);
+    }
+  }, [steps.length, step]);
 
-  if (!flow) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
