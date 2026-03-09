@@ -7,6 +7,7 @@ import V2NearbyTechnicians from "@/components/v2/V2NearbyTechnicians";
 import V2TrustStrip from "@/components/v2/V2TrustStrip";
 import V2HowItWorks from "@/components/v2/V2HowItWorks";
 import V2DiagnoseAssistant from "@/components/v2/V2DiagnoseAssistant";
+import V2SocialProof from "@/components/v2/V2SocialProof";
 import Footer from "@/components/landing/Footer";
 import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
@@ -40,6 +41,7 @@ const V2HomePage = () => {
         <V2IntentLayer />
         <V2CategoryGrid />
         <V2NearbyTechnicians />
+        <V2SocialProof />
 
         {/* Diagnose section */}
         <section id="diagnose" className="py-8 md:py-10">

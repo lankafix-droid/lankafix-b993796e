@@ -46,6 +46,9 @@ import WarrantyPage from "./pages/WarrantyPage";
 import RefundPage from "./pages/RefundPage";
 import AccountPage from "./pages/AccountPage";
 import BypassMonitorPage from "./pages/ops/BypassMonitorPage";
+import AboutPage from "./pages/AboutPage";
+import FAQPage from "./pages/FAQPage";
+import HowPricingWorksPage from "./pages/HowPricingWorksPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -122,6 +125,11 @@ const App = () => (
           <Route path="/ops/control-tower" element={<ControlTowerPage />} />
           <Route path="/ops/pricing" element={<PricingEditorPage />} />
           <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
+
+          {/* ─── Content Pages ─── */}
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/how-pricing-works" element={<HowPricingWorksPage />} />
 
           {/* ─── Legal ─── */}
           <Route path="/terms" element={<TermsPage />} />
