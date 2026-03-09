@@ -41,6 +41,7 @@ const V2HomePage = () => {
         <V2IntentLayer />
         <V2CategoryGrid />
         <V2NearbyTechnicians />
+        <V2SocialProof />
 
         {/* Diagnose section */}
         <section id="diagnose" className="py-8 md:py-10">
