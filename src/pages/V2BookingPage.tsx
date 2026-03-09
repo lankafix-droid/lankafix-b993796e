@@ -26,6 +26,7 @@ import { track } from "@/lib/analytics";
 import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
 import type { DiagAnswer } from "@/data/diagnosticQuestions";
 import { motion, AnimatePresence } from "framer-motion";
+import { getServiceSteps } from "@/engines/serviceStepEngine";
 
 export interface V2BookingState {
   serviceTypeId: string;
