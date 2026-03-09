@@ -10,7 +10,7 @@ const TECHNICIANS = [
 
 const V2NearbyTechnicians = () => {
   return (
-    <section className="py-8 md:py-10">
+    <section className="py-8 md:py-10 bg-secondary/30">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -18,7 +18,7 @@ const V2NearbyTechnicians = () => {
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.4 }}
         >
-          <h2 className="text-lg md:text-xl font-bold text-foreground mb-1">Technicians Near You</h2>
+          <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">Technicians Near You</h2>
           <p className="text-xs text-muted-foreground mb-5">Verified professionals ready to help</p>
         </motion.div>
 
@@ -30,15 +30,15 @@ const V2NearbyTechnicians = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-30px" }}
               transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
-              className="flex-shrink-0 w-[200px] md:w-auto bg-card rounded-2xl border p-4 space-y-3 hover:shadow-card-hover hover:border-primary/20 transition-all"
+              className="flex-shrink-0 w-[200px] md:w-auto bg-card rounded-2xl border border-border/60 p-4 space-y-3 hover:shadow-card-hover hover:border-primary/30 transition-all"
             >
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">
+                <div className="w-12 h-12 rounded-full bg-navy text-white flex items-center justify-center text-sm font-bold font-heading shrink-0">
                   {tech.avatar}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1">
-                    <p className="text-sm font-bold text-foreground truncate">{tech.name}</p>
+                    <p className="text-sm font-bold text-foreground truncate font-heading">{tech.name}</p>
                     <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
                   </div>
                   <p className="text-[11px] text-muted-foreground">{tech.specialty}</p>
@@ -48,17 +48,17 @@ const V2NearbyTechnicians = () => {
               <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <Star className="w-3 h-3 text-warning fill-warning" />
-                  <span className="font-semibold text-foreground">{tech.rating}</span>
+                  <span className="font-bold text-foreground">{tech.rating}</span>
                 </span>
-                <span>{tech.jobs} jobs</span>
+                <span className="font-medium">{tech.jobs} jobs</span>
               </div>
 
               <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <Clock className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
+                  <Clock className="w-3 h-3 text-primary" />
                   ETA {tech.eta}
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+                <ChevronRight className="w-3.5 h-3.5 text-primary" />
               </div>
             </motion.div>
           ))}
