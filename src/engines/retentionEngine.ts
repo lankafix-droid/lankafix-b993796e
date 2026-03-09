@@ -31,9 +31,12 @@ export interface CrossSellRecommendation {
 export interface RetentionMetrics {
   totalCustomers: number;
   activeCustomers30d: number;
+  repeatCustomers: number;
   repeatRate: number;
   avgBookingsPerCustomer: number;
+  avgLifetimeValue: number;
   churnRisk: number;
+  amcAdoptionRate: number;
   topRetainedCategories: { category: CategoryCode; retentionRate: number }[];
   remindersSent: number;
   remindersConverted: number;
