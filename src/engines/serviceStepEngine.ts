@@ -1,9 +1,12 @@
 /**
- * Service-Type Step Engine
- * Determines the exact booking step sequence based on category + service type.
- * This replaces the old category-level step logic that caused incorrect flows
- * (e.g., AC Installation showing repair issue selectors).
+ * Universal Service Flow Framework
+ * Config-driven step engine that determines booking flow based on service-type metadata.
+ * Each service type is tagged with flow_type and behavioral flags that dynamically
+ * produce the correct step sequence — eliminating incorrect flows like
+ * AC Installation showing repair issue lists.
  */
+
+// ─── TYPES ──────────────────────────────────────────────────────
 
 export type BookingStepId =
   | "landing"
@@ -23,243 +26,1324 @@ export type BookingStepId =
   | "assignment"
   | "confirmation";
 
+export type ServiceFlowType =
+  | "repair"
+  | "standard_service"
+  | "installation"
+  | "inspection_consultation"
+  | "remote_digital";
+
+export type BookingOutcome =
+  | "direct_booking"
+  | "inspection_booking"
+  | "quote_request"
+  | "remote_session_booking"
+  | "pickup_request";
+
+export type DispatchBehavior =
+  | "instant"
+  | "delayed"
+  | "inspection_first"
+  | "remote_allocation"
+  | "manual_ops_review";
+
+export type ServicePricingArchetype =
+  | "fixed_price"
+  | "starting_from"
+  | "diagnostic_first"
+  | "inspection_required";
+
+export interface ServiceTypeConfig {
+  /** Which universal flow type this service follows */
+  flow_type: ServiceFlowType;
+  /** Show issue/symptom selection step? */
+  requires_issue_step: boolean;
+  /** Show installation requirements builder (e.g., AC addons)? */
+  requires_install_builder: boolean;
+  /** Must inspection/site visit happen before work? */
+  requires_inspection_first: boolean;
+  /** Can this service be fulfilled remotely? */
+  allows_remote_mode: boolean;
+  /** Show access/site condition questions? */
+  requires_access_conditions: boolean;
+  /** Show part grade selection? */
+  requires_part_grade: boolean;
+  /** Encourage/require photo upload? */
+  requires_photo_upload: boolean;
+  /** Show property profile questions? */
+  requires_property_profile: boolean;
+  /** Show service mode selection? */
+  requires_service_mode: boolean;
+  /** Show smart diagnosis flow? */
+  requires_smart_diagnosis: boolean;
+  /** Show pricing/package selection? */
+  requires_pricing_step: boolean;
+  /** Pricing archetype for this specific service */
+  pricing_archetype: ServicePricingArchetype;
+  /** What the booking resolves to */
+  booking_outcome: BookingOutcome;
+  /** Dispatch behavior */
+  dispatch_behavior: DispatchBehavior;
+}
+
+// ─── SERVICE TYPE CONFIGS ───────────────────────────────────────
+// Key format: `${categoryCode}::${serviceTypeId}`
+
+const SERVICE_TYPE_CONFIGS: Record<string, ServiceTypeConfig> = {
+  // ═══ AC ═══════════════════════════════════════════════════════
+  "AC::service": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "AC::deep_clean": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "AC::repair": {
+    flow_type: "repair",
+    requires_issue_step: true,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "AC::gas": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "AC::install": {
+    flow_type: "installation",
+    requires_issue_step: false,
+    requires_install_builder: true,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "AC::relocation": {
+    flow_type: "installation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "starting_from",
+    booking_outcome: "quote_request",
+    dispatch_behavior: "delayed",
+  },
+  "AC::water_leak": {
+    flow_type: "repair",
+    requires_issue_step: true,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "AC::not_sure": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+
+  // ═══ CCTV ════════════════════════════════════════════════════
+  "CCTV::new_install": {
+    flow_type: "installation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "CCTV::upgrade": {
+    flow_type: "installation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "CCTV::repair": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "CCTV::inspection": {
+    flow_type: "inspection_consultation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "CCTV::not_sure": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: false,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+
+  // ═══ IT ══════════════════════════════════════════════════════
+  "IT::laptop_screen": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::laptop_battery": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::laptop_storage": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::laptop_motherboard": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::laptop_hinge": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::laptop_keyboard": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::laptop_overheating": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::desktop_power": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::desktop_motherboard": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::desktop_ram": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::desktop_gpu": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::desktop_psu": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::network": {
+    flow_type: "installation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::printer": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "IT::software": {
+    flow_type: "remote_digital",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: true,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "remote_session_booking",
+    dispatch_behavior: "remote_allocation",
+  },
+  "IT::data_recovery": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "pickup_request",
+    dispatch_behavior: "delayed",
+  },
+  "IT::not_sure": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+
+  // ═══ MOBILE ══════════════════════════════════════════════════
+  "MOBILE::screen": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: true,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "MOBILE::battery": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: true,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "MOBILE::charging": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: true,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "MOBILE::water": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: true,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "MOBILE::camera": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: true,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "MOBILE::software": {
+    flow_type: "remote_digital",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: true,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "MOBILE::not_sure": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+
+  // ═══ CONSUMER ELECTRONICS ════════════════════════════════════
+  "CONSUMER_ELEC::tv": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "CONSUMER_ELEC::washing": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "CONSUMER_ELEC::fridge": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "CONSUMER_ELEC::microwave": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "CONSUMER_ELEC::fan": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "CONSUMER_ELEC::other": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+
+  // ═══ SOLAR ═══════════════════════════════════════════════════
+  "SOLAR::new_install": {
+    flow_type: "inspection_consultation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "SOLAR::expand": {
+    flow_type: "inspection_consultation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "SOLAR::maintenance": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "SOLAR::troubleshoot": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+
+  // ═══ SMART HOME / OFFICE ═════════════════════════════════════
+  "SMART_HOME_OFFICE::security": {
+    flow_type: "inspection_consultation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "SMART_HOME_OFFICE::automation": {
+    flow_type: "inspection_consultation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "SMART_HOME_OFFICE::energy": {
+    flow_type: "inspection_consultation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+  "SMART_HOME_OFFICE::office": {
+    flow_type: "inspection_consultation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: true,
+    allows_remote_mode: false,
+    requires_access_conditions: true,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: false,
+    pricing_archetype: "inspection_required",
+    booking_outcome: "inspection_booking",
+    dispatch_behavior: "inspection_first",
+  },
+
+  // ═══ COPIER ══════════════════════════════════════════════════
+  "COPIER::paper_jam": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::print_quality": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::not_printing": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::wifi_setup": {
+    flow_type: "installation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::installation": {
+    flow_type: "installation",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::toner_drum": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::roller_service": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::copier_service": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: true,
+    requires_service_mode: true,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "starting_from",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+  "COPIER::not_sure": {
+    flow_type: "repair",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: true,
+    requires_property_profile: false,
+    requires_service_mode: true,
+    requires_smart_diagnosis: true,
+    requires_pricing_step: true,
+    pricing_archetype: "diagnostic_first",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "instant",
+  },
+
+  // ═══ PRINT SUPPLIES ══════════════════════════════════════════
+  "PRINT_SUPPLIES::toner_order": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "delayed",
+  },
+  "PRINT_SUPPLIES::ink_order": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "delayed",
+  },
+  "PRINT_SUPPLIES::drum_unit": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "delayed",
+  },
+  "PRINT_SUPPLIES::ribbon": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "delayed",
+  },
+  "PRINT_SUPPLIES::thermal_roll": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "delayed",
+  },
+  "PRINT_SUPPLIES::maintenance_kit": {
+    flow_type: "standard_service",
+    requires_issue_step: false,
+    requires_install_builder: false,
+    requires_inspection_first: false,
+    allows_remote_mode: false,
+    requires_access_conditions: false,
+    requires_part_grade: false,
+    requires_photo_upload: false,
+    requires_property_profile: false,
+    requires_service_mode: false,
+    requires_smart_diagnosis: false,
+    requires_pricing_step: true,
+    pricing_archetype: "fixed_price",
+    booking_outcome: "direct_booking",
+    dispatch_behavior: "delayed",
+  },
+};
+
+// ─── DEFAULT CONFIG ─────────────────────────────────────────────
+// Fallback for any service type not explicitly configured
+const DEFAULT_CONFIG: ServiceTypeConfig = {
+  flow_type: "repair",
+  requires_issue_step: false,
+  requires_install_builder: false,
+  requires_inspection_first: false,
+  allows_remote_mode: false,
+  requires_access_conditions: false,
+  requires_part_grade: false,
+  requires_photo_upload: false,
+  requires_property_profile: false,
+  requires_service_mode: true,
+  requires_smart_diagnosis: false,
+  requires_pricing_step: true,
+  pricing_archetype: "diagnostic_first",
+  booking_outcome: "direct_booking",
+  dispatch_behavior: "instant",
+};
+
+// ─── PUBLIC API ─────────────────────────────────────────────────
+
 /**
- * A service-type step override.
- * `steps` is the ordered step list for this service type.
- * If a service type isn't listed, it falls back to the category default.
+ * Get the config for a specific service type.
  */
-interface ServiceStepOverride {
-  steps: BookingStepId[];
+export function getServiceTypeConfig(
+  categoryCode: string,
+  serviceTypeId: string
+): ServiceTypeConfig {
+  const key = `${categoryCode}::${serviceTypeId}`;
+  return SERVICE_TYPE_CONFIGS[key] || DEFAULT_CONFIG;
 }
 
 /**
- * Per-category, per-service-type step maps.
- * The key is `${categoryCode}::${serviceTypeId}`.
- * If no override exists, the system uses a category-level default builder.
+ * Build the step sequence from config flags.
+ * This is the core engine that derives steps dynamically.
  */
-const SERVICE_STEP_MAP: Record<string, ServiceStepOverride> = {
-  // ─── AC ───────────────────────────────────────────────────
-  // AC Repair: needs issue selection + diagnosis
-  "AC::repair": {
-    steps: ["landing", "service_type", "issue", "pricing_expectation", "location", "device_details", "smart_diagnosis", "diagnosis_summary", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // AC Water Leak Repair
-  "AC::water_leak": {
-    steps: ["landing", "service_type", "issue", "pricing_expectation", "location", "device_details", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // AC Gas Refill: no issue selection, no diagnosis
-  "AC::gas": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // AC Standard Service
-  "AC::service": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // AC Deep Clean
-  "AC::deep_clean": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // AC Installation: NO issue, NO diagnosis, HAS addons, quote required
-  "AC::install": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "ac_install_addons", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  // AC Relocation: NO issue, NO diagnosis, no addons
-  "AC::relocation": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  // AC Not Sure / Diagnose
-  "AC::not_sure": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "smart_diagnosis", "diagnosis_summary", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
+function buildStepsFromConfig(
+  config: ServiceTypeConfig,
+  context: {
+    serviceModeId?: string;
+    hasDiagBlock?: boolean;
+    hasIssueSelectors?: boolean;
+    hasSiteConditions?: boolean;
+    hasServiceModes?: boolean;
+  }
+): BookingStepId[] {
+  const steps: BookingStepId[] = ["landing", "service_type"];
 
-  // ─── CCTV ─────────────────────────────────────────────────
-  // New Installation: property → cameras → coverage → site inspection (quote required)
-  "CCTV::new_install": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  // Upgrade: existing system info → cameras to add → site inspection
-  "CCTV::upgrade": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  // Repair: issue selection → device details → technician
-  "CCTV::repair": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Site Inspection
-  "CCTV::inspection": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  "CCTV::not_sure": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "smart_diagnosis", "diagnosis_summary", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
+  // 1. Issue step — only if config says so AND category has issue selectors
+  if (config.requires_issue_step && context.hasIssueSelectors) {
+    steps.push("issue");
+  }
 
-  // ─── IT ───────────────────────────────────────────────────
-  // Remote Support: skip location
-  "IT::software": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Network Setup
-  "IT::network": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "smart_diagnosis", "diagnosis_summary", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Printer
-  "IT::printer": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Data Recovery: drop-off only
-  "IT::data_recovery": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "booking_protection", "assignment", "confirmation"],
-  },
-  // Not Sure / Diagnose
-  "IT::not_sure": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "smart_diagnosis", "diagnosis_summary", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
+  // 2. Pricing expectation — always shown to explain the pricing model
+  steps.push("pricing_expectation");
 
-  // ─── MOBILE ───────────────────────────────────────────────
-  // Screen: needs part grade
-  "MOBILE::screen": {
-    steps: ["landing", "service_type", "pricing_expectation", "part_grade", "service_mode", "device_details", "smart_diagnosis", "diagnosis_summary", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Battery
-  "MOBILE::battery": {
-    steps: ["landing", "service_type", "pricing_expectation", "part_grade", "service_mode", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Charging
-  "MOBILE::charging": {
-    steps: ["landing", "service_type", "pricing_expectation", "part_grade", "service_mode", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Water damage
-  "MOBILE::water": {
-    steps: ["landing", "service_type", "pricing_expectation", "part_grade", "service_mode", "device_details", "smart_diagnosis", "diagnosis_summary", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Camera
-  "MOBILE::camera": {
-    steps: ["landing", "service_type", "pricing_expectation", "part_grade", "service_mode", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Software: skip part grade, can be remote
-  "MOBILE::software": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Not sure
-  "MOBILE::not_sure": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "device_details", "smart_diagnosis", "diagnosis_summary", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
+  // 3. Part grade — only for repair flows that need it
+  if (config.requires_part_grade) {
+    steps.push("part_grade");
+  }
 
-  // ─── CONSUMER ELECTRONICS ─────────────────────────────────
-  // All appliance types follow diagnostic-first
-  "CONSUMER_ELEC::tv": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "CONSUMER_ELEC::washing": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "CONSUMER_ELEC::fridge": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "CONSUMER_ELEC::microwave": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "CONSUMER_ELEC::fan": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "CONSUMER_ELEC::other": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
+  // 4. Service mode — only if config requires it AND category has modes defined
+  if (config.requires_service_mode && context.hasServiceModes) {
+    steps.push("service_mode");
+  }
 
-  // ─── SOLAR ────────────────────────────────────────────────
-  // New Install: consultation flow (bill → property → roof → site inspection)
-  "SOLAR::new_install": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  // Expand
-  "SOLAR::expand": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  // Maintenance
-  "SOLAR::maintenance": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  // Troubleshoot
-  "SOLAR::troubleshoot": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
+  // 5. Location — skip for remote and drop_off modes
+  const skipLocation =
+    config.allows_remote_mode ||
+    context.serviceModeId === "remote" ||
+    context.serviceModeId === "drop_off";
+  if (!skipLocation) {
+    steps.push("location");
+  }
 
-  // ─── SMART HOME ───────────────────────────────────────────
-  "SMART_HOME_OFFICE::security": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  "SMART_HOME_OFFICE::automation": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  "SMART_HOME_OFFICE::energy": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
-  "SMART_HOME_OFFICE::office": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  },
+  // 6. Device details — always present (filtered by showForServiceTypes in component)
+  steps.push("device_details");
 
-  // ─── COPIER ───────────────────────────────────────────────
-  "COPIER::paper_jam": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::print_quality": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::not_printing": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::wifi_setup": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::installation": {
-    steps: ["landing", "service_type", "pricing_expectation", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::toner_drum": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::roller_service": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::copier_service": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "COPIER::not_sure": {
-    steps: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "smart_diagnosis", "diagnosis_summary", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
+  // 7. Smart diagnosis — only if config says so AND diagnostic block exists
+  if (config.requires_smart_diagnosis && context.hasDiagBlock) {
+    steps.push("smart_diagnosis", "diagnosis_summary");
+  }
 
-  // ─── PRINT SUPPLIES ───────────────────────────────────────
-  "PRINT_SUPPLIES::toner_order": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "PRINT_SUPPLIES::ink_order": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "PRINT_SUPPLIES::drum_unit": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "PRINT_SUPPLIES::ribbon": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "PRINT_SUPPLIES::thermal_roll": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-  "PRINT_SUPPLIES::maintenance_kit": {
-    steps: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  },
-};
+  // 8. Install builder (AC addons) — only for installation flows that need it
+  if (config.requires_install_builder) {
+    steps.push("ac_install_addons");
+  }
 
-// Default step builders per category (used for IT laptop/desktop variants not explicitly listed)
-const CATEGORY_DEFAULT_STEPS: Record<string, BookingStepId[]> = {
-  AC: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "pricing", "booking_protection", "assignment", "confirmation"],
-  MOBILE: ["landing", "service_type", "pricing_expectation", "part_grade", "service_mode", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  IT: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "smart_diagnosis", "diagnosis_summary", "pricing", "booking_protection", "assignment", "confirmation"],
-  CCTV: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  CONSUMER_ELEC: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  SOLAR: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  SMART_HOME_OFFICE: ["landing", "service_type", "pricing_expectation", "location", "device_details", "site_conditions", "booking_protection", "assignment", "confirmation"],
-  COPIER: ["landing", "service_type", "pricing_expectation", "service_mode", "location", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-  PRINT_SUPPLIES: ["landing", "service_type", "pricing_expectation", "device_details", "pricing", "booking_protection", "assignment", "confirmation"],
-};
+  // 9. Site conditions — only if config requires access conditions AND category has them
+  //    Skip for remote mode
+  if (config.requires_access_conditions && context.hasSiteConditions) {
+    if (context.serviceModeId !== "remote") {
+      steps.push("site_conditions");
+    }
+  }
+
+  // 10. Pricing/package selection — skip for inspection-first and quote-required flows
+  if (config.requires_pricing_step) {
+    steps.push("pricing");
+  }
+
+  // 11. Booking protection — always
+  steps.push("booking_protection");
+
+  // 12. Assignment — always
+  steps.push("assignment");
+
+  // 13. Confirmation — always
+  steps.push("confirmation");
+
+  return steps;
+}
 
 /**
  * Get the step sequence for a given category + service type.
@@ -268,10 +1352,12 @@ const CATEGORY_DEFAULT_STEPS: Record<string, BookingStepId[]> = {
 export function getServiceSteps(
   categoryCode: string,
   serviceTypeId: string | undefined,
-  /** Runtime overrides for conditional steps */
   context?: {
     serviceModeId?: string;
     hasDiagBlock?: boolean;
+    hasIssueSelectors?: boolean;
+    hasSiteConditions?: boolean;
+    hasServiceModes?: boolean;
   }
 ): BookingStepId[] {
   // Before service type is selected, only show landing + service type
@@ -279,28 +1365,6 @@ export function getServiceSteps(
     return ["landing", "service_type"];
   }
 
-  const key = `${categoryCode}::${serviceTypeId}`;
-  const override = SERVICE_STEP_MAP[key];
-  let steps = override
-    ? [...override.steps]
-    : [...(CATEGORY_DEFAULT_STEPS[categoryCode] || ["landing", "service_type", "device_details", "booking_protection", "assignment", "confirmation"])];
-
-  // Runtime adjustments based on service mode
-  if (context?.serviceModeId) {
-    // Skip location for remote and drop_off modes
-    if (context.serviceModeId === "remote" || context.serviceModeId === "drop_off") {
-      steps = steps.filter(s => s !== "location");
-    }
-    // Skip site conditions for remote
-    if (context.serviceModeId === "remote") {
-      steps = steps.filter(s => s !== "site_conditions");
-    }
-  }
-
-  // Remove diagnosis steps if no diagnostic block available
-  if (context && !context.hasDiagBlock) {
-    steps = steps.filter(s => s !== "smart_diagnosis" && s !== "diagnosis_summary");
-  }
-
-  return steps;
+  const config = getServiceTypeConfig(categoryCode, serviceTypeId);
+  return buildStepsFromConfig(config, context || {});
 }

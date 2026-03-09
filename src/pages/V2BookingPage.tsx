@@ -21,12 +21,13 @@ import LocationPicker from "@/components/v2/location/LocationPicker";
 import BookingProtectionCard from "@/components/v2/booking/BookingProtectionCard";
 import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
 import type { DiagAnswer } from "@/data/diagnosticQuestions";
 import { motion, AnimatePresence } from "framer-motion";
-import { getServiceSteps } from "@/engines/serviceStepEngine";
+import { getServiceSteps, getServiceTypeConfig } from "@/engines/serviceStepEngine";
+import type { ServiceTypeConfig } from "@/engines/serviceStepEngine";
 
 export interface V2BookingState {
   serviceTypeId: string;
@@ -55,12 +56,6 @@ const INITIAL_STATE: V2BookingState = {
   photoUrls: [],
   isEmergency: false,
 };
-
-const PART_GRADE_CATEGORIES = ["MOBILE"];
-const PART_GRADE_SERVICE_TYPES: Record<string, string[]> = {
-  MOBILE: ["screen", "battery", "charging", "camera", "water"],
-};
-const AC_INSTALL_SERVICE = "install";
 
 // Step labels for the stepper
 const STEP_LABELS: Record<string, string> = {
@@ -91,19 +86,29 @@ const V2BookingPage = () => {
 
   const flow = getV2Flow(category || "");
 
+  // Get per-service-type config (drives the entire flow)
+  const serviceConfig: ServiceTypeConfig | undefined = useMemo(() => {
+    if (!flow || !booking.serviceTypeId) return undefined;
+    return getServiceTypeConfig(flow.code, booking.serviceTypeId);
+  }, [flow, booking.serviceTypeId]);
+
   const diagBlock = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
     return getDiagnosticBlock(flow.code, booking.serviceTypeId);
   }, [flow, booking.serviceTypeId]);
 
-  // Use the service-type step engine instead of category-level step logic
+  // Build step sequence from service-type config flags
   const steps = useMemo(() => {
     if (!flow) return ["landing"];
     return getServiceSteps(flow.code, booking.serviceTypeId || undefined, {
       serviceModeId: booking.serviceModeId || undefined,
       hasDiagBlock: !!diagBlock,
+      hasIssueSelectors: !!(flow.issueSelectors && flow.issueSelectors.length > 0),
+      hasSiteConditions: !!(flow.siteConditions && flow.siteConditions.length > 0),
+      hasServiceModes: !!(flow.serviceModes && flow.serviceModes.length > 0),
     });
   }, [flow, booking.serviceTypeId, booking.serviceModeId, diagBlock]);
+
   // Clamp step index when steps array shrinks (e.g., after mode change)
   useEffect(() => {
     if (step >= steps.length) {
@@ -151,6 +156,18 @@ const V2BookingPage = () => {
     return service?.price || 10000;
   };
 
+  // Derive the pricing archetype to show — use per-service-type config if available
+  const activePricingArchetype = serviceConfig?.pricing_archetype
+    ? (serviceConfig.pricing_archetype === "starting_from" ? "diagnostic_first" : serviceConfig.pricing_archetype) as "fixed_price" | "diagnostic_first" | "quote_required"
+    : flow.pricingArchetype;
+
+  // Derive assignment type from service config
+  const activeAssignmentType = serviceConfig?.booking_outcome === "inspection_booking"
+    ? "site_inspection" as const
+    : serviceConfig?.booking_outcome === "remote_session_booking"
+    ? "remote_support" as const
+    : flow.assignmentType;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -192,7 +209,6 @@ const V2BookingPage = () => {
                   const realIndex = i + 1;
                   const isDone = realIndex < step;
                   const isCurrent = realIndex === step;
-                  // Only show dots for every ~nth step to avoid clutter
                   if (steps.length > 8 && realIndex % 2 !== 0 && !isCurrent && !isDone) return null;
                   return (
                     <div key={s} className="flex flex-col items-center">
@@ -232,7 +248,7 @@ const V2BookingPage = () => {
                   options={flow.serviceTypes}
                   selected={booking.serviceTypeId}
                   onSelect={(id) => {
-                    // Reset downstream answers when service type changes
+                    // Reset all downstream answers when service type changes
                     updateBooking({
                       serviceTypeId: id,
                       issueId: undefined,
@@ -241,8 +257,10 @@ const V2BookingPage = () => {
                       diagnosticAnswers: {},
                       acInstallAddons: undefined,
                       partGrade: undefined,
+                      serviceModeId: "",
+                      packageId: "",
                     });
-                    // Always advance to next step (step index stays at 1 = service_type)
+                    // Advance past service_type (always index 1)
                     setStep(2);
                     track("v2_booking_step", { category: flow.code, step: "service_selected", serviceType: id });
                   }}
@@ -259,7 +277,7 @@ const V2BookingPage = () => {
               )}
               {currentStepName === "pricing_expectation" && (
                 <V2PricingExpectation
-                  archetype={flow.pricingArchetype}
+                  archetype={activePricingArchetype}
                   explanation={flow.pricingExplanation}
                   onContinue={goNext}
                 />
@@ -352,7 +370,7 @@ const V2BookingPage = () => {
               {currentStepName === "assignment" && (
                 <V2AssignmentStep
                   categoryCode={flow.code}
-                  assignmentType={flow.assignmentType}
+                  assignmentType={activeAssignmentType}
                   serviceModeId={booking.serviceModeId}
                   partnerShops={flow.partnerShops}
                   isEmergency={booking.isEmergency}
