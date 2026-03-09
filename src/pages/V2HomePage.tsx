@@ -8,6 +8,7 @@ import V2TrustStrip from "@/components/v2/V2TrustStrip";
 import V2HowItWorks from "@/components/v2/V2HowItWorks";
 import V2DiagnoseAssistant from "@/components/v2/V2DiagnoseAssistant";
 import V2ServiceBundles from "@/components/v2/V2ServiceBundles";
+import V2SMEBanner from "@/components/v2/V2SMEBanner";
 import V2SocialProof from "@/components/v2/V2SocialProof";
 import Footer from "@/components/landing/Footer";
 import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
@@ -42,6 +43,7 @@ const V2HomePage = () => {
         <V2IntentLayer />
         <V2CategoryGrid />
         <V2ServiceBundles />
+        <V2SMEBanner />
         <V2NearbyTechnicians />
         <V2SocialProof />
 

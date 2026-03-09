@@ -50,6 +50,7 @@ import AboutPage from "./pages/AboutPage";
 import FAQPage from "./pages/FAQPage";
 import HowPricingWorksPage from "./pages/HowPricingWorksPage";
 import BundleBookingPage from "./pages/BundleBookingPage";
+import SMEServicesPage from "./pages/SMEServicesPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -77,6 +78,7 @@ const App = () => (
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
+          <Route path="/sme" element={<SMEServicesPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
