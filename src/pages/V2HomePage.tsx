@@ -43,6 +43,7 @@ const V2HomePage = () => {
         <V2IntentLayer />
         <V2CategoryGrid />
         <V2ServiceBundles />
+        <V2SMEBanner />
         <V2NearbyTechnicians />
         <V2SocialProof />
 
