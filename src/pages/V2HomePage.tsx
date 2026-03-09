@@ -8,6 +8,7 @@ import V2TrustStrip from "@/components/v2/V2TrustStrip";
 import V2HowItWorks from "@/components/v2/V2HowItWorks";
 import V2DiagnoseAssistant from "@/components/v2/V2DiagnoseAssistant";
 import V2ServiceBundles from "@/components/v2/V2ServiceBundles";
+import SuperAppShortcuts from "@/components/v2/SuperAppShortcuts";
 import V2SMEBanner from "@/components/v2/V2SMEBanner";
 import V2SocialProof from "@/components/v2/V2SocialProof";
 import Footer from "@/components/landing/Footer";
