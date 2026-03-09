@@ -52,6 +52,9 @@ import HowPricingWorksPage from "./pages/HowPricingWorksPage";
 import BundleBookingPage from "./pages/BundleBookingPage";
 import SMEServicesPage from "./pages/SMEServicesPage";
 import AIGrowthEnginePage from "./pages/ops/AIGrowthEnginePage";
+import ReferralPage from "./pages/ReferralPage";
+import CorporateServicesPage from "./pages/CorporateServicesPage";
+import ExpansionRoadmapPage from "./pages/ops/ExpansionRoadmapPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
