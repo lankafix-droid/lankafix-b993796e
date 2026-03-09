@@ -10,7 +10,7 @@ const steps = [
 
 const V2HowItWorks = () => {
   return (
-    <section className="py-14 md:py-18 bg-card">
+    <section className="py-14 md:py-18 bg-card border-t border-border/40">
       <div className="container">
         <motion.div
           className="text-center mb-10"
@@ -19,7 +19,7 @@ const V2HowItWorks = () => {
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="text-lg md:text-xl font-bold text-foreground mb-1">How LankaFix Works</h2>
+          <h2 className="font-heading text-xl md:text-2xl font-bold text-foreground mb-2">How LankaFix Works</h2>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
             Simple, transparent, trusted — 4 easy steps
           </p>
@@ -39,19 +39,18 @@ const V2HowItWorks = () => {
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary mx-auto flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
                   {step.icon}
                 </div>
-                <span className="absolute -top-1 -right-1 text-[10px] font-bold bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                <span className="absolute -top-1.5 -right-1.5 text-[10px] font-bold bg-primary text-primary-foreground w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-heading">
                   {step.num}
                 </span>
               </div>
               <div>
-                <h3 className="font-bold text-foreground text-sm">{step.title}</h3>
+                <h3 className="font-heading font-bold text-foreground text-sm">{step.title}</h3>
                 <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{step.desc}</p>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Reassurance */}
         <motion.p
           className="text-center text-xs text-muted-foreground mt-10 max-w-sm mx-auto"
           initial={{ opacity: 0 }}

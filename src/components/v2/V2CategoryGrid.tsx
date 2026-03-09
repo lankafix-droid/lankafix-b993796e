@@ -42,9 +42,9 @@ const ESTIMATED_TIMES: Record<string, string> = {
 };
 
 const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
-  fixed_price: { label: "Fixed Price", className: "bg-success/90 text-success-foreground" },
-  diagnostic_first: { label: "Diagnostic First", className: "bg-warning/90 text-warning-foreground" },
-  quote_required: { label: "Quote Required", className: "bg-primary/90 text-primary-foreground" },
+  fixed_price: { label: "Fixed Price", className: "bg-success text-success-foreground" },
+  diagnostic_first: { label: "Diagnostic First", className: "bg-warning text-warning-foreground" },
+  quote_required: { label: "Quote Required", className: "bg-primary text-primary-foreground" },
 };
 
 const PRIORITY_CODES = ["AC", "MOBILE", "IT", "CCTV"];
@@ -68,7 +68,7 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
       <Link
         to={`/book/${cat.code}`}
         onClick={() => track("v2_category_click", { category: cat.code })}
-        className="group block bg-card rounded-2xl border overflow-hidden transition-all duration-300 hover:shadow-card-hover hover:border-primary/20 active:scale-[0.98]"
+        className="group block bg-card rounded-2xl border border-border/60 overflow-hidden transition-all duration-300 hover:shadow-card-hover hover:border-primary/30 active:scale-[0.98]"
       >
         <div className={`relative ${featured ? "h-40 sm:h-44" : "h-32 sm:h-36"} overflow-hidden`}>
           {thumb ? (
@@ -78,26 +78,31 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
               {iconMap[cat.icon] || <Monitor className="w-8 h-8 text-muted-foreground" />}
             </div>
           )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.1) 60%, transparent 100%)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,27,51,0.65) 0%, rgba(8,27,51,0.15) 55%, transparent 100%)" }} />
 
-          <div className="absolute top-2.5 left-2.5 flex gap-1">
+          <div className="absolute top-2.5 left-2.5 flex gap-1.5">
             {hasEmergency && (
-              <Badge variant="outline" className="text-[10px] bg-destructive/90 text-destructive-foreground border-none font-medium">
+              <Badge variant="outline" className="text-[10px] bg-destructive text-destructive-foreground border-none font-semibold shadow-sm">
                 ⚡ Emergency
               </Badge>
             )}
             {hasSameDay && !hasEmergency && (
-              <Badge variant="outline" className="text-[10px] bg-success/90 text-success-foreground border-none font-medium">
+              <Badge variant="outline" className="text-[10px] bg-success text-success-foreground border-none font-semibold shadow-sm">
                 Same Day
               </Badge>
             )}
           </div>
           <div className="absolute top-2.5 right-2.5">
             {pricingChip && (
-              <Badge variant="outline" className={`text-[10px] border-none font-medium ${pricingChip.className}`}>
+              <Badge variant="outline" className={`text-[10px] border-none font-semibold shadow-sm ${pricingChip.className}`}>
                 {pricingChip.label}
               </Badge>
             )}
+          </div>
+
+          {/* Category name over image */}
+          <div className="absolute bottom-3 left-3 right-3">
+            <h3 className="font-heading font-bold text-white text-sm md:text-base leading-tight drop-shadow-lg">{cat.name}</h3>
           </div>
         </div>
 
@@ -107,15 +112,14 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
               {iconMap[cat.icon] || <Monitor className="w-4.5 h-4.5" />}
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-foreground text-sm leading-tight">{cat.name}</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{cat.description}</p>
+              <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{cat.description}</p>
             </div>
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-border/50">
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="text-xs text-muted-foreground">
-                From <span className="font-bold text-foreground">Rs {cat.fromPrice.toLocaleString("en-LK")}</span>
+                From <span className="font-heading font-bold text-foreground">Rs {cat.fromPrice.toLocaleString("en-LK")}</span>
               </span>
               {estTime && (
                 <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
@@ -125,11 +129,11 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
               )}
               <div className="flex items-center gap-0.5 text-muted-foreground">
                 <ShieldCheck className="w-3 h-3 text-success" />
-                <span className="text-[10px]">Verified</span>
+                <span className="text-[10px] font-medium">Verified</span>
               </div>
             </div>
-            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-              <ArrowRight className="w-3.5 h-3.5" />
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              <ArrowRight className="w-4 h-4" />
             </div>
           </div>
         </div>
@@ -164,7 +168,7 @@ const V2CategoryGrid = () => {
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.4 }}
           >
-            <h2 className="text-lg md:text-xl font-bold text-foreground mb-1">Quick Book</h2>
+            <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">Quick Book</h2>
             <p className="text-xs text-muted-foreground mb-4">Most popular services — book in seconds</p>
           </motion.div>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
@@ -180,13 +184,13 @@ const V2CategoryGrid = () => {
                 <Link
                   to={qb.link}
                   onClick={() => track("v2_quickbook_click", { label: qb.label })}
-                  className="block w-36 bg-card rounded-xl border p-4 hover:border-primary/30 hover:shadow-sm transition-all group active:scale-[0.97]"
+                  className="block w-36 bg-card rounded-xl border border-border/60 p-4 hover:border-primary/30 hover:shadow-card-hover transition-all group active:scale-[0.97]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:bg-primary/15 transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                     {qb.icon}
                   </div>
                   <p className="text-xs font-semibold text-foreground leading-tight">{qb.label}</p>
-                  <p className="text-[10px] text-primary font-medium mt-1.5">{qb.price}</p>
+                  <p className="text-[10px] text-primary font-bold mt-1.5">{qb.price}</p>
                 </Link>
               </motion.div>
             ))}
@@ -203,7 +207,7 @@ const V2CategoryGrid = () => {
             transition={{ duration: 0.4 }}
           >
             <div>
-              <h2 className="text-lg md:text-xl font-bold text-foreground">Popular Services</h2>
+              <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">Popular Services</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Same-day availability · Emergency support</p>
             </div>
           </motion.div>
@@ -221,7 +225,7 @@ const V2CategoryGrid = () => {
             viewport={{ once: true, margin: "-40px" }}
             transition={{ duration: 0.4 }}
           >
-            <h2 className="text-lg md:text-xl font-bold text-foreground">More Services</h2>
+            <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">More Services</h2>
             <p className="text-xs text-muted-foreground mt-0.5">All categories live across Greater Colombo</p>
           </motion.div>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">

@@ -14,8 +14,8 @@ const badges = [
 
 const V2TrustStrip = () => {
   return (
-    <section className="py-14 bg-navy">
-      <div className="container space-y-8">
+    <section className="py-16 bg-navy">
+      <div className="container space-y-10">
         <motion.div
           className="text-center"
           initial={{ opacity: 0, y: 16 }}
@@ -23,10 +23,10 @@ const V2TrustStrip = () => {
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="text-lg md:text-xl font-bold text-navy-foreground mb-1">
+          <h2 className="font-heading text-xl md:text-2xl font-bold text-white mb-2">
             Why Sri Lankans Trust LankaFix
           </h2>
-          <p className="text-xs text-navy-foreground/60">
+          <p className="text-sm text-white/50">
             Built for transparency, trust, and real service delivery
           </p>
         </motion.div>
@@ -41,12 +41,12 @@ const V2TrustStrip = () => {
               viewport={{ once: true, margin: "-30px" }}
               transition={{ delay: i * 0.06, duration: 0.4, ease: "easeOut" }}
             >
-              <div className="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
-                <span className="text-primary">{item.icon}</span>
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(14,76,146,0.4)" }}>
+                <span className="text-white">{item.icon}</span>
               </div>
               <div>
-                <span className="text-xs font-semibold text-navy-foreground block">{item.label}</span>
-                <p className="text-[10px] text-navy-foreground/50 mt-0.5">{item.desc}</p>
+                <span className="text-xs font-bold text-white block">{item.label}</span>
+                <p className="text-[10px] text-white/45 mt-0.5">{item.desc}</p>
               </div>
             </motion.div>
           ))}

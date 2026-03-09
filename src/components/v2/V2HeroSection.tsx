@@ -62,7 +62,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
   return (
     <section className="relative">
       {/* Hero banner */}
-      <div className="relative h-[440px] md:h-[500px] overflow-hidden">
+      <div className="relative h-[460px] md:h-[520px] overflow-hidden">
         {BANNERS.map((b, i) => (
           <img
             key={i}
@@ -72,9 +72,9 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
             loading={i === 0 ? "eager" : "lazy"}
           />
         ))}
-        {/* Dark gradient overlay for text readability */}
+        {/* Strong dark gradient for text readability */}
         <div className="absolute inset-0" style={{
-          background: "linear-gradient(to top, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.25) 100%)"
+          background: "linear-gradient(to top, rgba(8,27,51,0.85) 0%, rgba(8,27,51,0.55) 45%, rgba(8,27,51,0.30) 100%)"
         }} />
 
         <div className="container relative h-full flex flex-col justify-end pb-24 md:pb-28">
@@ -84,7 +84,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
             <Link
               to="/diagnose?emergency=true"
               onClick={() => track("v2_emergency_click")}
-              className="inline-flex items-center gap-1.5 bg-destructive text-destructive-foreground rounded-full px-4 py-2 text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity active:scale-95"
+              className="inline-flex items-center gap-1.5 bg-destructive text-destructive-foreground rounded-full px-4 py-2 text-xs font-bold shadow-lg hover:opacity-90 transition-opacity active:scale-95"
             >
               <Zap className="w-3.5 h-3.5" />
               <span>Emergency</span>
@@ -92,7 +92,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
             </Link>
           </div>
 
-          {/* Headline with text shadow */}
+          {/* Headline */}
           <AnimatePresence mode="wait">
             <motion.div
               key={active}
@@ -101,22 +101,16 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.45, ease: "easeOut" }}
             >
-              <h1
-                className="text-2xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-2"
-                style={{ color: "#FFFFFF", textShadow: "0px 2px 8px rgba(0,0,0,0.5)" }}
-              >
+              <h1 className="font-heading text-2xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-2 text-white drop-shadow-lg">
                 {banner.headline}
               </h1>
-              <p
-                className="text-sm md:text-base mb-5 max-w-lg"
-                style={{ color: "rgba(255,255,255,0.8)", textShadow: "0px 1px 4px rgba(0,0,0,0.4)" }}
-              >
+              <p className="text-sm md:text-base mb-5 max-w-lg text-white/85 drop-shadow-md font-medium">
                 {banner.sub}
               </p>
             </motion.div>
           </AnimatePresence>
 
-          {/* Trust pills with staggered entrance */}
+          {/* Trust pills */}
           <div className="flex flex-wrap gap-2 mb-1">
             {TRUST_PILLS.map((pill, i) => (
               <motion.span
@@ -124,13 +118,11 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 + i * 0.1, duration: 0.4, ease: "easeOut" }}
-                className="inline-flex items-center gap-1.5 text-[11px] font-medium rounded-full px-3 py-1.5"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full px-3 py-1.5 text-white border border-white/15"
                 style={{
-                  color: "#FFFFFF",
-                  background: "rgba(0,0,0,0.45)",
-                  backdropFilter: "blur(6px)",
-                  WebkitBackdropFilter: "blur(6px)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(14,76,146,0.55)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
                 }}
               >
                 {pill.icon}
@@ -146,18 +138,18 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
                 key={i}
                 onClick={() => setActive(i)}
                 aria-label={`Banner ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all duration-300 ${i === active ? "w-8 bg-primary" : "w-4 bg-white/30"}`}
+                className={`h-1.5 rounded-full transition-all duration-300 ${i === active ? "w-8 bg-white" : "w-4 bg-white/30"}`}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Search bar — taller, more rounded, elevated */}
+      {/* Search bar */}
       <div className="container -mt-7 relative z-10">
         <div className="relative">
-          <div className="bg-card rounded-[28px] shadow-lg border flex items-center gap-3 px-5" style={{ minHeight: "56px" }}>
-            <Search className="w-5 h-5 text-muted-foreground shrink-0" />
+          <div className="bg-card rounded-2xl shadow-lg border border-border/60 flex items-center gap-3 px-5" style={{ minHeight: "56px" }}>
+            <Search className="w-5 h-5 text-primary shrink-0" />
             <input
               type="text"
               placeholder="Try: phone screen broken, AC not cooling, wifi problem..."
@@ -165,10 +157,10 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => searchResults.length > 0 && setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 200)}
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none min-h-[56px]"
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none min-h-[56px] font-medium"
             />
             {searchQuery && (
-              <button onClick={() => { setSearchQuery(""); setShowResults(false); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-2">
+              <button onClick={() => { setSearchQuery(""); setShowResults(false); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-2 font-medium">
                 Clear
               </button>
             )}
@@ -176,18 +168,18 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
 
           {/* Search results */}
           {showResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl border shadow-xl overflow-hidden z-50">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl border border-border shadow-xl overflow-hidden z-50">
               {searchResults.map((result, i) => (
                 <button
                   key={`${result.categoryCode}-${result.serviceTypeId}-${i}`}
                   onMouseDown={() => handleSearchSelect(result)}
-                  className="w-full text-left px-4 py-3.5 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0 flex items-center justify-between min-h-[48px]"
+                  className="w-full text-left px-4 py-3.5 hover:bg-primary/5 transition-colors border-b border-border/30 last:border-0 flex items-center justify-between min-h-[48px]"
                 >
                   <div>
-                    <p className="text-sm font-medium text-foreground">{result.serviceLabel}</p>
+                    <p className="text-sm font-semibold text-foreground">{result.serviceLabel}</p>
                     <p className="text-xs text-muted-foreground">{result.categoryName}</p>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <ArrowRight className="w-4 h-4 text-primary" />
                 </button>
               ))}
             </div>
