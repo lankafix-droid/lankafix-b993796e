@@ -1006,6 +1006,38 @@ const SEARCH_INDEX: SearchResult[] = [
   // Print Supplies
   { categoryCode: "PRINT_SUPPLIES", categoryName: "Printing Supplies", serviceTypeId: "toner_order", serviceLabel: "Toner Cartridge", keywords: ["toner", "toner cartridge", "laser toner", "printer toner", "toner refill"] },
   { categoryCode: "PRINT_SUPPLIES", categoryName: "Printing Supplies", serviceTypeId: "ink_order", serviceLabel: "Ink Cartridge", keywords: ["ink", "ink cartridge", "printer ink", "ink refill", "ink bottle", "ink tank"] },
+  // Electrical
+  { categoryCode: "ELECTRICAL", categoryName: "Electrical Services", serviceTypeId: "socket", serviceLabel: "Socket Repair", keywords: ["socket repair", "power socket", "dead socket", "sparking socket", "plug not working", "electrical socket"] },
+  { categoryCode: "ELECTRICAL", categoryName: "Electrical Services", serviceTypeId: "circuit_breaker", serviceLabel: "Circuit Breaker Fix", keywords: ["circuit breaker", "mcb tripping", "power trip", "electricity trip", "breaker keeps tripping", "power cut"] },
+  { categoryCode: "ELECTRICAL", categoryName: "Electrical Services", serviceTypeId: "lighting", serviceLabel: "Lighting Installation", keywords: ["light install", "chandelier", "ceiling light", "led light", "spotlights", "lighting"] },
+  { categoryCode: "ELECTRICAL", categoryName: "Electrical Services", serviceTypeId: "fan", serviceLabel: "Fan Installation", keywords: ["ceiling fan", "fan install", "fan not working", "fan replacement"] },
+  { categoryCode: "ELECTRICAL", categoryName: "Electrical Services", serviceTypeId: "rewiring", serviceLabel: "House Rewiring", keywords: ["rewiring", "house wiring", "old wiring", "electrical wiring", "wiring upgrade"] },
+  // Plumbing
+  { categoryCode: "PLUMBING", categoryName: "Plumbing Services", serviceTypeId: "leak", serviceLabel: "Pipe Leak Repair", keywords: ["pipe leak", "water leak", "leaking pipe", "pipe burst", "water dripping", "plumbing leak"] },
+  { categoryCode: "PLUMBING", categoryName: "Plumbing Services", serviceTypeId: "bathroom", serviceLabel: "Bathroom Plumbing", keywords: ["toilet not flushing", "blocked toilet", "bathroom leak", "shower repair", "tap leaking", "basin problem"] },
+  { categoryCode: "PLUMBING", categoryName: "Plumbing Services", serviceTypeId: "pump", serviceLabel: "Water Pump", keywords: ["water pump", "pump repair", "low pressure", "no water pressure", "pump not working"] },
+  { categoryCode: "PLUMBING", categoryName: "Plumbing Services", serviceTypeId: "kitchen", serviceLabel: "Kitchen Plumbing", keywords: ["kitchen sink", "blocked drain", "kitchen tap", "mixer tap", "sink leak"] },
+  { categoryCode: "PLUMBING", categoryName: "Plumbing Services", serviceTypeId: "hot_water", serviceLabel: "Hot Water System", keywords: ["hot water", "geyser", "water heater", "no hot water", "heater install"] },
+  // Network
+  { categoryCode: "NETWORK", categoryName: "Internet & Network", serviceTypeId: "wifi_setup", serviceLabel: "WiFi Setup", keywords: ["wifi setup", "router setup", "wifi configure", "new router", "wifi install"] },
+  { categoryCode: "NETWORK", categoryName: "Internet & Network", serviceTypeId: "troubleshoot", serviceLabel: "Internet Fix", keywords: ["wifi slow", "internet slow", "no internet", "wifi not working", "internet not working", "wifi disconnecting", "speed slow"] },
+  { categoryCode: "NETWORK", categoryName: "Internet & Network", serviceTypeId: "mesh", serviceLabel: "Mesh WiFi", keywords: ["mesh wifi", "mesh network", "wifi coverage", "wifi dead zone", "extend wifi"] },
+  { categoryCode: "NETWORK", categoryName: "Internet & Network", serviceTypeId: "office_lan", serviceLabel: "Office LAN", keywords: ["lan setup", "office network", "ethernet", "network cable", "office lan", "network switch"] },
+  // Home Security
+  { categoryCode: "HOME_SECURITY", categoryName: "Home Security", serviceTypeId: "doorbell", serviceLabel: "Video Doorbell", keywords: ["video doorbell", "ring doorbell", "smart doorbell", "doorbell camera"] },
+  { categoryCode: "HOME_SECURITY", categoryName: "Home Security", serviceTypeId: "smart_lock", serviceLabel: "Smart Lock", keywords: ["smart lock", "digital lock", "fingerprint lock", "keyless entry", "door lock"] },
+  { categoryCode: "HOME_SECURITY", categoryName: "Home Security", serviceTypeId: "alarm", serviceLabel: "Alarm System", keywords: ["alarm system", "burglar alarm", "security alarm", "home alarm", "intruder alarm"] },
+  { categoryCode: "HOME_SECURITY", categoryName: "Home Security", serviceTypeId: "gate", serviceLabel: "Gate Automation", keywords: ["gate automation", "automatic gate", "gate motor", "electric gate", "gate remote"] },
+  // Power Backup
+  { categoryCode: "POWER_BACKUP", categoryName: "Power Backup", serviceTypeId: "ups", serviceLabel: "UPS Installation", keywords: ["ups install", "ups setup", "uninterruptible power", "computer ups", "office ups"] },
+  { categoryCode: "POWER_BACKUP", categoryName: "Power Backup", serviceTypeId: "inverter", serviceLabel: "Inverter Setup", keywords: ["inverter install", "power inverter", "home inverter", "backup power"] },
+  { categoryCode: "POWER_BACKUP", categoryName: "Power Backup", serviceTypeId: "generator", serviceLabel: "Generator Install", keywords: ["generator install", "standby generator", "power generator", "diesel generator"] },
+  { categoryCode: "POWER_BACKUP", categoryName: "Power Backup", serviceTypeId: "battery", serviceLabel: "Battery Replacement", keywords: ["ups battery", "inverter battery", "battery replacement", "battery dead", "battery not charging"] },
+  // Appliance Installation
+  { categoryCode: "APPLIANCE_INSTALL", categoryName: "Appliance Install", serviceTypeId: "tv_mount", serviceLabel: "TV Wall Mount", keywords: ["tv mount", "wall mount tv", "tv bracket", "tv installation", "mount television"] },
+  { categoryCode: "APPLIANCE_INSTALL", categoryName: "Appliance Install", serviceTypeId: "washing", serviceLabel: "Washing Machine Install", keywords: ["washing machine install", "washer install", "washing machine setup", "connect washing machine"] },
+  { categoryCode: "APPLIANCE_INSTALL", categoryName: "Appliance Install", serviceTypeId: "water_heater", serviceLabel: "Water Heater Install", keywords: ["water heater install", "geyser install", "heater setup"] },
+  { categoryCode: "APPLIANCE_INSTALL", categoryName: "Appliance Install", serviceTypeId: "ac_install", serviceLabel: "AC Installation", keywords: ["ac install new", "install air conditioner", "new ac setup", "split ac install"] },
 ];
 
 export function searchServices(query: string): SearchResult[] {
