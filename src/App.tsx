@@ -51,6 +51,7 @@ import FAQPage from "./pages/FAQPage";
 import HowPricingWorksPage from "./pages/HowPricingWorksPage";
 import BundleBookingPage from "./pages/BundleBookingPage";
 import SMEServicesPage from "./pages/SMEServicesPage";
+import AIGrowthEnginePage from "./pages/ops/AIGrowthEnginePage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -129,6 +130,7 @@ const App = () => (
           <Route path="/ops/control-tower" element={<ControlTowerPage />} />
           <Route path="/ops/pricing" element={<PricingEditorPage />} />
           <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
+          <Route path="/ops/ai-growth" element={<AIGrowthEnginePage />} />
 
           {/* ─── Content Pages ─── */}
           <Route path="/about" element={<AboutPage />} />
