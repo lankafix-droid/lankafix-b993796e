@@ -133,9 +133,12 @@ export function generateMockRetentionMetrics(): RetentionMetrics {
   return {
     totalCustomers: 4850,
     activeCustomers30d: 1240,
+    repeatCustomers: 890,
     repeatRate: 32,
     avgBookingsPerCustomer: 2.4,
+    avgLifetimeValue: 18500,
     churnRisk: 18,
+    amcAdoptionRate: 12,
     topRetainedCategories: [
       { category: "AC", retentionRate: 45 },
       { category: "IT", retentionRate: 38 },
