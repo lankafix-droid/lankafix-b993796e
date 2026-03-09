@@ -1,4 +1,4 @@
-export type CategoryCode = "AC" | "CCTV" | "MOBILE" | "IT" | "SOLAR" | "CONSUMER_ELEC" | "SMART_HOME_OFFICE" | "COPIER" | "PRINT_SUPPLIES";
+export type CategoryCode = "AC" | "CCTV" | "MOBILE" | "IT" | "SOLAR" | "CONSUMER_ELEC" | "SMART_HOME_OFFICE" | "COPIER" | "PRINT_SUPPLIES" | "ELECTRICAL" | "PLUMBING" | "NETWORK" | "HOME_SECURITY" | "POWER_BACKUP" | "APPLIANCE_INSTALL";
 
 export type ServiceMode = "on_site" | "drop_off" | "pickup_return" | "remote";
 

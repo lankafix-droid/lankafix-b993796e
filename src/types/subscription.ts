@@ -129,6 +129,12 @@ export const DEVICE_CATEGORY_LABELS: Record<DeviceCategoryCode, string> = {
   CONSUMER_ELEC: "Consumer Electronics",
   PRINT_SUPPLIES: "Printing Supplies",
   ROUTER: "Router / WiFi",
+  ELECTRICAL: "Electrical System",
+  PLUMBING: "Plumbing System",
+  NETWORK: "Network / Internet",
+  HOME_SECURITY: "Home Security System",
+  POWER_BACKUP: "Power Backup / UPS",
+  APPLIANCE_INSTALL: "Appliance Installation",
 };
 
 export const SEASONAL_RECOMMENDATIONS: Partial<Record<DeviceCategoryCode, { months: number[]; reason: string }>> = {

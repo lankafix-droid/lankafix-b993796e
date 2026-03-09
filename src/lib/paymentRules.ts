@@ -97,6 +97,48 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     splitPaymentEnabled: false,
     technicianSharePercent: 65,
   },
+  ELECTRICAL: {
+    depositRequired: false,
+    depositPercent: 0,
+    allowCashOnCompletion: true,
+    splitPaymentEnabled: false,
+    technicianSharePercent: 60,
+  },
+  PLUMBING: {
+    depositRequired: false,
+    depositPercent: 0,
+    allowCashOnCompletion: true,
+    splitPaymentEnabled: false,
+    technicianSharePercent: 60,
+  },
+  NETWORK: {
+    depositRequired: false,
+    depositPercent: 0,
+    allowCashOnCompletion: true,
+    splitPaymentEnabled: false,
+    technicianSharePercent: 60,
+  },
+  HOME_SECURITY: {
+    depositRequired: true,
+    depositPercent: 25,
+    allowCashOnCompletion: true,
+    splitPaymentEnabled: true,
+    technicianSharePercent: 55,
+  },
+  POWER_BACKUP: {
+    depositRequired: true,
+    depositPercent: 25,
+    allowCashOnCompletion: true,
+    splitPaymentEnabled: true,
+    technicianSharePercent: 55,
+  },
+  APPLIANCE_INSTALL: {
+    depositRequired: false,
+    depositPercent: 0,
+    allowCashOnCompletion: true,
+    splitPaymentEnabled: false,
+    technicianSharePercent: 60,
+  },
 };
 
 export function getPaymentRules(

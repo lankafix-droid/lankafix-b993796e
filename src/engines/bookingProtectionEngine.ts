@@ -92,11 +92,17 @@ const CATEGORY_PROTECTION_MAP: Record<CategoryCode, ProtectionType> = {
   IT: "secure_booking",
   COPIER: "secure_booking",
   PRINT_SUPPLIES: "secure_booking",
+  NETWORK: "secure_booking",
   AC: "dispatch_protection",
   CONSUMER_ELEC: "dispatch_protection",
+  ELECTRICAL: "dispatch_protection",
+  PLUMBING: "dispatch_protection",
+  APPLIANCE_INSTALL: "dispatch_protection",
   CCTV: "site_visit_reservation",
   SOLAR: "site_visit_reservation",
   SMART_HOME_OFFICE: "site_visit_reservation",
+  HOME_SECURITY: "site_visit_reservation",
+  POWER_BACKUP: "site_visit_reservation",
 };
 
 export function getProtectionType(categoryCode: CategoryCode): ProtectionType {

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
 import { v2CategoryFlows, type V2PricingArchetype } from "@/data/v2CategoryFlows";
-import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package, Clock } from "lucide-react";
+import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 import { motion } from "framer-motion";
@@ -16,6 +16,12 @@ const iconMap: Record<string, React.ReactNode> = {
   Home: <Home className="w-5 h-5" />,
   Printer: <Printer className="w-5 h-5" />,
   ShoppingBag: <ShoppingBag className="w-5 h-5" />,
+  Zap: <Zap className="w-5 h-5" />,
+  Droplets: <Droplets className="w-5 h-5" />,
+  Wifi: <Wifi className="w-5 h-5" />,
+  Shield: <Shield className="w-5 h-5" />,
+  BatteryCharging: <BatteryCharging className="w-5 h-5" />,
+  Package: <Package className="w-5 h-5" />,
 };
 
 import heroAC from "@/assets/hero-ac-service.jpg";
@@ -27,18 +33,29 @@ import heroElectronics from "@/assets/hero-electronics-service.jpg";
 import heroSmartHome from "@/assets/hero-smarthome-service.jpg";
 import heroCopier from "@/assets/hero-copier-service.jpg";
 import heroSupplies from "@/assets/hero-supplies.jpg";
+import heroElectrical from "@/assets/hero-electrical-service.jpg";
+import heroPlumbing from "@/assets/hero-plumbing-service.jpg";
+import heroNetwork from "@/assets/hero-network-service.jpg";
+import heroHomeSecurity from "@/assets/hero-home-security-service.jpg";
+import heroPowerBackup from "@/assets/hero-power-backup-service.jpg";
+import heroApplianceInstall from "@/assets/hero-appliance-install-service.jpg";
 
 const categoryThumbs: Record<string, string> = {
   AC: heroAC, CCTV: heroCCTV, IT: heroIT, MOBILE: heroMobile,
   SOLAR: heroSolar, CONSUMER_ELEC: heroElectronics,
   SMART_HOME_OFFICE: heroSmartHome, COPIER: heroCopier,
   PRINT_SUPPLIES: heroSupplies,
+  ELECTRICAL: heroElectrical, PLUMBING: heroPlumbing,
+  NETWORK: heroNetwork, HOME_SECURITY: heroHomeSecurity,
+  POWER_BACKUP: heroPowerBackup, APPLIANCE_INSTALL: heroApplianceInstall,
 };
 
 const ESTIMATED_TIMES: Record<string, string> = {
   AC: "60–90 min", MOBILE: "45–90 min", IT: "60–120 min", CCTV: "2–4 hrs",
   SOLAR: "Half day", CONSUMER_ELEC: "60–120 min", SMART_HOME_OFFICE: "2–3 hrs",
   COPIER: "60–90 min", PRINT_SUPPLIES: "Delivery",
+  ELECTRICAL: "45–90 min", PLUMBING: "60–90 min", NETWORK: "45–120 min",
+  HOME_SECURITY: "2–4 hrs", POWER_BACKUP: "60–180 min", APPLIANCE_INSTALL: "60–180 min",
 };
 
 const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
@@ -47,8 +64,8 @@ const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: stri
   quote_required: { label: "Quote Required", className: "bg-primary text-primary-foreground" },
 };
 
-const PRIORITY_CODES = ["AC", "MOBILE", "IT", "CCTV"];
-const MORE_CODES = ["CONSUMER_ELEC", "SOLAR", "SMART_HOME_OFFICE", "COPIER", "PRINT_SUPPLIES"];
+const PRIORITY_CODES = ["AC", "MOBILE", "IT", "ELECTRICAL", "PLUMBING", "NETWORK"];
+const MORE_CODES = ["CCTV", "CONSUMER_ELEC", "SOLAR", "SMART_HOME_OFFICE", "HOME_SECURITY", "POWER_BACKUP", "APPLIANCE_INSTALL", "COPIER", "PRINT_SUPPLIES"];
 
 const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof categories[0]; featured?: boolean; index?: number }) => {
   const thumb = categoryThumbs[cat.code];
@@ -100,7 +117,6 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
             )}
           </div>
 
-          {/* Category name over image */}
           <div className="absolute bottom-3 left-3 right-3">
             <h3 className="font-heading font-bold text-white text-sm md:text-base leading-tight drop-shadow-lg">{cat.name}</h3>
           </div>
@@ -146,11 +162,13 @@ const QUICK_BOOKS = [
   { label: "Broken Phone Screen", price: "From Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
   { label: "AC Not Cooling", price: "Rs 2,500 inspection", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
   { label: "Laptop Screen Fix", price: "From Rs 8,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "SSD Upgrade", price: "From Rs 2,500", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "WiFi / Router Issue", price: "From Rs 2,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "Electrical Repair", price: "From Rs 1,500", link: "/book/ELECTRICAL", icon: <Zap className="w-5 h-5" /> },
+  { label: "Plumbing Fix", price: "From Rs 1,500", link: "/book/PLUMBING", icon: <Droplets className="w-5 h-5" /> },
+  { label: "WiFi / Router Issue", price: "From Rs 2,000", link: "/book/NETWORK", icon: <Wifi className="w-5 h-5" /> },
+  { label: "TV Wall Mount", price: "From Rs 2,500", link: "/book/APPLIANCE_INSTALL", icon: <Monitor className="w-5 h-5" /> },
+  { label: "UPS Installation", price: "From Rs 3,000", link: "/book/POWER_BACKUP", icon: <BatteryCharging className="w-5 h-5" /> },
   { label: "Appliance Inspection", price: "From Rs 1,500", link: "/book/CONSUMER_ELEC", icon: <Tv className="w-5 h-5" /> },
   { label: "Printer Repair", price: "Rs 2,500 inspection", link: "/book/COPIER", icon: <Printer className="w-5 h-5" /> },
-  { label: "Toner / Ink Order", price: "From Rs 1,500", link: "/book/PRINT_SUPPLIES", icon: <Package className="w-5 h-5" /> },
 ];
 
 const V2CategoryGrid = () => {
@@ -211,7 +229,7 @@ const V2CategoryGrid = () => {
               <p className="text-xs text-muted-foreground mt-0.5">Same-day availability · Emergency support</p>
             </div>
           </motion.div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             {priorityServices.map((cat, i) => <CategoryCard key={cat.code} cat={cat} featured index={i} />)}
           </div>
         </div>
