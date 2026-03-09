@@ -10,7 +10,7 @@ const Footer = () => {
         <div className="grid md:grid-cols-3 gap-10">
           <div>
             <div className="mb-5">
-              <LankaFixLogo size="md" variant="light" />
+              <LankaFixLogo size="lg" variant="light" layout="icon" />
             </div>
             <p className="text-sm font-semibold text-white mt-2 font-heading">Verified Tech. Fixed Fast.</p>
             <p className="text-xs leading-relaxed mt-1 text-white/45">Sri Lanka's trusted tech service marketplace.</p>
