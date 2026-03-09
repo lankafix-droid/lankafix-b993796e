@@ -657,6 +657,269 @@ const PRINT_SUPPLIES_FLOW: V2CategoryFlow = {
   pricingExplanation: "Printing supplies have fixed pricing based on your printer model and the quality tier you choose (genuine, compatible, or refilled). Prices are confirmed before order placement.",
 };
 
+// ─── ELECTRICAL SERVICES ──────────────────────────────────────
+const ELECTRICAL_FLOW: V2CategoryFlow = {
+  code: "ELECTRICAL",
+  name: "Electrical Services",
+  flowType: "hybrid",
+  bookingModel: "fast_book",
+  assignmentType: "technician",
+  pricingArchetype: "diagnostic_first",
+  heroTagline: "Expert Electricians — Fast & Safe",
+  heroSubtext: "Socket repairs · Wiring · Fan install · Surge protection · Emergency service",
+  trustBadges: ["Licensed Electrician", "Safety Certified", "Warranty Backed", "LankaFix Approved"],
+  priceExample: "Services from LKR 1,500",
+  serviceTypes: [
+    { id: "socket", label: "Socket Repair", description: "Fix faulty, sparking, or dead power sockets", icon: "Plug", priceLabel: "From LKR 1,500" },
+    { id: "circuit_breaker", label: "Circuit Breaker Trip", description: "Diagnose and fix tripping breakers", icon: "Zap", priceLabel: "From LKR 2,000", tag: "Emergency" },
+    { id: "rewiring", label: "House Rewiring", description: "Full or partial rewiring for safety", icon: "Cable", priceLabel: "Quote Required", tag: "Inspection" },
+    { id: "lighting", label: "Lighting Installation", description: "Ceiling lights, spotlights, chandeliers, LED strips", icon: "Lightbulb", priceLabel: "From LKR 2,000" },
+    { id: "fan", label: "Ceiling Fan Install", description: "Install or replace ceiling fans", icon: "Fan", priceLabel: "From LKR 2,500" },
+    { id: "surge", label: "Surge Protection", description: "Protect home & appliances from power surges", icon: "ShieldCheck", priceLabel: "From LKR 3,500" },
+    { id: "not_sure", label: "Diagnose My Problem", description: "Let our electrician diagnose your issue", icon: "Stethoscope" },
+  ],
+  deviceQuestions: [
+    { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }, { label: "Shop", value: "shop" }], required: true },
+    { key: "floor_count", label: "Number of Floors", type: "select", options: [{ label: "Single storey", value: "1" }, { label: "2 floors", value: "2" }, { label: "3+ floors", value: "3_plus" }], required: false },
+  ],
+  siteConditions: [
+    { key: "emergency", label: "Is this an emergency?", type: "toggle" },
+    { key: "power_off", label: "Is the power currently off?", type: "toggle" },
+    { key: "main_panel_accessible", label: "Main panel accessible?", type: "toggle" },
+  ],
+  packages: [
+    { id: "inspection", name: "Electrical Inspection", description: "Full safety inspection of wiring and panels", priceType: "fixed", price: 2000, features: ["Full wiring check", "Safety report", "Recommendations"] },
+    { id: "socket_fix", name: "Socket Repair", description: "Fix up to 3 faulty sockets", priceType: "fixed", price: 1500, features: ["Socket replacement", "Wiring check", "Safety test"], popular: true },
+    { id: "lighting_pack", name: "Lighting Package", description: "Install up to 4 light fixtures", priceType: "starts_from", price: 3500, features: ["Up to 4 fixtures", "Wiring included", "Dimmer optional"] },
+  ],
+  quickServices: [
+    { label: "Socket Repair", priceLabel: "From LKR 1,500", serviceTypeId: "socket", pricingArchetype: "fixed_price" },
+    { label: "Circuit Breaker Fix", priceLabel: "From LKR 2,000", serviceTypeId: "circuit_breaker", pricingArchetype: "diagnostic_first" },
+    { label: "Fan Installation", priceLabel: "From LKR 2,500", serviceTypeId: "fan", pricingArchetype: "fixed_price" },
+  ],
+  requiresCommitmentFee: false,
+  commitmentFeeAmount: 0,
+  commitmentFeeNote: "",
+  cancellationNote: "Free cancellation within 10 minutes of booking",
+  warrantyNote: "All electrical work includes safety certification and 90-day warranty",
+  pricingExplanation: "Simple repairs have fixed pricing. Complex jobs like rewiring require an inspection visit first — the electrician provides a detailed quote for approval before starting work.",
+};
+
+// ─── PLUMBING SERVICES ──────────────────────────────────────
+const PLUMBING_FLOW: V2CategoryFlow = {
+  code: "PLUMBING",
+  name: "Plumbing Services",
+  flowType: "hybrid",
+  bookingModel: "fast_book",
+  assignmentType: "technician",
+  pricingArchetype: "diagnostic_first",
+  heroTagline: "Plumbing Problems? Fixed Fast",
+  heroSubtext: "Leaks · Pipe repairs · Water pumps · Bathroom & kitchen plumbing",
+  trustBadges: ["Licensed Plumber", "Emergency Available", "Warranty Backed", "Transparent Pricing"],
+  priceExample: "Services from LKR 1,500",
+  serviceTypes: [
+    { id: "leak", label: "Pipe Leak Repair", description: "Fix leaking pipes, joints, and fittings", icon: "Droplets", priceLabel: "From LKR 1,500", tag: "Emergency" },
+    { id: "pump", label: "Water Pump", description: "Install or repair water pumps", icon: "Activity", priceLabel: "From LKR 3,000" },
+    { id: "tank", label: "Water Tank", description: "Tank installation, repair, or cleaning", icon: "Container", priceLabel: "Quote Required", tag: "Inspection" },
+    { id: "bathroom", label: "Bathroom Plumbing", description: "Toilet, shower, basin, drainage issues", icon: "Bath", priceLabel: "From LKR 2,000" },
+    { id: "kitchen", label: "Kitchen Plumbing", description: "Sink repairs, mixer taps, drainage", icon: "CookingPot", priceLabel: "From LKR 2,000" },
+    { id: "hot_water", label: "Hot Water System", description: "Install or repair hot water heaters", icon: "Flame", priceLabel: "From LKR 8,000", tag: "Inspection" },
+    { id: "not_sure", label: "Diagnose My Problem", description: "Let our plumber assess your issue", icon: "Stethoscope" },
+  ],
+  deviceQuestions: [
+    { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }, { label: "Shop", value: "shop" }], required: true },
+  ],
+  siteConditions: [
+    { key: "emergency", label: "Is this an emergency?", type: "toggle" },
+    { key: "water_supply_off", label: "Can you turn off the main water supply?", type: "toggle" },
+    { key: "flooding", label: "Is there active flooding?", type: "toggle" },
+  ],
+  packages: [
+    { id: "basic_fix", name: "Basic Plumbing Fix", description: "Fix a single leak or tap issue", priceType: "fixed", price: 1500, features: ["Single issue fix", "Parts included if minor", "Same-day service"], popular: true },
+    { id: "bathroom_pack", name: "Bathroom Overhaul", description: "Full bathroom plumbing check and repairs", priceType: "starts_from", price: 5000, features: ["All fixtures checked", "Drainage cleared", "Leak repairs"] },
+    { id: "pump_install", name: "Pump Installation", description: "Install new water pump with wiring", priceType: "starts_from", price: 5000, features: ["Pump installation", "Piping connection", "Pressure test"] },
+  ],
+  quickServices: [
+    { label: "Pipe Leak Repair", priceLabel: "From LKR 1,500", serviceTypeId: "leak", pricingArchetype: "diagnostic_first" },
+    { label: "Bathroom Fix", priceLabel: "From LKR 2,000", serviceTypeId: "bathroom", pricingArchetype: "diagnostic_first" },
+    { label: "Water Pump", priceLabel: "From LKR 3,000", serviceTypeId: "pump", pricingArchetype: "diagnostic_first" },
+  ],
+  requiresCommitmentFee: false,
+  commitmentFeeAmount: 0,
+  commitmentFeeNote: "",
+  cancellationNote: "Free cancellation within 10 minutes of booking",
+  warrantyNote: "All plumbing work includes 90-day warranty on workmanship",
+  pricingExplanation: "Minor plumbing repairs are priced from a base rate. Complex jobs like hot water installation or tank work require an inspection visit first with a detailed quote for approval.",
+};
+
+// ─── NETWORK SERVICES ──────────────────────────────────────
+const NETWORK_FLOW: V2CategoryFlow = {
+  code: "NETWORK",
+  name: "Internet & Network",
+  flowType: "hybrid",
+  bookingModel: "fast_book",
+  assignmentType: "technician",
+  pricingArchetype: "diagnostic_first",
+  heroTagline: "WiFi Slow? Network Down? Fixed Fast",
+  heroSubtext: "Router setup · Mesh WiFi · Office LAN · Internet troubleshooting",
+  trustBadges: ["Certified Technician", "Remote Support", "Same Day", "Transparent Pricing"],
+  priceExample: "Services from LKR 2,000",
+  availabilityLabel: "Same Day · Remote Available",
+  serviceTypes: [
+    { id: "wifi_setup", label: "WiFi Router Setup", description: "New router configuration and optimization", icon: "Wifi", priceLabel: "From LKR 2,000" },
+    { id: "mesh", label: "Mesh Network Setup", description: "Whole-home WiFi coverage with mesh system", icon: "Globe", priceLabel: "From LKR 5,000" },
+    { id: "office_lan", label: "Office LAN Setup", description: "Ethernet cabling and switch configuration", icon: "Network", priceLabel: "Quote Required", tag: "Inspection" },
+    { id: "troubleshoot", label: "Internet Troubleshoot", description: "Fix slow internet, disconnections, DNS issues", icon: "WifiOff", priceLabel: "From LKR 2,000", tag: "Remote" },
+    { id: "cabling", label: "Structured Cabling", description: "Professional Cat6/Cat6A cabling for offices", icon: "Cable", priceLabel: "Quote Required", tag: "Inspection" },
+    { id: "speed", label: "Speed Optimization", description: "Optimize network for maximum performance", icon: "Gauge", priceLabel: "From LKR 2,000" },
+  ],
+  deviceQuestions: [
+    { key: "isp", label: "Internet Provider", type: "select", options: [{ label: "SLT/Mobitel", value: "slt" }, { label: "Dialog", value: "dialog" }, { label: "Hutch", value: "hutch" }, { label: "Airtel", value: "airtel" }, { label: "Other", value: "other" }], required: true },
+    { key: "connection_type", label: "Connection Type", type: "select", options: [{ label: "Fiber", value: "fiber" }, { label: "4G/5G Router", value: "4g" }, { label: "ADSL", value: "adsl" }, { label: "Not sure", value: "unknown" }], required: false },
+    { key: "device_count", label: "Devices to connect", type: "select", options: [{ label: "1-5", value: "1_5" }, { label: "5-10", value: "5_10" }, { label: "10-20", value: "10_20" }, { label: "20+", value: "20_plus" }], required: false },
+  ],
+  packages: [
+    { id: "router_setup", name: "Router Setup", description: "Configure router with optimal settings", priceType: "fixed", price: 2000, features: ["Router configuration", "WiFi optimization", "Device connection", "Speed test"], popular: true },
+    { id: "mesh_setup", name: "Mesh WiFi Package", description: "Install and configure mesh network", priceType: "starts_from", price: 5000, features: ["Mesh device setup", "Optimal placement", "All devices connected", "Speed test"] },
+    { id: "office_network", name: "Office Network", description: "Full office LAN and WiFi setup", priceType: "inspection_required", price: 8000, features: ["Site survey", "Cabling plan", "Switch config", "WiFi access points"] },
+  ],
+  quickServices: [
+    { label: "WiFi Setup", priceLabel: "From LKR 2,000", serviceTypeId: "wifi_setup", pricingArchetype: "fixed_price" },
+    { label: "Internet Fix", priceLabel: "From LKR 2,000", serviceTypeId: "troubleshoot", pricingArchetype: "diagnostic_first" },
+    { label: "Mesh Network", priceLabel: "From LKR 5,000", serviceTypeId: "mesh", pricingArchetype: "fixed_price" },
+  ],
+  requiresCommitmentFee: false,
+  commitmentFeeAmount: 0,
+  commitmentFeeNote: "",
+  cancellationNote: "Free cancellation within 10 minutes. Remote sessions can be rescheduled.",
+  warrantyNote: "Network setup includes 30-day support for configuration issues",
+  pricingExplanation: "Router setup and basic troubleshooting have fixed pricing. Office LAN and structured cabling require a site survey with a detailed quote before work begins.",
+};
+
+// ─── HOME SECURITY ──────────────────────────────────────
+const HOME_SECURITY_FLOW: V2CategoryFlow = {
+  code: "HOME_SECURITY",
+  name: "Home Security Systems",
+  flowType: "inspection",
+  bookingModel: "inspection_consultation",
+  assignmentType: "site_inspection",
+  pricingArchetype: "quote_required",
+  heroTagline: "Protect Your Home — Smart Security",
+  heroSubtext: "Video doorbells · Smart locks · Alarm systems · Gate automation",
+  trustBadges: ["Verified Installer", "Warranty Backed", "App Integration", "LankaFix Approved"],
+  priceExample: "Installations from LKR 5,000",
+  serviceTypes: [
+    { id: "doorbell", label: "Video Doorbell", description: "Install and configure video doorbell", icon: "Bell", priceLabel: "From LKR 5,000" },
+    { id: "smart_lock", label: "Smart Door Lock", description: "Digital/biometric lock installation", icon: "Lock", priceLabel: "From LKR 8,000" },
+    { id: "alarm", label: "Alarm System", description: "Burglar alarm with sensors and app", icon: "Siren", priceLabel: "Quote Required", tag: "Inspection" },
+    { id: "intercom", label: "Intercom System", description: "Audio/video intercom installation", icon: "Phone", priceLabel: "From LKR 10,000", tag: "Inspection" },
+    { id: "gate", label: "Gate Automation", description: "Automate sliding or swing gates", icon: "DoorOpen", priceLabel: "Quote Required", tag: "Inspection" },
+  ],
+  deviceQuestions: [
+    { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }, { label: "Shop", value: "shop" }], required: true },
+    { key: "entry_points", label: "Entry Points to Secure", type: "select", options: [{ label: "1-2", value: "1_2" }, { label: "3-4", value: "3_4" }, { label: "5+", value: "5_plus" }], required: false },
+  ],
+  packages: [
+    { id: "inspection", name: "Security Assessment", description: "Professional security survey of your property", priceType: "fixed", price: 3000, features: ["Property assessment", "Vulnerability report", "Equipment recommendations", "Fee deducted from project"], commitmentFee: 3000 },
+    { id: "basic_security", name: "Basic Security Package", description: "Video doorbell + smart lock", priceType: "starts_from", price: 15000, features: ["Video doorbell", "Smart lock", "App setup", "Installation included"], popular: true },
+    { id: "full_security", name: "Full Home Security", description: "Complete security system with monitoring", priceType: "inspection_required", price: 50000, features: ["CCTV cameras", "Alarm system", "Smart locks", "Gate automation", "App integration"] },
+  ],
+  quickServices: [
+    { label: "Video Doorbell", priceLabel: "From LKR 5,000", serviceTypeId: "doorbell", pricingArchetype: "fixed_price" },
+    { label: "Smart Lock", priceLabel: "From LKR 8,000", serviceTypeId: "smart_lock", pricingArchetype: "quote_required" },
+    { label: "Gate Automation", priceLabel: "Quote Required", serviceTypeId: "gate", pricingArchetype: "quote_required" },
+  ],
+  requiresCommitmentFee: true,
+  commitmentFeeAmount: 3000,
+  commitmentFeeNote: "Deductible from the final project cost",
+  cancellationNote: "Free cancellation before site inspection. Commitment fee is non-refundable after inspection.",
+  warrantyNote: "All installations include 12-month warranty on workmanship and equipment",
+  pricingExplanation: "Security installations require a site assessment to determine the right equipment and configuration. The assessment fee is deducted from your final project cost.",
+};
+
+// ─── POWER BACKUP ──────────────────────────────────────
+const POWER_BACKUP_FLOW: V2CategoryFlow = {
+  code: "POWER_BACKUP",
+  name: "Power Backup Solutions",
+  flowType: "hybrid",
+  bookingModel: "fast_book",
+  assignmentType: "technician",
+  pricingArchetype: "diagnostic_first",
+  heroTagline: "Never Lose Power Again",
+  heroSubtext: "UPS · Inverters · Generators · Solar battery · Battery replacement",
+  trustBadges: ["Verified Technician", "Emergency Available", "Warranty Backed", "LankaFix Approved"],
+  priceExample: "Services from LKR 3,000",
+  serviceTypes: [
+    { id: "ups", label: "UPS Installation", description: "Install UPS for computers, home or office", icon: "BatteryCharging", priceLabel: "From LKR 3,000" },
+    { id: "inverter", label: "Inverter Setup", description: "Home or office power inverter installation", icon: "Zap", priceLabel: "From LKR 8,000", tag: "Inspection" },
+    { id: "generator", label: "Generator Install", description: "Portable or standby generator setup", icon: "Power", priceLabel: "Quote Required", tag: "Inspection" },
+    { id: "battery", label: "Battery Replacement", description: "Replace UPS, inverter, or solar batteries", icon: "Battery", priceLabel: "From LKR 3,500" },
+    { id: "solar_battery", label: "Solar Battery Backup", description: "Add battery storage to solar system", icon: "Sun", priceLabel: "Quote Required", tag: "Inspection" },
+  ],
+  deviceQuestions: [
+    { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }, { label: "Shop/Commercial", value: "commercial" }], required: true },
+    { key: "power_need", label: "What needs backup?", type: "select", options: [{ label: "Computer/IT only", value: "it" }, { label: "Lights & fans", value: "basic" }, { label: "Full house", value: "full" }, { label: "Office/Server", value: "server" }], required: true },
+  ],
+  packages: [
+    { id: "ups_basic", name: "Desktop UPS", description: "UPS for single PC or workstation", priceType: "starts_from", price: 3000, features: ["UPS installation", "Battery test", "Surge protection", "Warranty included"], popular: true },
+    { id: "home_backup", name: "Home Power Backup", description: "Inverter system for lights and fans", priceType: "starts_from", price: 15000, features: ["Inverter installation", "Battery setup", "Wiring to selected circuits", "Auto-switchover"] },
+    { id: "commercial", name: "Commercial Backup", description: "Generator or large-scale UPS solution", priceType: "inspection_required", price: 50000, features: ["Site assessment", "Load calculation", "Equipment sourcing", "Installation & testing"] },
+  ],
+  quickServices: [
+    { label: "UPS Installation", priceLabel: "From LKR 3,000", serviceTypeId: "ups", pricingArchetype: "fixed_price" },
+    { label: "Battery Replacement", priceLabel: "From LKR 3,500", serviceTypeId: "battery", pricingArchetype: "fixed_price" },
+    { label: "Inverter Setup", priceLabel: "From LKR 8,000", serviceTypeId: "inverter", pricingArchetype: "quote_required" },
+  ],
+  requiresCommitmentFee: false,
+  commitmentFeeAmount: 0,
+  commitmentFeeNote: "",
+  cancellationNote: "Free cancellation within 10 minutes of booking",
+  warrantyNote: "All installations include warranty on workmanship. Battery warranty per manufacturer terms.",
+  pricingExplanation: "Simple UPS installations have fixed pricing. Inverter and generator setups require a site assessment to determine load requirements and provide an accurate quote.",
+};
+
+// ─── APPLIANCE INSTALLATION ──────────────────────────────────────
+const APPLIANCE_INSTALL_FLOW: V2CategoryFlow = {
+  code: "APPLIANCE_INSTALL",
+  name: "Appliance Installation",
+  flowType: "fast_book",
+  bookingModel: "fast_book",
+  assignmentType: "technician",
+  pricingArchetype: "fixed_price",
+  heroTagline: "New Appliance? We'll Install It",
+  heroSubtext: "AC · Washing machine · TV mounting · Water heater · Kitchen appliances",
+  trustBadges: ["Verified Installer", "Same Day Available", "Warranty Backed", "Transparent Pricing"],
+  priceExample: "Installation from LKR 2,500",
+  serviceTypes: [
+    { id: "ac_install", label: "AC Installation", description: "Professional split or window AC installation", icon: "Snowflake", priceLabel: "From LKR 8,000", tag: "Quote Required" },
+    { id: "washing", label: "Washing Machine", description: "Install and connect with plumbing", icon: "Waves", priceLabel: "From LKR 3,000" },
+    { id: "tv_mount", label: "TV Wall Mounting", description: "Wall mount with cable management", icon: "Monitor", priceLabel: "From LKR 2,500" },
+    { id: "water_heater", label: "Water Heater", description: "Electric or instant heater installation", icon: "Flame", priceLabel: "From LKR 3,500" },
+    { id: "kitchen", label: "Kitchen Appliance", description: "Dishwasher, oven, cooker hood, hob setup", icon: "ChefHat", priceLabel: "From LKR 5,000", tag: "Quote Required" },
+  ],
+  deviceQuestions: [
+    { key: "brand", label: "Appliance Brand", type: "text", required: false },
+    { key: "purchased", label: "Already purchased?", type: "toggle", required: true },
+    { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }], required: true },
+  ],
+  packages: [
+    { id: "tv_mount", name: "TV Wall Mount", description: "Mount TV with cable concealment", priceType: "fixed", price: 2500, features: ["Wall mounting", "Cable management", "Bracket alignment", "Cleanup"], popular: true },
+    { id: "washer_install", name: "Washing Machine Install", description: "Full installation with plumbing", priceType: "fixed", price: 3000, features: ["Unboxing", "Plumbing connection", "Level adjustment", "Test run"] },
+    { id: "ac_install", name: "AC Installation", description: "Split AC with piping and bracket", priceType: "starts_from", price: 8000, features: ["Bracket install", "Piping", "Gas charging", "Electrical connection"] },
+  ],
+  quickServices: [
+    { label: "TV Wall Mount", priceLabel: "LKR 2,500", serviceTypeId: "tv_mount", pricingArchetype: "fixed_price" },
+    { label: "Washing Machine", priceLabel: "LKR 3,000", serviceTypeId: "washing", pricingArchetype: "fixed_price" },
+    { label: "Water Heater", priceLabel: "From LKR 3,500", serviceTypeId: "water_heater", pricingArchetype: "fixed_price" },
+  ],
+  requiresCommitmentFee: false,
+  commitmentFeeAmount: 0,
+  commitmentFeeNote: "",
+  cancellationNote: "Free cancellation within 10 minutes of booking",
+  warrantyNote: "All installations include 90-day warranty on workmanship",
+  pricingExplanation: "Most appliance installations have fixed pricing. AC installation may vary based on piping distance and floor level — a detailed quote is provided before work starts.",
+};
+
 // ─── EXPORTS ──────────────────────────────────────────────
 
 export const v2CategoryFlows: Record<string, V2CategoryFlow> = {
@@ -669,6 +932,12 @@ export const v2CategoryFlows: Record<string, V2CategoryFlow> = {
   SMART_HOME_OFFICE: SMART_HOME_FLOW,
   COPIER: COPIER_FLOW,
   PRINT_SUPPLIES: PRINT_SUPPLIES_FLOW,
+  ELECTRICAL: ELECTRICAL_FLOW,
+  PLUMBING: PLUMBING_FLOW,
+  NETWORK: NETWORK_FLOW,
+  HOME_SECURITY: HOME_SECURITY_FLOW,
+  POWER_BACKUP: POWER_BACKUP_FLOW,
+  APPLIANCE_INSTALL: APPLIANCE_INSTALL_FLOW,
 };
 
 export function getV2Flow(code: string): V2CategoryFlow | undefined {
