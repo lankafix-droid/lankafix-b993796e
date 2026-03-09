@@ -157,8 +157,14 @@ const V2BookingPage = () => {
   };
 
   // Derive the pricing archetype to show — use per-service-type config if available
-  const activePricingArchetype = serviceConfig?.pricing_archetype
-    ? (serviceConfig.pricing_archetype === "starting_from" ? "diagnostic_first" : serviceConfig.pricing_archetype) as "fixed_price" | "diagnostic_first" | "quote_required"
+  const activePricingArchetype: "fixed_price" | "diagnostic_first" | "quote_required" = serviceConfig?.pricing_archetype
+    ? (
+        serviceConfig.pricing_archetype === "starting_from" ? "diagnostic_first" :
+        serviceConfig.pricing_archetype === "inspection_required" ? "quote_required" :
+        serviceConfig.pricing_archetype === "diagnostic_first" ? "diagnostic_first" :
+        serviceConfig.pricing_archetype === "fixed_price" ? "fixed_price" :
+        "diagnostic_first"
+      )
     : flow.pricingArchetype;
 
   // Derive assignment type from service config
