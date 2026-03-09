@@ -58,6 +58,7 @@ import ExpansionRoadmapPage from "./pages/ops/ExpansionRoadmapPage";
 import PartnerPremiumPage from "./pages/partner/PartnerPremiumPage";
 import ConsumablesPage from "./pages/ConsumablesPage";
 import RevenueEnginePage from "./pages/ops/RevenueEnginePage";
+import HomeHealthPage from "./pages/HomeHealthPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -89,6 +90,7 @@ const App = () => (
           <Route path="/referral" element={<ReferralPage />} />
           <Route path="/corporate" element={<CorporateServicesPage />} />
           <Route path="/supplies" element={<ConsumablesPage />} />
+          <Route path="/home-health" element={<HomeHealthPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
