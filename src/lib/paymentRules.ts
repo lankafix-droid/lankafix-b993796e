@@ -3,6 +3,7 @@
  * Category-aware payment logic aligned to Sri Lankan market behavior.
  */
 import type { CategoryCode } from "@/types/booking";
+import { CATEGORY_TIER_MAP, TIER_COMMISSION_RATES } from "@/engines/commissionEngine";
 
 export interface PaymentRuleResult {
   depositRequired: boolean;
@@ -14,6 +15,8 @@ export interface PaymentRuleResult {
   splitPaymentEnabled: boolean;
   settlementCommissionPercent: number;
   technicianSharePercent: number;
+  /** Whether milestone payments apply */
+  milestonePaymentsEnabled: boolean;
 }
 
 interface CategoryPaymentConfig {
@@ -21,8 +24,13 @@ interface CategoryPaymentConfig {
   depositPercent: number;
   allowCashOnCompletion: boolean;
   splitPaymentEnabled: boolean;
-  commissionPercent: number;
   technicianSharePercent: number;
+}
+
+/** Commission rates now driven by tier: small=10%, medium=7%, project=5% */
+function getCommissionPercent(categoryCode: CategoryCode): number {
+  const tier = CATEGORY_TIER_MAP[categoryCode];
+  return TIER_COMMISSION_RATES[tier];
 }
 
 const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
@@ -31,7 +39,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 0,
     allowCashOnCompletion: true,
     splitPaymentEnabled: false,
-    commissionPercent: 15,
     technicianSharePercent: 60,
   },
   IT: {
@@ -39,7 +46,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 0,
     allowCashOnCompletion: true,
     splitPaymentEnabled: false,
-    commissionPercent: 15,
     technicianSharePercent: 60,
   },
   MOBILE: {
@@ -47,7 +53,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 0,
     allowCashOnCompletion: true,
     splitPaymentEnabled: false,
-    commissionPercent: 15,
     technicianSharePercent: 55,
   },
   CONSUMER_ELEC: {
@@ -55,7 +60,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 0,
     allowCashOnCompletion: true,
     splitPaymentEnabled: false,
-    commissionPercent: 15,
     technicianSharePercent: 60,
   },
   COPIER: {
@@ -63,7 +67,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 0,
     allowCashOnCompletion: true,
     splitPaymentEnabled: false,
-    commissionPercent: 15,
     technicianSharePercent: 55,
   },
   CCTV: {
@@ -71,7 +74,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 30,
     allowCashOnCompletion: true,
     splitPaymentEnabled: true,
-    commissionPercent: 18,
     technicianSharePercent: 55,
   },
   SOLAR: {
@@ -79,7 +81,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 25,
     allowCashOnCompletion: true,
     splitPaymentEnabled: true,
-    commissionPercent: 18,
     technicianSharePercent: 50,
   },
   SMART_HOME_OFFICE: {
@@ -87,7 +88,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 25,
     allowCashOnCompletion: true,
     splitPaymentEnabled: true,
-    commissionPercent: 18,
     technicianSharePercent: 55,
   },
   PRINT_SUPPLIES: {
@@ -95,7 +95,6 @@ const CATEGORY_PAYMENT_CONFIG: Record<CategoryCode, CategoryPaymentConfig> = {
     depositPercent: 0,
     allowCashOnCompletion: true,
     splitPaymentEnabled: false,
-    commissionPercent: 10,
     technicianSharePercent: 65,
   },
 };
