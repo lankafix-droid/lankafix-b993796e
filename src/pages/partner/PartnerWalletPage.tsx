@@ -2,8 +2,9 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { useBookingStore } from "@/store/bookingStore";
 import { computeSettlementForBooking, computePartnerWallet } from "@/lib/settlementEngine";
+import { calculateCommission, CATEGORY_TIER_MAP, TIER_LABELS, TIER_COMMISSION_RATES } from "@/engines/commissionEngine";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, TrendingUp, AlertTriangle, ArrowLeft, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
+import { Wallet, TrendingUp, AlertTriangle, ArrowLeft, CheckCircle2, Clock, ShieldAlert, Percent, BarChart3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
@@ -34,6 +35,15 @@ const PartnerWalletPage = () => {
 
   const formatLKR = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
 
+  // Compute commission breakdown per booking
+  const commissionDetails = relevantBookings.map((b) => {
+    const jobValue = b.finance?.totalApprovedAmount || b.pricing.estimatedMin || 0;
+    const commission = calculateCommission(b.categoryCode, jobValue);
+    return { booking: b, commission };
+  });
+
+  const totalCommissionDeducted = commissionDetails.reduce((s, d) => s + d.commission.commissionAmount, 0);
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -46,6 +56,22 @@ const PartnerWalletPage = () => {
             <Wallet className="w-6 h-6 text-primary" /> Partner Wallet
           </h1>
 
+          {/* Commission Tier Info */}
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Percent className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">LankaFix Commission Rates</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.entries(TIER_COMMISSION_RATES) as [string, number][]).map(([tier, rate]) => (
+                <div key={tier} className="bg-background rounded-lg p-2 text-center border">
+                  <p className="text-xs text-muted-foreground">{TIER_LABELS[tier as keyof typeof TIER_LABELS]}</p>
+                  <p className="text-lg font-bold text-primary">{rate}%</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Summary Cards */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="bg-card rounded-xl border p-4">
@@ -57,37 +83,42 @@ const PartnerWalletPage = () => {
               <p className="text-lg font-bold text-success">{formatLKR(wallet.releasedSettlement)}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Held Amount</p>
-              <p className="text-lg font-bold text-destructive">{formatLKR(wallet.heldAmount)}</p>
+              <p className="text-xs text-muted-foreground mb-1">Commission Deducted</p>
+              <p className="text-lg font-bold text-primary">{formatLKR(totalCommissionDeducted)}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Refund Adjustments</p>
-              <p className="text-lg font-bold text-muted-foreground">{formatLKR(wallet.refundAdjustments)}</p>
+              <p className="text-xs text-muted-foreground mb-1">Held / Refunds</p>
+              <p className="text-lg font-bold text-destructive">{formatLKR(wallet.heldAmount + wallet.refundAdjustments)}</p>
             </div>
           </div>
 
-          {/* Booking Settlements */}
-          <h2 className="text-sm font-semibold text-foreground mb-3">Settlement Breakdown</h2>
-          {relevantBookings.length === 0 ? (
+          {/* Booking Settlements with Commission */}
+          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-primary" /> Settlement & Commission Breakdown
+          </h2>
+          {commissionDetails.length === 0 ? (
             <div className="bg-card rounded-xl border p-6 text-center text-sm text-muted-foreground">
               No settled bookings yet
             </div>
           ) : (
             <div className="space-y-3 mb-6">
-              {relevantBookings.map((b) => {
+              {commissionDetails.map(({ booking: b, commission: c }) => {
                 const s = computeSettlementForBooking(b);
                 const style = STATUS_STYLES[s.settlementStatus];
                 return (
                   <div key={b.jobId} className="bg-card rounded-xl border p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-foreground">{b.jobId}</span>
-                      <Badge className={style.className}>{style.label}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">{c.tierLabel} • {c.commissionPercent}%</Badge>
+                        <Badge className={style.className}>{style.label}</Badge>
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground mb-2">{b.categoryName} • {b.serviceName}</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div><span className="text-muted-foreground">Gross:</span> <span className="font-medium text-foreground">{formatLKR(s.grossAmount)}</span></div>
-                      <div><span className="text-muted-foreground">Commission:</span> <span className="font-medium text-foreground">{formatLKR(s.lankafixCommission)}</span></div>
-                      <div><span className="text-muted-foreground">Partner Share:</span> <span className="font-medium text-success">{formatLKR(s.partnerShare)}</span></div>
+                      <div><span className="text-muted-foreground">Job Value:</span> <span className="font-medium text-foreground">{formatLKR(c.jobValue)}</span></div>
+                      <div><span className="text-muted-foreground">Commission ({c.commissionPercent}%):</span> <span className="font-medium text-primary">{formatLKR(c.commissionAmount)}</span></div>
+                      <div><span className="text-muted-foreground">Partner Payout:</span> <span className="font-medium text-success">{formatLKR(c.partnerPayout)}</span></div>
                       <div><span className="text-muted-foreground">Tech Share:</span> <span className="font-medium text-foreground">{formatLKR(s.technicianShare)}</span></div>
                     </div>
                   </div>
@@ -101,11 +132,11 @@ const PartnerWalletPage = () => {
           <div className="space-y-2 mb-6">
             {relevantBookings.flatMap((b) =>
               (b.finance?.ledgerEntries || [])
-                .filter((e) => e.type === "provider_settlement" || e.type === "refund" || e.type === "manual_adjustment")
+                .filter((e) => e.type === "provider_settlement" || e.type === "commission" || e.type === "refund" || e.type === "manual_adjustment")
                 .map((e) => (
                   <div key={e.id} className="bg-card rounded-xl border p-3 flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-medium text-foreground">{e.type.replace(/_/g, " ")}</p>
+                      <p className="text-xs font-medium text-foreground capitalize">{e.type.replace(/_/g, " ")}</p>
                       <p className="text-[10px] text-muted-foreground">{b.jobId} • {new Date(e.createdAt).toLocaleDateString()}</p>
                     </div>
                     <span className={`text-sm font-bold ${e.direction === "in" ? "text-success" : "text-destructive"}`}>
