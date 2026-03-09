@@ -142,6 +142,7 @@ const App = () => (
           <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
           <Route path="/ops/ai-growth" element={<AIGrowthEnginePage />} />
           <Route path="/ops/expansion" element={<ExpansionRoadmapPage />} />
+          <Route path="/ops/revenue" element={<RevenueEnginePage />} />
 
           {/* ─── Content Pages ─── */}
           <Route path="/about" element={<AboutPage />} />
