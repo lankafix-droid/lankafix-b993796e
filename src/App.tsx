@@ -83,6 +83,8 @@ const App = () => (
           <Route path="/account" element={<AccountPage />} />
           <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
           <Route path="/sme" element={<SMEServicesPage />} />
+          <Route path="/referral" element={<ReferralPage />} />
+          <Route path="/corporate" element={<CorporateServicesPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
