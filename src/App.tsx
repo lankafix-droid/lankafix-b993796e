@@ -55,6 +55,9 @@ import AIGrowthEnginePage from "./pages/ops/AIGrowthEnginePage";
 import ReferralPage from "./pages/ReferralPage";
 import CorporateServicesPage from "./pages/CorporateServicesPage";
 import ExpansionRoadmapPage from "./pages/ops/ExpansionRoadmapPage";
+import PartnerPremiumPage from "./pages/partner/PartnerPremiumPage";
+import ConsumablesPage from "./pages/ConsumablesPage";
+import RevenueEnginePage from "./pages/ops/RevenueEnginePage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -85,6 +88,7 @@ const App = () => (
           <Route path="/sme" element={<SMEServicesPage />} />
           <Route path="/referral" element={<ReferralPage />} />
           <Route path="/corporate" element={<CorporateServicesPage />} />
+          <Route path="/supplies" element={<ConsumablesPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
@@ -105,6 +109,7 @@ const App = () => (
           <Route path="/partner/technicians" element={<TechniciansPage />} />
           <Route path="/partner/profile" element={<PartnerProfilePage />} />
           <Route path="/partner/wallet" element={<PartnerWalletPage />} />
+          <Route path="/partner/premium" element={<PartnerPremiumPage />} />
 
           {/* ─── Technician routes ─── */}
           <Route path="/technician" element={<TechnicianDashboardPage />} />
@@ -137,6 +142,7 @@ const App = () => (
           <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
           <Route path="/ops/ai-growth" element={<AIGrowthEnginePage />} />
           <Route path="/ops/expansion" element={<ExpansionRoadmapPage />} />
+          <Route path="/ops/revenue" element={<RevenueEnginePage />} />
 
           {/* ─── Content Pages ─── */}
           <Route path="/about" element={<AboutPage />} />
