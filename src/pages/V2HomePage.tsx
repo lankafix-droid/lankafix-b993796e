@@ -43,6 +43,7 @@ const V2HomePage = () => {
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
         <V2IntentLayer />
         <V2CategoryGrid />
+        <SuperAppShortcuts />
         <V2ServiceBundles />
         <V2SMEBanner />
         <V2NearbyTechnicians />

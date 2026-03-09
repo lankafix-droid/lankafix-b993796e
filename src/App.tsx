@@ -90,6 +90,7 @@ const App = () => (
           <Route path="/referral" element={<ReferralPage />} />
           <Route path="/corporate" element={<CorporateServicesPage />} />
           <Route path="/supplies" element={<ConsumablesPage />} />
+          <Route path="/home-health" element={<HomeHealthPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
