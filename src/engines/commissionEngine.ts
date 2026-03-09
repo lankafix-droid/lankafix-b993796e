@@ -20,9 +20,15 @@ export const CATEGORY_TIER_MAP: Record<CategoryCode, CategoryTier> = {
   PRINT_SUPPLIES: "small_repair",
   AC: "medium_repair",
   CONSUMER_ELEC: "medium_repair",
+  ELECTRICAL: "medium_repair",
+  PLUMBING: "medium_repair",
+  NETWORK: "small_repair",
+  APPLIANCE_INSTALL: "medium_repair",
   CCTV: "project_install",
   SOLAR: "project_install",
   SMART_HOME_OFFICE: "project_install",
+  HOME_SECURITY: "project_install",
+  POWER_BACKUP: "project_install",
 };
 
 export const TIER_COMMISSION_RATES: Record<CategoryTier, number> = {
