@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { getV2Flow } from "@/data/v2CategoryFlows";
 import type { PartGradeCode } from "@/data/partsPricing";
 import Header from "@/components/layout/Header";
