@@ -126,6 +126,11 @@ const App = () => (
           <Route path="/ops/pricing" element={<PricingEditorPage />} />
           <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
 
+          {/* ─── Content Pages ─── */}
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/how-pricing-works" element={<HowPricingWorksPage />} />
+
           {/* ─── Legal ─── */}
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
