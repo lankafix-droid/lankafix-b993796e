@@ -123,6 +123,10 @@ export function getPaymentRules(
     if (depositAmount < 500) depositAmount = 500; // Minimum deposit
   }
 
+  const commissionPercent = getCommissionPercent(categoryCode);
+  const tier = CATEGORY_TIER_MAP[categoryCode];
+  const milestonePaymentsEnabled = tier === "project_install";
+
   return {
     depositRequired,
     depositAmount,
@@ -131,7 +135,8 @@ export function getPaymentRules(
     allowGateway: false, // Coming soon
     allowLankaQr: false, // Coming soon
     splitPaymentEnabled: config.splitPaymentEnabled,
-    settlementCommissionPercent: config.commissionPercent,
+    settlementCommissionPercent: commissionPercent,
     technicianSharePercent: config.technicianSharePercent,
+    milestonePaymentsEnabled,
   };
 }
