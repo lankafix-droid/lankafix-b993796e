@@ -52,6 +52,9 @@ import HowPricingWorksPage from "./pages/HowPricingWorksPage";
 import BundleBookingPage from "./pages/BundleBookingPage";
 import SMEServicesPage from "./pages/SMEServicesPage";
 import AIGrowthEnginePage from "./pages/ops/AIGrowthEnginePage";
+import ReferralPage from "./pages/ReferralPage";
+import CorporateServicesPage from "./pages/CorporateServicesPage";
+import ExpansionRoadmapPage from "./pages/ops/ExpansionRoadmapPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -80,6 +83,8 @@ const App = () => (
           <Route path="/account" element={<AccountPage />} />
           <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
           <Route path="/sme" element={<SMEServicesPage />} />
+          <Route path="/referral" element={<ReferralPage />} />
+          <Route path="/corporate" element={<CorporateServicesPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
@@ -131,6 +136,7 @@ const App = () => (
           <Route path="/ops/pricing" element={<PricingEditorPage />} />
           <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
           <Route path="/ops/ai-growth" element={<AIGrowthEnginePage />} />
+          <Route path="/ops/expansion" element={<ExpansionRoadmapPage />} />
 
           {/* ─── Content Pages ─── */}
           <Route path="/about" element={<AboutPage />} />
