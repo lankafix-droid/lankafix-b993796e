@@ -95,49 +95,15 @@ const V2BookingPage = () => {
     if (!flow || !booking.serviceTypeId) return undefined;
     return getDiagnosticBlock(flow.code, booking.serviceTypeId);
   }, [flow, booking.serviceTypeId]);
-  const showPartGrade = useMemo(() => {
-    if (!flow) return false;
-    if (!PART_GRADE_CATEGORIES.includes(flow.code)) return false;
-    const eligible = PART_GRADE_SERVICE_TYPES[flow.code];
-    if (!eligible) return false;
-    return !booking.serviceTypeId || eligible.includes(booking.serviceTypeId);
-  }, [flow, booking.serviceTypeId]);
 
-  const showACAddons = useMemo(() => {
-    if (!flow) return false;
-    return flow.code === "AC" && booking.serviceTypeId === AC_INSTALL_SERVICE;
-  }, [flow, booking.serviceTypeId]);
-
-  const needsLocation = useMemo(() => {
-    if (booking.serviceModeId === "remote") return false;
-    if (booking.serviceModeId === "drop_off") return false;
-    return true;
-  }, [booking.serviceModeId]);
-
+  // Use the service-type step engine instead of category-level step logic
   const steps = useMemo(() => {
     if (!flow) return ["landing"];
-    const s: string[] = ["landing", "service_type"];
-
-    if (flow.issueSelectors && flow.issueSelectors.length > 0) s.push("issue");
-    s.push("pricing_expectation");
-    if (showPartGrade) s.push("part_grade");
-    if (flow.serviceModes && flow.serviceModes.length > 0) s.push("service_mode");
-    if (needsLocation) s.push("location");
-    s.push("device_details");
-    if (diagBlock) {
-      s.push("smart_diagnosis", "diagnosis_summary");
-    }
-    if (showACAddons) s.push("ac_install_addons");
-    if (flow.siteConditions && flow.siteConditions.length > 0) {
-      const isRemote = booking.serviceModeId === "remote";
-      if (!isRemote) s.push("site_conditions");
-    }
-    if (flow.pricingArchetype !== "quote_required") {
-      s.push("pricing");
-    }
-    s.push("booking_protection", "assignment", "confirmation");
-    return s;
-  }, [flow, booking.serviceModeId, showPartGrade, showACAddons, needsLocation, diagBlock]);
+    return getServiceSteps(flow.code, booking.serviceTypeId || undefined, {
+      serviceModeId: booking.serviceModeId || undefined,
+      hasDiagBlock: !!diagBlock,
+    });
+  }, [flow, booking.serviceTypeId, booking.serviceModeId, diagBlock]);
 
   if (!flow) {
     return (
