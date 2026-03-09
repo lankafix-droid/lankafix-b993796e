@@ -69,7 +69,7 @@ const BundleBookingPage = () => {
     setStep("confirm");
   };
 
-  const canSubmit = name.trim() && phone.trim().length >= 9 && address.trim();
+  const canSubmit = !!(name.trim() && phone.trim().length >= 9 && address.trim());
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
