@@ -76,6 +76,7 @@ const App = () => (
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
