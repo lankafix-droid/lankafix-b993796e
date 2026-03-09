@@ -49,6 +49,7 @@ import BypassMonitorPage from "./pages/ops/BypassMonitorPage";
 import AboutPage from "./pages/AboutPage";
 import FAQPage from "./pages/FAQPage";
 import HowPricingWorksPage from "./pages/HowPricingWorksPage";
+import BundleBookingPage from "./pages/BundleBookingPage";
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -75,6 +76,7 @@ const App = () => (
           <Route path="/track" element={<TrackJob />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
 
           {/* ─── Legacy V2 redirects ─── */}
           <Route path="/v2" element={<Navigate to="/" replace />} />
