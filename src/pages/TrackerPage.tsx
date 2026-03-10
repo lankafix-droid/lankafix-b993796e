@@ -9,15 +9,17 @@ import {
   ArrowLeft, Star, CheckCircle2, Circle, Calendar,
   XCircle, FileText, AlertTriangle, Phone, MessageCircle,
   CreditCard, Play, Flag, Shield, Clock, MapPin, Sparkles,
-  ChevronDown, HelpCircle,
+  ChevronDown, HelpCircle, ClipboardList, Search, UserCheck,
+  Navigation, Wrench, Package, Building2, SearchCheck, CheckSquare,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS,
   BOOKING_TIMELINE_STEPS, QUOTE_TIMELINE_STEPS,
   CANCELLABLE_STATUSES, SERVICE_MODE_LABELS,
+  getTimelineStepsForBooking,
 } from "@/types/booking";
-import type { BookingStatus } from "@/types/booking";
+import type { BookingStatus, TimelineStepDef } from "@/types/booking";
 import MascotIcon from "@/components/brand/MascotIcon";
 import MascotGuide from "@/components/mascot/MascotGuide";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
