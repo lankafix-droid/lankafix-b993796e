@@ -9,6 +9,7 @@ import {
   ArrowLeft, Star, CheckCircle2, Circle, Calendar,
   XCircle, FileText, AlertTriangle, Phone, MessageCircle,
   CreditCard, Play, Flag, Shield, Clock, MapPin, Sparkles,
+  ChevronDown, HelpCircle,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -44,6 +45,8 @@ import type { TrackingSimulation } from "@/lib/trackingEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { motion, AnimatePresence } from "framer-motion";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -77,25 +80,65 @@ function getMascotKey(status: string, sosActive: boolean): MascotMessageKey {
   }
 }
 
-// ─── Premium Progress Stepper ───
+// ─── Next Best Action ───
+interface NextAction {
+  label: string;
+  description: string;
+  variant: "hero" | "outline" | "destructive";
+  onClick: () => void;
+  icon: React.ElementType;
+}
+
+function getNextBestAction(
+  booking: any,
+  handlers: Record<string, () => void>,
+): NextAction | null {
+  const s = booking.status as BookingStatus;
+
+  if (s === "matching" || s === "awaiting_partner_confirmation") {
+    return { label: "Matching in progress…", description: "We're finding you the best technician", variant: "outline", onClick: () => {}, icon: Clock };
+  }
+  if (s === "assigned" && booking.dispatchStatus === "pending") {
+    return { label: "Start Live Tracking", description: "See your technician's route in real-time", variant: "hero", onClick: handlers.startTracking, icon: MapPin };
+  }
+  if (s === "tech_en_route") {
+    return { label: "Track Arrival", description: "Your technician is on the way", variant: "hero", onClick: () => {}, icon: MapPin };
+  }
+  if ((s === "arrived" || s === "assigned") && !booking.startOtpVerifiedAt) {
+    return { label: "Verify Start OTP", description: "Share the code with your technician to begin", variant: "hero", onClick: handlers.verifyStart, icon: Shield };
+  }
+  if (s === "inspection_started" || (s === "arrived" && booking.pricing.quoteRequired && !booking.quote)) {
+    return { label: "Inspection in progress…", description: "Technician is diagnosing the issue", variant: "outline", onClick: () => {}, icon: Clock };
+  }
+  if (s === "quote_submitted") {
+    return { label: "Review & Approve Quote", description: "Your technician submitted a quote for approval", variant: "hero", onClick: handlers.viewQuote, icon: FileText };
+  }
+  if (s === "repair_started" || s === "in_progress") {
+    return { label: "Repair in progress…", description: "Your technician is working on it", variant: "outline", onClick: () => {}, icon: Clock };
+  }
+  if ((s === "repair_started" || s === "in_progress") && !booking.completionOtpVerifiedAt) {
+    return { label: "Verify Completion OTP", description: "Confirm the job is done", variant: "hero", onClick: handlers.verifyCompletion, icon: CheckCircle2 };
+  }
+  if (s === "completed" && !booking.rating) {
+    return { label: "Rate Your Experience", description: "Help us improve — rate this service", variant: "hero", onClick: handlers.scrollToRating, icon: Star };
+  }
+  return null;
+}
+
+// ─── Premium Progress Stepper (simplified) ───
 function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label: string }[]; currentIdx: number }) {
   const progress = steps.length > 1 ? Math.max(0, currentIdx / (steps.length - 1)) * 100 : 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-card/80 backdrop-blur-md border border-border/60 rounded-2xl p-5 mb-5 shadow-[var(--shadow-card)]"
-    >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-foreground">Job Progress</h3>
-        <span className="text-xs text-muted-foreground font-medium">
-          Step {Math.min(currentIdx + 1, steps.length)} of {steps.length}
+    <div className="bg-card/80 backdrop-blur-md border border-border/60 rounded-2xl p-4 mb-4 shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between mb-2.5">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progress</h3>
+        <span className="text-[10px] text-muted-foreground font-medium">
+          {Math.min(currentIdx + 1, steps.length)}/{steps.length}
         </span>
       </div>
-
       {/* Progress bar */}
-      <div className="relative h-2.5 bg-secondary rounded-full mb-4 overflow-hidden">
+      <div className="relative h-2 bg-secondary rounded-full overflow-hidden">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-accent"
           initial={{ width: "0%" }}
@@ -103,80 +146,46 @@ function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label:
           transition={{ duration: 0.8, ease: "easeOut" }}
         />
       </div>
-
-      {/* Step dots */}
-      <div className="flex justify-between">
+      {/* Only show: first, current, last labels */}
+      <div className="flex justify-between mt-2.5">
         {steps.map((step, i) => {
+          const show = i === 0 || i === currentIdx || i === steps.length - 1;
+          if (!show) return <div key={step.status} className="flex-1" />;
           const completed = currentIdx >= i;
           const isCurrent = i === currentIdx;
           return (
-            <div key={step.status} className="flex flex-col items-center gap-1.5 flex-1">
-              <motion.div
-                initial={{ scale: 0.8 }}
-                animate={{ scale: isCurrent ? 1.2 : 1 }}
-                className={`w-3.5 h-3.5 rounded-full transition-colors ${
-                  completed
-                    ? isCurrent
-                      ? "bg-primary ring-4 ring-primary/20"
-                      : "bg-success"
-                    : "bg-muted"
-                }`}
-              />
-              {(i === 0 || i === currentIdx || i === steps.length - 1) && (
-                <span className={`text-[10px] text-center leading-tight max-w-[60px] ${
-                  completed ? "text-foreground font-medium" : "text-muted-foreground"
-                }`}>
-                  {step.label}
-                </span>
-              )}
+            <div key={step.status} className="flex flex-col items-center flex-1">
+              <div className={`w-2.5 h-2.5 rounded-full ${isCurrent ? "bg-primary ring-3 ring-primary/20" : completed ? "bg-success" : "bg-muted"}`} />
+              <span className={`text-[9px] text-center leading-tight mt-1 max-w-[56px] ${isCurrent ? "text-primary font-semibold" : completed ? "text-foreground" : "text-muted-foreground"}`}>
+                {step.label}
+              </span>
             </div>
           );
         })}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-// ─── Trust Badge Row ───
-function TrustBadgeRow() {
-  const badges = [
-    { icon: Shield, label: "Verified Tech" },
-    { icon: Clock, label: "OTP Protected" },
-    { icon: Sparkles, label: "Warranty" },
-  ];
+// ─── Collapsible Section ───
+function CollapsibleSection({ title, icon: Icon, children, defaultOpen = false, delay = 0 }: {
+  title: string; icon: React.ElementType; children: React.ReactNode; defaultOpen?: boolean; delay?: number;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.3 }}
-      className="flex gap-2 mb-5 overflow-x-auto scrollbar-none pb-1"
-    >
-      {badges.map((b, i) => (
-        <motion.span
-          key={b.label}
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.35 + i * 0.08 }}
-          className="inline-flex items-center gap-1.5 bg-primary/5 border border-primary/10 rounded-full px-3 py-1.5 text-xs text-primary font-medium whitespace-nowrap"
-        >
-          <b.icon className="w-3.5 h-3.5" />
-          {b.label}
-        </motion.span>
-      ))}
-    </motion.div>
-  );
-}
-
-// ─── Animated Section Wrapper ───
-function Section({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-      className="mb-5"
-    >
-      {children}
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay }}>
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-3 group">
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Icon className="w-4 h-4 text-muted-foreground" />
+            {title}
+          </span>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pb-2">
+          {children}
+        </CollapsibleContent>
+      </Collapsible>
     </motion.div>
   );
 }
@@ -187,6 +196,15 @@ function SectionCard({ children, className = "" }: { children: React.ReactNode; 
     <div className={`bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] ${className}`}>
       {children}
     </div>
+  );
+}
+
+// ─── Animated Section ───
+function Section({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay }} className="mb-4">
+      {children}
+    </motion.div>
   );
 }
 
@@ -208,37 +226,28 @@ const TrackerPage = () => {
   const [showSos, setShowSos] = useState(false);
   const [simulation, setSimulation] = useState<TrackingSimulation | null>(null);
   const simRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ratingRef = useRef<HTMLDivElement>(null);
 
-  // Auto-start tracking simulation when tech is en route
   useEffect(() => {
     if (!booking) return;
     const isEnRoute = booking.status === "tech_en_route";
     const hasTracking = booking.trackingData?.isTracking;
-
     if (isEnRoute && hasTracking && !simulation) {
       const td = booking.trackingData!;
       if (td.technicianLocation && td.customerLocation) {
-        const sim = createSimulation(
-          booking.jobId,
-          td.technicianLocation.lat, td.technicianLocation.lng,
-          td.customerLocation.lat, td.customerLocation.lng,
-          15
-        );
+        const sim = createSimulation(booking.jobId, td.technicianLocation.lat, td.technicianLocation.lng, td.customerLocation.lat, td.customerLocation.lng, 15);
         setSimulation(sim);
       }
     }
   }, [booking?.status, booking?.trackingData?.isTracking]);
 
-  // Run simulation interval
   useEffect(() => {
     if (!simulation?.isRunning || !booking) return;
-
     simRef.current = setInterval(() => {
       setSimulation((prev) => {
         if (!prev || !prev.isRunning) return prev;
         const next = advanceSimulation(prev);
         updateTracking(booking.jobId, next.tracking);
-
         if (!next.isRunning && next.tracking.arrivedAt) {
           markArrived(booking.jobId);
           toast.success("Technician has arrived! 📍");
@@ -246,7 +255,6 @@ const TrackerPage = () => {
         return next;
       });
     }, 2000);
-
     return () => { if (simRef.current) clearInterval(simRef.current); };
   }, [simulation?.isRunning]);
 
@@ -255,13 +263,7 @@ const TrackerPage = () => {
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
         <main className="flex-1 flex items-center justify-center px-6">
-          <EmptyState
-            icon={MapPin}
-            title="Booking Not Found"
-            description={`No booking found for "${jobId}". Check the Job ID and try again.`}
-            actionLabel="Track a Job"
-            onAction={() => navigate("/track")}
-          />
+          <EmptyState icon={MapPin} title="Booking Not Found" description={`No booking found for "${jobId}". Check the Job ID and try again.`} actionLabel="Track a Job" onAction={() => navigate("/track")} />
         </main>
         <Footer />
       </div>
@@ -282,69 +284,28 @@ const TrackerPage = () => {
   const isAssigned = booking.technician && !isMatching;
   const zoneIntel = getZoneIntelligence(booking.zone);
 
-  const handleCancel = () => {
-    if (!cancelReason) return;
-    cancelBooking(booking.jobId, cancelReason);
-    setShowCancel(false);
-    toast.success("Booking cancelled");
+  // Handlers
+  const handleCancel = () => { if (!cancelReason) return; cancelBooking(booking.jobId, cancelReason); setShowCancel(false); toast.success("Booking cancelled"); };
+  const handleRate = () => { if (rating > 0) { setBookingRating(booking.jobId, rating); setRatingSubmitted(true); toast.success("Thanks for your feedback!"); } };
+  const handleOtpVerify = () => { if (showOtp) { verifyOtp(booking.jobId, showOtp); toast.success(`${showOtp === "start" ? "Job start" : "Completion"} OTP verified`); setShowOtp(null); } };
+  const handleGenerateQuote = () => { const quote = generateDemoQuote(booking.categoryCode, booking.serviceCode, booking.pricing.estimatedMin); setBookingQuote(booking.jobId, quote); toast.success("Demo quote generated"); };
+  const handleDemoConfirmPartner = () => { updateBookingStatus(booking.jobId, "assigned"); toast.success("Partner confirmed"); };
+  const handleDemoInspection = () => { updateBookingStatus(booking.jobId, "inspection_started"); toast.success("Inspection started"); };
+  const handleDemoRepairStarted = () => { updateBookingStatus(booking.jobId, "repair_started"); toast.success("Repair started"); };
+  const handleStartTracking = () => {
+    const techGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
+    const custGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
+    startTravel(booking.jobId, techGeo.lat, techGeo.lng, custGeo.lat, custGeo.lng);
+    toast.success("Technician is on the way! 🚗");
   };
 
-  const handleRate = () => {
-    if (rating > 0) {
-      setBookingRating(booking.jobId, rating);
-      setRatingSubmitted(true);
-      toast.success("Thanks for your feedback!");
-    }
-  };
-
-  const handleOtpVerify = () => {
-    if (showOtp) {
-      verifyOtp(booking.jobId, showOtp);
-      toast.success(`${showOtp === "start" ? "Job start" : "Completion"} OTP verified`);
-      setShowOtp(null);
-    }
-  };
-
-  const handlePayDeposit = () => {
-    setPayment(booking.jobId, "deposit", {
-      type: "deposit", amount: booking.pricing.depositAmount, method: "cash",
-      status: "paid", refundableAmount: booking.pricing.depositAmount, refundStatus: "none",
-      paidAt: new Date().toISOString(), provider: "manual",
-    });
-    toast.success("Deposit payment recorded");
-  };
-
-  const handlePayCompletion = () => {
-    const amount = booking.quote?.options?.find((o) => o.id === booking.quote?.selectedOptionId)?.totals.total
-      || booking.pricing.estimatedMin;
-    setPayment(booking.jobId, "completion", {
-      type: "completion", amount, method: "cash",
-      status: "paid", refundableAmount: 0, refundStatus: "none",
-      paidAt: new Date().toISOString(), provider: "manual",
-    });
-    toast.success("Completion payment recorded");
-  };
-
-  const handleGenerateQuote = () => {
-    const quote = generateDemoQuote(booking.categoryCode, booking.serviceCode, booking.pricing.estimatedMin);
-    setBookingQuote(booking.jobId, quote);
-    toast.success("Demo quote generated");
-  };
-
-  const handleDemoConfirmPartner = () => {
-    updateBookingStatus(booking.jobId, "assigned");
-    toast.success("Partner confirmed — technician assigned");
-  };
-
-  const handleDemoInspection = () => {
-    updateBookingStatus(booking.jobId, "inspection_started");
-    toast.success("Inspection started");
-  };
-
-  const handleDemoRepairStarted = () => {
-    updateBookingStatus(booking.jobId, "repair_started");
-    toast.success("Repair started");
-  };
+  const nextAction = getNextBestAction(booking, {
+    startTracking: handleStartTracking,
+    verifyStart: () => setShowOtp("start"),
+    verifyCompletion: () => setShowOtp("completion"),
+    viewQuote: () => navigate(`/quote/${booking.jobId}`),
+    scrollToRating: () => ratingRef.current?.scrollIntoView({ behavior: "smooth" }),
+  });
 
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
@@ -355,7 +316,7 @@ const TrackerPage = () => {
           <div className="container max-w-2xl py-3 px-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
-                <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+                <Link to="/track" className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
                 <MascotIcon state={mascotState} badge={booking.isEmergency ? "emergency" : "verified"} size="sm" />
@@ -378,19 +339,45 @@ const TrackerPage = () => {
           </div>
         </div>
 
-        <div className="container py-6 px-4 max-w-2xl pb-28">
+        <div className="container py-5 px-4 max-w-2xl pb-28">
+
+          {/* ═══ BLOCK 1: Current Status + ETA + Technician ═══ */}
+          
           {/* Mascot Guide */}
-          <Section delay={0.1}>
+          <Section delay={0.05}>
             <MascotGuide messageKey={mascotKey} />
           </Section>
 
-          {/* Trust Badge Row */}
-          <TrustBadgeRow />
-
-          {/* Premium Progress Stepper */}
+          {/* Progress Stepper */}
           <PremiumStepper steps={timelineSteps} currentIdx={currentIdx} />
 
-          {/* Matching or Assignment Card */}
+          {/* ─── Next Best Action CTA ─── */}
+          {nextAction && (
+            <Section delay={0.1}>
+              <motion.div
+                initial={{ scale: 0.97 }}
+                animate={{ scale: 1 }}
+                className="rounded-2xl overflow-hidden"
+              >
+                <Button
+                  variant={nextAction.variant}
+                  className={`w-full rounded-2xl h-14 text-left justify-start gap-3 px-5 ${nextAction.variant === "hero" ? "shadow-brand" : ""}`}
+                  onClick={nextAction.onClick}
+                  disabled={nextAction.variant === "outline" && nextAction.label.includes("…")}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary-foreground/10 flex items-center justify-center shrink-0">
+                    <nextAction.icon className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 text-left">
+                    <p className="text-sm font-semibold leading-tight">{nextAction.label}</p>
+                    <p className="text-[11px] opacity-80 leading-tight mt-0.5">{nextAction.description}</p>
+                  </div>
+                </Button>
+              </motion.div>
+            </Section>
+          )}
+
+          {/* Matching or Assignment */}
           {isMatching && (
             <Section delay={0.15}>
               <MatchingCard
@@ -422,207 +409,144 @@ const TrackerPage = () => {
             </Section>
           )}
 
-          {/* Live Tracking Map */}
+          {/* ═══ BLOCK 2: Live Tracking / Map ═══ */}
           {booking.trackingData?.isTracking && booking.technician && (
             <Section delay={0.2}>
-              <div className="space-y-4">
-                <TechnicianMap
-                  tracking={booking.trackingData}
-                  technicianName={booking.technician.name}
-                />
-                <TechnicianLocationCard
-                  technician={booking.technician}
-                  tracking={booking.trackingData}
-                />
+              <div className="space-y-3">
+                <TechnicianMap tracking={booking.trackingData} technicianName={booking.technician.name} />
+                <TechnicianLocationCard technician={booking.technician} tracking={booking.trackingData} />
               </div>
             </Section>
           )}
 
-          {/* Arrived notification */}
           {booking.trackingData?.arrivedAt && !booking.trackingData?.isTracking && booking.technician && (
             <Section delay={0.2}>
-              <TechnicianLocationCard
-                technician={booking.technician}
-                tracking={booking.trackingData}
-              />
+              <TechnicianLocationCard technician={booking.technician} tracking={booking.trackingData} />
             </Section>
           )}
 
-          {/* ─── Booking Confirmation Card ─── */}
+          {/* ═══ BLOCK 3: Booking Details + Payment ═══ */}
           <Section delay={0.25}>
             <SectionCard>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <LankaFixLogo size="sm" />
-                <span className="text-[10px] text-muted-foreground bg-secondary px-2.5 py-1 rounded-full font-medium">
-                  Booking Confirmation
-                </span>
+                <span className="text-[10px] text-muted-foreground bg-secondary px-2.5 py-1 rounded-full font-medium">Booking Details</span>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-primary shrink-0" />
                   <div className="min-w-0">
-                    <span className="text-xs text-muted-foreground block">Date</span>
+                    <span className="text-[10px] text-muted-foreground block">Date</span>
                     <span className="font-medium text-foreground text-sm">{booking.scheduledDate || "TBD"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-primary shrink-0" />
                   <div className="min-w-0">
-                    <span className="text-xs text-muted-foreground block">Time</span>
+                    <span className="text-[10px] text-muted-foreground block">Time</span>
                     <span className="font-medium text-foreground text-sm">{booking.scheduledTime || booking.preferredWindow || "TBD"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-primary shrink-0" />
                   <div className="min-w-0">
-                    <span className="text-xs text-muted-foreground block">Zone</span>
+                    <span className="text-[10px] text-muted-foreground block">Zone</span>
                     <span className="font-medium text-foreground text-sm">{booking.zone}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Flag className="w-4 h-4 text-primary shrink-0" />
                   <div className="min-w-0">
-                    <span className="text-xs text-muted-foreground block">Mode</span>
+                    <span className="text-[10px] text-muted-foreground block">Mode</span>
                     <span className="font-medium text-foreground text-sm">{SERVICE_MODE_LABELS[booking.serviceMode]}</span>
                   </div>
                 </div>
               </div>
               {booking.address && (
-                <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">{booking.address}</p>
+                <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border/50">{booking.address}</p>
               )}
               {booking.payments.deposit && (
-                <div className={`mt-4 pt-4 border-t border-border/50 text-xs flex items-center gap-2 ${depositPaid ? "text-success" : "text-warning"}`}>
+                <div className={`mt-3 pt-3 border-t border-border/50 text-xs flex items-center gap-2 ${depositPaid ? "text-success" : "text-warning"}`}>
                   {depositPaid ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                   <span className="font-medium">Deposit: LKR {booking.payments.deposit.amount.toLocaleString("en-LK")} — {depositPaid ? "Paid" : "Pending"}</span>
                 </div>
               )}
-              <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2 text-xs text-success">
-                <CheckCircle2 className="w-4 h-4" />
-                <span className="font-medium">Payment only happens after job completion</span>
-              </div>
             </SectionCard>
           </Section>
 
-          {/* ─── Action Panel ─── */}
           <Section delay={0.3}>
-            <SectionCard>
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Actions</h3>
-
-              {/* OTP Controls */}
-              {(["assigned", "tech_en_route", "arrived", "inspection_started", "in_progress", "repair_started"] as BookingStatus[]).includes(booking.status) && (
-                <div className="flex gap-3">
-                  <Button
-                    variant={booking.startOtpVerifiedAt ? "outline" : "hero"}
-                    size="sm" className="flex-1 rounded-xl h-11"
-                    disabled={!!booking.startOtpVerifiedAt}
-                    onClick={() => setShowOtp("start")}
-                  >
-                    {booking.startOtpVerifiedAt ? "✓ Start Verified" : "Verify Start OTP"}
-                  </Button>
-                  <Button
-                    variant={booking.completionOtpVerifiedAt ? "outline" : "hero"}
-                    size="sm" className="flex-1 rounded-xl h-11"
-                    disabled={!!booking.completionOtpVerifiedAt}
-                    onClick={() => setShowOtp("completion")}
-                  >
-                    {booking.completionOtpVerifiedAt ? "✓ Completion Verified" : "Verify Completion OTP"}
-                  </Button>
-                </div>
-              )}
-
-              {/* Quote actions */}
-              {isQuoteFlow && (
-                <div className="mt-3">
-                  {booking.quote && (
-                    <Button variant="outline" className="w-full rounded-xl h-11" asChild>
-                      <Link to={`/quote/${booking.jobId}`}>
-                        <FileText className="w-4 h-4 mr-2" />
-                        {booking.status === "quote_submitted" ? "View & Approve Quote" : "View Quote Details"}
-                      </Link>
-                    </Button>
-                  )}
-                  {!booking.quote && (
-                    <Button variant="outline" className="w-full rounded-xl h-11" onClick={handleGenerateQuote}>
-                      <FileText className="w-4 h-4 mr-2" />
-                      Generate Quote (Demo)
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {/* Demo dispatch/arrival/inspection/repair */}
-              {booking.status === "assigned" && booking.dispatchStatus === "pending" && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={() => {
-                  const techGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
-                  const custGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
-                  startTravel(booking.jobId, techGeo.lat, techGeo.lng, custGeo.lat, custGeo.lng);
-                  toast.success("Technician is on the way! 🚗");
-                }}>
-                  <Play className="w-4 h-4 mr-2" /> Start Live Tracking (Demo)
-                </Button>
-              )}
-              {booking.status === "tech_en_route" && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={() => markArrived(booking.jobId)}>
-                  <MapPin className="w-4 h-4 mr-2" /> Mark Arrived (Demo)
-                </Button>
-              )}
-              {booking.status === "arrived" && isQuoteFlow && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={handleDemoInspection}>
-                  <Play className="w-4 h-4 mr-2" /> Start Inspection (Demo)
-                </Button>
-              )}
-              {booking.status === "quote_approved" && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={handleDemoRepairStarted}>
-                  <Play className="w-4 h-4 mr-2" /> Start Repair (Demo)
-                </Button>
-              )}
-            </SectionCard>
-          </Section>
-
-          {/* Payment Card */}
-          <Section delay={0.35}>
             <PaymentCard booking={booking} />
           </Section>
 
+          {/* ═══ BLOCK 4: Collapsible Lower Sections ═══ */}
+
+          {/* Demo controls (collapsible) */}
+          {(booking.status === "assigned" && booking.dispatchStatus === "pending") || booking.status === "tech_en_route" || (booking.status === "arrived" && isQuoteFlow) || booking.status === "quote_approved" || (isQuoteFlow && !booking.quote) ? (
+            <CollapsibleSection title="Demo Controls" icon={Play} delay={0.35}>
+              <div className="space-y-2">
+                {booking.status === "tech_en_route" && (
+                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={() => markArrived(booking.jobId)}>
+                    <MapPin className="w-4 h-4 mr-2" /> Mark Arrived (Demo)
+                  </Button>
+                )}
+                {booking.status === "arrived" && isQuoteFlow && (
+                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={handleDemoInspection}>
+                    <Play className="w-4 h-4 mr-2" /> Start Inspection (Demo)
+                  </Button>
+                )}
+                {booking.status === "quote_approved" && (
+                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={handleDemoRepairStarted}>
+                    <Play className="w-4 h-4 mr-2" /> Start Repair (Demo)
+                  </Button>
+                )}
+                {isQuoteFlow && !booking.quote && (
+                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={handleGenerateQuote}>
+                    <FileText className="w-4 h-4 mr-2" /> Generate Quote (Demo)
+                  </Button>
+                )}
+              </div>
+            </CollapsibleSection>
+          ) : null}
+
+          {/* Trust & Protection */}
+          <CollapsibleSection title="Trust & Protection" icon={Shield} delay={0.4}>
+            <TrustStackCard booking={booking} />
+          </CollapsibleSection>
+
           {/* Zone Intelligence */}
           {booking.zone && (
-            <Section delay={0.4}>
+            <CollapsibleSection title="Zone Intelligence" icon={MapPin} delay={0.45}>
               <ZoneIntelligenceCard zone={booking.zone} />
-            </Section>
+            </CollapsibleSection>
           )}
 
           {/* Technician Confidence */}
           {!isMatching && booking.technician && (
-            <Section delay={0.45}>
+            <CollapsibleSection title="Match Details" icon={Sparkles} delay={0.5}>
               <TechnicianConfidenceCard technician={booking.technician} jobId={booking.jobId} />
-            </Section>
+            </CollapsibleSection>
           )}
 
-          {/* Trust Stack */}
-          <Section delay={0.5}>
-            <TrustStackCard booking={booking} />
-          </Section>
-
-          {/* Timeline Event Log */}
+          {/* Job History / Timeline */}
           {booking.timelineEvents.length > 0 && (
-            <Section delay={0.55}>
+            <CollapsibleSection title="Job History" icon={Clock} delay={0.55}>
               <TimelineEventLog events={booking.timelineEvents} />
-            </Section>
+            </CollapsibleSection>
           )}
 
           {/* Evidence */}
-          <Section delay={0.6}>
+          <CollapsibleSection title="Evidence & Photos" icon={FileText} delay={0.6}>
             <EvidenceCard jobId={booking.jobId} photos={booking.photos} />
-          </Section>
+          </CollapsibleSection>
 
-          {/* Warranty Card */}
+          {/* Warranty (completed) */}
           {isCompleted && (
             <Section delay={0.65}>
               <WarrantyCard booking={booking} />
             </Section>
           )}
 
-          {/* Care Upsell */}
+          {/* Care Upsell (completed) */}
           {isCompleted && (
             <Section delay={0.7}>
               <CareUpsellBanner categoryCode={booking.categoryCode} />
@@ -632,109 +556,118 @@ const TrackerPage = () => {
           {/* ─── Rating ─── */}
           {isCompleted && (
             <Section delay={0.75}>
-              <SectionCard>
-                <div className="flex items-center gap-2 mb-4">
-                  <MascotIcon state="completed" size="sm" />
-                  <h3 className="text-sm font-semibold text-foreground">Rate Your Experience</h3>
-                </div>
-                {booking.status === "rated" || ratingSubmitted ? (
-                  <motion.div
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
-                    className="text-center py-4"
-                  >
-                    <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-3" />
-                    <p className="text-sm text-success font-semibold">Thank you for your rating!</p>
-                    <div className="flex justify-center gap-1.5 mt-3">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className={`w-6 h-6 ${s <= (booking.rating || rating) ? "text-warning fill-warning" : "text-muted-foreground/30"}`} />
-                      ))}
-                    </div>
-                  </motion.div>
-                ) : (
-                  <div>
-                    <div className="flex gap-3 mb-5 justify-center">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <motion.button
-                          key={s}
-                          whileHover={{ scale: 1.15 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setRating(s)}
-                          aria-label={`Rate ${s} stars`}
-                          className="p-1"
-                        >
-                          <Star className={`w-9 h-9 cursor-pointer transition-colors ${s <= rating ? "text-warning fill-warning" : "text-muted-foreground/30 hover:text-warning/50"}`} />
-                        </motion.button>
-                      ))}
-                    </div>
-                    <Button variant="hero" className="w-full rounded-xl h-12" onClick={handleRate} disabled={rating === 0}>
-                      Submit Rating
-                    </Button>
+              <div ref={ratingRef}>
+                <SectionCard>
+                  <div className="flex items-center gap-2 mb-4">
+                    <MascotIcon state="completed" size="sm" />
+                    <h3 className="text-sm font-semibold text-foreground">Rate Your Experience</h3>
                   </div>
-                )}
+                  {booking.status === "rated" || ratingSubmitted ? (
+                    <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center py-4">
+                      <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-3" />
+                      <p className="text-sm text-success font-semibold">Thank you for your rating!</p>
+                      <div className="flex justify-center gap-1.5 mt-3">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star key={s} className={`w-6 h-6 ${s <= (booking.rating || rating) ? "text-warning fill-warning" : "text-muted-foreground/30"}`} />
+                        ))}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <div>
+                      <div className="flex gap-3 mb-5 justify-center">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <motion.button key={s} whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.95 }} onClick={() => setRating(s)} aria-label={`Rate ${s} stars`} className="p-1">
+                            <Star className={`w-9 h-9 cursor-pointer transition-colors ${s <= rating ? "text-warning fill-warning" : "text-muted-foreground/30 hover:text-warning/50"}`} />
+                          </motion.button>
+                        ))}
+                      </div>
+                      <Button variant="hero" className="w-full rounded-xl h-12" onClick={handleRate} disabled={rating === 0}>Submit Rating</Button>
+                    </div>
+                  )}
+                </SectionCard>
+              </div>
+            </Section>
+          )}
+
+          {/* ─── Need Help? ─── */}
+          {booking.status !== "cancelled" && !isCompleted && (
+            <Section delay={0.8}>
+              <SectionCard className="!p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <HelpCircle className="w-4.5 h-4.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Need help?</p>
+                      <p className="text-[11px] text-muted-foreground">Chat with our support team</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="rounded-xl h-9" asChild>
+                    <a href={whatsappLink(SUPPORT_WHATSAPP, `Hi, I need help with booking ${booking.jobId}`)} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Chat
+                    </a>
+                  </Button>
+                </div>
               </SectionCard>
             </Section>
           )}
 
-          {/* ─── SOS ─── */}
+          {/* ─── SOS (visually separated) ─── */}
           {booking.status !== "cancelled" && !isCompleted && (
-            <Section delay={0.8}>
+            <Section delay={0.85}>
               {showSos ? (
                 <SOSPanel jobId={booking.jobId} technicianName={booking.technician?.name} onClose={() => setShowSos(false)} />
               ) : (
-                <Button
-                  variant="outline"
-                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/5 rounded-xl h-12"
+                <button
                   onClick={() => setShowSos(true)}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl border-2 border-dashed border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors group"
                 >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  SOS — Emergency Support
-                </Button>
+                  <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0 group-hover:bg-destructive/20 transition-colors">
+                    <AlertTriangle className="w-5 h-5 text-destructive" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-destructive">Emergency SOS</p>
+                    <p className="text-[11px] text-destructive/70">Feel unsafe? Report an issue immediately</p>
+                  </div>
+                </button>
               )}
             </Section>
           )}
 
           {/* ─── Cancel ─── */}
           {canCancel && booking.status !== "cancelled" && (
-            <Section delay={0.85}>
+            <Section delay={0.9}>
               <AnimatePresence mode="wait">
                 {showCancel ? (
-                  <motion.div
-                    key="cancel-form"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 overflow-hidden"
-                  >
-                    <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <motion.div key="cancel-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 overflow-hidden">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                       <XCircle className="w-4 h-4 text-destructive" /> Cancel Booking
                     </h3>
                     {booking.pricing.depositRequired && (
-                      <p className="text-xs text-warning bg-warning/10 rounded-xl px-3 py-2.5 mb-4">
-                        ⚠ Refund: {refundInfo.refundPercent}% — {refundInfo.reason}
-                      </p>
+                      <div className="bg-warning/10 rounded-xl px-4 py-3 mb-4 space-y-1">
+                        <p className="text-xs font-semibold text-warning">Refund: {refundInfo.refundPercent}%</p>
+                        <p className="text-[11px] text-muted-foreground">{refundInfo.reason}</p>
+                        <p className="text-[11px] text-muted-foreground">Need help? Our support team can assist with any concerns before you cancel.</p>
+                      </div>
                     )}
-                    <div className="space-y-2.5 mb-4">
+                    <div className="space-y-2 mb-4">
                       {CANCEL_REASONS.map((r) => (
-                        <button
-                          key={r}
-                          onClick={() => setCancelReason(r)}
-                          className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all min-h-[44px] ${cancelReason === r ? "bg-destructive/10 border-destructive/30 text-destructive font-medium" : "bg-card text-foreground hover:border-destructive/20"}`}
-                        >
+                        <button key={r} onClick={() => setCancelReason(r)} className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all min-h-[44px] ${cancelReason === r ? "bg-destructive/10 border-destructive/30 text-destructive font-medium" : "bg-card text-foreground hover:border-destructive/20"}`}>
                           {r}
                         </button>
                       ))}
                     </div>
                     <div className="flex gap-3">
-                      <Button variant="destructive" className="flex-1 rounded-xl h-11" onClick={handleCancel} disabled={!cancelReason}>Confirm Cancel</Button>
                       <Button variant="ghost" className="flex-1 rounded-xl h-11" onClick={() => setShowCancel(false)}>Go Back</Button>
+                      <Button variant="destructive" className="flex-1 rounded-xl h-11" onClick={handleCancel} disabled={!cancelReason}>Confirm Cancel</Button>
                     </div>
                   </motion.div>
                 ) : (
                   <motion.div key="cancel-btn">
-                    <Button variant="outline" className="w-full text-destructive hover:text-destructive rounded-xl h-12" onClick={() => setShowCancel(true)}>
-                      Cancel Booking
-                    </Button>
+                    <button onClick={() => setShowCancel(true)} className="w-full text-center py-3 text-sm text-muted-foreground hover:text-destructive transition-colors">
+                      Cancel this booking
+                    </button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -755,13 +688,7 @@ const TrackerPage = () => {
       <Footer />
 
       {/* OTP Modal */}
-      <OtpVerifyModal
-        open={showOtp !== null}
-        onClose={() => setShowOtp(null)}
-        onVerify={handleOtpVerify}
-        type={showOtp || "start"}
-        jobId={booking.jobId}
-      />
+      <OtpVerifyModal open={showOtp !== null} onClose={() => setShowOtp(null)} onVerify={handleOtpVerify} type={showOtp || "start"} jobId={booking.jobId} />
     </PageTransition>
   );
 };
