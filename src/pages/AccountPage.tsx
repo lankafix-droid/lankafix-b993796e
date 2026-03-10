@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import PageTransition from "@/components/motion/PageTransition";
+import { StaggerList, StaggerItem } from "@/components/motion/StaggerList";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";

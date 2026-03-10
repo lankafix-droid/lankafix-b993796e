@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PageTransition from "@/components/motion/PageTransition";
 import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2SeasonalPromos from "@/components/v2/V2SeasonalPromos";
