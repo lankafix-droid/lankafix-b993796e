@@ -109,7 +109,7 @@ export default function AIConversationalDiagnose() {
   const hasStarted = messages.length > 0;
 
   return (
-    <div className="bg-card rounded-2xl border border-border/50 overflow-hidden flex flex-col" style={{ maxHeight: "600px" }}>
+    <div className="bg-card rounded-2xl border border-border/50 overflow-hidden flex flex-col" style={{ maxHeight: "min(600px, 70vh)" }}>
       {/* Header */}
       <div className="p-4 border-b border-border/30 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
@@ -182,10 +182,10 @@ export default function AIConversationalDiagnose() {
 
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start">
-            <div className="bg-secondary/60 rounded-2xl rounded-bl-md px-4 py-3 flex gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-pulse" style={{ animationDelay: "0ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-pulse" style={{ animationDelay: "150ms" }} />
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 animate-pulse" style={{ animationDelay: "300ms" }} />
+            <div className="bg-secondary/60 rounded-2xl rounded-bl-md px-4 py-3 flex gap-1.5 items-center">
+              <span className="w-2 h-2 rounded-full bg-primary/60 ai-dot-1" />
+              <span className="w-2 h-2 rounded-full bg-primary/60 ai-dot-2" />
+              <span className="w-2 h-2 rounded-full bg-primary/60 ai-dot-3" />
             </div>
           </motion.div>
         )}

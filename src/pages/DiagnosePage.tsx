@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import PageTransition from "@/components/motion/PageTransition";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Progress } from "@/components/ui/progress";
@@ -127,7 +128,7 @@ const DiagnosePage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <PageTransition className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 bg-background">
         <div className="container py-6 max-w-lg">
@@ -194,7 +195,7 @@ const DiagnosePage = () => {
         </div>
       </main>
       <Footer />
-    </div>
+    </PageTransition>
   );
 };
 

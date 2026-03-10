@@ -48,7 +48,7 @@ const INTENTS = [
 
 const V2IntentLayer = () => {
   return (
-    <section className="py-10 md:py-12">
+    <section className="py-8 md:py-12">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}

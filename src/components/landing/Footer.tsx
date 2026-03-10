@@ -5,7 +5,7 @@ import LankaFixLogo from "@/components/brand/LankaFixLogo";
 
 const Footer = () => {
   return (
-    <footer className="bg-navy text-primary-foreground/60 py-16 relative overflow-hidden">
+    <footer className="bg-navy text-primary-foreground/60 py-12 md:py-16 relative overflow-hidden pb-24 md:pb-16">
       {/* Subtle dot pattern */}
       <div className="absolute inset-0 opacity-[0.02]" style={{
         backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",

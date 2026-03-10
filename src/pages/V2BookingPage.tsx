@@ -181,7 +181,7 @@ const V2BookingPage = () => {
       <main className="flex-1">
         {/* Premium progress stepper */}
         {step > 0 && (
-          <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b shadow-sm">
+          <div className="sticky top-0 z-30 glass border-b shadow-sm safe-area-top">
             <div className="container max-w-2xl py-3">
               {/* Top row: back + category + step count */}
               <div className="flex items-center gap-3 mb-3">

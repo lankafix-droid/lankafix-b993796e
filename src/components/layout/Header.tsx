@@ -31,7 +31,7 @@ const Header = () => {
   const { dark, toggle } = useTheme();
 
   return (
-    <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-2xl border-b border-border/30 elevation-2">
+    <header className="sticky top-0 z-50 glass border-b elevation-2 safe-area-top">
       <div className="container flex items-center justify-between h-14 md:h-16">
         <Link to="/" className="flex items-center">
           <LankaFixLogo size="md" />
