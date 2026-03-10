@@ -239,7 +239,7 @@ const V2BookingPage = () => {
                         <span className={`text-[9px] leading-none mt-0.5 ${
                           isCurrent ? "text-primary font-semibold" : isDone ? "text-success" : "text-muted-foreground/50"
                         }`}>
-                          {STEP_LABELS[s]?.slice(0, 6) || ""}
+                          {STEP_LABELS[s]?.slice(0, 7) || ""}
                         </span>
                       </div>
                     );
