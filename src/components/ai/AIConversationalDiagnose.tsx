@@ -109,7 +109,7 @@ export default function AIConversationalDiagnose() {
   const hasStarted = messages.length > 0;
 
   return (
-    <div className="bg-card rounded-2xl border border-border/50 overflow-hidden flex flex-col" style={{ maxHeight: "600px" }}>
+    <div className="bg-card rounded-2xl border border-border/50 overflow-hidden flex flex-col" style={{ maxHeight: "min(600px, 70vh)" }}>
       {/* Header */}
       <div className="p-4 border-b border-border/30 flex items-center justify-between bg-card">
         <div className="flex items-center gap-3">
