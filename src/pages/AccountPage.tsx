@@ -5,9 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { useLocationStore, ADDRESS_LABEL_OPTIONS } from "@/store/locationStore";
 import {
   User, MapPin, Clock, ShieldCheck, Phone, Settings, ChevronRight,
-  Smartphone, Monitor, Snowflake, Sun, Wrench, FileText, LogOut, Trash2, Lock, ExternalLink,
+  Smartphone, Snowflake, Wrench, FileText, LogOut, Trash2,
+  Lock, ExternalLink, MessageCircle, Mail, Info, HelpCircle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP, SUPPORT_PHONE, whatsappLink } from "@/config/contact";
+
+const APP_VERSION = "1.0.0";
 
 const MOCK_BOOKINGS = [
   { id: "LF-A1B2C3", category: "AC Services", service: "Standard Service", status: "completed", date: "2026-02-28", icon: Snowflake },
@@ -140,40 +144,75 @@ const AccountPage = () => {
           </div>
         </div>
 
-        {/* Settings placeholder */}
-        <Link to="/" className="block bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
-          <Settings className="w-5 h-5 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground flex-1">Account Settings</span>
-          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-        </Link>
-
-        {/* Data & Privacy */}
+        {/* ─── Settings, Legal & Support ─── */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Data & Privacy</h2>
-          <div className="bg-card rounded-xl border p-5 space-y-3">
-            <div className="flex items-start gap-3">
-              <Lock className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-foreground">Your Data is Protected</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  LankaFix collects only the information needed to process bookings: your name, contact details, location, and payment information. We never sell your data to third parties.
-                </p>
+          <h2 className="text-lg font-semibold text-foreground">Settings & Support</h2>
+          <div className="bg-card rounded-xl border divide-y divide-border">
+            {/* Support */}
+            <a
+              href={whatsappLink(SUPPORT_WHATSAPP, "Hi, I need help with my LankaFix account.")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+            >
+              <MessageCircle className="w-5 h-5 text-success" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">WhatsApp Support</p>
+                <p className="text-xs text-muted-foreground">Chat with us on WhatsApp</p>
               </div>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <Link to="/privacy" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Privacy Policy <ExternalLink className="w-3 h-3" />
-              </Link>
-              <span className="text-muted-foreground text-xs">·</span>
-              <Link to="/terms" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                Terms of Service <ExternalLink className="w-3 h-3" />
-              </Link>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
+            <a
+              href={`mailto:${SUPPORT_EMAIL}`}
+              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+            >
+              <Mail className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Email Support</p>
+                <p className="text-xs text-muted-foreground">{SUPPORT_EMAIL}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
+            <a
+              href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`}
+              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+            >
+              <Phone className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Call Support</p>
+                <p className="text-xs text-muted-foreground">{SUPPORT_PHONE}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
+
+            {/* Legal */}
+            <Link to="/privacy" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <Lock className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1">Privacy Policy</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Link>
+            <Link to="/terms" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <FileText className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1">Terms of Service</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Link>
+            <Link to="/faq" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <HelpCircle className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1">FAQ & Help</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Link>
+
+            {/* App version */}
+            <div className="flex items-center gap-3 p-4">
+              <Info className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1">App Version</span>
+              <span className="text-xs text-muted-foreground font-mono">{APP_VERSION}</span>
             </div>
           </div>
         </div>
 
-        {/* Logout & Delete */}
-        <div className="space-y-3 pb-4">
+        {/* ─── Account Actions ─── */}
+        <div className="space-y-3 pb-6">
           <Button variant="outline" className="w-full justify-start gap-3 h-12 rounded-xl text-foreground">
             <LogOut className="w-4 h-4" />
             <span className="text-sm font-medium">Log Out</span>
@@ -181,16 +220,13 @@ const AccountPage = () => {
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 h-12 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/5"
-            onClick={() => {
-              window.location.href = "mailto:hello@lankafix.lk?subject=Account%20Deletion%20Request&body=I%20would%20like%20to%20request%20deletion%20of%20my%20LankaFix%20account%20and%20all%20associated%20data.";
-            }}
+            asChild
           >
-            <Trash2 className="w-4 h-4" />
-            <span className="text-sm font-medium">Request Account Deletion</span>
+            <Link to="/account/delete">
+              <Trash2 className="w-4 h-4" />
+              <span className="text-sm font-medium">Delete My Account</span>
+            </Link>
           </Button>
-          <p className="text-[11px] text-muted-foreground text-center">
-            Account deletion requests are processed within 7 business days. All booking history and personal data will be permanently removed.
-          </p>
         </div>
       </main>
       <Footer />
