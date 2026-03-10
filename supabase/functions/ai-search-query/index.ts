@@ -6,6 +6,66 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Simple in-memory rate limiter (per-instance)
+const rateLimiter = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10; // requests per window
+const RATE_WINDOW_MS = 60_000; // 1 minute
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = rateLimiter.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimiter.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
+const VALID_CATEGORIES = [
+  "AC", "CCTV", "MOBILE", "IT", "SOLAR", "ELECTRICAL", "PLUMBING",
+  "ELECTRONICS", "NETWORK", "SMARTHOME", "SECURITY", "POWER_BACKUP",
+  "COPIER", "SUPPLIES", "APPLIANCE_INSTALL",
+];
+
+const VALID_URGENCIES = ["high", "medium", "low"];
+const VALID_BOOKING_PATHS = ["direct", "inspection", "quote_required"];
+
+function validateAndSanitize(raw: any): any {
+  if (!raw || typeof raw !== "object") throw new Error("Invalid AI response structure");
+
+  const category_code = VALID_CATEGORIES.includes(raw.category_code) ? raw.category_code : "IT";
+  const urgency = VALID_URGENCIES.includes(raw.urgency) ? raw.urgency : "medium";
+  const booking_path = VALID_BOOKING_PATHS.includes(raw.booking_path) ? raw.booking_path : "inspection";
+  const confidence = typeof raw.confidence === "number" ? Math.max(0, Math.min(100, Math.round(raw.confidence))) : 50;
+
+  // Force low-confidence results to inspection path
+  const finalBookingPath = confidence < 60 ? "inspection" : booking_path;
+
+  return {
+    category_code,
+    category_name: typeof raw.category_name === "string" ? raw.category_name.slice(0, 100) : category_code,
+    service_type: typeof raw.service_type === "string" ? raw.service_type.slice(0, 80) : "GENERAL",
+    service_name: typeof raw.service_name === "string" ? raw.service_name.slice(0, 100) : "General Service",
+    urgency,
+    confidence,
+    booking_path: finalBookingPath,
+    estimated_price_range: typeof raw.estimated_price_range === "string" ? raw.estimated_price_range.slice(0, 60) : "Contact for quote",
+    problem_summary: typeof raw.problem_summary === "string" ? raw.problem_summary.slice(0, 500) : "",
+    alternative_services: Array.isArray(raw.alternative_services)
+      ? raw.alternative_services.slice(0, 3).map((a: any) => ({
+          category_code: VALID_CATEGORIES.includes(a?.category_code) ? a.category_code : "IT",
+          service_type: typeof a?.service_type === "string" ? a.service_type.slice(0, 80) : "GENERAL",
+          reason: typeof a?.reason === "string" ? a.reason.slice(0, 200) : "",
+        }))
+      : [],
+    follow_up_questions: Array.isArray(raw.follow_up_questions)
+      ? raw.follow_up_questions.slice(0, 5).filter((q: any) => typeof q === "string").map((q: string) => q.slice(0, 200))
+      : [],
+  };
+}
+
 const SYSTEM_PROMPT = `You are LankaFix's AI Service Discovery engine for Sri Lanka's leading home & device service marketplace.
 
 Given a user's natural language problem description, analyze it and return a structured JSON response.
@@ -55,10 +115,20 @@ RULES:
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const startTime = Date.now();
+
   try {
+    // Rate limiting by IP or auth token
+    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+    if (!checkRateLimit(clientIp)) {
+      return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { query, session_id } = await req.json();
-    if (!query || typeof query !== "string" || query.trim().length < 2) {
-      return new Response(JSON.stringify({ error: "Query too short" }), {
+    if (!query || typeof query !== "string" || query.trim().length < 2 || query.trim().length > 500) {
+      return new Response(JSON.stringify({ error: "Query must be 2-500 characters" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -103,19 +173,22 @@ serve(async (req) => {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
     
-    // Parse JSON from response (handle potential markdown wrapping)
-    let parsed;
+    let rawParsed;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+      rawParsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
     } catch {
       console.error("Failed to parse AI response:", content);
-      return new Response(JSON.stringify({ error: "Failed to parse AI response", raw: content }), {
+      return new Response(JSON.stringify({ error: "Failed to parse AI response" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Log to database for ML training
+    // Strict validation and sanitization
+    const parsed = validateAndSanitize(rawParsed);
+    const responseTimeMs = Date.now() - startTime;
+
+    // Log using service role (no client insert needed)
     try {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
@@ -131,6 +204,8 @@ serve(async (req) => {
         matched_service: parsed.service_type,
         urgency_level: parsed.urgency,
         session_id: session_id || null,
+        response_time_ms: responseTimeMs,
+        client_platform: "web",
       });
     } catch (logErr) {
       console.error("Failed to log AI interaction:", logErr);
