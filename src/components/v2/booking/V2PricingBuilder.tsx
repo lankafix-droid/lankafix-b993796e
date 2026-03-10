@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, ArrowRight, Star, Info } from "lucide-react";
 import { categoryPricingRules } from "@/config/pricingRules";
+import AIPricingExplanation from "@/components/ai/AIPricingExplanation";
+import AISmartUpsell from "@/components/ai/AISmartUpsell";
 
 interface Props {
   packages: V2ServicePackage[];
