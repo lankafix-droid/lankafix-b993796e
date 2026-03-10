@@ -42,6 +42,7 @@ import { generateDemoQuote } from "@/engines/quoteEngine";
 import { getZoneIntelligence } from "@/engines/matchingEngine";
 import { track } from "@/lib/analytics";
 import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
+import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
 import type { TrackingSimulation } from "@/lib/trackingEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -49,6 +50,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
+import { Textarea } from "@/components/ui/textarea";
 
 const CANCEL_REASONS = [
   "Found another provider",
