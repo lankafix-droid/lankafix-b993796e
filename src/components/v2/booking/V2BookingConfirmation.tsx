@@ -189,6 +189,12 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </a>
         </div>
 
+        {createdJobId && (
+          <Button onClick={() => navigate(`/tracker/${createdJobId}`)} variant="hero" className="w-full rounded-xl h-12 gap-2">
+            Track My Booking <ArrowRight className="w-4 h-4" />
+          </Button>
+        )}
+
         <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
           Back to Home
         </Button>
