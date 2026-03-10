@@ -14,6 +14,7 @@ import { getHealthLabel } from "@/store/devicePassportStore";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { MAINTENANCE_SCHEDULES } from "@/engines/retentionEngine";
+import AIPredictiveMaintenance from "@/components/ai/AIPredictiveMaintenance";
 
 const CATEGORY_ICONS: Record<string, string> = {
   AC: "❄️", CCTV: "📹", IT: "💻", MOBILE: "📱", SOLAR: "☀️",
