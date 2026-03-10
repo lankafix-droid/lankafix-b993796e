@@ -76,12 +76,18 @@ const RedirectCategory = () => { const { code } = useParams(); return <Navigate 
 
 const queryClient = new QueryClient();
 
-// Loading fallback with skeleton
+// Premium loading fallback
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="flex flex-col items-center gap-3">
-      <div className="w-10 h-10 rounded-full border-3 border-primary border-t-transparent animate-spin" />
-      <span className="text-sm text-muted-foreground font-medium">Loading…</span>
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative w-10 h-10">
+        <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
+        <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <span className="text-sm text-foreground font-medium">Loading</span>
+        <span className="text-xs text-muted-foreground">Just a moment…</span>
+      </div>
     </div>
   </div>
 );
