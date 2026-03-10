@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import PageTransition from "@/components/motion/PageTransition";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Progress } from "@/components/ui/progress";
