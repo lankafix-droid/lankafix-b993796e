@@ -123,6 +123,12 @@ const V2PricingBuilder = ({ packages, selectedId, onSelect, onContinue, category
         </div>
       )}
 
+      {/* AI Pricing Explanation */}
+      <AIPricingExplanation categoryCode={categoryCode} serviceType={selectedId} />
+
+      {/* AI Smart Upsell */}
+      <AISmartUpsell categoryCode={categoryCode} serviceType={selectedId} />
+
       <Button onClick={onContinue} disabled={!selectedId} size="lg" className="w-full gap-2">
         Continue <ArrowRight className="w-4 h-4" />
       </Button>
