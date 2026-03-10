@@ -253,16 +253,6 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   }
 
   // ─── Default: Smart Technician Match ─────────────────────────────
-  const { phase, bestMatch, candidates, totalEligible, acceptCountdown, dispatchMode, dispatchRound } = dispatch;
-  const tech = bestMatch?.partner;
-  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type || "motorcycle"] || Car) : Car;
-  const searchingTechCount = totalEligible;
-
-  // Compute match intelligence for best match
-  const matchIntelligence = useMemo(() => {
-    if (!bestMatch) return null;
-    return intelligenceFromCandidate(bestMatch, categoryCode, isEmergency, customerZoneId);
-  }, [bestMatch, categoryCode, isEmergency, customerZoneId]);
 
   return (
     <div className="space-y-5">
