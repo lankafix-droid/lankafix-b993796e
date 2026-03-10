@@ -31,27 +31,33 @@ const EXAMPLE_QUERIES = [
   "solar panel not generating",
 ];
 
-// Strict category → route mapping (no dynamic generation from AI response)
+// Strict category → route mapping
 const CATEGORY_ROUTE_MAP: Record<string, string> = {
-  AC: "/book/ac",
-  CCTV: "/book/cctv",
-  MOBILE: "/book/mobile",
-  IT: "/book/it",
-  SOLAR: "/book/solar",
-  ELECTRICAL: "/book/electrical",
+  MOBILE: "/book/mobile-phone-repairs",
+  IT: "/book/it-repairs-support",
+  AC: "/book/ac-solutions",
+  CCTV: "/book/cctv-solutions",
+  SOLAR: "/book/solar-solutions",
+  ELECTRICAL: "/book/electrical-services",
   PLUMBING: "/book/plumbing",
-  ELECTRONICS: "/book/electronics",
-  NETWORK: "/book/network",
-  SMARTHOME: "/book/smarthome",
-  SECURITY: "/book/security",
+  ELECTRONICS: "/book/electronics-repair",
+  NETWORK: "/book/network-services",
+  SMARTHOME: "/book/smart-home-office",
+  SECURITY: "/book/home-security",
   POWER_BACKUP: "/book/power-backup",
-  COPIER: "/book/copier",
-  SUPPLIES: "/book/supplies",
-  APPLIANCE_INSTALL: "/book/appliance-install",
+  COPIER: "/book/copier-printer-repair",
+  SUPPLIES: "/book/print-supplies",
+  APPLIANCE_INSTALL: "/book/appliance-installation",
 };
 
 const getBookingRoute = (categoryCode: string): string =>
-  CATEGORY_ROUTE_MAP[categoryCode] || "/book/it";
+  CATEGORY_ROUTE_MAP[categoryCode] || "/book/inspection";
+
+function getConfidenceBucket(confidence: number): string {
+  if (confidence >= 80) return "high";
+  if (confidence >= 50) return "medium";
+  return "low";
+}
 
 const AISmartSearch = () => {
   const navigate = useNavigate();
@@ -84,9 +90,14 @@ const AISmartSearch = () => {
 
       const data: AISearchResult = await resp.json();
       setResult(data);
-      track("ai_search_complete", { category: data.category_code, confidence: data.confidence, booking_path: data.booking_path });
+      track("ai_result_viewed", {
+        category: data.category_code,
+        confidence: data.confidence,
+        confidence_bucket: getConfidenceBucket(data.confidence),
+        booking_path: data.booking_path,
+      });
     } catch (e: any) {
-      setError(e.message || "Search failed");
+      setError(e.message || "Search failed. Please try again.");
     } finally {
       setIsSearching(false);
     }
@@ -104,6 +115,7 @@ const AISmartSearch = () => {
   };
 
   const isLowConfidence = result ? result.confidence < 60 : false;
+  const isInspectionRequired = result?.category_code === "INSPECTION_REQUIRED";
 
   const urgencyBadge = (u: string) => {
     if (u === "high") return "destructive" as const;
@@ -112,10 +124,36 @@ const AISmartSearch = () => {
   };
 
   const getCtaLabel = (r: AISearchResult) => {
-    if (r.confidence < 60) return "Book Inspection";
-    if (r.booking_path === "inspection") return "Book Inspection";
+    if (isInspectionRequired || r.confidence < 60 || r.booking_path === "inspection") return "Book Inspection";
     if (r.booking_path === "quote_required") return "Get Quote";
     return "Book Now";
+  };
+
+  const handleBookService = (r: AISearchResult) => {
+    const action = isInspectionRequired || r.confidence < 60 || r.booking_path === "inspection"
+      ? "ai_book_inspection"
+      : "ai_book_recommended_service";
+
+    track(action, {
+      category: r.category_code,
+      service: r.service_type,
+      confidence: r.confidence,
+      confidence_bucket: getConfidenceBucket(r.confidence),
+      booking_path: r.booking_path,
+      was_low_confidence: isLowConfidence,
+    });
+    navigate(getBookingRoute(r.category_code));
+  };
+
+  const handleAltClick = (alt: { category_code: string; service_type: string }, originalResult: AISearchResult) => {
+    track("ai_choose_different_service", {
+      original_category: originalResult.category_code,
+      selected_category: alt.category_code,
+      selected_service: alt.service_type,
+      confidence: originalResult.confidence,
+      confidence_bucket: getConfidenceBucket(originalResult.confidence),
+    });
+    navigate(getBookingRoute(alt.category_code));
   };
 
   return (
@@ -215,12 +253,14 @@ const AISmartSearch = () => {
                 </Badge>
               </div>
 
-              {/* Low confidence warning */}
-              {isLowConfidence && (
+              {/* Low confidence / inspection required warning */}
+              {(isLowConfidence || isInspectionRequired) && (
                 <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                   <p className="text-xs text-muted-foreground">
-                    AI confidence is low. We recommend booking an <strong>on-site inspection</strong> for an accurate diagnosis by a verified technician.
+                    {isInspectionRequired
+                      ? "We couldn't confidently match your issue to a specific service. We recommend booking a general inspection by a verified technician."
+                      : "AI confidence is low. We recommend booking an on-site inspection for an accurate diagnosis by a verified technician."}
                   </p>
                 </div>
               )}
@@ -272,16 +312,7 @@ const AISmartSearch = () => {
                 <div className="flex gap-3">
                   <Button
                     className="flex-1 rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
-                    onClick={() => {
-                      track("ai_search_book", {
-                        category: result.category_code,
-                        service: result.service_type,
-                        confidence: result.confidence,
-                        booking_path: result.booking_path,
-                        was_low_confidence: isLowConfidence,
-                      });
-                      navigate(getBookingRoute(result.category_code));
-                    }}
+                    onClick={() => handleBookService(result)}
                   >
                     {getCtaLabel(result)}
                     <ArrowRight className="w-4 h-4" />
@@ -307,10 +338,7 @@ const AISmartSearch = () => {
                   {result.alternative_services.map((alt, i) => (
                     <button
                       key={i}
-                      onClick={() => {
-                        track("ai_search_alt_click", { category: alt.category_code, service: alt.service_type });
-                        navigate(getBookingRoute(alt.category_code));
-                      }}
+                      onClick={() => handleAltClick(alt, result)}
                       className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary/50 transition-smooth text-left"
                     >
                       <div>

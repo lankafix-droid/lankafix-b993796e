@@ -6,22 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Simple in-memory rate limiter (per-instance)
-const rateLimiter = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 5; // photo diagnoses per window (stricter — heavier endpoint)
-const RATE_WINDOW_MS = 60_000;
-
-function checkRateLimit(key: string): boolean {
-  const now = Date.now();
-  const entry = rateLimiter.get(key);
-  if (!entry || now > entry.resetAt) {
-    rateLimiter.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT) return false;
-  entry.count++;
-  return true;
-}
+const ENDPOINT = "ai-photo-diagnose";
+const RATE_LIMIT = 5;
+const RATE_WINDOW_SECONDS = 60;
 
 const VALID_CATEGORIES = [
   "AC", "CCTV", "MOBILE", "IT", "SOLAR", "ELECTRICAL", "PLUMBING",
@@ -32,15 +19,120 @@ const VALID_URGENCIES = ["high", "medium", "low"];
 const VALID_SEVERITIES = ["high", "medium", "low"];
 const VALID_BOOKING_PATHS = ["direct", "inspection", "quote_required"];
 
-function validateAndSanitize(raw: any): any {
-  if (!raw || typeof raw !== "object") throw new Error("Invalid AI response structure");
+// Safety overrides for categories
+const SAFETY_OVERRIDES: Record<string, string> = {
+  ELECTRICAL: "inspection",
+  SOLAR: "quote_required",
+};
 
-  const category_code = VALID_CATEGORIES.includes(raw.category_code) ? raw.category_code : "IT";
+const SAFETY_KEYWORDS: { pattern: RegExp; booking_path: string }[] = [
+  { pattern: /\b(gas|refrigerant|freon|r22|r410)\b/i, booking_path: "inspection" },
+  { pattern: /\b(water\s*damage|water\s*damaged|fell\s*in\s*water|wet)\b/i, booking_path: "inspection" },
+  { pattern: /\b(sparking|shock|electri|short\s*circuit|fire|burning)\b/i, booking_path: "inspection" },
+];
+
+function getConfidenceBucket(confidence: number): string {
+  if (confidence >= 80) return "high";
+  if (confidence >= 50) return "medium";
+  return "low";
+}
+
+const INSPECTION_FALLBACK = {
+  detected_issues: [{ issue: "Unable to identify specific issue", confidence: 30, severity: "medium" as const, description: "On-site inspection recommended for accurate diagnosis" }],
+  category_code: "INSPECTION_REQUIRED",
+  category_name: "General Inspection",
+  recommended_service: "GENERAL_INSPECTION",
+  recommended_service_name: "General Inspection",
+  overall_confidence: 40,
+  urgency: "medium",
+  estimated_price_range: "Contact for quote",
+  booking_path: "inspection",
+  inspection_recommended: true,
+  additional_notes: "We couldn't confidently identify the issue from the photo. A verified technician will inspect and diagnose on-site.",
+  self_fix_possible: false,
+  self_fix_tip: null,
+};
+
+function getSupabaseClient() {
+  return createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+}
+
+async function checkRateLimit(supabase: any, identifier: string): Promise<boolean> {
+  const windowStart = new Date(Date.now() - RATE_WINDOW_SECONDS * 1000).toISOString();
+
+  const { data } = await supabase
+    .from("ai_rate_limits")
+    .select("id, request_count")
+    .eq("identifier", identifier)
+    .eq("endpoint", ENDPOINT)
+    .gte("window_start", windowStart)
+    .order("window_start", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (!data) {
+    await supabase.from("ai_rate_limits").insert({
+      identifier,
+      endpoint: ENDPOINT,
+      request_count: 1,
+      window_start: new Date().toISOString(),
+    });
+    return true;
+  }
+
+  if (data.request_count >= RATE_LIMIT) return false;
+
+  await supabase
+    .from("ai_rate_limits")
+    .update({ request_count: data.request_count + 1 })
+    .eq("id", data.id);
+  return true;
+}
+
+function applySafetyOverrides(parsed: any, description: string): any {
+  const categoryOverride = SAFETY_OVERRIDES[parsed.category_code];
+  if (categoryOverride) {
+    parsed.booking_path = categoryOverride;
+    if (categoryOverride === "inspection") parsed.inspection_recommended = true;
+  }
+
+  for (const rule of SAFETY_KEYWORDS) {
+    if (rule.pattern.test(description)) {
+      parsed.booking_path = rule.booking_path;
+      if (rule.booking_path === "inspection") parsed.inspection_recommended = true;
+      break;
+    }
+  }
+
+  // Also check detected issue text for safety keywords
+  if (Array.isArray(parsed.detected_issues)) {
+    for (const issue of parsed.detected_issues) {
+      for (const rule of SAFETY_KEYWORDS) {
+        if (rule.pattern.test(issue.issue || "") || rule.pattern.test(issue.description || "")) {
+          parsed.booking_path = rule.booking_path;
+          if (rule.booking_path === "inspection") parsed.inspection_recommended = true;
+          break;
+        }
+      }
+    }
+  }
+
+  return parsed;
+}
+
+function validateAndSanitize(raw: any): any {
+  if (!raw || typeof raw !== "object") return { ...INSPECTION_FALLBACK };
+
+  const category_code = VALID_CATEGORIES.includes(raw.category_code) ? raw.category_code : null;
+  if (!category_code) return { ...INSPECTION_FALLBACK };
+
   const urgency = VALID_URGENCIES.includes(raw.urgency) ? raw.urgency : "medium";
   const overall_confidence = typeof raw.overall_confidence === "number"
     ? Math.max(0, Math.min(100, Math.round(raw.overall_confidence))) : 50;
 
-  // Force low-confidence results to inspection
   const inspection_recommended = overall_confidence < 60 ? true : !!raw.inspection_recommended;
   const booking_path = overall_confidence < 60 ? "inspection"
     : VALID_BOOKING_PATHS.includes(raw.booking_path) ? raw.booking_path : "inspection";
@@ -119,29 +211,35 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
+    const supabase = getSupabaseClient();
+
+    // Centralized rate limiting
     const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
-    if (!checkRateLimit(clientIp)) {
+    const allowed = await checkRateLimit(supabase, clientIp);
+    if (!allowed) {
       return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    // Periodic cleanup (non-blocking)
+    supabase.rpc("cleanup_old_rate_limits").catch(() => {});
+
     const { image_base64, image_url, description, session_id } = await req.json();
-    
+
     if (!image_base64 && !image_url) {
       return new Response(JSON.stringify({ error: "No image provided" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate base64 size (max ~5MB base64 ≈ 6.7MB encoded)
-    if (image_base64 && image_base64.length > 7_000_000) {
-      return new Response(JSON.stringify({ error: "Image too large. Please compress and retry." }), {
+    // Reject images > ~10MB (base64 encoded ~13.3MB)
+    if (image_base64 && image_base64.length > 13_300_000) {
+      return new Response(JSON.stringify({ error: "Image too large (max 10MB). Please compress and retry." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate description length
     if (description && (typeof description !== "string" || description.length > 500)) {
       return new Response(JSON.stringify({ error: "Description must be under 500 characters." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -152,7 +250,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const userContent: any[] = [];
-    
+
     if (image_base64) {
       userContent.push({
         type: "image_url",
@@ -167,7 +265,7 @@ serve(async (req) => {
 
     userContent.push({
       type: "text",
-      text: description 
+      text: description
         ? `Analyze this image. The user describes the problem as: "${description}". Identify visible issues and recommend a service.`
         : "Analyze this image of a device or system. Identify any visible issues, damage, or problems and recommend the appropriate LankaFix service.",
     });
@@ -208,29 +306,26 @@ serve(async (req) => {
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
-    
-    let rawParsed;
+
+    let parsed;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      rawParsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+      const rawParsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+      parsed = validateAndSanitize(rawParsed);
     } catch {
       console.error("Failed to parse AI photo response:", content);
-      return new Response(JSON.stringify({ error: "Failed to parse AI response" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      parsed = { ...INSPECTION_FALLBACK };
     }
 
-    // Strict validation
-    const parsed = validateAndSanitize(rawParsed);
+    // Apply safety overrides
+    parsed = applySafetyOverrides(parsed, description || "");
+
     const responseTimeMs = Date.now() - startTime;
     const imageSizeBytes = image_base64 ? Math.round(image_base64.length * 0.75) : null;
+    const confidenceBucket = getConfidenceBucket(parsed.overall_confidence);
 
     // Log using service role only
     try {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
       await supabase.from("ai_interaction_logs").insert({
         interaction_type: "photo_diagnosis",
         input_query: description || null,
@@ -238,6 +333,7 @@ serve(async (req) => {
         ai_model: "google/gemini-2.5-flash",
         ai_response: parsed,
         confidence_score: parsed.overall_confidence,
+        confidence_bucket: confidenceBucket,
         matched_category: parsed.category_code,
         matched_service: parsed.recommended_service,
         urgency_level: parsed.urgency,
