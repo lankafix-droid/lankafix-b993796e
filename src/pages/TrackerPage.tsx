@@ -612,23 +612,38 @@ const TrackerPage = () => {
                   {booking.status === "rated" || ratingSubmitted ? (
                     <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center py-4">
                       <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-3" />
-                      <p className="text-sm text-success font-semibold">Thank you for your rating!</p>
+                      <p className="text-sm text-success font-semibold">Thank you for your feedback!</p>
                       <div className="flex justify-center gap-1.5 mt-3">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star key={s} className={`w-6 h-6 ${s <= (booking.rating || rating) ? "text-warning fill-warning" : "text-muted-foreground/30"}`} />
                         ))}
                       </div>
+                      {reviewText && <p className="text-xs text-muted-foreground mt-3 italic">"{reviewText}"</p>}
                     </motion.div>
                   ) : (
                     <div>
-                      <div className="flex gap-3 mb-5 justify-center">
+                      <div className="flex gap-3 mb-4 justify-center">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <motion.button key={s} whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.95 }} onClick={() => setRating(s)} aria-label={`Rate ${s} stars`} className="p-1">
                             <Star className={`w-9 h-9 cursor-pointer transition-colors ${s <= rating ? "text-warning fill-warning" : "text-muted-foreground/30 hover:text-warning/50"}`} />
                           </motion.button>
                         ))}
                       </div>
-                      <Button variant="hero" className="w-full rounded-xl h-12" onClick={handleRate} disabled={rating === 0}>Submit Rating</Button>
+                      {rating > 0 && (
+                        <p className="text-center text-xs text-muted-foreground mb-3">
+                          {rating >= 5 ? "Excellent! 🎉" : rating >= 4 ? "Great experience! 👍" : rating >= 3 ? "Good service" : rating >= 2 ? "Room for improvement" : "Sorry to hear that"}
+                        </p>
+                      )}
+                      <Textarea
+                        placeholder="Share details about your experience (optional)"
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                        className="mb-4 text-sm rounded-xl resize-none min-h-[80px]"
+                        rows={3}
+                      />
+                      <Button variant="hero" className="w-full rounded-xl h-12" onClick={handleRate} disabled={rating === 0}>
+                        Submit Review
+                      </Button>
                     </div>
                   )}
                 </SectionCard>
