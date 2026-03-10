@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Smartphone, Shield, AlertTriangle, Plus, ChevronRight } from "lucide-react";
-import { useDevicePassportStore, getHealthLabel } from "@/store/devicePassportStore";
+import { getHealthLabel } from "@/store/devicePassportStore";
+import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 
 const CATEGORY_ICONS: Record<string, string> = {
   AC: "❄️", CCTV: "📹", IT: "💻", MOBILE: "📱", SOLAR: "☀️",
