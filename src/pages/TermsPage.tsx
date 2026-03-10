@@ -9,10 +9,12 @@ const TermsPage = () => (
       <div className="container py-10 max-w-3xl space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground font-heading">Terms of Service</h1>
-          <p className="text-muted-foreground text-sm mt-2">Last updated: March 2026</p>
+          <p className="text-muted-foreground text-sm mt-2">
+            Last updated: <strong className="text-foreground">10 March 2026</strong>
+          </p>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
             These Terms of Service ("Terms") govern your use of the LankaFix platform and services operated by
-            Smart Office (Private) Limited. By using LankaFix, you agree to these Terms.
+            Smart Office (Private) Limited, Colombo, Sri Lanka. By using LankaFix, you agree to these Terms.
           </p>
         </div>
 
