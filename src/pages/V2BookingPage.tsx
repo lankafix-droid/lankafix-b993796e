@@ -22,7 +22,7 @@ import LocationPicker from "@/components/v2/location/LocationPicker";
 import BookingProtectionCard from "@/components/v2/booking/BookingProtectionCard";
 import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
 import type { DiagAnswer } from "@/data/diagnosticQuestions";
@@ -58,7 +58,6 @@ const INITIAL_STATE: V2BookingState = {
   isEmergency: false,
 };
 
-// Step labels for the stepper
 const STEP_LABELS: Record<string, string> = {
   landing: "Overview",
   service_type: "Service",
@@ -78,6 +77,11 @@ const STEP_LABELS: Record<string, string> = {
   confirmation: "Confirm",
 };
 
+/* Milestone steps for the visual stepper — only show key labels */
+const MILESTONE_STEPS = new Set([
+  "service_type", "device_details", "pricing", "assignment", "confirmation",
+]);
+
 const V2BookingPage = () => {
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
@@ -87,7 +91,6 @@ const V2BookingPage = () => {
 
   const flow = getV2Flow(category || "");
 
-  // Get per-service-type config (drives the entire flow)
   const serviceConfig: ServiceTypeConfig | undefined = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
     return getServiceTypeConfig(flow.code, booking.serviceTypeId);
@@ -98,7 +101,6 @@ const V2BookingPage = () => {
     return getDiagnosticBlock(flow.code, booking.serviceTypeId);
   }, [flow, booking.serviceTypeId]);
 
-  // Build step sequence from service-type config flags
   const steps = useMemo(() => {
     if (!flow) return ["landing"];
     return getServiceSteps(flow.code, booking.serviceTypeId || undefined, {
@@ -110,11 +112,8 @@ const V2BookingPage = () => {
     });
   }, [flow, booking.serviceTypeId, booking.serviceModeId, diagBlock]);
 
-  // Clamp step index when steps array shrinks (e.g., after mode change)
   useEffect(() => {
-    if (step >= steps.length) {
-      setStep(steps.length - 1);
-    }
+    if (step >= steps.length) setStep(steps.length - 1);
   }, [steps.length, step]);
 
   if (!flow) {
@@ -122,8 +121,12 @@ const V2BookingPage = () => {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-foreground mb-2">Category Not Found</h1>
+          <div className="text-center space-y-3 px-6">
+            <div className="w-16 h-16 rounded-full bg-muted/60 flex items-center justify-center mx-auto">
+              <span className="text-2xl">🔍</span>
+            </div>
+            <h1 className="text-xl font-bold text-foreground">Category Not Found</h1>
+            <p className="text-sm text-muted-foreground">We couldn't find this service category.</p>
             <Button variant="outline" onClick={() => navigate("/")}>Back to Home</Button>
           </div>
         </main>
@@ -157,7 +160,6 @@ const V2BookingPage = () => {
     return service?.price || 10000;
   };
 
-  // Derive the pricing archetype to show — use per-service-type config if available
   const activePricingArchetype: "fixed_price" | "diagnostic_first" | "quote_required" = serviceConfig?.pricing_archetype
     ? (
         serviceConfig.pricing_archetype === "starting_from" ? "diagnostic_first" :
@@ -168,24 +170,31 @@ const V2BookingPage = () => {
       )
     : flow.pricingArchetype;
 
-  // Derive assignment type from service config
   const activeAssignmentType = serviceConfig?.booking_outcome === "inspection_booking"
     ? "site_inspection" as const
     : serviceConfig?.booking_outcome === "remote_session_booking"
     ? "remote_support" as const
     : flow.assignmentType;
 
+  /* Build milestone indices for stepper dots */
+  const milestoneIndices = steps
+    .map((s, i) => ({ step: s, index: i }))
+    .filter(({ step: s, index: i }) => i > 0 && (MILESTONE_STEPS.has(s) || i === totalSteps - 1));
+
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
-        {/* Premium progress stepper */}
+        {/* Premium sticky progress stepper */}
         {step > 0 && (
-          <div className="sticky top-0 z-30 glass border-b shadow-sm safe-area-top">
-            <div className="container max-w-2xl py-3">
-              {/* Top row: back + category + step count */}
-              <div className="flex items-center gap-3 mb-3">
-                <button onClick={goBack} className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors">
+          <div className="sticky top-0 z-30 bg-card/90 backdrop-blur-xl border-b border-border/40 safe-area-top">
+            <div className="container max-w-2xl py-3 px-4">
+              {/* Top row */}
+              <div className="flex items-center gap-3 mb-2.5">
+                <button
+                  onClick={goBack}
+                  className="w-9 h-9 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors active:scale-95 shrink-0"
+                >
                   <ArrowLeft className="w-4 h-4 text-foreground" />
                 </button>
                 <div className="flex-1 min-w-0">
@@ -194,53 +203,62 @@ const V2BookingPage = () => {
                     {STEP_LABELS[currentStepName] || currentStepName}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium text-primary">{step}</span>
-                  <span className="text-xs text-muted-foreground">/ {totalSteps - 1}</span>
+                <div className="flex items-center gap-1 bg-primary/10 rounded-full px-2.5 py-1">
+                  <span className="text-xs font-bold text-primary">{step}</span>
+                  <span className="text-[10px] text-primary/60">/{totalSteps - 1}</span>
                 </div>
               </div>
 
-              {/* Progress bar with animated fill */}
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              {/* Progress bar */}
+              <div className="h-1 bg-muted rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-primary rounded-full"
+                  className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.4, ease: "easeOut" }}
                 />
               </div>
 
-              {/* Step dots — show key milestones */}
-              <div className="flex items-center justify-between mt-2 px-0.5">
-                {steps.filter((_, i) => i > 0).map((s, i) => {
-                  const realIndex = i + 1;
-                  const isDone = realIndex < step;
-                  const isCurrent = realIndex === step;
-                  if (steps.length > 8 && realIndex % 2 !== 0 && !isCurrent && !isDone) return null;
-                  return (
-                    <div key={s} className="flex flex-col items-center">
-                      <div
-                        className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                          isDone ? "bg-success" : isCurrent ? "bg-primary scale-125" : "bg-muted-foreground/20"
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              {/* Milestone dots — only key steps */}
+              {milestoneIndices.length > 2 && (
+                <div className="flex items-center justify-between mt-2 px-1">
+                  {milestoneIndices.map(({ step: s, index: idx }) => {
+                    const isDone = idx < step;
+                    const isCurrent = idx === step;
+                    return (
+                      <div key={s} className="flex flex-col items-center gap-0.5">
+                        <div className={`transition-all duration-300 ${
+                          isDone
+                            ? "w-2.5 h-2.5 rounded-full bg-success"
+                            : isCurrent
+                            ? "w-3 h-3 rounded-full bg-primary ring-2 ring-primary/20"
+                            : "w-2 h-2 rounded-full bg-muted-foreground/15"
+                        }`}>
+                          {isDone && <CheckCircle2 className="w-2.5 h-2.5 text-success-foreground" />}
+                        </div>
+                        <span className={`text-[9px] leading-none mt-0.5 ${
+                          isCurrent ? "text-primary font-semibold" : isDone ? "text-success" : "text-muted-foreground/50"
+                        }`}>
+                          {STEP_LABELS[s]?.slice(0, 6) || ""}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Step content with animated transitions */}
-        <div className="container max-w-2xl py-6">
+        {/* Step content */}
+        <div className="container max-w-2xl py-5 px-4">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStepName}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             >
               {currentStepName === "landing" && (
                 <V2CategoryLanding
@@ -255,7 +273,6 @@ const V2BookingPage = () => {
                   options={flow.serviceTypes}
                   selected={booking.serviceTypeId}
                   onSelect={(id) => {
-                    // Reset all downstream answers when service type changes
                     updateBooking({
                       serviceTypeId: id,
                       issueId: undefined,
@@ -267,7 +284,6 @@ const V2BookingPage = () => {
                       serviceModeId: "",
                       packageId: "",
                     });
-                    // Advance past service_type (always index 1)
                     setStep(2);
                     track("v2_booking_step", { category: flow.code, step: "service_selected", serviceType: id });
                   }}
