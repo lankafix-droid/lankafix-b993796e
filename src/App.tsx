@@ -107,6 +107,7 @@ const App = () => (
             <Route path="/waitlist" element={<WaitlistPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/account/delete" element={<AccountDeletionPage />} />
+            <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
             <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
             <Route path="/sme" element={<SMEServicesPage />} />
             <Route path="/referral" element={<ReferralPage />} />
