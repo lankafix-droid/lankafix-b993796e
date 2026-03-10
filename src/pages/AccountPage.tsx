@@ -10,7 +10,7 @@ import { useLocationStore, ADDRESS_LABEL_OPTIONS } from "@/store/locationStore";
 import {
   User, MapPin, Clock, ShieldCheck, Phone, ChevronRight,
   Smartphone, Snowflake, Wrench, FileText, LogOut, Trash2,
-  Lock, MessageCircle, Mail, Info,
+  Lock, MessageCircle, Mail, Info, Heart, HelpCircle,
 } from "lucide-react";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP, SUPPORT_PHONE, whatsappLink } from "@/config/contact";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,37 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   in_progress: { label: "In Progress", className: "bg-primary/10 text-primary border-primary/20" },
   pending: { label: "Pending", className: "bg-warning/10 text-warning border-warning/20" },
 };
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-base font-bold text-foreground mb-3">{children}</h2>;
+}
+
+function MenuRow({ icon: Icon, label, desc, to, href, iconColor = "text-primary", right }: {
+  icon: React.ElementType;
+  label: string;
+  desc?: string;
+  to?: string;
+  href?: string;
+  iconColor?: string;
+  right?: React.ReactNode;
+}) {
+  const content = (
+    <>
+      <Icon className={`w-5 h-5 ${iconColor} shrink-0`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {desc && <p className="text-xs text-muted-foreground truncate">{desc}</p>}
+      </div>
+      {right || <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />}
+    </>
+  );
+
+  const cls = "flex items-center gap-3 p-4 min-h-[56px] hover:bg-muted/50 transition-colors active:bg-muted/70";
+
+  if (to) return <Link to={to} className={cls}>{content}</Link>;
+  if (href) return <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>{content}</a>;
+  return <div className={cls}>{content}</div>;
+}
 
 const AccountPage = () => {
   const navigate = useNavigate();
@@ -55,219 +86,216 @@ const AccountPage = () => {
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 container max-w-2xl py-6">
+      <main className="flex-1 container max-w-2xl py-6 px-4 pb-28">
         <StaggerList className="space-y-6">
-        <StaggerItem>
-        {/* Profile header */}
-        <div className="bg-card rounded-2xl border p-6 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="w-8 h-8 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">My Account</h1>
-            {user ? (
-              <p className="text-sm text-muted-foreground mt-0.5">{user.email}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground mt-0.5">Manage your bookings, addresses, and preferences</p>
-            )}
-          </div>
-        </div>
-        </StaggerItem>
-
-        <StaggerItem>
-        {/* Quick actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <Link to="/track" className="bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
-            <Clock className="w-5 h-5 text-primary" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Track Job</p>
-              <p className="text-xs text-muted-foreground">Check live status</p>
+          {/* Profile header */}
+          <StaggerItem>
+            <div className="bg-card rounded-2xl border border-border/60 p-6 flex items-center gap-4 shadow-[var(--shadow-card)]">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
+                <User className="w-8 h-8 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-bold text-foreground">My Account</h1>
+                {user ? (
+                  <p className="text-sm text-muted-foreground mt-0.5 truncate">{user.email}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-0.5">Manage your bookings and preferences</p>
+                )}
+              </div>
             </div>
-          </Link>
-          <Link to="/diagnose" className="bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
-            <Wrench className="w-5 h-5 text-primary" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Diagnose</p>
-              <p className="text-xs text-muted-foreground">AI problem finder</p>
-            </div>
-          </Link>
-        </div>
-        </StaggerItem>
+          </StaggerItem>
 
-        <StaggerItem>
-        {/* Booking history */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Recent Bookings</h2>
-          {MOCK_BOOKINGS.map((booking) => {
-            const statusStyle = STATUS_STYLES[booking.status] || STATUS_STYLES.pending;
-            const Icon = booking.icon;
-            return (
-              <div key={booking.id} className="bg-card rounded-xl border p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5 text-primary" />
+          {/* Quick actions */}
+          <StaggerItem>
+            <div className="grid grid-cols-2 gap-3">
+              <Link to="/track" className="bg-card rounded-2xl border border-border/60 p-4 flex items-center gap-3 hover:border-primary/30 transition-colors active:scale-[0.98] shadow-[var(--shadow-card)]">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 text-primary" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground truncate">{booking.category}</p>
-                    <Badge variant="outline" className={`text-[10px] ${statusStyle.className}`}>
-                      {statusStyle.label}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Track Job</p>
+                  <p className="text-xs text-muted-foreground">Live status</p>
+                </div>
+              </Link>
+              <Link to="/diagnose" className="bg-card rounded-2xl border border-border/60 p-4 flex items-center gap-3 hover:border-primary/30 transition-colors active:scale-[0.98] shadow-[var(--shadow-card)]">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Wrench className="w-5 h-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">Diagnose</p>
+                  <p className="text-xs text-muted-foreground">AI problem finder</p>
+                </div>
+              </Link>
+            </div>
+          </StaggerItem>
+
+          {/* Booking history */}
+          <StaggerItem>
+            <div className="space-y-3">
+              <SectionTitle>Recent Bookings</SectionTitle>
+              {MOCK_BOOKINGS.map((booking) => {
+                const statusStyle = STATUS_STYLES[booking.status] || STATUS_STYLES.pending;
+                const Icon = booking.icon;
+                return (
+                  <div key={booking.id} className="bg-card rounded-2xl border border-border/60 p-4 flex items-center gap-4 shadow-[var(--shadow-card)]">
+                    <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Icon className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground truncate">{booking.category}</p>
+                        <Badge variant="outline" className={`text-[10px] ${statusStyle.className}`}>
+                          {statusStyle.label}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{booking.service} · {booking.date}</p>
+                      <p className="text-[10px] font-mono text-muted-foreground/70 mt-0.5">{booking.id}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </div>
+                );
+              })}
+              {MOCK_BOOKINGS.length === 0 && (
+                <div className="bg-card rounded-2xl border border-dashed border-border/60 p-10 text-center">
+                  <FileText className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-muted-foreground">No bookings yet</p>
+                  <Button asChild size="sm" className="mt-4 rounded-xl">
+                    <Link to="/">Book a Service</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </StaggerItem>
+
+          {/* Saved addresses */}
+          <StaggerItem>
+            <div className="space-y-3">
+              <SectionTitle>Saved Addresses</SectionTitle>
+              {savedAddresses.length > 0 ? (
+                savedAddresses.map((addr) => (
+                  <div key={addr.id} className="bg-card rounded-2xl border border-border/60 p-4 flex items-center gap-3 shadow-[var(--shadow-card)]">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      addr.zoneStatus === "inside" ? "bg-success/10" :
+                      addr.zoneStatus === "edge" ? "bg-warning/10" : "bg-destructive/10"
+                    }`}>
+                      <MapPin className={`w-5 h-5 ${
+                        addr.zoneStatus === "inside" ? "text-success" :
+                        addr.zoneStatus === "edge" ? "text-warning" : "text-destructive"
+                      }`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{addr.displayName}</p>
+                      <p className="text-xs text-muted-foreground">{addr.area}, {addr.city}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] shrink-0">
+                      {ADDRESS_LABEL_OPTIONS.find((l) => l.value === addr.label)?.label || "Other"}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{booking.service} · {booking.date}</p>
-                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{booking.id}</p>
+                ))
+              ) : (
+                <div className="bg-card rounded-2xl border border-dashed border-border/60 p-8 text-center">
+                  <MapPin className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-muted-foreground">No saved addresses</p>
+                  <p className="text-xs text-muted-foreground mt-1">Addresses are saved when you book a service</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              )}
+            </div>
+          </StaggerItem>
+
+          {/* Trust features */}
+          <StaggerItem>
+            <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]">
+              <SectionTitle>Your Protection</SectionTitle>
+              <div className="space-y-4">
+                {[
+                  { icon: ShieldCheck, label: "Verified Technicians", desc: "Background-checked and certified professionals" },
+                  { icon: FileText, label: "Quote Approval Required", desc: "No work begins without your explicit approval" },
+                  { icon: Phone, label: "OTP Job Verification", desc: "Secure job start and completion codes" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center shrink-0 mt-0.5">
+                      <item.icon className="w-4 h-4 text-success" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{item.label}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            );
-          })}
-          {MOCK_BOOKINGS.length === 0 && (
-            <div className="bg-muted/30 rounded-xl border border-dashed p-8 text-center">
-              <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No bookings yet</p>
-              <Button asChild size="sm" className="mt-3">
-                <Link to="/">Book a Service</Link>
+            </div>
+          </StaggerItem>
+
+          {/* ─── Settings, Legal & Support ─── */}
+          <StaggerItem>
+            <div className="space-y-3">
+              <SectionTitle>Settings & Support</SectionTitle>
+              <div className="bg-card rounded-2xl border border-border/60 divide-y divide-border/50 overflow-hidden shadow-[var(--shadow-card)]">
+                <MenuRow
+                  icon={MessageCircle}
+                  label="WhatsApp Support"
+                  desc="Chat with us on WhatsApp"
+                  href={whatsappLink(SUPPORT_WHATSAPP, "Hi, I need help with my LankaFix account.")}
+                  iconColor="text-success"
+                />
+                <MenuRow
+                  icon={Mail}
+                  label="Email Support"
+                  desc={SUPPORT_EMAIL}
+                  href={`mailto:${SUPPORT_EMAIL}`}
+                />
+                <MenuRow
+                  icon={Phone}
+                  label="Call Support"
+                  desc={SUPPORT_PHONE}
+                  href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`}
+                />
+
+                <div className="h-px bg-border/30" />
+
+                <MenuRow icon={HelpCircle} label="FAQ" desc="Common questions answered" to="/faq" iconColor="text-muted-foreground" />
+                <MenuRow icon={Heart} label="My Devices & Care" desc="Device passports & plans" to="/devices" iconColor="text-primary" />
+                <MenuRow icon={Lock} label="Privacy Policy" to="/privacy" iconColor="text-muted-foreground" />
+                <MenuRow icon={FileText} label="Terms of Service" to="/terms" iconColor="text-muted-foreground" />
+
+                <div className="h-px bg-border/30" />
+
+                <MenuRow
+                  icon={Info}
+                  label="App Version"
+                  iconColor="text-muted-foreground"
+                  right={<span className="text-xs text-muted-foreground font-mono">{APP_VERSION}</span>}
+                />
+              </div>
+            </div>
+          </StaggerItem>
+
+          {/* ─── Account Actions ─── */}
+          <StaggerItem>
+            <div className="space-y-3 pb-8">
+              {user && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-3 h-13 rounded-xl text-foreground border-border/60"
+                  disabled={loggingOut}
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span className="text-sm font-medium">{loggingOut ? "Signing out…" : "Log Out"}</span>
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-13 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/5"
+                asChild
+              >
+                <Link to="/account/delete">
+                  <Trash2 className="w-5 h-5" />
+                  <span className="text-sm font-medium">Delete My Account</span>
+                </Link>
               </Button>
             </div>
-          )}
-        </div>
-        </StaggerItem>
-
-        <StaggerItem>
-        {/* Saved addresses */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Saved Addresses</h2>
-          {savedAddresses.length > 0 ? (
-            savedAddresses.map((addr) => (
-              <div key={addr.id} className="bg-card rounded-xl border p-4 flex items-center gap-3">
-                <MapPin className={`w-5 h-5 shrink-0 ${
-                  addr.zoneStatus === "inside" ? "text-success" :
-                  addr.zoneStatus === "edge" ? "text-warning" : "text-destructive"
-                }`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{addr.displayName}</p>
-                  <p className="text-xs text-muted-foreground">{addr.area}, {addr.city}</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px] shrink-0">
-                  {ADDRESS_LABEL_OPTIONS.find((l) => l.value === addr.label)?.label || "Other"}
-                </Badge>
-              </div>
-            ))
-          ) : (
-            <div className="bg-muted/30 rounded-xl border border-dashed p-6 text-center">
-              <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No saved addresses</p>
-              <p className="text-xs text-muted-foreground mt-1">Addresses are saved when you book a service</p>
-            </div>
-          )}
-        </div>
-        </StaggerItem>
-
-        <StaggerItem>
-        {/* Trust features */}
-        <div className="bg-card rounded-xl border p-5 space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Your Protection</h2>
-          <div className="space-y-2.5">
-            {[
-              { icon: ShieldCheck, label: "Verified Technicians", desc: "All LankaFix technicians are background-checked and certified" },
-              { icon: FileText, label: "Quote Approval Required", desc: "No work begins without your explicit approval of the quote" },
-              { icon: Phone, label: "OTP Job Verification", desc: "Secure job start and completion with one-time passwords" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-start gap-3">
-                <item.icon className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        </StaggerItem>
-
-        <StaggerItem>
-        {/* ─── Settings, Legal & Support ─── */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-foreground">Settings & Support</h2>
-          <div className="bg-card rounded-xl border divide-y divide-border">
-            {/* Support */}
-            <a
-              href={whatsappLink(SUPPORT_WHATSAPP, "Hi, I need help with my LankaFix account.")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
-            >
-              <MessageCircle className="w-5 h-5 text-success" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">WhatsApp Support</p>
-                <p className="text-xs text-muted-foreground">Chat with us on WhatsApp</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </a>
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-              <Mail className="w-5 h-5 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Email Support</p>
-                <p className="text-xs text-muted-foreground">{SUPPORT_EMAIL}</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </a>
-            <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-              <Phone className="w-5 h-5 text-primary" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Call Support</p>
-                <p className="text-xs text-muted-foreground">{SUPPORT_PHONE}</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </a>
-
-            {/* Legal */}
-            <Link to="/privacy" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-              <Lock className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground flex-1">Privacy Policy</span>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </Link>
-            <Link to="/terms" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-              <FileText className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground flex-1">Terms of Service</span>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </Link>
-
-            {/* App version */}
-            <div className="flex items-center gap-3 p-4">
-              <Info className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground flex-1">App Version</span>
-              <span className="text-xs text-muted-foreground font-mono">{APP_VERSION}</span>
-            </div>
-          </div>
-        </div>
-        </StaggerItem>
-
-        <StaggerItem>
-        {/* ─── Account Actions ─── */}
-        <div className="space-y-3 pb-6">
-          {user && (
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-3 h-12 rounded-xl text-foreground"
-              disabled={loggingOut}
-              onClick={handleLogout}
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="text-sm font-medium">{loggingOut ? "Signing out…" : "Log Out"}</span>
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 h-12 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/5"
-            asChild
-          >
-            <Link to="/account/delete">
-              <Trash2 className="w-4 h-4" />
-              <span className="text-sm font-medium">Delete My Account</span>
-            </Link>
-          </Button>
-        </div>
-        </StaggerItem>
+          </StaggerItem>
         </StaggerList>
       </main>
       <Footer />
