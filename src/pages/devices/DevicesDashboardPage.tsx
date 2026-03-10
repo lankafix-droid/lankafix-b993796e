@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Smartphone, Shield, AlertTriangle, Plus, ChevronRight } from "lucide-react";
-import { useDevicePassportStore, getHealthLabel } from "@/store/devicePassportStore";
+import { getHealthLabel } from "@/store/devicePassportStore";
+import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 
 const CATEGORY_ICONS: Record<string, string> = {
   AC: "❄️", CCTV: "📹", IT: "💻", MOBILE: "📱", SOLAR: "☀️",
@@ -15,7 +16,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function DevicesDashboardPage() {
-  const { passports, getAlerts } = useDevicePassportStore();
+  const { passports, getAlerts } = useDevicePassportsDB();
 
   // Gather all alerts
   const allAlerts = passports.flatMap((p) => getAlerts(p.devicePassportId));

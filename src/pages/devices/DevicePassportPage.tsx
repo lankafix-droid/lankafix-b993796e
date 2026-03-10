@@ -10,10 +10,10 @@ import {
   Calendar, DollarSign, ArrowRightLeft, TrendingDown, Package,
 } from "lucide-react";
 import {
-  useDevicePassportStore,
   getHealthLabel,
   estimateResaleValue,
 } from "@/store/devicePassportStore";
+import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 
 const WARRANTY_TYPE_LABELS = {
   manufacturer: "Manufacturer",
@@ -23,7 +23,7 @@ const WARRANTY_TYPE_LABELS = {
 
 export default function DevicePassportPage() {
   const { passportId } = useParams<{ passportId: string }>();
-  const { getPassport, getPassportServices, getPassportWarranties, getAlerts } = useDevicePassportStore();
+  const { getPassport, getPassportServices, getPassportWarranties, getAlerts } = useDevicePassportsDB();
 
   const passport = getPassport(passportId || "");
   const services = getPassportServices(passportId || "");

@@ -336,6 +336,181 @@ export type Database = {
         }
         Relationships: []
       }
+      device_passports: {
+        Row: {
+          brand: string
+          created_at: string
+          device_category: string
+          device_nickname: string
+          health_score: number
+          id: string
+          installation_date: string | null
+          installation_location: string
+          model: string
+          owner_name: string | null
+          purchase_date: string | null
+          purchase_invoice_url: string | null
+          purchase_seller: string | null
+          qr_code: string | null
+          serial_number: string | null
+          total_service_cost: number
+          total_services_performed: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand: string
+          created_at?: string
+          device_category: string
+          device_nickname: string
+          health_score?: number
+          id?: string
+          installation_date?: string | null
+          installation_location?: string
+          model: string
+          owner_name?: string | null
+          purchase_date?: string | null
+          purchase_invoice_url?: string | null
+          purchase_seller?: string | null
+          qr_code?: string | null
+          serial_number?: string | null
+          total_service_cost?: number
+          total_services_performed?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand?: string
+          created_at?: string
+          device_category?: string
+          device_nickname?: string
+          health_score?: number
+          id?: string
+          installation_date?: string | null
+          installation_location?: string
+          model?: string
+          owner_name?: string | null
+          purchase_date?: string | null
+          purchase_invoice_url?: string | null
+          purchase_seller?: string | null
+          qr_code?: string | null
+          serial_number?: string | null
+          total_service_cost?: number
+          total_services_performed?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      device_service_ledger: {
+        Row: {
+          created_at: string
+          device_passport_id: string
+          diagnosis_result: string | null
+          id: string
+          job_id: string | null
+          partner_id: string | null
+          partner_name: string | null
+          parts_replaced: Json
+          recommendations: string | null
+          service_cost: number
+          service_date: string
+          service_photos: Json
+          service_type: string
+          technician_id: string | null
+          technician_name: string | null
+          work_completed: string
+        }
+        Insert: {
+          created_at?: string
+          device_passport_id: string
+          diagnosis_result?: string | null
+          id?: string
+          job_id?: string | null
+          partner_id?: string | null
+          partner_name?: string | null
+          parts_replaced?: Json
+          recommendations?: string | null
+          service_cost?: number
+          service_date?: string
+          service_photos?: Json
+          service_type: string
+          technician_id?: string | null
+          technician_name?: string | null
+          work_completed: string
+        }
+        Update: {
+          created_at?: string
+          device_passport_id?: string
+          diagnosis_result?: string | null
+          id?: string
+          job_id?: string | null
+          partner_id?: string | null
+          partner_name?: string | null
+          parts_replaced?: Json
+          recommendations?: string | null
+          service_cost?: number
+          service_date?: string
+          service_photos?: Json
+          service_type?: string
+          technician_id?: string | null
+          technician_name?: string | null
+          work_completed?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_service_ledger_device_passport_id_fkey"
+            columns: ["device_passport_id"]
+            isOneToOne: false
+            referencedRelation: "device_passports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_warranties: {
+        Row: {
+          created_at: string
+          description: string | null
+          device_passport_id: string
+          id: string
+          status: string
+          warranty_end_date: string
+          warranty_provider: string
+          warranty_start_date: string
+          warranty_type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          device_passport_id: string
+          id?: string
+          status?: string
+          warranty_end_date: string
+          warranty_provider: string
+          warranty_start_date: string
+          warranty_type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          device_passport_id?: string
+          id?: string
+          status?: string
+          warranty_end_date?: string
+          warranty_provider?: string
+          warranty_start_date?: string
+          warranty_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_warranties_device_passport_id_fkey"
+            columns: ["device_passport_id"]
+            isOneToOne: false
+            referencedRelation: "device_passports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_escalations: {
         Row: {
           booking_id: string

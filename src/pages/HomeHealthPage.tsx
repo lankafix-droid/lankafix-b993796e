@@ -10,7 +10,8 @@ import {
   Home, Smartphone, Shield, AlertTriangle, Wrench, CalendarClock,
   ChevronRight, Plus, Package, Repeat, History, ArrowRight,
 } from "lucide-react";
-import { useDevicePassportStore, getHealthLabel } from "@/store/devicePassportStore";
+import { getHealthLabel } from "@/store/devicePassportStore";
+import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { MAINTENANCE_SCHEDULES } from "@/engines/retentionEngine";
 
@@ -32,7 +33,7 @@ const Section = ({ title, action, children }: { title: string; action?: React.Re
 );
 
 export default function HomeHealthPage() {
-  const { passports, getAlerts } = useDevicePassportStore();
+  const { passports, getAlerts } = useDevicePassportsDB();
   const { subscriptions } = useSubscriptionStore();
 
   const allAlerts = passports.flatMap((p) => getAlerts(p.devicePassportId));

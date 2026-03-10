@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { Smartphone, Shield, Package, History, ChevronRight } from "lucide-react";
-import { useDevicePassportStore } from "@/store/devicePassportStore";
+import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 
 const SuperAppShortcuts = () => {
-  const { passports } = useDevicePassportStore();
+  const { passports } = useDevicePassportsDB();
   const { subscriptions } = useSubscriptionStore();
   const activeSubs = subscriptions.filter((s) => s.status === "active");
 
