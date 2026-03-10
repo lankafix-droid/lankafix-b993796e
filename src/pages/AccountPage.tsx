@@ -113,25 +113,12 @@ const AccountPage = () => {
         </div>
         </StaggerItem>
 
+        <StaggerItem>
         {/* Saved addresses */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Saved Addresses</h2>
           {savedAddresses.length > 0 ? (
-            savedAddresses.map((addr) => (
-              <div key={addr.id} className="bg-card rounded-xl border p-4 flex items-center gap-3">
-                <MapPin className={`w-5 h-5 shrink-0 ${
-                  addr.zoneStatus === "inside" ? "text-success" :
-                  addr.zoneStatus === "edge" ? "text-warning" : "text-destructive"
-                }`} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{addr.displayName}</p>
-                  <p className="text-xs text-muted-foreground">{addr.area}, {addr.city}</p>
-                </div>
-                <Badge variant="secondary" className="text-[10px] shrink-0">
-                  {ADDRESS_LABEL_OPTIONS.find((l) => l.value === addr.label)?.label || "Other"}
-                </Badge>
-              </div>
-            ))
+...
           ) : (
             <div className="bg-muted/30 rounded-xl border border-dashed p-6 text-center">
               <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -140,6 +127,7 @@ const AccountPage = () => {
             </div>
           )}
         </div>
+        </StaggerItem>
 
         {/* Trust features */}
         <div className="bg-card rounded-xl border p-5 space-y-3">
