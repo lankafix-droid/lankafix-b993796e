@@ -48,7 +48,7 @@ const INTENTS = [
 
 const V2IntentLayer = () => {
   return (
-    <section className="py-8 md:py-12">
+    <section className="py-10 md:py-14">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -57,10 +57,10 @@ const V2IntentLayer = () => {
           transition={{ duration: 0.4 }}
         >
           <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">What do you need?</h2>
-          <p className="text-xs text-muted-foreground mb-6">Choose your intent — we'll guide you to the right service</p>
+          <p className="text-xs text-muted-foreground mb-7">Choose your intent — we'll guide you to the right service</p>
         </motion.div>
 
-        <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-5">
+        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-5">
           {INTENTS.map((intent, i) => (
             <motion.div
               key={intent.label}
@@ -72,14 +72,14 @@ const V2IntentLayer = () => {
               <Link
                 to={intent.link}
                 onClick={() => track("v2_intent_click", { intent: intent.label })}
-                className="flex-shrink-0 w-[130px] md:w-auto group bg-card border border-border/60 rounded-2xl p-5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-300 text-center flex flex-col items-center gap-3 active:scale-[0.97]"
+                className="flex-shrink-0 w-[120px] md:w-auto group bg-card border border-border/50 rounded-2xl p-4 pb-5 hover:shadow-card-hover hover:border-primary/25 transition-all duration-300 text-center flex flex-col items-center gap-3 active:scale-[0.96]"
               >
                 <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${intent.gradient} ${intent.iconColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                   {intent.icon}
                 </div>
                 <div>
                   <p className="font-heading text-sm font-bold text-foreground leading-tight">{intent.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{intent.description}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-snug">{intent.description}</p>
                 </div>
               </Link>
             </motion.div>
