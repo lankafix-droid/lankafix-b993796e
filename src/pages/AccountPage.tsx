@@ -149,6 +149,7 @@ const AccountPage = () => {
         </div>
         </StaggerItem>
 
+        <StaggerItem>
         {/* ─── Account Actions ─── */}
         <div className="space-y-3 pb-6">
           {user && (
@@ -173,6 +174,7 @@ const AccountPage = () => {
             </Link>
           </Button>
         </div>
+        </StaggerItem>
         </StaggerList>
       </main>
       <Footer />
