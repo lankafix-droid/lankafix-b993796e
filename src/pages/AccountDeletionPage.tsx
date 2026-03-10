@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle, Trash2, CheckCircle, ShieldCheck, ArrowLeft, LogIn,
   XCircle, Clock, AlertCircle, Lock, CalendarX, CreditCard, ShieldAlert,
-  HeartPulse, FileText, RotateCcw,
+  HeartPulse, FileText, RotateCcw, Mail, MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
