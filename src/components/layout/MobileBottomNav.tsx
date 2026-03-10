@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, Grid3X3, Stethoscope, ClipboardList, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
@@ -20,8 +20,11 @@ export default function MobileBottomNav() {
       role="navigation"
       aria-label="Main navigation"
     >
-      {/* Frosted glass background */}
-      <div className="bg-card/80 backdrop-blur-2xl border-t border-border/30">
+      {/* Frosted glass background with top shadow for depth */}
+      <div
+        className="bg-card/85 backdrop-blur-2xl border-t border-border/20"
+        style={{ boxShadow: "0 -4px 20px -4px hsl(var(--foreground) / 0.06)" }}
+      >
         <div className="flex items-center justify-around h-[72px] max-w-md mx-auto px-2">
           {tabs.map(({ to, icon: Icon, label }) => {
             const active = to === "/" ? pathname === "/" : pathname.startsWith(to.replace("/#", "/"));
@@ -30,35 +33,51 @@ export default function MobileBottomNav() {
                 key={label}
                 to={to}
                 className={cn(
-                  "relative flex flex-col items-center justify-center gap-1 w-16 h-14 rounded-2xl transition-smooth",
+                  "relative flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-2xl transition-smooth",
                   active
                     ? "text-primary"
-                    : "text-muted-foreground active:scale-90"
+                    : "text-muted-foreground"
                 )}
               >
-                {/* Active indicator dot */}
+                {/* Active background glow */}
+                <AnimatePresence>
+                  {active && (
+                    <motion.div
+                      layoutId="bottomNavBg"
+                      className="absolute inset-1 rounded-2xl bg-primary/8"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* Active indicator line */}
                 {active && (
                   <motion.div
                     layoutId="bottomNavIndicator"
-                    className="absolute -top-0.5 w-5 h-[3px] rounded-full bg-gradient-brand"
-                    transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                    className="absolute -top-[1px] w-6 h-[2.5px] rounded-full bg-gradient-brand"
+                    transition={{ type: "spring", stiffness: 500, damping: 32 }}
                   />
                 )}
+
                 <motion.div
-                  whileTap={{ scale: 0.85 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                  whileTap={{ scale: 0.75 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                  className="relative z-10"
                 >
                   <Icon
                     className={cn(
                       "w-[22px] h-[22px] transition-smooth",
-                      active ? "stroke-[2.5]" : "stroke-[1.8]"
+                      active ? "stroke-[2.5]" : "stroke-[1.5]"
                     )}
                   />
                 </motion.div>
                 <span
                   className={cn(
-                    "text-[10px] leading-none tracking-wide transition-smooth",
-                    active ? "font-bold" : "font-medium opacity-70"
+                    "relative z-10 text-[10px] leading-none tracking-wide transition-smooth",
+                    active ? "font-bold" : "font-normal opacity-60"
                   )}
                 >
                   {label}

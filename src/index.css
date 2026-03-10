@@ -263,6 +263,26 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Premium shimmer animation for skeletons */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Tap feedback for interactive elements */
+@layer utilities {
+  .tap-highlight {
+    @apply active:scale-[0.97] transition-transform;
+    transition-timing-function: var(--ease-spring);
+    transition-duration: var(--duration-fast);
+  }
+  .tap-highlight-sm {
+    @apply active:scale-[0.98] transition-transform;
+    transition-timing-function: var(--ease-spring);
+    transition-duration: var(--duration-fast);
+  }
+}
+
 @media (display-mode: standalone) {
   header {
     padding-top: env(safe-area-inset-top, 0px);
