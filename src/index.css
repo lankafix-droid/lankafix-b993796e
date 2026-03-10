@@ -188,4 +188,39 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Mobile safe areas */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Touch target minimum */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Bottom nav spacer — prevent content from hiding behind bottom nav on mobile */
+@media (max-width: 767px) {
+  main {
+    padding-bottom: 4.5rem;
+  }
+}
+
+/* Smooth scrolling globally */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Standalone PWA adjustments */
+@media (display-mode: standalone) {
+  header {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
 }
