@@ -449,6 +449,13 @@ const TrackerPage = () => {
             </Section>
           )}
 
+          {/* ═══ INLINE QUOTE CARD ═══ */}
+          {booking.quote && (booking.status === "quote_submitted" || booking.status === "quote_revised" || booking.status === "quote_approved" || booking.status === "repair_started") && (
+            <Section delay={0.18}>
+              <InlineQuoteCard quote={booking.quote} jobId={booking.jobId} status={booking.status} />
+            </Section>
+          )}
+
           {/* ═══ BLOCK 2: Live Tracking / Map ═══ */}
           {booking.trackingData?.isTracking && booking.technician && (
             <Section delay={0.2}>
