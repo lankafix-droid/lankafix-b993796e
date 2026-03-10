@@ -113,10 +113,10 @@ function getNextBestAction(
   if (s === "quote_submitted") {
     return { label: "Review & Approve Quote", description: "Your technician submitted a quote for approval", variant: "hero", onClick: handlers.viewQuote, icon: FileText };
   }
-  if (s === "repair_started" || s === "in_progress") {
+  if (s === "quote_approved") {
     return { label: "Repair in progress…", description: "Your technician is working on it", variant: "outline", onClick: () => {}, icon: Clock };
   }
-  if ((s === "repair_started" || s === "in_progress") && !booking.completionOtpVerifiedAt) {
+  if (!booking.completionOtpVerifiedAt && (s === "arrived" || s === "assigned")) {
     return { label: "Verify Completion OTP", description: "Confirm the job is done", variant: "hero", onClick: handlers.verifyCompletion, icon: CheckCircle2 };
   }
   if (s === "completed" && !booking.rating) {
