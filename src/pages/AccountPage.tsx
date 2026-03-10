@@ -74,6 +74,7 @@ const AccountPage = () => {
         </div>
         </StaggerItem>
 
+        <StaggerItem>
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
           <Link to="/track" className="bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
@@ -91,6 +92,7 @@ const AccountPage = () => {
             </div>
           </Link>
         </div>
+        </StaggerItem>
 
         {/* Booking history */}
         <div className="space-y-3">
