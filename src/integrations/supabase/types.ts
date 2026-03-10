@@ -1571,6 +1571,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          _endpoint: string
+          _identifier: string
+          _max_requests: number
+          _window_seconds?: number
+        }
+        Returns: boolean
+      }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       has_role: {
         Args: {
