@@ -8,7 +8,7 @@ const INTENTS = [
     icon: <Wrench className="w-6 h-6" />,
     label: "Repair",
     description: "Fix broken devices",
-    bgClass: "bg-destructive/10",
+    gradient: "from-destructive/15 to-destructive/5",
     iconColor: "text-destructive",
     link: "/#categories",
   },
@@ -16,7 +16,7 @@ const INTENTS = [
     icon: <PlusCircle className="w-6 h-6" />,
     label: "Install",
     description: "Setup new systems",
-    bgClass: "bg-primary/10",
+    gradient: "from-primary/15 to-primary/5",
     iconColor: "text-primary",
     link: "/book/CCTV",
   },
@@ -24,7 +24,7 @@ const INTENTS = [
     icon: <Sparkles className="w-6 h-6" />,
     label: "Service",
     description: "Maintenance & cleaning",
-    bgClass: "bg-success/10",
+    gradient: "from-success/15 to-success/5",
     iconColor: "text-success",
     link: "/book/AC",
   },
@@ -32,7 +32,7 @@ const INTENTS = [
     icon: <ClipboardList className="w-6 h-6" />,
     label: "Inspect",
     description: "Expert assessment",
-    bgClass: "bg-warning/10",
+    gradient: "from-warning/15 to-warning/5",
     iconColor: "text-warning",
     link: "/book/SOLAR",
   },
@@ -40,7 +40,7 @@ const INTENTS = [
     icon: <HelpCircle className="w-6 h-6" />,
     label: "Not Sure",
     description: "We'll help diagnose",
-    bgClass: "bg-accent/10",
+    gradient: "from-accent/15 to-accent/5",
     iconColor: "text-accent",
     link: "/#diagnose",
   },
@@ -48,10 +48,17 @@ const INTENTS = [
 
 const V2IntentLayer = () => {
   return (
-    <section className="py-8 md:py-10">
+    <section className="py-10 md:py-12">
       <div className="container">
-        <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">What do you need?</h2>
-        <p className="text-xs text-muted-foreground mb-5">Choose your intent — we'll guide you to the right service</p>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-40px" }}
+          transition={{ duration: 0.4 }}
+        >
+          <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">What do you need?</h2>
+          <p className="text-xs text-muted-foreground mb-6">Choose your intent — we'll guide you to the right service</p>
+        </motion.div>
 
         <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-5">
           {INTENTS.map((intent, i) => (
@@ -65,9 +72,9 @@ const V2IntentLayer = () => {
               <Link
                 to={intent.link}
                 onClick={() => track("v2_intent_click", { intent: intent.label })}
-                className="flex-shrink-0 w-[130px] md:w-auto group bg-card border border-border/60 rounded-2xl p-5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-200 text-center flex flex-col items-center gap-3 active:scale-[0.97]"
+                className="flex-shrink-0 w-[130px] md:w-auto group bg-card border border-border/60 rounded-2xl p-5 hover:shadow-card-hover hover:border-primary/30 transition-all duration-300 text-center flex flex-col items-center gap-3 active:scale-[0.97]"
               >
-                <div className={`w-14 h-14 rounded-2xl ${intent.bgClass} ${intent.iconColor} flex items-center justify-center group-hover:scale-105 transition-transform duration-200`}>
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${intent.gradient} ${intent.iconColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                   {intent.icon}
                 </div>
                 <div>

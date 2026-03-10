@@ -10,7 +10,7 @@ const TECHNICIANS = [
 
 const V2NearbyTechnicians = () => {
   return (
-    <section className="py-8 md:py-10 bg-secondary/30">
+    <section className="py-10 md:py-14 bg-secondary/30">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -19,7 +19,7 @@ const V2NearbyTechnicians = () => {
           transition={{ duration: 0.4 }}
         >
           <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">Technicians Near You</h2>
-          <p className="text-xs text-muted-foreground mb-5">Verified professionals ready to help</p>
+          <p className="text-xs text-muted-foreground mb-6">Verified professionals ready to help</p>
         </motion.div>
 
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-4">
@@ -30,10 +30,10 @@ const V2NearbyTechnicians = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-30px" }}
               transition={{ delay: i * 0.1, duration: 0.4, ease: "easeOut" }}
-              className="flex-shrink-0 w-[200px] md:w-auto bg-card rounded-2xl border border-border/60 p-4 space-y-3 hover:shadow-card-hover hover:border-primary/30 transition-all"
+              className="flex-shrink-0 w-[200px] md:w-auto bg-card rounded-2xl border border-border/60 p-5 space-y-3 hover:shadow-card-hover hover:border-primary/30 transition-all duration-300"
             >
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-navy text-white flex items-center justify-center text-sm font-bold font-heading shrink-0">
+                <div className="w-12 h-12 rounded-full bg-gradient-brand text-primary-foreground flex items-center justify-center text-sm font-bold font-heading shrink-0">
                   {tech.avatar}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -53,7 +53,7 @@ const V2NearbyTechnicians = () => {
                 <span className="font-medium">{tech.jobs} jobs</span>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <div className="flex items-center justify-between pt-3 border-t border-border/50">
                 <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground font-medium">
                   <Clock className="w-3 h-3 text-primary" />
                   ETA {tech.eta}
