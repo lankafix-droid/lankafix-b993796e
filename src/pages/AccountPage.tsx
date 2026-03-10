@@ -254,9 +254,10 @@ const AccountPage = () => {
             </Link>
           </Button>
         </div>
+        </StaggerList>
       </main>
       <Footer />
-    </div>
+    </PageTransition>
   );
 };
 

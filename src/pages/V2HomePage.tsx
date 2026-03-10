@@ -95,7 +95,7 @@ const V2HomePage = () => {
         <V2TrustStrip />
       </main>
       <Footer />
-    </div>
+    </PageTransition>
   );
 };
 

@@ -176,7 +176,7 @@ const V2BookingPage = () => {
     : flow.assignmentType;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
         {/* Premium progress stepper */}

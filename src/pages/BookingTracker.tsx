@@ -389,7 +389,7 @@ const BookingTracker = () => {
         jobId={booking.jobId}
         technicianName={booking.technician?.name}
       />
-    </div>
+    </PageTransition>
   );
 };
 
