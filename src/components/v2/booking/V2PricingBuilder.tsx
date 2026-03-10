@@ -2,9 +2,10 @@ import type { V2ServicePackage, V2PriceType } from "@/data/v2CategoryFlows";
 import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, ArrowRight, Star, Info } from "lucide-react";
-import { categoryPricingRules } from "@/config/pricingRules";
-import AIPricingExplanation from "@/components/ai/AIPricingExplanation";
+import { CheckCircle2, ArrowRight, Star, Info, ShieldCheck } from "lucide-react";
+import { useMemo } from "react";
+import { calculateDeterministicPrice } from "@/engines/deterministicPricingEngine";
+import PricingExplainabilityPanel from "@/components/v2/booking/PricingExplainabilityPanel";
 import AISmartUpsell from "@/components/ai/AISmartUpsell";
 
 interface Props {
@@ -28,7 +29,20 @@ const PRICE_TYPE_COLORS: Record<V2PriceType, string> = {
 };
 
 const V2PricingBuilder = ({ packages, selectedId, onSelect, onContinue, categoryCode }: Props) => {
-  const pricingRule = categoryPricingRules[categoryCode];
+  const selectedPkg = packages.find(p => p.id === selectedId);
+
+  // Deterministic pricing — AI cannot override this
+  const deterministicPricing = useMemo(() => {
+    if (!selectedPkg) return null;
+    return calculateDeterministicPrice({
+      categoryCode,
+      serviceCode: selectedPkg.id,
+      basePrice: selectedPkg.price,
+      isEmergency: false,
+      requiresDiagnostic: selectedPkg.priceType === "inspection_required",
+      requiresQuote: selectedPkg.priceType === "inspection_required",
+    });
+  }, [categoryCode, selectedPkg]);
 
   return (
     <div className="space-y-5">
@@ -100,34 +114,19 @@ const V2PricingBuilder = ({ packages, selectedId, onSelect, onContinue, category
         })}
       </div>
 
-      {/* Pricing transparency */}
-      {pricingRule && (
-        <div className="bg-muted/50 rounded-xl p-4 space-y-2">
-          <h4 className="text-sm font-medium text-foreground flex items-center gap-1.5">
-            <Info className="w-4 h-4 text-muted-foreground" /> Pricing Details
-          </h4>
-          <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-            {pricingRule.visitFee > 0 && (
-              <div>Visit Fee: <span className="text-foreground font-medium">LKR {pricingRule.visitFee}</span></div>
-            )}
-            {pricingRule.diagnosticFee > 0 && (
-              <div>Diagnostic: <span className="text-foreground font-medium">LKR {pricingRule.diagnosticFee}</span></div>
-            )}
-            {pricingRule.emergencySurchargePercent > 0 && (
-              <div>Emergency: <span className="text-foreground font-medium">+{pricingRule.emergencySurchargePercent}%</span></div>
-            )}
-            {pricingRule.depositRequired && (
-              <div>Deposit: <span className="text-foreground font-medium">LKR {pricingRule.depositAmount}</span></div>
-            )}
-          </div>
-        </div>
+      {/* Deterministic Pricing Explainability Panel */}
+      {deterministicPricing && (
+        <PricingExplainabilityPanel pricing={deterministicPricing} />
       )}
 
-      {/* AI Pricing Explanation */}
-      <AIPricingExplanation categoryCode={categoryCode} serviceType={selectedId} />
-
-      {/* AI Smart Upsell */}
+      {/* AI Upsell — informational only, cannot set prices */}
       <AISmartUpsell categoryCode={categoryCode} serviceType={selectedId} />
+
+      {/* Trust strip */}
+      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground justify-center">
+        <ShieldCheck className="w-3 h-3 text-success" />
+        Prices set by verified market rules · AI assists but never overrides
+      </div>
 
       <Button onClick={onContinue} disabled={!selectedId} size="lg" className="w-full gap-2">
         Continue <ArrowRight className="w-4 h-4" />
