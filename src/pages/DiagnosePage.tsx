@@ -195,7 +195,7 @@ const DiagnosePage = () => {
         </div>
       </main>
       <Footer />
-    </div>
+    </PageTransition>
   );
 };
 

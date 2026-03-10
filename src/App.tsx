@@ -79,13 +79,14 @@ const queryClient = new QueryClient();
 // Premium loading fallback
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative w-10 h-10">
-        <div className="absolute inset-0 rounded-full border-2 border-primary/20" />
-        <div className="absolute inset-0 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    <div className="flex flex-col items-center gap-5">
+      <div className="relative w-12 h-12">
+        <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+        <div className="absolute inset-2 rounded-full border-2 border-transparent border-b-accent animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
       </div>
       <div className="flex flex-col items-center gap-1">
-        <span className="text-sm text-foreground font-medium">Loading</span>
+        <span className="text-sm text-foreground font-semibold font-heading">Loading</span>
         <span className="text-xs text-muted-foreground">Just a moment…</span>
       </div>
     </div>
