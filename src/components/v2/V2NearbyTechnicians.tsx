@@ -3,17 +3,17 @@ import { motion } from "framer-motion";
 
 const TECHNICIANS = [
   { name: "Nimal Perera", specialty: "AC Specialist", rating: 4.8, jobs: 132, eta: "20–30 min", avatar: "NP", zone: "Nugegoda", status: "Available now" },
-  { name: "Kamal Silva", specialty: "Mobile Repair", rating: 4.9, jobs: 215, eta: "15–25 min", avatar: "KS", zone: "Dehiwala", status: "Available now" },
+  { name: "Kamal Silva", specialty: "Mobile & Electronics", rating: 4.9, jobs: 215, eta: "15–25 min", avatar: "KS", zone: "Dehiwala", status: "Available now" },
   { name: "Ruwan Fernando", specialty: "CCTV & Networking", rating: 4.7, jobs: 98, eta: "25–40 min", avatar: "RF", zone: "Rajagiriya", status: "Nearby" },
-  { name: "Saman Jayawardena", specialty: "Laptop & IT", rating: 4.6, jobs: 176, eta: "30–45 min", avatar: "SJ", zone: "Battaramulla", status: "Next slot today" },
+  { name: "Saman Jayawardena", specialty: "Laptop & IT Support", rating: 4.6, jobs: 176, eta: "30–45 min", avatar: "SJ", zone: "Battaramulla", status: "Next slot today" },
   { name: "Dinesh Kumara", specialty: "Electrical", rating: 4.8, jobs: 143, eta: "20–35 min", avatar: "DK", zone: "Maharagama", status: "Available now" },
   { name: "Prasad Weerakoon", specialty: "Plumbing", rating: 4.7, jobs: 89, eta: "25–40 min", avatar: "PW", zone: "Colombo 7", status: "Nearby" },
 ];
 
-const STATUS_STYLES: Record<string, string> = {
-  "Available now": "text-success",
-  "Nearby": "text-primary",
-  "Next slot today": "text-warning",
+const STATUS_STYLES: Record<string, { text: string; dot: string }> = {
+  "Available now": { text: "text-success", dot: "bg-success" },
+  "Nearby": { text: "text-primary", dot: "bg-primary" },
+  "Next slot today": { text: "text-warning", dot: "bg-warning" },
 };
 
 const V2NearbyTechnicians = () => {
@@ -27,61 +27,64 @@ const V2NearbyTechnicians = () => {
           transition={{ duration: 0.4 }}
         >
           <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">Technicians Near You</h2>
-          <p className="text-xs text-muted-foreground mb-6">Verified professionals available across Greater Colombo</p>
+          <p className="text-xs text-muted-foreground mb-6">Verified professionals active across Greater Colombo</p>
         </motion.div>
 
         <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-3">
-          {TECHNICIANS.map((tech, i) => (
-            <motion.div
-              key={tech.name}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-30px" }}
-              transition={{ delay: i * 0.08, duration: 0.4, ease: "easeOut" }}
-              className="flex-shrink-0 w-[230px] md:w-auto bg-card rounded-2xl border border-border/60 p-5 space-y-3 hover:shadow-card-hover hover:border-primary/30 transition-all duration-300"
-            >
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gradient-brand text-primary-foreground flex items-center justify-center text-sm font-bold font-heading shrink-0">
-                    {tech.avatar}
+          {TECHNICIANS.map((tech, i) => {
+            const statusStyle = STATUS_STYLES[tech.status] || { text: "text-muted-foreground", dot: "bg-muted-foreground" };
+            return (
+              <motion.div
+                key={tech.name}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ delay: i * 0.08, duration: 0.4, ease: "easeOut" }}
+                className="flex-shrink-0 w-[230px] md:w-auto bg-card rounded-2xl border border-border/60 p-5 space-y-3 hover:shadow-card-hover hover:border-primary/30 transition-all duration-300"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-12 h-12 rounded-full bg-gradient-brand text-primary-foreground flex items-center justify-center text-sm font-bold font-heading shrink-0">
+                      {tech.avatar}
+                    </div>
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ${statusStyle.dot} border-2 border-card`} />
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-success border-2 border-card" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1">
-                    <p className="text-sm font-bold text-foreground truncate font-heading">{tech.name}</p>
-                    <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1">
+                      <p className="text-sm font-bold text-foreground truncate font-heading">{tech.name}</p>
+                      <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{tech.specialty}</p>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">{tech.specialty}</p>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <Star className="w-3 h-3 text-warning fill-warning" />
-                  <span className="font-bold text-foreground">{tech.rating}</span>
-                </span>
-                <span className="font-medium">{tech.jobs} jobs</span>
-                <span className="inline-flex items-center gap-0.5">
-                  <MapPin className="w-3 h-3 text-primary" />
-                  {tech.zone}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-border/50">
-                <div className="flex flex-col">
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
-                    <Clock className="w-3 h-3" />
-                    ETA {tech.eta}
+                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="w-3 h-3 text-warning fill-warning" />
+                    <span className="font-bold text-foreground">{tech.rating}</span>
                   </span>
-                  <span className={`text-[10px] font-semibold mt-0.5 ${STATUS_STYLES[tech.status] || "text-muted-foreground"}`}>
-                    {tech.status}
+                  <span className="font-medium">{tech.jobs} jobs</span>
+                  <span className="inline-flex items-center gap-0.5">
+                    <MapPin className="w-3 h-3 text-primary" />
+                    {tech.zone}
                   </span>
                 </div>
-                <ChevronRight className="w-3.5 h-3.5 text-primary" />
-              </div>
-            </motion.div>
-          ))}
+
+                <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                  <div className="flex flex-col">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+                      <Clock className="w-3 h-3" />
+                      ETA {tech.eta}
+                    </span>
+                    <span className={`text-[10px] font-semibold mt-0.5 ${statusStyle.text}`}>
+                      {tech.status}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 text-primary" />
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>

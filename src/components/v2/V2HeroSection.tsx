@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock, MapPin, CheckCircle2, Clock } from "lucide-react";
+import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock, MapPin, CheckCircle2, Clock, Wifi, Snowflake, Droplets } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
@@ -28,9 +28,35 @@ const TRUST_PILLS = [
   { icon: <Lock className="w-3.5 h-3.5" />, label: "Secure Booking" },
 ];
 
-const POPULAR_SEARCHES = [
-  "AC not cooling", "phone screen broken", "WiFi slow", "water leak",
-  "power trip", "CCTV install", "laptop repair", "washing machine",
+// Category-aware search suggestions
+const SEARCH_CATEGORIES = [
+  {
+    label: "AC Issues",
+    icon: <Snowflake className="w-3 h-3 text-primary" />,
+    terms: ["AC not cooling", "AC leaking water", "AC service due", "AC gas top-up"],
+  },
+  {
+    label: "IT & Laptops",
+    icon: <Wifi className="w-3 h-3 text-primary" />,
+    terms: ["laptop screen broken", "laptop overheating", "laptop slow"],
+  },
+  {
+    label: "Electrical & Plumbing",
+    icon: <Droplets className="w-3 h-3 text-primary" />,
+    terms: ["power trip", "water leak", "water pressure low"],
+  },
+  {
+    label: "Network & Security",
+    icon: <Wifi className="w-3 h-3 text-primary" />,
+    terms: ["WiFi slow", "router disconnecting", "CCTV install"],
+  },
+];
+
+// Contextual availability messages — ready for dynamic replacement
+const AVAILABILITY_MESSAGES = [
+  { icon: <MapPin className="w-3.5 h-3.5 text-primary" />, text: "Active across Greater Colombo" },
+  { icon: <CheckCircle2 className="w-3.5 h-3.5 text-success" />, text: "Verified technician network near you" },
+  { icon: <Clock className="w-3.5 h-3.5 text-warning" />, text: "Same-day support in selected zones" },
 ];
 
 interface Props {
@@ -217,21 +243,28 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
             )}
           </div>
 
-          {/* Search suggestions when focused but no query */}
+          {/* Category-aware search suggestions */}
           {searchFocused && !searchQuery && !showResults && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl border border-border shadow-xl overflow-hidden z-50 p-4">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Popular searches</p>
-              <div className="flex flex-wrap gap-2">
-                {POPULAR_SEARCHES.map((term) => (
-                  <button
-                    key={term}
-                    onMouseDown={() => handleSuggestionClick(term)}
-                    className="text-xs font-medium px-3 py-2 rounded-full border border-border/60 bg-secondary/50 text-foreground hover:bg-primary/5 hover:border-primary/30 transition-colors"
-                  >
-                    {term}
-                  </button>
-                ))}
-              </div>
+            <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl border border-border shadow-xl overflow-hidden z-50 p-4 space-y-4">
+              {SEARCH_CATEGORIES.map((cat) => (
+                <div key={cat.label}>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    {cat.icon}
+                    {cat.label}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {cat.terms.map((term) => (
+                      <button
+                        key={term}
+                        onMouseDown={() => handleSuggestionClick(term)}
+                        className="text-xs font-medium px-3 py-1.5 rounded-full border border-border/60 bg-secondary/50 text-foreground hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -256,7 +289,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
         </div>
       </div>
 
-      {/* Local Availability Strip — platform status feel */}
+      {/* Local Availability Strip — contextual, ready for dynamic data */}
       <div className="container mt-4">
         <motion.div
           className="flex items-center gap-5 overflow-x-auto scrollbar-hide py-2.5 px-1"
@@ -264,11 +297,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.4 }}
         >
-          {[
-            { icon: <MapPin className="w-3.5 h-3.5 text-primary" />, text: "Active across Greater Colombo" },
-            { icon: <CheckCircle2 className="w-3.5 h-3.5 text-success" />, text: "Verified technician network" },
-            { icon: <Clock className="w-3.5 h-3.5 text-warning" />, text: "Same-day support available" },
-          ].map((item) => (
+          {AVAILABILITY_MESSAGES.map((item) => (
             <span
               key={item.text}
               className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground whitespace-nowrap shrink-0"

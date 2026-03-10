@@ -21,7 +21,7 @@ const LIVE_ACTIVITIES = [
   "Printer repair booked in Colombo 3",
 ];
 
-// Safer trust-led metrics — not fake precision
+// Safer trust-led metrics
 const STATS = [
   { icon: <Users className="w-5 h-5" />, value: "Thousands", label: "Happy Customers", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
   { icon: <CheckCircle2 className="w-5 h-5" />, value: "Growing", label: "Jobs Completed Daily", gradient: "from-success/15 to-success/5", color: "text-success" },
@@ -72,6 +72,17 @@ const V2SocialProof = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Household + SME trust message */}
+        <motion.p
+          className="text-center text-sm text-muted-foreground font-medium"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          Trusted by homes, offices, and small businesses across Greater Colombo.
+        </motion.p>
 
         {/* Stats Strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

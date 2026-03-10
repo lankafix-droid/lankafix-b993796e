@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, Router, ArrowRight, Sparkles, Plus, AlertTriangle } from "lucide-react";
+import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, Router, ArrowRight, Sparkles, Plus, AlertTriangle, Zap, Droplets, BatteryCharging } from "lucide-react";
 import { motion } from "framer-motion";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
@@ -45,7 +45,7 @@ const V2SmartRecommendations = () => {
         id: "ac-critical",
         icon: <AlertTriangle className="w-5 h-5" />,
         title: `Your ${ac.deviceNickname || "AC"} needs attention`,
-        description: `Health score is ${ac.healthScore}%. Most ACs in Sri Lanka need servicing every 6 months to avoid breakdowns.`,
+        description: `Health score is ${ac.healthScore}%. Most ACs in Sri Lanka need servicing every 6 months to stay efficient and avoid costly breakdowns.`,
         action: "Schedule Service",
         link: "/book/AC",
         gradient: "from-destructive/15 to-destructive/5",
@@ -89,7 +89,7 @@ const V2SmartRecommendations = () => {
       id: "cctv-inspect",
       icon: <Camera className="w-5 h-5" />,
       title: "CCTV inspection recommended",
-      description: "CCTV systems should be checked before failure, not after. Ensure all cameras are recording properly.",
+      description: "Security cameras should be checked regularly to ensure recording and storage work properly. Don't wait for a failure.",
       action: "Book Inspection",
       link: "/book/CCTV",
       gradient: "from-warning/15 to-warning/5",
@@ -122,7 +122,7 @@ const V2SmartRecommendations = () => {
       id: "printer-supplies",
       icon: <Printer className="w-5 h-5" />,
       title: "Reorder printer supplies",
-      description: "Printers that sit unused often need preventive servicing. Keep yours running with genuine toner.",
+      description: "Printers that sit unused often need preventive servicing. Keep yours running with genuine toner and regular maintenance.",
       action: "Buy Supplies",
       link: "/supplies",
       gradient: "from-accent/15 to-accent/5",
@@ -131,43 +131,87 @@ const V2SmartRecommendations = () => {
     });
   }
 
-  // 6. Default helpful recommendations for new users
+  // 6. Non-device category recommendations (helpful fallbacks)
+  // These appear when no device-specific recs fill the slots
+  const nonDeviceRecs: Recommendation[] = [
+    {
+      id: "electrical-check",
+      icon: <Zap className="w-5 h-5" />,
+      title: "Power trips during heavy usage?",
+      description: "An electrical inspection can prevent bigger failures. Common in older Sri Lankan homes during peak appliance use.",
+      action: "Book Inspection",
+      link: "/book/ELECTRICAL",
+      gradient: "from-warning/15 to-warning/5",
+      iconColor: "text-warning",
+      priority: "helpful",
+    },
+    {
+      id: "plumbing-check",
+      icon: <Droplets className="w-5 h-5" />,
+      title: "Low water pressure or leaking taps?",
+      description: "A plumbing check can prevent bigger issues. Small leaks waste water and increase bills over time.",
+      action: "Book Inspection",
+      link: "/book/PLUMBING",
+      gradient: "from-primary/15 to-primary/5",
+      iconColor: "text-primary",
+      priority: "helpful",
+    },
+    {
+      id: "wifi-audit",
+      icon: <Router className="w-5 h-5" />,
+      title: "WiFi weak in some rooms?",
+      description: "A quick network audit can improve coverage across your home or office. Common in multi-story buildings.",
+      action: "Get Help",
+      link: "/book/NETWORK",
+      gradient: "from-accent/15 to-accent/5",
+      iconColor: "text-accent",
+      priority: "helpful",
+    },
+    {
+      id: "ups-check",
+      icon: <BatteryCharging className="w-5 h-5" />,
+      title: "UPS or inverter not tested recently?",
+      description: "Power backup systems need periodic testing. Schedule a quick inspection to make sure yours is ready when you need it.",
+      action: "Book Inspection",
+      link: "/book/POWER_BACKUP",
+      gradient: "from-warning/15 to-warning/5",
+      iconColor: "text-warning",
+      priority: "helpful",
+    },
+  ];
+
+  // Default recommendations for new users (no devices)
   if (recommendations.length === 0) {
-    recommendations.push(
-      {
-        id: "add-device",
-        icon: <Plus className="w-5 h-5" />,
-        title: "Register your first device",
-        description: "Add your AC, laptop, or phone to get service reminders and track maintenance history.",
-        action: "Add Device",
-        link: "/home-health",
-        gradient: "from-primary/15 to-primary/5",
-        iconColor: "text-primary",
-        priority: "recommended",
-      },
-      {
-        id: "ac-service-general",
-        icon: <Snowflake className="w-5 h-5" />,
-        title: "Is your AC running efficiently?",
-        description: "Most ACs in Sri Lanka need servicing every 6 months. Don't wait for a breakdown.",
-        action: "Schedule Service",
-        link: "/book/AC",
-        gradient: "from-primary/15 to-primary/5",
-        iconColor: "text-primary",
-        priority: "helpful",
-      },
-      {
-        id: "wifi-check",
-        icon: <Router className="w-5 h-5" />,
-        title: "WiFi weak in some rooms?",
-        description: "A quick network audit can boost speed and fix dead zones in your home or office.",
-        action: "Get Help",
-        link: "/book/NETWORK",
-        gradient: "from-accent/15 to-accent/5",
-        iconColor: "text-accent",
-        priority: "helpful",
-      },
-    );
+    recommendations.push({
+      id: "add-device",
+      icon: <Plus className="w-5 h-5" />,
+      title: "Register your first device",
+      description: "Add your AC, laptop, or phone to get service reminders and track maintenance history.",
+      action: "Add Device",
+      link: "/home-health",
+      gradient: "from-primary/15 to-primary/5",
+      iconColor: "text-primary",
+      priority: "recommended",
+    });
+    recommendations.push({
+      id: "ac-service-general",
+      icon: <Snowflake className="w-5 h-5" />,
+      title: "Is your AC running efficiently?",
+      description: "Most ACs in Sri Lanka need servicing every 6 months. Don't wait for a breakdown.",
+      action: "Schedule Service",
+      link: "/book/AC",
+      gradient: "from-primary/15 to-primary/5",
+      iconColor: "text-primary",
+      priority: "helpful",
+    });
+  }
+
+  // Fill remaining slots with non-device recs
+  const neededHelpful = 3 - recommendations.length;
+  if (neededHelpful > 0) {
+    const usedIds = new Set(recommendations.map(r => r.id));
+    const available = nonDeviceRecs.filter(r => !usedIds.has(r.id));
+    recommendations.push(...available.slice(0, neededHelpful));
   }
 
   // Sort by priority
