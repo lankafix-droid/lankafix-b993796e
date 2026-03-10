@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import type { QuoteData, QuoteOption, QuoteItem, PartQuality, CategoryCode } fro
 import { PARTNER_QUOTE_REVIEW_CATEGORIES } from "@/types/booking";
 import { track } from "@/lib/analytics";
 import { Plus, X, Send, Clock } from "lucide-react";
+import { validateQuoteAgainstGuardrails } from "@/engines/deterministicPricingEngine";
+import QuoteGuardrailBanner from "@/components/v2/booking/QuoteGuardrailBanner";
 
 interface QuoteBuilderProps {
   jobId: string;
