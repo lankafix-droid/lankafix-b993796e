@@ -282,7 +282,7 @@ const DiagnoseResult = ({ result, userArea, urgency, onRestart }: Props) => {
           className="bg-muted/30 border border-dashed border-border/60 rounded-2xl p-4 text-center space-y-2.5">
           <p className="text-sm text-muted-foreground">Need help identifying the right service?</p>
           <Button variant="outline" size="sm" className="rounded-xl" onClick={handleWhatsApp}>
-            <MessageCircle className="w-4 h-4 mr-1.5 text-green-600" />
+            <MessageCircle className="w-4 h-4 mr-1.5 text-success" />
             Chat with LankaFix Support
           </Button>
         </motion.div>
