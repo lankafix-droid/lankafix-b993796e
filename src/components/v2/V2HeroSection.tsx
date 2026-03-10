@@ -14,11 +14,11 @@ import heroIT from "@/assets/hero-it-repair.jpg";
 import heroTechnician from "@/assets/hero-technician.jpg";
 
 const BANNERS = [
-  { image: heroTechnician, headline: "Find Trusted Technicians Near You", sub: "Repairs · Installations · Technical Services" },
-  { image: heroMobile, headline: "Broken Phone? Fixed Today", sub: "Genuine parts · Same-day repair · Data-safe process" },
-  { image: heroAC, headline: "AC Repair in 2 Hours", sub: "Same-day service across Greater Colombo" },
-  { image: heroCCTV, headline: "Professional CCTV Installation", sub: "Site inspection included · Residential & commercial" },
-  { image: heroIT, headline: "IT Problems? Expert Help Fast", sub: "Remote & on-site support for homes and businesses" },
+  { image: heroTechnician, headline: "Sri Lanka's Smart\nService Platform", sub: "Book trusted technicians instantly across Greater Colombo" },
+  { image: heroMobile, headline: "Broken Phone?\nFixed Today", sub: "Genuine parts · Same-day repair · Data-safe process" },
+  { image: heroAC, headline: "Expert AC Repair\nin 2 Hours", sub: "Same-day service with verified technicians" },
+  { image: heroCCTV, headline: "Professional CCTV\nInstallation", sub: "Site inspection included · Residential & commercial" },
+  { image: heroIT, headline: "IT Problems?\nExpert Help Fast", sub: "Remote & on-site support for homes and businesses" },
 ];
 
 const TRUST_PILLS = [
@@ -62,31 +62,37 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
   return (
     <section className="relative">
       {/* Hero banner */}
-      <div className="relative h-[460px] md:h-[520px] overflow-hidden">
+      <div className="relative h-[520px] md:h-[580px] overflow-hidden">
         {BANNERS.map((b, i) => (
-          <img
+          <motion.img
             key={i}
             src={b.image}
             alt={b.headline}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === active ? "opacity-100" : "opacity-0"}`}
+            className="absolute inset-0 w-full h-full object-cover"
+            initial={false}
+            animate={{ opacity: i === active ? 1 : 0, scale: i === active ? 1.02 : 1 }}
+            transition={{ opacity: { duration: 0.8 }, scale: { duration: 6, ease: "linear" } }}
             loading={i === 0 ? "eager" : "lazy"}
           />
         ))}
-        {/* Strong dark gradient for text readability */}
+        {/* Premium cinematic gradient */}
         <div className="absolute inset-0" style={{
-          background: "linear-gradient(to top, rgba(8,27,51,0.85) 0%, rgba(8,27,51,0.55) 45%, rgba(8,27,51,0.30) 100%)"
+          background: "linear-gradient(to top, rgba(8,27,51,0.92) 0%, rgba(8,27,51,0.65) 40%, rgba(8,27,51,0.25) 70%, rgba(8,27,51,0.15) 100%)"
         }} />
 
-        <div className="container relative h-full flex flex-col justify-end pb-24 md:pb-28">
+        <div className="container relative h-full flex flex-col justify-end pb-28 md:pb-32">
           {/* Location + Emergency row */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-8">
             <LocationBar onSetupLocation={onSetupLocation} />
             <Link
               to="/diagnose?emergency=true"
               onClick={() => track("v2_emergency_click")}
-              className="inline-flex items-center gap-1.5 bg-destructive text-destructive-foreground rounded-full px-4 py-2 text-xs font-bold shadow-lg hover:opacity-90 transition-opacity active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-bold shadow-lg hover:opacity-90 transition-all active:scale-95 bg-destructive text-destructive-foreground"
             >
-              <Zap className="w-3.5 h-3.5" />
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive-foreground opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive-foreground" />
+              </span>
               <span>Emergency</span>
               <span className="text-[9px] opacity-80 ml-0.5">24/7</span>
             </Link>
@@ -96,19 +102,45 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
           <AnimatePresence mode="wait">
             <motion.div
               key={active}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
             >
-              <h1 className="font-heading text-2xl md:text-4xl lg:text-5xl font-extrabold leading-tight mb-2 text-white drop-shadow-lg">
+              <h1 className="font-heading text-3xl md:text-5xl lg:text-6xl font-extrabold leading-[1.1] mb-3 text-primary-foreground drop-shadow-lg whitespace-pre-line">
                 {banner.headline}
               </h1>
-              <p className="text-sm md:text-base mb-5 max-w-lg text-white/85 drop-shadow-md font-medium">
+              <p className="text-sm md:text-base mb-6 max-w-lg text-primary-foreground/80 drop-shadow-md font-medium leading-relaxed">
                 {banner.sub}
               </p>
             </motion.div>
           </AnimatePresence>
+
+          {/* CTA Buttons */}
+          <div className="flex gap-3 mb-6">
+            <Button
+              size="lg"
+              className="bg-gradient-brand text-primary-foreground shadow-brand font-bold text-sm px-6 rounded-xl hover:opacity-90 transition-opacity"
+              onClick={() => {
+                track("v2_hero_book_click");
+                document.getElementById("categories")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Book Service
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-primary-foreground/20 text-primary-foreground bg-primary-foreground/10 backdrop-blur-sm rounded-xl hover:bg-primary-foreground/20 font-semibold text-sm"
+              onClick={() => {
+                track("v2_hero_diagnose_click");
+                document.getElementById("diagnose")?.scrollIntoView({ behavior: "smooth" });
+              }}
+            >
+              Diagnose Problem
+            </Button>
+          </div>
 
           {/* Trust pills */}
           <div className="flex flex-wrap gap-2 mb-1">
@@ -117,12 +149,12 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
                 key={pill.label}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.1, duration: 0.4, ease: "easeOut" }}
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full px-3 py-1.5 text-white border border-white/15"
+                transition={{ delay: 0.4 + i * 0.1, duration: 0.4, ease: "easeOut" }}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full px-3.5 py-1.5 text-primary-foreground/90 border border-primary-foreground/10"
                 style={{
-                  background: "rgba(14,76,146,0.55)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
+                  background: "rgba(14,76,146,0.45)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
                 }}
               >
                 {pill.icon}
@@ -132,13 +164,13 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
           </div>
 
           {/* Dots */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-5">
             {BANNERS.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setActive(i)}
                 aria-label={`Banner ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all duration-300 ${i === active ? "w-8 bg-white" : "w-4 bg-white/30"}`}
+                className={`h-1.5 rounded-full transition-all duration-500 ${i === active ? "w-10 bg-gradient-brand" : "w-4 bg-primary-foreground/25"}`}
               />
             ))}
           </div>
@@ -148,8 +180,10 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
       {/* Search bar */}
       <div className="container -mt-7 relative z-10">
         <div className="relative">
-          <div className="bg-card rounded-2xl shadow-lg border border-border/60 flex items-center gap-3 px-5" style={{ minHeight: "56px" }}>
-            <Search className="w-5 h-5 text-primary shrink-0" />
+          <div className="bg-card rounded-2xl shadow-lg border border-border/60 flex items-center gap-3 px-5" style={{ minHeight: "56px", boxShadow: "0 8px 32px -8px hsl(211 82% 31% / 0.18)" }}>
+            <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shrink-0">
+              <Search className="w-5 h-5 text-primary-foreground" />
+            </div>
             <input
               type="text"
               placeholder="Try: phone screen broken, AC not cooling, wifi problem..."
@@ -173,7 +207,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
                 <button
                   key={`${result.categoryCode}-${result.serviceTypeId}-${i}`}
                   onMouseDown={() => handleSearchSelect(result)}
-                  className="w-full text-left px-4 py-3.5 hover:bg-primary/5 transition-colors border-b border-border/30 last:border-0 flex items-center justify-between min-h-[48px]"
+                  className="w-full text-left px-5 py-4 hover:bg-primary/5 transition-colors border-b border-border/30 last:border-0 flex items-center justify-between min-h-[48px]"
                 >
                   <div>
                     <p className="text-sm font-semibold text-foreground">{result.serviceLabel}</p>

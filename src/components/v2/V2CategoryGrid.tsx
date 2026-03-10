@@ -89,13 +89,13 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
       >
         <div className={`relative ${featured ? "h-40 sm:h-44" : "h-32 sm:h-36"} overflow-hidden`}>
           {thumb ? (
-            <img src={thumb} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+            <img src={thumb} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" loading="lazy" />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
               {iconMap[cat.icon] || <Monitor className="w-8 h-8 text-muted-foreground" />}
             </div>
           )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,27,51,0.65) 0%, rgba(8,27,51,0.15) 55%, transparent 100%)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,27,51,0.70) 0%, rgba(8,27,51,0.15) 55%, transparent 100%)" }} />
 
           <div className="absolute top-2.5 left-2.5 flex gap-1.5">
             {hasEmergency && (
@@ -118,13 +118,13 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
           </div>
 
           <div className="absolute bottom-3 left-3 right-3">
-            <h3 className="font-heading font-bold text-white text-sm md:text-base leading-tight drop-shadow-lg">{cat.name}</h3>
+            <h3 className="font-heading font-bold text-primary-foreground text-sm md:text-base leading-tight drop-shadow-lg">{cat.name}</h3>
           </div>
         </div>
 
         <div className="p-4">
           <div className="flex items-start gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary flex items-center justify-center shrink-0">
               {iconMap[cat.icon] || <Monitor className="w-4.5 h-4.5" />}
             </div>
             <div className="flex-1 min-w-0">
@@ -148,7 +148,7 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
                 <span className="text-[10px] font-medium">Verified</span>
               </div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center group-hover:bg-gradient-brand group-hover:text-primary-foreground text-primary transition-all duration-300">
               <ArrowRight className="w-4 h-4" />
             </div>
           </div>
@@ -202,13 +202,13 @@ const V2CategoryGrid = () => {
                 <Link
                   to={qb.link}
                   onClick={() => track("v2_quickbook_click", { label: qb.label })}
-                  className="block w-36 bg-card rounded-xl border border-border/60 p-4 hover:border-primary/30 hover:shadow-card-hover transition-all group active:scale-[0.97]"
+                  className="block w-36 bg-card rounded-2xl border border-border/60 p-4 hover:border-primary/30 hover:shadow-card-hover transition-all duration-300 group active:scale-[0.97]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
                     {qb.icon}
                   </div>
                   <p className="text-xs font-semibold text-foreground leading-tight">{qb.label}</p>
-                  <p className="text-[10px] text-primary font-bold mt-1.5">{qb.price}</p>
+                  <p className="text-[10px] font-bold mt-1.5 text-gradient bg-gradient-brand bg-clip-text text-transparent">{qb.price}</p>
                 </Link>
               </motion.div>
             ))}
