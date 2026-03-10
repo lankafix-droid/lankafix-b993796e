@@ -20,9 +20,11 @@ export type Database = {
           ai_response: Json | null
           booking_id: string | null
           client_platform: string | null
+          confidence_bucket: string | null
           confidence_score: number | null
           converted_to_booking: boolean | null
           created_at: string
+          final_service_selected: string | null
           id: string
           image_size_bytes: number | null
           input_image_url: string | null
@@ -31,10 +33,12 @@ export type Database = {
           matched_category: string | null
           matched_service: string | null
           metadata: Json | null
+          recommended_service_used: boolean | null
           response_time_ms: number | null
           session_id: string | null
           urgency_level: string | null
           user_accepted: boolean | null
+          user_action: string | null
           user_id: string | null
         }
         Insert: {
@@ -42,9 +46,11 @@ export type Database = {
           ai_response?: Json | null
           booking_id?: string | null
           client_platform?: string | null
+          confidence_bucket?: string | null
           confidence_score?: number | null
           converted_to_booking?: boolean | null
           created_at?: string
+          final_service_selected?: string | null
           id?: string
           image_size_bytes?: number | null
           input_image_url?: string | null
@@ -53,10 +59,12 @@ export type Database = {
           matched_category?: string | null
           matched_service?: string | null
           metadata?: Json | null
+          recommended_service_used?: boolean | null
           response_time_ms?: number | null
           session_id?: string | null
           urgency_level?: string | null
           user_accepted?: boolean | null
+          user_action?: string | null
           user_id?: string | null
         }
         Update: {
@@ -64,9 +72,11 @@ export type Database = {
           ai_response?: Json | null
           booking_id?: string | null
           client_platform?: string | null
+          confidence_bucket?: string | null
           confidence_score?: number | null
           converted_to_booking?: boolean | null
           created_at?: string
+          final_service_selected?: string | null
           id?: string
           image_size_bytes?: number | null
           input_image_url?: string | null
@@ -75,11 +85,40 @@ export type Database = {
           matched_category?: string | null
           matched_service?: string | null
           metadata?: Json | null
+          recommended_service_used?: boolean | null
           response_time_ms?: number | null
           session_id?: string | null
           urgency_level?: string | null
           user_accepted?: boolean | null
+          user_action?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      ai_rate_limits: {
+        Row: {
+          created_at: string
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number
+          window_start?: string
         }
         Relationships: []
       }
@@ -1532,6 +1571,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_rate_limits: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
