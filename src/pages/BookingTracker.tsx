@@ -98,7 +98,7 @@ const BookingTracker = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <PageTransition className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 bg-background">
         <div className="container py-8 max-w-2xl">
