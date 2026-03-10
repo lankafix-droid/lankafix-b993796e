@@ -50,12 +50,13 @@ const Footer = () => {
           </div>
         </div>
         <div className="border-t border-primary-foreground/10 mt-10 pt-6 flex flex-wrap gap-4 justify-between text-xs text-primary-foreground/35">
-          <span>© 2026 LankaFix by Smart Office. All rights reserved.</span>
-          <div className="flex gap-4">
-            <Link to="/terms" className="hover:text-primary-foreground transition-colors">Terms</Link>
-            <Link to="/privacy" className="hover:text-primary-foreground transition-colors">Privacy</Link>
+          <span>© 2026 LankaFix by Smart Office Pvt Ltd. All rights reserved.</span>
+          <div className="flex flex-wrap gap-4">
+            <Link to="/terms" className="hover:text-primary-foreground transition-colors">Terms of Service</Link>
+            <Link to="/privacy" className="hover:text-primary-foreground transition-colors">Privacy Policy</Link>
             <Link to="/warranty" className="hover:text-primary-foreground transition-colors">Warranty</Link>
             <Link to="/refund" className="hover:text-primary-foreground transition-colors">Refunds</Link>
+            <Link to="/support/account-deletion" className="hover:text-primary-foreground transition-colors">Data Deletion</Link>
           </div>
         </div>
       </div>

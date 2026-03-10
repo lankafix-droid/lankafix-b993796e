@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.lankafix.app',
-  appName: 'LankaFix – Smart Repair & Technical Services',
+  appId: 'app.lovable.391027893cdf4fecbe913555106a96e7',
+  appName: 'lankafix',
   webDir: 'dist',
   server: {
     url: 'https://39102789-3cdf-4fec-be91-3555106a96e7.lovableproject.com?forceHideBadge=true',
@@ -12,14 +12,14 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#FFFFFF',
+      backgroundColor: '#0E4C92',
       showSpinner: false,
       androidScaleType: 'CENTER_CROP',
       splashFullScreen: true,
       splashImmersive: true,
     },
     StatusBar: {
-      style: 'DARK',
+      style: 'LIGHT',
       backgroundColor: '#0E4C92',
     },
     Keyboard: {
