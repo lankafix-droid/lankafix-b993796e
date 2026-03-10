@@ -34,28 +34,35 @@ const AI_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-photo-diagn
 
 // Strict category → route mapping
 const CATEGORY_ROUTE_MAP: Record<string, string> = {
-  AC: "/book/ac",
-  CCTV: "/book/cctv",
-  MOBILE: "/book/mobile",
-  IT: "/book/it",
-  SOLAR: "/book/solar",
-  ELECTRICAL: "/book/electrical",
+  MOBILE: "/book/mobile-phone-repairs",
+  IT: "/book/it-repairs-support",
+  AC: "/book/ac-solutions",
+  CCTV: "/book/cctv-solutions",
+  SOLAR: "/book/solar-solutions",
+  ELECTRICAL: "/book/electrical-services",
   PLUMBING: "/book/plumbing",
-  ELECTRONICS: "/book/electronics",
-  NETWORK: "/book/network",
-  SMARTHOME: "/book/smarthome",
-  SECURITY: "/book/security",
+  ELECTRONICS: "/book/electronics-repair",
+  NETWORK: "/book/network-services",
+  SMARTHOME: "/book/smart-home-office",
+  SECURITY: "/book/home-security",
   POWER_BACKUP: "/book/power-backup",
-  COPIER: "/book/copier",
-  SUPPLIES: "/book/supplies",
-  APPLIANCE_INSTALL: "/book/appliance-install",
+  COPIER: "/book/copier-printer-repair",
+  SUPPLIES: "/book/print-supplies",
+  APPLIANCE_INSTALL: "/book/appliance-installation",
 };
 
 const getBookingRoute = (categoryCode: string): string =>
-  CATEGORY_ROUTE_MAP[categoryCode] || "/book/it";
+  CATEGORY_ROUTE_MAP[categoryCode] || "/book/inspection";
 
-const MAX_IMAGE_DIMENSION = 1200;
-const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB after compression
+function getConfidenceBucket(confidence: number): string {
+  if (confidence >= 80) return "high";
+  if (confidence >= 50) return "medium";
+  return "low";
+}
+
+const MAX_IMAGE_DIMENSION = 1600;
+const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
 
 /** Compress and resize image client-side before uploading */
 function compressImage(file: File): Promise<{ base64: string; preview: string; sizeBytes: number }> {
@@ -65,7 +72,6 @@ function compressImage(file: File): Promise<{ base64: string; preview: string; s
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
       let { width, height } = img;
-      // Resize if exceeds max dimension
       if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
         const ratio = Math.min(MAX_IMAGE_DIMENSION / width, MAX_IMAGE_DIMENSION / height);
         width = Math.round(width * ratio);
@@ -76,7 +82,6 @@ function compressImage(file: File): Promise<{ base64: string; preview: string; s
       canvas.height = height;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0, width, height);
-      // Start at quality 0.8, reduce if still too large
       let quality = 0.8;
       let dataUrl = canvas.toDataURL("image/jpeg", quality);
       while (dataUrl.length * 0.75 > MAX_IMAGE_SIZE_BYTES && quality > 0.3) {
@@ -114,8 +119,8 @@ const AIPhotoDiagnosis = () => {
       setError("Please upload an image file");
       return;
     }
-    if (file.size > 20 * 1024 * 1024) {
-      setError("Image must be under 20MB");
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      setError("Image must be under 10MB");
       return;
     }
 
@@ -166,11 +171,13 @@ const AIPhotoDiagnosis = () => {
 
       const data: PhotoDiagnosisResult = await resp.json();
       setResult(data);
-      track("ai_photo_diagnose_complete", {
+      track("ai_result_viewed", {
         category: data.category_code,
         confidence: data.overall_confidence,
+        confidence_bucket: getConfidenceBucket(data.overall_confidence),
         inspection_recommended: data.inspection_recommended,
         booking_path: data.booking_path,
+        source: "photo_diagnosis",
       });
     } catch (e: any) {
       setError(e.message || "Analysis failed. Please try again.");
@@ -185,6 +192,14 @@ const AIPhotoDiagnosis = () => {
     setResult(null);
     setError(null);
     setDescription("");
+    if (result) {
+      track("ai_abandon_after_result", {
+        category: result.category_code,
+        confidence: result.overall_confidence,
+        confidence_bucket: getConfidenceBucket(result.overall_confidence),
+        source: "photo_diagnosis",
+      });
+    }
   };
 
   const severityColor = (s: string) => {
@@ -200,10 +215,28 @@ const AIPhotoDiagnosis = () => {
   };
 
   const isLowConfidence = result ? result.overall_confidence < 60 : false;
+  const isInspectionRequired = result?.category_code === "INSPECTION_REQUIRED";
 
   const getCtaLabel = (r: PhotoDiagnosisResult) => {
-    if (r.overall_confidence < 60 || r.inspection_recommended) return "Book Inspection";
+    if (isInspectionRequired || r.overall_confidence < 60 || r.inspection_recommended) return "Book Inspection";
     return "Book Service";
+  };
+
+  const handleBookService = (r: PhotoDiagnosisResult) => {
+    const action = isInspectionRequired || r.overall_confidence < 60 || r.inspection_recommended
+      ? "ai_book_inspection"
+      : "ai_book_recommended_service";
+
+    track(action, {
+      category: r.category_code,
+      service: r.recommended_service,
+      confidence: r.overall_confidence,
+      confidence_bucket: getConfidenceBucket(r.overall_confidence),
+      inspection_recommended: r.inspection_recommended,
+      was_low_confidence: isLowConfidence,
+      source: "photo_diagnosis",
+    });
+    navigate(getBookingRoute(r.category_code));
   };
 
   return (
@@ -222,6 +255,16 @@ const AIPhotoDiagnosis = () => {
             Upload a photo of your broken device or system — our AI identifies the issue and recommends the right service.
           </p>
         </div>
+
+        {/* Privacy notice — shown before upload */}
+        {!imagePreview && (
+          <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/30 border border-border/30 mb-4">
+            <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Photos are used only to assist diagnosis. Do not upload images containing personal or sensitive information. Final diagnosis will always be performed by a verified LankaFix technician.
+            </p>
+          </div>
+        )}
 
         {/* Upload area */}
         {!imagePreview ? (
@@ -247,7 +290,7 @@ const AIPhotoDiagnosis = () => {
                   Drop an image here or tap to upload
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Photos of phones, ACs, solar panels, electrical panels, etc.
+                  Photos of phones, ACs, solar panels, electrical panels, etc. (max 10MB)
                 </p>
                 <div className="flex items-center justify-center gap-4 mt-4">
                   <Button size="sm" variant="outline" className="rounded-xl gap-2" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>
@@ -295,8 +338,8 @@ const AIPhotoDiagnosis = () => {
             <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/30 border border-border/30">
               <Lock className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Your photo is processed securely for diagnosis only. Images are not stored permanently and are automatically deleted after analysis. By uploading, you agree to our{" "}
-                <a href="/privacy" className="underline text-primary hover:text-primary/80">Privacy Policy</a>.
+                Photos are used only to assist diagnosis. Do not upload images containing personal or sensitive information. Final diagnosis will always be performed by a verified LankaFix technician.
+                {" "}<a href="/privacy" className="underline text-primary hover:text-primary/80">Privacy Policy</a>.
               </p>
             </div>
 
@@ -354,12 +397,14 @@ const AIPhotoDiagnosis = () => {
                     </Badge>
                   </div>
 
-                  {/* Low confidence warning */}
-                  {isLowConfidence && (
+                  {/* Low confidence / inspection required warning */}
+                  {(isLowConfidence || isInspectionRequired) && (
                     <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 flex items-start gap-2">
                       <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                       <p className="text-xs text-muted-foreground">
-                        AI confidence is low. We recommend booking an <strong>on-site inspection</strong> for an accurate diagnosis by a verified technician.
+                        {isInspectionRequired
+                          ? "We couldn't confidently identify the issue from this photo. We recommend booking a general inspection by a verified technician."
+                          : "AI confidence is low. We recommend booking an on-site inspection for an accurate diagnosis by a verified technician."}
                       </p>
                     </div>
                   )}
@@ -439,16 +484,7 @@ const AIPhotoDiagnosis = () => {
                     <div className="flex gap-3">
                       <Button
                         className="flex-1 rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
-                        onClick={() => {
-                          track("ai_photo_book_service", {
-                            category: result.category_code,
-                            service: result.recommended_service,
-                            confidence: result.overall_confidence,
-                            inspection_recommended: result.inspection_recommended,
-                            was_low_confidence: isLowConfidence,
-                          });
-                          navigate(getBookingRoute(result.category_code));
-                        }}
+                        onClick={() => handleBookService(result)}
                       >
                         {getCtaLabel(result)}
                         <ArrowRight className="w-4 h-4" />
