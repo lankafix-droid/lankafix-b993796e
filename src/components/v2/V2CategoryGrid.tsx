@@ -58,23 +58,41 @@ const ESTIMATED_TIMES: Record<string, string> = {
   HOME_SECURITY: "2–4 hrs", POWER_BACKUP: "60–180 min", APPLIANCE_INSTALL: "60–180 min",
 };
 
+// Clearer pricing microcopy per archetype
+const PRICING_MICROCOPY: Record<string, string> = {
+  AC: "Inspection from Rs 2,500",
+  MOBILE: "Repair from Rs 3,000",
+  IT: "Diagnosis from Rs 2,000",
+  ELECTRICAL: "Visit from Rs 1,500",
+  PLUMBING: "Visit from Rs 1,500",
+  NETWORK: "Setup from Rs 2,000",
+  CCTV: "Site visit required · Quote after inspection",
+  SMART_HOME_OFFICE: "Site visit required",
+  HOME_SECURITY: "Inspection required · Custom quote",
+  POWER_BACKUP: "From Rs 3,000 · Parts separate",
+  SOLAR: "Free site inspection · Custom quote",
+  CONSUMER_ELEC: "Final quote after diagnosis",
+  COPIER: "Diagnosis from Rs 2,000",
+  PRINT_SUPPLIES: "Delivery available",
+  APPLIANCE_INSTALL: "From Rs 2,500 · Parts separate",
+};
+
 const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
   fixed_price: { label: "Fixed Price", className: "bg-success text-success-foreground" },
   diagnostic_first: { label: "Diagnostic First", className: "bg-warning text-warning-foreground" },
   quote_required: { label: "Quote Required", className: "bg-primary text-primary-foreground" },
 };
 
-// Three structured category groups
 const GROUP_A = ["AC", "MOBILE", "IT", "ELECTRICAL", "PLUMBING", "NETWORK"];
 const GROUP_B = ["CCTV", "SMART_HOME_OFFICE", "HOME_SECURITY", "POWER_BACKUP", "SOLAR"];
 const GROUP_C = ["CONSUMER_ELEC", "COPIER", "PRINT_SUPPLIES", "APPLIANCE_INSTALL"];
 
 const QUICK_BOOKS = [
-  { label: "Broken Phone Screen", price: "From Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
-  { label: "AC Not Cooling", price: "Rs 2,500 inspection", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
+  { label: "Broken Phone Screen", price: "Repair from Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
+  { label: "AC Not Cooling", price: "Inspection Rs 2,500", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
   { label: "Laptop Screen Fix", price: "From Rs 8,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "Electrical Repair", price: "From Rs 1,500", link: "/book/ELECTRICAL", icon: <Zap className="w-5 h-5" /> },
-  { label: "Plumbing Fix", price: "From Rs 1,500", link: "/book/PLUMBING", icon: <Droplets className="w-5 h-5" /> },
+  { label: "Electrical Repair", price: "Visit from Rs 1,500", link: "/book/ELECTRICAL", icon: <Zap className="w-5 h-5" /> },
+  { label: "Plumbing Fix", price: "Visit from Rs 1,500", link: "/book/PLUMBING", icon: <Droplets className="w-5 h-5" /> },
   { label: "WiFi / Router Issue", price: "From Rs 2,000", link: "/book/NETWORK", icon: <Wifi className="w-5 h-5" /> },
   { label: "TV Wall Mount", price: "From Rs 2,500", link: "/book/APPLIANCE_INSTALL", icon: <Monitor className="w-5 h-5" /> },
   { label: "UPS Installation", price: "From Rs 3,000", link: "/book/POWER_BACKUP", icon: <BatteryCharging className="w-5 h-5" /> },
@@ -87,6 +105,7 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
   const hasSameDay = cat.tags.includes("Same Day");
   const pricingChip = flow ? PRICING_CHIPS[flow.pricingArchetype] : null;
   const estTime = ESTIMATED_TIMES[cat.code];
+  const pricingMicrocopy = PRICING_MICROCOPY[cat.code];
 
   return (
     <motion.div
@@ -136,13 +155,13 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
         </div>
 
         <div className="p-3.5">
-          <p className="text-[11px] text-muted-foreground line-clamp-1 leading-relaxed mb-2.5">{cat.description}</p>
+          {/* Pricing microcopy — clearer per archetype */}
+          <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
+            {pricingMicrocopy || cat.description}
+          </p>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground">
-                From <span className="font-heading font-bold text-foreground">Rs {cat.fromPrice.toLocaleString("en-LK")}</span>
-              </span>
               {estTime && (
                 <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
                   <Clock className="w-3 h-3" />
@@ -218,7 +237,7 @@ const V2CategoryGrid = () => {
           </div>
         </div>
 
-        {/* Group A: Popular Services */}
+        {/* Group A */}
         <div>
           <SectionHeader title="Popular Services" subtitle="Same-day availability · Emergency support" />
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -226,7 +245,7 @@ const V2CategoryGrid = () => {
           </div>
         </div>
 
-        {/* Group B: Home & Office Systems */}
+        {/* Group B */}
         <div>
           <SectionHeader title="Home & Office Systems" subtitle="Installations, security, and energy solutions" />
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
@@ -234,7 +253,7 @@ const V2CategoryGrid = () => {
           </div>
         </div>
 
-        {/* Group C: More Technical Services */}
+        {/* Group C */}
         <div>
           <SectionHeader title="More Technical Services" subtitle="Electronics, printers, and appliance support" />
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">

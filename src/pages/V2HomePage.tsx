@@ -6,13 +6,14 @@ import V2EmergencyBlock from "@/components/v2/V2EmergencyBlock";
 import V2SmartRecommendations from "@/components/v2/V2SmartRecommendations";
 import V2CategoryGrid from "@/components/v2/V2CategoryGrid";
 import V2NearbyTechnicians from "@/components/v2/V2NearbyTechnicians";
-import V2TrustStrip from "@/components/v2/V2TrustStrip";
 import V2HowItWorks from "@/components/v2/V2HowItWorks";
 import V2DiagnoseAssistant from "@/components/v2/V2DiagnoseAssistant";
 import V2ServiceBundles from "@/components/v2/V2ServiceBundles";
 import SuperAppShortcuts from "@/components/v2/SuperAppShortcuts";
 import V2SMEBanner from "@/components/v2/V2SMEBanner";
 import V2SocialProof from "@/components/v2/V2SocialProof";
+import V2PlatformProtection from "@/components/v2/V2PlatformProtection";
+import V2TrustStrip from "@/components/v2/V2TrustStrip";
 import Footer from "@/components/landing/Footer";
 import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
@@ -42,22 +43,22 @@ const V2HomePage = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
-        {/* 1. Trust + Quick access */}
+        {/* 1. Trust + Quick access + Search */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
         {/* 2. Intent selection */}
         <V2IntentLayer />
 
-        {/* 3. Emergency services block */}
+        {/* 3. Emergency services */}
         <V2EmergencyBlock />
 
         {/* 4. Smart recommendations */}
         <V2SmartRecommendations />
 
-        {/* 5. Category discovery (grouped) */}
+        {/* 5. Category discovery */}
         <V2CategoryGrid />
 
-        {/* 6. Super-app ecosystem shortcuts */}
+        {/* 6. Super-app shortcuts */}
         <SuperAppShortcuts />
 
         {/* 7. Service bundles */}
@@ -66,7 +67,7 @@ const V2HomePage = () => {
         {/* 8. Nearby technicians */}
         <V2NearbyTechnicians />
 
-        {/* 9. Social proof + stats */}
+        {/* 9. Social proof */}
         <V2SocialProof />
 
         {/* 10. Diagnose assistant */}
@@ -76,13 +77,16 @@ const V2HomePage = () => {
           </div>
         </section>
 
-        {/* 11. SME banner */}
+        {/* 11. SME section */}
         <V2SMEBanner />
 
         {/* 12. How it works */}
         <V2HowItWorks />
 
-        {/* 13. Why LankaFix trust strip */}
+        {/* 13. Platform protection */}
+        <V2PlatformProtection />
+
+        {/* 14. Trust strip */}
         <V2TrustStrip />
       </main>
       <Footer />

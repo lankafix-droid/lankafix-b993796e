@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
-import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, Router, ArrowRight, Sparkles, Plus } from "lucide-react";
+import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, Router, ArrowRight, Sparkles, Plus, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { track } from "@/lib/analytics";
+
+type Priority = "critical" | "recommended" | "helpful";
 
 interface Recommendation {
   id: string;
@@ -14,64 +16,58 @@ interface Recommendation {
   link: string;
   gradient: string;
   iconColor: string;
+  priority: Priority;
 }
+
+const PRIORITY_LABELS: Record<Priority, { label: string; className: string } | null> = {
+  critical: { label: "Priority", className: "bg-destructive/10 text-destructive" },
+  recommended: { label: "Recommended", className: "bg-warning/10 text-warning" },
+  helpful: null,
+};
 
 const V2SmartRecommendations = () => {
   const { passports } = useDevicePassportsDB();
   const { subscriptions } = useSubscriptionStore();
 
-  // Build personalized recommendations based on user data
   const recommendations: Recommendation[] = [];
 
-  // Check device-specific recommendations
+  // Device data
   const acDevices = passports.filter(p => p.deviceCategory === "AC");
   const laptopDevices = passports.filter(p => p.deviceCategory === "IT");
   const cctvDevices = passports.filter(p => p.deviceCategory === "CCTV");
   const printerDevices = passports.filter(p => p.deviceCategory === "COPIER");
 
+  // 1. Critical / overdue — low health AC
   if (acDevices.length > 0) {
     const ac = acDevices[0];
-    if (ac.healthScore < 80) {
+    if (ac.healthScore < 60) {
+      recommendations.push({
+        id: "ac-critical",
+        icon: <AlertTriangle className="w-5 h-5" />,
+        title: `Your ${ac.deviceNickname || "AC"} needs attention`,
+        description: `Health score is ${ac.healthScore}%. Most ACs in Sri Lanka need servicing every 6 months to avoid breakdowns.`,
+        action: "Schedule Service",
+        link: "/book/AC",
+        gradient: "from-destructive/15 to-destructive/5",
+        iconColor: "text-destructive",
+        priority: "critical",
+      });
+    } else if (ac.healthScore < 80) {
       recommendations.push({
         id: "ac-service",
         icon: <Snowflake className="w-5 h-5" />,
         title: `Your ${ac.deviceNickname || "AC"} may need service`,
-        description: `Health score is ${ac.healthScore}%. A routine service can improve cooling and efficiency.`,
+        description: `Health score is ${ac.healthScore}%. A routine service can improve cooling efficiency and reduce electricity bills.`,
         action: "Schedule Service",
         link: "/book/AC",
         gradient: "from-primary/15 to-primary/5",
         iconColor: "text-primary",
+        priority: "recommended",
       });
     }
   }
 
-  if (cctvDevices.length > 0) {
-    recommendations.push({
-      id: "cctv-inspect",
-      icon: <Camera className="w-5 h-5" />,
-      title: "CCTV inspection recommended",
-      description: "Regular checks ensure all cameras are recording properly and storage is healthy.",
-      action: "Book Inspection",
-      link: "/book/CCTV",
-      gradient: "from-warning/15 to-warning/5",
-      iconColor: "text-warning",
-    });
-  }
-
-  if (printerDevices.length > 0) {
-    recommendations.push({
-      id: "printer-supplies",
-      icon: <Printer className="w-5 h-5" />,
-      title: "Reorder printer supplies",
-      description: "Keep your printer running smoothly with genuine toner and cartridges.",
-      action: "Buy Supplies",
-      link: "/supplies",
-      gradient: "from-accent/15 to-accent/5",
-      iconColor: "text-accent",
-    });
-  }
-
-  // Check subscription/care plan recommendations
+  // 2. No care plan for registered devices
   const activeSubs = subscriptions.filter(s => s.status === "active");
   if (passports.length > 0 && activeSubs.length === 0) {
     recommendations.push({
@@ -83,9 +79,26 @@ const V2SmartRecommendations = () => {
       link: "/care",
       gradient: "from-success/15 to-success/5",
       iconColor: "text-success",
+      priority: "recommended",
     });
   }
 
+  // 3. CCTV inspection
+  if (cctvDevices.length > 0) {
+    recommendations.push({
+      id: "cctv-inspect",
+      icon: <Camera className="w-5 h-5" />,
+      title: "CCTV inspection recommended",
+      description: "CCTV systems should be checked before failure, not after. Ensure all cameras are recording properly.",
+      action: "Book Inspection",
+      link: "/book/CCTV",
+      gradient: "from-warning/15 to-warning/5",
+      iconColor: "text-warning",
+      priority: "recommended",
+    });
+  }
+
+  // 4. Laptop with no service history
   if (laptopDevices.length > 0) {
     const laptop = laptopDevices[0];
     if (laptop.totalServicesPerformed === 0) {
@@ -93,16 +106,32 @@ const V2SmartRecommendations = () => {
         id: "laptop-health",
         icon: <Laptop className="w-5 h-5" />,
         title: `${laptop.deviceNickname || "Your laptop"} has no care history`,
-        description: "Schedule a health check to catch potential issues early.",
+        description: "Schedule a health check to catch potential issues early — dust, thermal paste, battery health.",
         action: "Book Checkup",
         link: "/book/IT",
         gradient: "from-primary/15 to-primary/5",
         iconColor: "text-primary",
+        priority: "recommended",
       });
     }
   }
 
-  // Default recommendations if user has no devices
+  // 5. Printer supplies
+  if (printerDevices.length > 0) {
+    recommendations.push({
+      id: "printer-supplies",
+      icon: <Printer className="w-5 h-5" />,
+      title: "Reorder printer supplies",
+      description: "Printers that sit unused often need preventive servicing. Keep yours running with genuine toner.",
+      action: "Buy Supplies",
+      link: "/supplies",
+      gradient: "from-accent/15 to-accent/5",
+      iconColor: "text-accent",
+      priority: "helpful",
+    });
+  }
+
+  // 6. Default helpful recommendations for new users
   if (recommendations.length === 0) {
     recommendations.push(
       {
@@ -114,6 +143,7 @@ const V2SmartRecommendations = () => {
         link: "/home-health",
         gradient: "from-primary/15 to-primary/5",
         iconColor: "text-primary",
+        priority: "recommended",
       },
       {
         id: "ac-service-general",
@@ -124,22 +154,26 @@ const V2SmartRecommendations = () => {
         link: "/book/AC",
         gradient: "from-primary/15 to-primary/5",
         iconColor: "text-primary",
+        priority: "helpful",
       },
       {
         id: "wifi-check",
         icon: <Router className="w-5 h-5" />,
-        title: "WiFi running slow?",
-        description: "A network audit can boost speed and fix dead zones in your home or office.",
+        title: "WiFi weak in some rooms?",
+        description: "A quick network audit can boost speed and fix dead zones in your home or office.",
         action: "Get Help",
         link: "/book/NETWORK",
         gradient: "from-accent/15 to-accent/5",
         iconColor: "text-accent",
+        priority: "helpful",
       },
     );
   }
 
-  // Limit to 3 recommendations
-  const displayRecs = recommendations.slice(0, 3);
+  // Sort by priority
+  const priorityOrder: Record<Priority, number> = { critical: 0, recommended: 1, helpful: 2 };
+  const sorted = [...recommendations].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+  const displayRecs = sorted.slice(0, 3);
 
   return (
     <section className="py-8 md:py-10">
@@ -161,33 +195,43 @@ const V2SmartRecommendations = () => {
         </motion.div>
 
         <div className="space-y-3">
-          {displayRecs.map((rec, i) => (
-            <motion.div
-              key={rec.id}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.35 }}
-            >
-              <Link
-                to={rec.link}
-                onClick={() => track("v2_smart_rec_click", { recommendation: rec.id })}
-                className="group flex items-start gap-4 bg-card rounded-2xl border border-border/60 p-5 hover:border-primary/30 hover:shadow-card-hover transition-all duration-300 active:scale-[0.99]"
+          {displayRecs.map((rec, i) => {
+            const priorityLabel = PRIORITY_LABELS[rec.priority];
+            return (
+              <motion.div
+                key={rec.id}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.35 }}
               >
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${rec.gradient} ${rec.iconColor} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                  {rec.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-heading font-bold text-sm text-foreground mb-0.5">{rec.title}</h3>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">{rec.description}</p>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:gap-2 transition-all">
-                    {rec.action}
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </Link>
-            </motion.div>
-          ))}
+                <Link
+                  to={rec.link}
+                  onClick={() => track("v2_smart_rec_click", { recommendation: rec.id, priority: rec.priority })}
+                  className="group flex items-start gap-4 bg-card rounded-2xl border border-border/60 p-5 hover:border-primary/30 hover:shadow-card-hover transition-all duration-300 active:scale-[0.99]"
+                >
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${rec.gradient} ${rec.iconColor} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                    {rec.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h3 className="font-heading font-bold text-sm text-foreground">{rec.title}</h3>
+                      {priorityLabel && (
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${priorityLabel.className}`}>
+                          {priorityLabel.label}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">{rec.description}</p>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:gap-2 transition-all">
+                      {rec.action}
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>
