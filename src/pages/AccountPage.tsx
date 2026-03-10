@@ -57,6 +57,7 @@ const AccountPage = () => {
       <Header />
       <main className="flex-1 container max-w-2xl py-6">
         <StaggerList className="space-y-6">
+        <StaggerItem>
         {/* Profile header */}
         <div className="bg-card rounded-2xl border p-6 flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -71,6 +72,7 @@ const AccountPage = () => {
             )}
           </div>
         </div>
+        </StaggerItem>
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
