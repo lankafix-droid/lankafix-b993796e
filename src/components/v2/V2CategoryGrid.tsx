@@ -64,8 +64,21 @@ const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: stri
   quote_required: { label: "Quote Required", className: "bg-primary text-primary-foreground" },
 };
 
-const PRIORITY_CODES = ["AC", "MOBILE", "IT", "ELECTRICAL", "PLUMBING", "NETWORK"];
-const MORE_CODES = ["CCTV", "CONSUMER_ELEC", "SOLAR", "SMART_HOME_OFFICE", "HOME_SECURITY", "POWER_BACKUP", "APPLIANCE_INSTALL", "COPIER", "PRINT_SUPPLIES"];
+// Three structured category groups
+const GROUP_A = ["AC", "MOBILE", "IT", "ELECTRICAL", "PLUMBING", "NETWORK"];
+const GROUP_B = ["CCTV", "SMART_HOME_OFFICE", "HOME_SECURITY", "POWER_BACKUP", "SOLAR"];
+const GROUP_C = ["CONSUMER_ELEC", "COPIER", "PRINT_SUPPLIES", "APPLIANCE_INSTALL"];
+
+const QUICK_BOOKS = [
+  { label: "Broken Phone Screen", price: "From Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
+  { label: "AC Not Cooling", price: "Rs 2,500 inspection", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
+  { label: "Laptop Screen Fix", price: "From Rs 8,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
+  { label: "Electrical Repair", price: "From Rs 1,500", link: "/book/ELECTRICAL", icon: <Zap className="w-5 h-5" /> },
+  { label: "Plumbing Fix", price: "From Rs 1,500", link: "/book/PLUMBING", icon: <Droplets className="w-5 h-5" /> },
+  { label: "WiFi / Router Issue", price: "From Rs 2,000", link: "/book/NETWORK", icon: <Wifi className="w-5 h-5" /> },
+  { label: "TV Wall Mount", price: "From Rs 2,500", link: "/book/APPLIANCE_INSTALL", icon: <Monitor className="w-5 h-5" /> },
+  { label: "UPS Installation", price: "From Rs 3,000", link: "/book/POWER_BACKUP", icon: <BatteryCharging className="w-5 h-5" /> },
+];
 
 const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof categories[0]; featured?: boolean; index?: number }) => {
   const thumb = categoryThumbs[cat.code];
@@ -80,14 +93,14 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ delay: index * 0.08, duration: 0.4, ease: "easeOut" }}
+      transition={{ delay: index * 0.06, duration: 0.4, ease: "easeOut" }}
     >
       <Link
         to={`/book/${cat.code}`}
         onClick={() => track("v2_category_click", { category: cat.code })}
         className="group block bg-card rounded-2xl border border-border/60 overflow-hidden transition-all duration-300 hover:shadow-card-hover hover:border-primary/30 active:scale-[0.98]"
       >
-        <div className={`relative ${featured ? "h-40 sm:h-44" : "h-32 sm:h-36"} overflow-hidden`}>
+        <div className={`relative ${featured ? "h-36 sm:h-40" : "h-28 sm:h-32"} overflow-hidden`}>
           {thumb ? (
             <img src={thumb} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" loading="lazy" />
           ) : (
@@ -117,23 +130,16 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
             )}
           </div>
 
-          <div className="absolute bottom-3 left-3 right-3">
-            <h3 className="font-heading font-bold text-primary-foreground text-sm md:text-base leading-tight drop-shadow-lg">{cat.name}</h3>
+          <div className="absolute bottom-2.5 left-3 right-3">
+            <h3 className="font-heading font-bold text-primary-foreground text-sm leading-tight drop-shadow-lg">{cat.name}</h3>
           </div>
         </div>
 
-        <div className="p-4">
-          <div className="flex items-start gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary flex items-center justify-center shrink-0">
-              {iconMap[cat.icon] || <Monitor className="w-4.5 h-4.5" />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{cat.description}</p>
-            </div>
-          </div>
+        <div className="p-3.5">
+          <p className="text-[11px] text-muted-foreground line-clamp-1 leading-relaxed mb-2.5">{cat.description}</p>
 
-          <div className="flex items-center justify-between pt-3 border-t border-border/50">
-            <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground">
                 From <span className="font-heading font-bold text-foreground">Rs {cat.fromPrice.toLocaleString("en-LK")}</span>
               </span>
@@ -143,13 +149,9 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
                   {estTime}
                 </span>
               )}
-              <div className="flex items-center gap-0.5 text-muted-foreground">
-                <ShieldCheck className="w-3 h-3 text-success" />
-                <span className="text-[10px] font-medium">Verified</span>
-              </div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center group-hover:bg-gradient-brand group-hover:text-primary-foreground text-primary transition-all duration-300">
-              <ArrowRight className="w-4 h-4" />
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center group-hover:bg-gradient-brand group-hover:text-primary-foreground text-primary transition-all duration-300">
+              <ArrowRight className="w-3.5 h-3.5" />
             </div>
           </div>
         </div>
@@ -158,22 +160,23 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
   );
 };
 
-const QUICK_BOOKS = [
-  { label: "Broken Phone Screen", price: "From Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
-  { label: "AC Not Cooling", price: "Rs 2,500 inspection", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
-  { label: "Laptop Screen Fix", price: "From Rs 8,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "Electrical Repair", price: "From Rs 1,500", link: "/book/ELECTRICAL", icon: <Zap className="w-5 h-5" /> },
-  { label: "Plumbing Fix", price: "From Rs 1,500", link: "/book/PLUMBING", icon: <Droplets className="w-5 h-5" /> },
-  { label: "WiFi / Router Issue", price: "From Rs 2,000", link: "/book/NETWORK", icon: <Wifi className="w-5 h-5" /> },
-  { label: "TV Wall Mount", price: "From Rs 2,500", link: "/book/APPLIANCE_INSTALL", icon: <Monitor className="w-5 h-5" /> },
-  { label: "UPS Installation", price: "From Rs 3,000", link: "/book/POWER_BACKUP", icon: <BatteryCharging className="w-5 h-5" /> },
-  { label: "Appliance Inspection", price: "From Rs 1,500", link: "/book/CONSUMER_ELEC", icon: <Tv className="w-5 h-5" /> },
-  { label: "Printer Repair", price: "Rs 2,500 inspection", link: "/book/COPIER", icon: <Printer className="w-5 h-5" /> },
-];
+const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
+  <motion.div
+    className="mb-4"
+    initial={{ opacity: 0, y: 12 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: "-40px" }}
+    transition={{ duration: 0.4 }}
+  >
+    <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">{title}</h2>
+    <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+  </motion.div>
+);
 
 const V2CategoryGrid = () => {
-  const priorityServices = categories.filter((c) => PRIORITY_CODES.includes(c.code));
-  const moreServices = categories.filter((c) => MORE_CODES.includes(c.code));
+  const groupA = categories.filter((c) => GROUP_A.includes(c.code));
+  const groupB = categories.filter((c) => GROUP_B.includes(c.code));
+  const groupC = categories.filter((c) => GROUP_C.includes(c.code));
 
   return (
     <section id="categories" className="pb-10">
@@ -215,39 +218,27 @@ const V2CategoryGrid = () => {
           </div>
         </div>
 
-        {/* Priority Services */}
+        {/* Group A: Popular Services */}
         <div>
-          <motion.div
-            className="flex items-center justify-between mb-4"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.4 }}
-          >
-            <div>
-              <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">Popular Services</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Same-day availability · Emergency support</p>
-            </div>
-          </motion.div>
+          <SectionHeader title="Popular Services" subtitle="Same-day availability · Emergency support" />
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {priorityServices.map((cat, i) => <CategoryCard key={cat.code} cat={cat} featured index={i} />)}
+            {groupA.map((cat, i) => <CategoryCard key={cat.code} cat={cat} featured index={i} />)}
           </div>
         </div>
 
-        {/* More Services */}
+        {/* Group B: Home & Office Systems */}
         <div>
-          <motion.div
-            className="mb-4"
-            initial={{ opacity: 0, y: 12 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.4 }}
-          >
-            <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">More Services</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">All categories live across Greater Colombo</p>
-          </motion.div>
+          <SectionHeader title="Home & Office Systems" subtitle="Installations, security, and energy solutions" />
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {moreServices.map((cat, i) => <CategoryCard key={cat.code} cat={cat} index={i} />)}
+            {groupB.map((cat, i) => <CategoryCard key={cat.code} cat={cat} index={i} />)}
+          </div>
+        </div>
+
+        {/* Group C: More Technical Services */}
+        <div>
+          <SectionHeader title="More Technical Services" subtitle="Electronics, printers, and appliance support" />
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {groupC.map((cat, i) => <CategoryCard key={cat.code} cat={cat} index={i} />)}
           </div>
         </div>
       </div>
