@@ -99,7 +99,26 @@ const AccountPage = () => {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Recent Bookings</h2>
           {MOCK_BOOKINGS.map((booking) => {
-...
+            const statusStyle = STATUS_STYLES[booking.status] || STATUS_STYLES.pending;
+            const Icon = booking.icon;
+            return (
+              <div key={booking.id} className="bg-card rounded-xl border p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Icon className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground truncate">{booking.category}</p>
+                    <Badge variant="outline" className={`text-[10px] ${statusStyle.className}`}>
+                      {statusStyle.label}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{booking.service} · {booking.date}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{booking.id}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+              </div>
+            );
           })}
           {MOCK_BOOKINGS.length === 0 && (
             <div className="bg-muted/30 rounded-xl border border-dashed p-8 text-center">
@@ -118,7 +137,21 @@ const AccountPage = () => {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Saved Addresses</h2>
           {savedAddresses.length > 0 ? (
-...
+            savedAddresses.map((addr) => (
+              <div key={addr.id} className="bg-card rounded-xl border p-4 flex items-center gap-3">
+                <MapPin className={`w-5 h-5 shrink-0 ${
+                  addr.zoneStatus === "inside" ? "text-success" :
+                  addr.zoneStatus === "edge" ? "text-warning" : "text-destructive"
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{addr.displayName}</p>
+                  <p className="text-xs text-muted-foreground">{addr.area}, {addr.city}</p>
+                </div>
+                <Badge variant="secondary" className="text-[10px] shrink-0">
+                  {ADDRESS_LABEL_OPTIONS.find((l) => l.value === addr.label)?.label || "Other"}
+                </Badge>
+              </div>
+            ))
           ) : (
             <div className="bg-muted/30 rounded-xl border border-dashed p-6 text-center">
               <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
@@ -134,7 +167,19 @@ const AccountPage = () => {
         <div className="bg-card rounded-xl border p-5 space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Your Protection</h2>
           <div className="space-y-2.5">
-...
+            {[
+              { icon: ShieldCheck, label: "Verified Technicians", desc: "All LankaFix technicians are background-checked and certified" },
+              { icon: FileText, label: "Quote Approval Required", desc: "No work begins without your explicit approval of the quote" },
+              { icon: Phone, label: "OTP Job Verification", desc: "Secure job start and completion with one-time passwords" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-start gap-3">
+                <item.icon className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
         </StaggerItem>
@@ -144,7 +189,55 @@ const AccountPage = () => {
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Settings & Support</h2>
           <div className="bg-card rounded-xl border divide-y divide-border">
-...
+            {/* Support */}
+            <a
+              href={whatsappLink(SUPPORT_WHATSAPP, "Hi, I need help with my LankaFix account.")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
+            >
+              <MessageCircle className="w-5 h-5 text-success" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">WhatsApp Support</p>
+                <p className="text-xs text-muted-foreground">Chat with us on WhatsApp</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <Mail className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Email Support</p>
+                <p className="text-xs text-muted-foreground">{SUPPORT_EMAIL}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
+            <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <Phone className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Call Support</p>
+                <p className="text-xs text-muted-foreground">{SUPPORT_PHONE}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </a>
+
+            {/* Legal */}
+            <Link to="/privacy" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <Lock className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1">Privacy Policy</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Link>
+            <Link to="/terms" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <FileText className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1">Terms of Service</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </Link>
+
+            {/* App version */}
+            <div className="flex items-center gap-3 p-4">
+              <Info className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground flex-1">App Version</span>
+              <span className="text-xs text-muted-foreground font-mono">{APP_VERSION}</span>
+            </div>
           </div>
         </div>
         </StaggerItem>
