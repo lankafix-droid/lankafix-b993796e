@@ -9,15 +9,17 @@ import {
   ArrowLeft, Star, CheckCircle2, Circle, Calendar,
   XCircle, FileText, AlertTriangle, Phone, MessageCircle,
   CreditCard, Play, Flag, Shield, Clock, MapPin, Sparkles,
-  ChevronDown, HelpCircle,
+  ChevronDown, HelpCircle, ClipboardList, Search, UserCheck,
+  Navigation, Wrench, Package, Building2, SearchCheck, CheckSquare,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS,
   BOOKING_TIMELINE_STEPS, QUOTE_TIMELINE_STEPS,
   CANCELLABLE_STATUSES, SERVICE_MODE_LABELS,
+  getTimelineStepsForBooking,
 } from "@/types/booking";
-import type { BookingStatus } from "@/types/booking";
+import type { BookingStatus, TimelineStepDef } from "@/types/booking";
 import MascotIcon from "@/components/brand/MascotIcon";
 import MascotGuide from "@/components/mascot/MascotGuide";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
@@ -40,6 +42,7 @@ import { generateDemoQuote } from "@/engines/quoteEngine";
 import { getZoneIntelligence } from "@/engines/matchingEngine";
 import { track } from "@/lib/analytics";
 import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
+import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
 import type { TrackingSimulation } from "@/lib/trackingEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -47,6 +50,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
+import { Textarea } from "@/components/ui/textarea";
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -125,20 +129,43 @@ function getNextBestAction(
   return null;
 }
 
-// ─── Premium Progress Stepper (simplified) ───
-function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label: string }[]; currentIdx: number }) {
+// ─── Step Icon Mapper ───
+const STEP_ICON_MAP: Record<string, React.ElementType> = {
+  clipboard: ClipboardList, search: Search, "user-check": UserCheck,
+  navigation: Navigation, "map-pin": MapPin, wrench: Wrench,
+  "check-circle": CheckCircle2, "search-check": SearchCheck,
+  "file-text": FileText, "check-square": CheckSquare,
+  package: Package, building: Building2,
+};
+
+function getStepIcon(iconName?: string): React.ElementType {
+  return (iconName && STEP_ICON_MAP[iconName]) || Circle;
+}
+
+// ─── Premium Progress Stepper (enhanced with icons + descriptions) ───
+function PremiumStepper({ steps, currentIdx }: { steps: TimelineStepDef[]; currentIdx: number }) {
   const progress = steps.length > 1 ? Math.max(0, currentIdx / (steps.length - 1)) * 100 : 0;
+  const currentStep = steps[Math.min(currentIdx, steps.length - 1)];
+  const CurrentIcon = getStepIcon(currentStep?.icon);
 
   return (
     <div className="bg-card/80 backdrop-blur-md border border-border/60 rounded-2xl p-4 mb-4 shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between mb-2.5">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progress</h3>
-        <span className="text-[10px] text-muted-foreground font-medium">
+      {/* Current status highlight */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <CurrentIcon className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-foreground">{currentStep?.label}</p>
+          <p className="text-[11px] text-muted-foreground">{currentStep?.description}</p>
+        </div>
+        <span className="text-[10px] text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-full shrink-0">
           {Math.min(currentIdx + 1, steps.length)}/{steps.length}
         </span>
       </div>
+
       {/* Progress bar */}
-      <div className="relative h-2 bg-secondary rounded-full overflow-hidden">
+      <div className="relative h-2 bg-secondary rounded-full overflow-hidden mb-3">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-accent"
           initial={{ width: "0%" }}
@@ -146,19 +173,31 @@ function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label:
           transition={{ duration: 0.8, ease: "easeOut" }}
         />
       </div>
-      {/* Only show: first, current, last labels */}
-      <div className="flex justify-between mt-2.5">
+
+      {/* Milestone dots */}
+      <div className="flex items-center justify-between px-1">
         {steps.map((step, i) => {
-          const show = i === 0 || i === currentIdx || i === steps.length - 1;
-          if (!show) return <div key={step.status} className="flex-1" />;
           const completed = currentIdx >= i;
           const isCurrent = i === currentIdx;
+          const StepIcon = getStepIcon(step.icon);
           return (
-            <div key={step.status} className="flex flex-col items-center flex-1">
-              <div className={`w-2.5 h-2.5 rounded-full ${isCurrent ? "bg-primary ring-3 ring-primary/20" : completed ? "bg-success" : "bg-muted"}`} />
-              <span className={`text-[9px] text-center leading-tight mt-1 max-w-[56px] ${isCurrent ? "text-primary font-semibold" : completed ? "text-foreground" : "text-muted-foreground"}`}>
-                {step.label}
-              </span>
+            <div key={step.status} className="flex flex-col items-center" style={{ flex: "0 0 auto" }}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                isCurrent
+                  ? "bg-primary ring-3 ring-primary/20"
+                  : completed
+                  ? "bg-success"
+                  : "bg-muted"
+              }`}>
+                <StepIcon className={`w-3 h-3 ${isCurrent || completed ? "text-primary-foreground" : "text-muted-foreground"}`} />
+              </div>
+              {(i === 0 || isCurrent || i === steps.length - 1) && (
+                <span className={`text-[8px] text-center leading-tight mt-1.5 max-w-[48px] ${
+                  isCurrent ? "text-primary font-semibold" : completed ? "text-foreground" : "text-muted-foreground"
+                }`}>
+                  {step.label}
+                </span>
+              )}
             </div>
           );
         })}
@@ -221,6 +260,7 @@ const TrackerPage = () => {
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [rating, setRating] = useState(0);
+  const [reviewText, setReviewText] = useState("");
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [showOtp, setShowOtp] = useState<"start" | "completion" | null>(null);
   const [showSos, setShowSos] = useState(false);
@@ -272,7 +312,7 @@ const TrackerPage = () => {
 
   const canCancel = CANCELLABLE_STATUSES.includes(booking.status);
   const isQuoteFlow = booking.pricing.quoteRequired;
-  const timelineSteps = isQuoteFlow ? QUOTE_TIMELINE_STEPS : BOOKING_TIMELINE_STEPS;
+  const timelineSteps = getTimelineStepsForBooking(booking.serviceMode, isQuoteFlow);
   const statusOrder = timelineSteps.map((s) => s.status);
   const currentIdx = statusOrder.indexOf(booking.status);
   const mascotState = statusToMascotState[booking.status];
@@ -406,6 +446,13 @@ const TrackerPage = () => {
                 serviceMode={booking.serviceMode}
                 bookingConfirmed={true}
               />
+            </Section>
+          )}
+
+          {/* ═══ INLINE QUOTE CARD ═══ */}
+          {booking.quote && (booking.status === "quote_submitted" || booking.status === "quote_revised" || booking.status === "quote_approved" || booking.status === "repair_started") && (
+            <Section delay={0.18}>
+              <InlineQuoteCard quote={booking.quote} jobId={booking.jobId} status={booking.status} />
             </Section>
           )}
 
@@ -565,23 +612,38 @@ const TrackerPage = () => {
                   {booking.status === "rated" || ratingSubmitted ? (
                     <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="text-center py-4">
                       <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-3" />
-                      <p className="text-sm text-success font-semibold">Thank you for your rating!</p>
+                      <p className="text-sm text-success font-semibold">Thank you for your feedback!</p>
                       <div className="flex justify-center gap-1.5 mt-3">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <Star key={s} className={`w-6 h-6 ${s <= (booking.rating || rating) ? "text-warning fill-warning" : "text-muted-foreground/30"}`} />
                         ))}
                       </div>
+                      {reviewText && <p className="text-xs text-muted-foreground mt-3 italic">"{reviewText}"</p>}
                     </motion.div>
                   ) : (
                     <div>
-                      <div className="flex gap-3 mb-5 justify-center">
+                      <div className="flex gap-3 mb-4 justify-center">
                         {[1, 2, 3, 4, 5].map((s) => (
                           <motion.button key={s} whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.95 }} onClick={() => setRating(s)} aria-label={`Rate ${s} stars`} className="p-1">
                             <Star className={`w-9 h-9 cursor-pointer transition-colors ${s <= rating ? "text-warning fill-warning" : "text-muted-foreground/30 hover:text-warning/50"}`} />
                           </motion.button>
                         ))}
                       </div>
-                      <Button variant="hero" className="w-full rounded-xl h-12" onClick={handleRate} disabled={rating === 0}>Submit Rating</Button>
+                      {rating > 0 && (
+                        <p className="text-center text-xs text-muted-foreground mb-3">
+                          {rating >= 5 ? "Excellent! 🎉" : rating >= 4 ? "Great experience! 👍" : rating >= 3 ? "Good service" : rating >= 2 ? "Room for improvement" : "Sorry to hear that"}
+                        </p>
+                      )}
+                      <Textarea
+                        placeholder="Share details about your experience (optional)"
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                        className="mb-4 text-sm rounded-xl resize-none min-h-[80px]"
+                        rows={3}
+                      />
+                      <Button variant="hero" className="w-full rounded-xl h-12" onClick={handleRate} disabled={rating === 0}>
+                        Submit Review
+                      </Button>
                     </div>
                   )}
                 </SectionCard>
