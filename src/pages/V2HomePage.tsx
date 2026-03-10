@@ -77,7 +77,10 @@ const V2HomePage = () => {
         {/* 10. Social proof — testimonials + stats */}
         <V2SocialProof />
 
-        {/* 11. Diagnose assistant — AI chat CTA */}
+        {/* 11. AI Photo Diagnosis */}
+        <AIPhotoDiagnosis />
+
+        {/* 12. Diagnose assistant — AI chat CTA */}
         <section id="diagnose" className="py-10 md:py-12">
           <div className="container max-w-2xl">
             <V2DiagnoseAssistant />
