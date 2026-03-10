@@ -117,7 +117,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <SummaryRow label="Job ID" value={<span className="font-mono font-bold">{jobId}</span>} />
+          <SummaryRow label="Job ID" value={<span className="font-mono font-bold">{createdJobId}</span>} />
           <SummaryRow label="Status" value={
             <Badge className="bg-primary/10 text-primary border-0 font-semibold text-xs">Technician Assigned</Badge>
           } />
