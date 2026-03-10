@@ -65,6 +65,7 @@
 
     /* Brand gradients */
     --gradient-brand: linear-gradient(135deg, hsl(147, 57%, 43%), hsl(180, 60%, 38%), hsl(211, 82%, 31%));
+    --gradient-brand-text: linear-gradient(135deg, hsl(147, 57%, 43%), hsl(180, 60%, 38%), hsl(211, 82%, 31%));
     --shadow-brand: 0 10px 40px -12px hsl(211 82% 31% / 0.25);
     --shadow-card: 0 1px 3px 0 hsl(214 33% 8% / 0.06), 0 1px 2px -1px hsl(214 33% 8% / 0.06);
     --shadow-card-hover: 0 10px 25px -5px hsl(211 82% 31% / 0.12), 0 8px 10px -6px hsl(211 82% 31% / 0.06);
@@ -111,6 +112,12 @@
     --navy: 213 75% 5%;
     --navy-foreground: 216 25% 96%;
 
+    --gradient-brand: linear-gradient(135deg, hsl(147, 50%, 38%), hsl(180, 50%, 34%), hsl(211, 80%, 38%));
+    --gradient-brand-text: linear-gradient(135deg, hsl(147, 55%, 48%), hsl(180, 55%, 42%), hsl(211, 80%, 50%));
+    --shadow-brand: 0 10px 40px -12px hsl(211 80% 38% / 0.35);
+    --shadow-card: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
+    --shadow-card-hover: 0 10px 25px -5px hsl(211 80% 38% / 0.2), 0 8px 10px -6px hsl(211 80% 38% / 0.1);
+
     --sidebar-background: 213 75% 6%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 211 80% 38%;
@@ -150,11 +157,11 @@
 
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(147, 57%, 43%), hsl(180, 60%, 38%), hsl(211, 82%, 31%));
+    background-image: var(--gradient-brand-text);
   }
 
   .bg-gradient-brand {
-    background-image: linear-gradient(135deg, hsl(147, 57%, 43%), hsl(180, 60%, 38%), hsl(211, 82%, 31%));
+    background-image: var(--gradient-brand);
   }
 
   .bg-navy {

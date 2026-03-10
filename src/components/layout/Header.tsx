@@ -1,12 +1,34 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { MapPin, Menu, X, Wrench, User } from "lucide-react";
-import { useState } from "react";
+import { MapPin, Menu, X, Wrench, User, Moon, Sun } from "lucide-react";
+import { useState, useEffect } from "react";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 import { motion, AnimatePresence } from "framer-motion";
 
+const useTheme = () => {
+  const [dark, setDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("lankafix-theme") === "dark" ||
+      (!localStorage.getItem("lankafix-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (dark) {
+      root.classList.add("dark");
+      localStorage.setItem("lankafix-theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("lankafix-theme", "light");
+    }
+  }, [dark]);
+
+  return { dark, toggle: () => setDark(d => !d) };
+};
+
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { dark, toggle } = useTheme();
 
   return (
     <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-2xl border-b border-border/40 shadow-sm">
@@ -22,6 +44,13 @@ const Header = () => {
           <Link to="/diagnose" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Diagnose</Link>
           <Link to="/track" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Track Job</Link>
           <Link to="/account" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">Account</Link>
+          <button
+            onClick={toggle}
+            className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Toggle dark mode"
+          >
+            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <Button size="sm" className="bg-gradient-brand text-primary-foreground shadow-brand font-semibold rounded-xl" asChild>
             <Link to="/#categories">
               <Wrench className="w-3.5 h-3.5 mr-1.5" />
@@ -29,9 +58,18 @@ const Header = () => {
             </Link>
           </Button>
         </nav>
-        <button className="md:hidden p-2 rounded-xl hover:bg-muted transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
-          {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="md:hidden flex items-center gap-1">
+          <button
+            onClick={toggle}
+            className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground"
+            aria-label="Toggle dark mode"
+          >
+            {dark ? <Sun className="w-4.5 h-4.5" /> : <Moon className="w-4.5 h-4.5" />}
+          </button>
+          <button className="p-2 rounded-xl hover:bg-muted transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
       <AnimatePresence>
         {menuOpen && (
