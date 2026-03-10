@@ -128,9 +128,14 @@ const V2PricingBuilder = ({ packages, selectedId, onSelect, onContinue, category
         Prices set by verified market rules · AI assists but never overrides
       </div>
 
-      <Button onClick={onContinue} disabled={!selectedId} size="lg" className="w-full gap-2">
-        Continue <ArrowRight className="w-4 h-4" />
-      </Button>
+      {/* Sticky CTA on mobile */}
+      <div className="md:relative md:mt-0">
+        <div className="fixed bottom-0 inset-x-0 z-40 p-4 glass border-t md:relative md:p-0 md:border-0 md:bg-transparent md:backdrop-blur-none" style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}>
+          <Button onClick={onContinue} disabled={!selectedId} size="lg" className="w-full gap-2 h-13 text-base font-bold rounded-xl shadow-brand">
+            Continue <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
