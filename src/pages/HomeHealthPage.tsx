@@ -14,6 +14,7 @@ import { getHealthLabel } from "@/store/devicePassportStore";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { MAINTENANCE_SCHEDULES } from "@/engines/retentionEngine";
+import AIPredictiveMaintenance from "@/components/ai/AIPredictiveMaintenance";
 
 const CATEGORY_ICONS: Record<string, string> = {
   AC: "❄️", CCTV: "📹", IT: "💻", MOBILE: "📱", SOLAR: "☀️",
@@ -67,6 +68,15 @@ export default function HomeHealthPage() {
               <h1 className="text-xl font-bold text-foreground">Home Health</h1>
               <p className="text-xs text-muted-foreground">Your complete technology overview</p>
             </div>
+          </div>
+
+          {/* AI Predictive Maintenance */}
+          <div className="mb-6">
+            <AIPredictiveMaintenance
+              deviceCategory={passports[0]?.deviceCategory || "AC"}
+              deviceAge={passports[0] ? `${Math.round((Date.now() - new Date(passports[0].purchaseDate || passports[0].createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years` : "2 years"}
+              location="Colombo, Sri Lanka"
+            />
           </div>
 
           {/* Overall Score */}
