@@ -32,25 +32,25 @@ const EMERGENCY_SERVICES = [
 
 const V2EmergencyBlock = () => {
   return (
-    <section className="py-8 md:py-10">
+    <section className="py-10 md:py-12">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.4 }}
-          className="mb-5"
+          className="mb-6"
         >
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-destructive" />
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
+              <Zap className="w-4.5 h-4.5 text-destructive" />
             </div>
             <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">Need Urgent Help?</h2>
           </div>
-          <p className="text-xs text-muted-foreground ml-10">Fast response for critical issues · Priority technician allocation</p>
+          <p className="text-xs text-muted-foreground ml-[46px]">Fast response for critical issues · Priority technician allocation</p>
         </motion.div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3.5 md:grid-cols-3">
           {EMERGENCY_SERVICES.map((service, i) => (
             <motion.div
               key={service.label}
@@ -62,26 +62,26 @@ const V2EmergencyBlock = () => {
               <Link
                 to={service.link}
                 onClick={() => track("v2_emergency_service_click", { category: service.category })}
-                className="group block bg-card rounded-2xl border border-destructive/15 overflow-hidden hover:border-destructive/30 hover:shadow-card-hover transition-all duration-300 active:scale-[0.98]"
+                className="group block bg-card rounded-2xl border border-destructive/12 overflow-hidden hover:border-destructive/25 hover:shadow-card-hover transition-all duration-300 active:scale-[0.98]"
               >
-                {/* Red accent top bar */}
-                <div className="h-1 bg-gradient-to-r from-destructive to-destructive/60" />
-                
+                {/* Red accent top bar — thicker for impact */}
+                <div className="h-1.5 bg-gradient-to-r from-destructive via-destructive/80 to-destructive/40" />
+
                 <div className="p-5">
-                  <div className="flex items-start gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center shrink-0 group-hover:bg-destructive group-hover:text-destructive-foreground transition-colors duration-300">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-destructive/8 text-destructive flex items-center justify-center shrink-0 group-hover:bg-destructive group-hover:text-destructive-foreground transition-colors duration-300">
                       {service.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-heading font-bold text-sm text-foreground mb-1">{service.label}</h3>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">{service.desc}</p>
+                      <h3 className="font-heading font-bold text-sm text-foreground mb-1.5">{service.label}</h3>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed mb-3.5">{service.desc}</p>
                       <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-destructive">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-destructive">
                           <Clock className="w-3 h-3" />
                           {service.eta}
                         </span>
-                        <div className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center group-hover:bg-destructive group-hover:text-destructive-foreground text-destructive transition-colors duration-300">
-                          <ArrowRight className="w-3.5 h-3.5" />
+                        <div className="w-8 h-8 rounded-full bg-destructive/8 flex items-center justify-center group-hover:bg-destructive group-hover:text-destructive-foreground text-destructive transition-colors duration-300">
+                          <ArrowRight className="w-4 h-4" />
                         </div>
                       </div>
                     </div>

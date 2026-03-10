@@ -45,53 +45,53 @@ const V2HomePage = () => {
     <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
-        {/* 1. Trust + Quick access + Search */}
+        {/* 1. Hero — Cinematic banner + search + availability */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
-        {/* 2. Intent selection */}
+        {/* 2. Intent selection — quick path to service type */}
         <V2IntentLayer />
 
-        {/* 3. Emergency services */}
+        {/* 3. Emergency — high-urgency section */}
         <V2EmergencyBlock />
 
-        {/* 4. Smart recommendations */}
+        {/* 4. Smart recommendations — AI-powered suggestions */}
         <V2SmartRecommendations />
 
-        {/* 5. Category discovery */}
+        {/* 5. Category discovery — main service grid */}
         <V2CategoryGrid />
 
-        {/* 6. Super-app shortcuts */}
+        {/* 6. Super-app shortcuts — ecosystem entry points */}
         <SuperAppShortcuts />
 
-        {/* 6.5 Seasonal promotions */}
+        {/* 7. Seasonal promotions */}
         <V2SeasonalPromos />
 
-        {/* 7. Service bundles */}
+        {/* 8. Service bundles */}
         <V2ServiceBundles />
 
-        {/* 8. Nearby technicians */}
+        {/* 9. Nearby technicians — marketplace trust */}
         <V2NearbyTechnicians />
 
-        {/* 9. Social proof */}
+        {/* 10. Social proof — testimonials + stats */}
         <V2SocialProof />
 
-        {/* 10. Diagnose assistant */}
-        <section id="diagnose" className="py-8 md:py-10">
+        {/* 11. Diagnose assistant — AI chat CTA */}
+        <section id="diagnose" className="py-10 md:py-12">
           <div className="container max-w-2xl">
             <V2DiagnoseAssistant />
           </div>
         </section>
 
-        {/* 11. SME section */}
+        {/* 12. SME section */}
         <V2SMEBanner />
 
-        {/* 12. How it works */}
+        {/* 13. How it works — simple explainer */}
         <V2HowItWorks />
 
-        {/* 13. Platform protection */}
+        {/* 14. Platform protection — trust grid */}
         <V2PlatformProtection />
 
-        {/* 14. Trust strip */}
+        {/* 15. Trust strip — final confidence */}
         <V2TrustStrip />
       </main>
       <Footer />

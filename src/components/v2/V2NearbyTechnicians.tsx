@@ -18,19 +18,20 @@ const STATUS_STYLES: Record<string, { text: string; dot: string }> = {
 
 const V2NearbyTechnicians = () => {
   return (
-    <section className="py-8 md:py-14 bg-secondary/30">
+    <section className="py-10 md:py-14 bg-secondary/20">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.4 }}
+          className="mb-6"
         >
           <h2 className="font-heading text-lg md:text-xl font-bold text-foreground mb-1">Technicians Near You</h2>
-          <p className="text-xs text-muted-foreground mb-6">Verified professionals active across Greater Colombo</p>
+          <p className="text-xs text-muted-foreground">Verified professionals active across Greater Colombo</p>
         </motion.div>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-3">
+        <div className="flex gap-3.5 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-3">
           {TECHNICIANS.map((tech, i) => {
             const statusStyle = STATUS_STYLES[tech.status] || { text: "text-muted-foreground", dot: "bg-muted-foreground" };
             return (
@@ -40,7 +41,7 @@ const V2NearbyTechnicians = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-30px" }}
                 transition={{ delay: i * 0.08, duration: 0.4, ease: "easeOut" }}
-                className="flex-shrink-0 w-[230px] md:w-auto bg-card rounded-2xl border border-border/60 p-5 space-y-3 hover:shadow-card-hover hover:border-primary/30 transition-all duration-300"
+                className="flex-shrink-0 w-[240px] md:w-auto bg-card rounded-2xl border border-border/40 p-5 space-y-3.5 hover:shadow-card-hover hover:border-primary/20 transition-all duration-300"
               >
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -70,17 +71,17 @@ const V2NearbyTechnicians = () => {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-border/50">
+                <div className="flex items-center justify-between pt-3 border-t border-border/30">
                   <div className="flex flex-col">
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
                       <Clock className="w-3 h-3" />
                       ETA {tech.eta}
                     </span>
-                    <span className={`text-[10px] font-semibold mt-0.5 ${statusStyle.text}`}>
+                    <span className={`text-[10px] font-bold mt-0.5 ${statusStyle.text}`}>
                       {tech.status}
                     </span>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-primary" />
+                  <ChevronRight className="w-4 h-4 text-primary" />
                 </div>
               </motion.div>
             );

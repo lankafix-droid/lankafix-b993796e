@@ -4,8 +4,8 @@ import { motion } from "framer-motion";
 const badges = [
   { icon: <ShieldCheck className="w-5 h-5" />, label: "Verified Technicians", desc: "Background checked & certified" },
   { icon: <Eye className="w-5 h-5" />, label: "Transparent Pricing", desc: "No hidden fees, ever" },
-  { icon: <KeyRound className="w-5 h-5" />, label: "OTP Job Verification", desc: "Secure start & completion" },
-  { icon: <Award className="w-5 h-5" />, label: "Approval Before Extra Work", desc: "No surprises on your bill" },
+  { icon: <KeyRound className="w-5 h-5" />, label: "OTP Verification", desc: "Secure start & completion" },
+  { icon: <Award className="w-5 h-5" />, label: "Quote Approval", desc: "No surprises on your bill" },
   { icon: <FileText className="w-5 h-5" />, label: "Digital Invoice", desc: "Complete breakdown after service" },
   { icon: <Lock className="w-5 h-5" />, label: "Warranty Included", desc: "Parts and labor guaranteed" },
   { icon: <HeartHandshake className="w-5 h-5" />, label: "LankaFix Mediation", desc: "We resolve disputes fairly" },
@@ -14,13 +14,13 @@ const badges = [
 
 const V2TrustStrip = () => {
   return (
-    <section className="py-12 md:py-20 bg-navy relative overflow-hidden">
-      {/* Subtle pattern overlay */}
+    <section className="py-14 md:py-20 bg-navy relative overflow-hidden">
+      {/* Subtle dot pattern */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
         backgroundSize: "32px 32px",
       }} />
-      
+
       <div className="container space-y-10 relative z-10">
         <motion.div
           className="text-center"
@@ -29,10 +29,10 @@ const V2TrustStrip = () => {
           viewport={{ once: true, margin: "-60px" }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="font-heading text-xl md:text-3xl font-bold text-primary-foreground mb-2">
+          <h2 className="font-heading text-xl md:text-3xl font-bold text-white mb-2.5">
             Why Sri Lankans Trust LankaFix
           </h2>
-          <p className="text-sm text-primary-foreground/45">
+          <p className="text-sm text-white/40">
             Built for transparency, trust, and real service delivery
           </p>
         </motion.div>
@@ -49,13 +49,13 @@ const V2TrustStrip = () => {
             >
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300"
-                style={{ background: "linear-gradient(135deg, rgba(14,76,146,0.5), rgba(47,174,102,0.3))" }}
+                style={{ background: "linear-gradient(135deg, hsl(211 78% 42% / 0.4), hsl(147 48% 40% / 0.25))" }}
               >
-                <span className="text-primary-foreground">{item.icon}</span>
+                <span className="text-white">{item.icon}</span>
               </div>
               <div>
-                <span className="text-xs font-bold text-primary-foreground block">{item.label}</span>
-                <p className="text-[10px] text-primary-foreground/40 mt-0.5">{item.desc}</p>
+                <span className="text-xs font-bold text-white block leading-snug">{item.label}</span>
+                <p className="text-[10px] text-white/35 mt-1">{item.desc}</p>
               </div>
             </motion.div>
           ))}

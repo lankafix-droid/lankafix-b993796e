@@ -10,7 +10,7 @@ const steps = [
 
 const V2HowItWorks = () => {
   return (
-    <section className="py-10 md:py-20 bg-card border-t border-border/40">
+    <section className="py-12 md:py-20 bg-card border-t border-border/30">
       <div className="container">
         <motion.div
           className="text-center mb-12"
@@ -45,15 +45,14 @@ const V2HowItWorks = () => {
               </div>
               <div>
                 <h3 className="font-heading font-bold text-foreground text-sm">{step.title}</h3>
-                <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{step.desc}</p>
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{step.desc}</p>
               </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Connector line for desktop */}
         <motion.p
-          className="text-center text-xs text-muted-foreground mt-12 max-w-sm mx-auto"
+          className="text-center text-xs text-muted-foreground mt-12 max-w-sm mx-auto leading-relaxed"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}

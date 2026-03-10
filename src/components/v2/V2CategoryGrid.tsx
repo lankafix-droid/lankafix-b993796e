@@ -97,7 +97,7 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
       <Link
         to={`/book/${cat.code}`}
         onClick={() => track("v2_category_click", { category: cat.code })}
-        className="group block bg-card rounded-2xl border border-border/50 overflow-hidden transition-smooth hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97]"
+        className="group block bg-card rounded-2xl border border-border/40 overflow-hidden transition-smooth hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97]"
       >
         <div className={`relative ${featured ? "h-32 sm:h-36" : "h-24 sm:h-28"} overflow-hidden`}>
           {thumb ? (
@@ -107,9 +107,9 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
               {iconMap[cat.icon] || <Monitor className="w-8 h-8 text-muted-foreground" />}
             </div>
           )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,27,51,0.75) 0%, rgba(8,27,51,0.1) 60%, transparent 100%)" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to top, hsl(213 75% 8% / 0.8) 0%, hsl(213 75% 8% / 0.15) 55%, transparent 100%)" }} />
 
-          <div className="absolute top-2 left-2 flex gap-1.5">
+          <div className="absolute top-2.5 left-2.5 flex gap-1.5">
             {hasEmergency && (
               <Badge variant="outline" className="text-[9px] bg-destructive text-destructive-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 ⚡ Emergency
@@ -122,25 +122,25 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
             )}
           </div>
           {pricingChip && (
-            <div className="absolute top-2 right-2">
+            <div className="absolute top-2.5 right-2.5">
               <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${pricingChip.className}`}>
                 {pricingChip.label}
               </Badge>
             </div>
           )}
 
-          <div className="absolute bottom-2 left-3 right-3">
-            <h3 className="font-heading font-bold text-primary-foreground text-sm leading-tight drop-shadow-lg">{cat.name}</h3>
+          <div className="absolute bottom-2.5 left-3 right-3">
+            <h3 className="font-heading font-bold text-white text-sm leading-tight drop-shadow-lg">{cat.name}</h3>
           </div>
         </div>
 
-        <div className="p-3">
-          <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">
+        <div className="p-3.5">
+          <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
             {pricingMicrocopy || cat.description}
           </p>
           <div className="flex items-center justify-between">
             {estTime && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
                 <Clock className="w-3 h-3" />
                 {estTime}
               </span>
@@ -157,14 +157,14 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
 
 const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string }) => (
   <motion.div
-    className="mb-4"
+    className="mb-5"
     initial={{ opacity: 0, y: 10 }}
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true, margin: "-30px" }}
     transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
   >
     <h2 className="font-heading text-lg font-bold text-foreground tracking-tight">{title}</h2>
-    <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+    <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
   </motion.div>
 );
 
@@ -174,8 +174,8 @@ const V2CategoryGrid = () => {
   const groupC = categories.filter((c) => GROUP_C.includes(c.code));
 
   return (
-    <section id="categories" className="pb-10">
-      <div className="container space-y-10">
+    <section id="categories" className="pb-12">
+      <div className="container space-y-12">
         {/* Quick Book */}
         <div>
           <SectionHeader title="Quick Book" subtitle="Most popular — book in seconds" />
@@ -192,13 +192,13 @@ const V2CategoryGrid = () => {
                 <Link
                   to={qb.link}
                   onClick={() => track("v2_quickbook_click", { label: qb.label })}
-                  className="block w-32 bg-card rounded-2xl border border-border/50 p-3.5 hover:border-primary/20 hover:shadow-card-hover transition-smooth group active:scale-[0.96]"
+                  className="block w-[128px] bg-card rounded-2xl border border-border/40 p-4 hover:border-primary/20 hover:shadow-card-hover transition-smooth group active:scale-[0.96]"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center mb-2.5 group-hover:scale-105 transition-spring">
+                  <div className="w-11 h-11 rounded-xl bg-primary/8 text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-spring">
                     {qb.icon}
                   </div>
                   <p className="text-xs font-semibold text-foreground leading-tight">{qb.label}</p>
-                  <p className="text-[10px] font-bold mt-1 text-gradient bg-gradient-brand bg-clip-text text-transparent">{qb.price}</p>
+                  <p className="text-[10px] font-bold mt-1.5 text-gradient bg-gradient-brand bg-clip-text text-transparent">{qb.price}</p>
                 </Link>
               </motion.div>
             ))}
@@ -208,7 +208,7 @@ const V2CategoryGrid = () => {
         {/* Group A */}
         <div>
           <SectionHeader title="Popular Services" subtitle="Same-day availability · Emergency support" />
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
             {groupA.map((cat, i) => <CategoryCard key={cat.code} cat={cat} featured index={i} />)}
           </div>
         </div>
@@ -216,7 +216,7 @@ const V2CategoryGrid = () => {
         {/* Group B */}
         <div>
           <SectionHeader title="Home & Office Systems" subtitle="Installations, security, and energy" />
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
             {groupB.map((cat, i) => <CategoryCard key={cat.code} cat={cat} index={i} />)}
           </div>
         </div>
@@ -224,7 +224,7 @@ const V2CategoryGrid = () => {
         {/* Group C */}
         <div>
           <SectionHeader title="More Services" subtitle="Electronics, printers, and appliances" />
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
             {groupC.map((cat, i) => <CategoryCard key={cat.code} cat={cat} index={i} />)}
           </div>
         </div>

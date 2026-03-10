@@ -20,8 +20,8 @@ interface Recommendation {
 }
 
 const PRIORITY_LABELS: Record<Priority, { label: string; className: string } | null> = {
-  critical: { label: "Priority", className: "bg-destructive/10 text-destructive" },
-  recommended: { label: "Recommended", className: "bg-warning/10 text-warning" },
+  critical: { label: "Priority", className: "bg-destructive/10 text-destructive border border-destructive/15" },
+  recommended: { label: "Recommended", className: "bg-warning/10 text-warning border border-warning/15" },
   helpful: null,
 };
 
@@ -132,7 +132,6 @@ const V2SmartRecommendations = () => {
   }
 
   // 6. Non-device category recommendations (helpful fallbacks)
-  // These appear when no device-specific recs fill the slots
   const nonDeviceRecs: Recommendation[] = [
     {
       id: "electrical-check",
@@ -220,25 +219,27 @@ const V2SmartRecommendations = () => {
   const displayRecs = sorted.slice(0, 3);
 
   return (
-    <section className="py-8 md:py-10">
+    <section className="py-10 md:py-12">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.4 }}
-          className="mb-5"
+          className="mb-6"
         >
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent/15 to-accent/5 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-accent" />
+          <div className="flex items-center gap-2.5 mb-1.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent/15 to-accent/5 flex items-center justify-center">
+              <Sparkles className="w-4.5 h-4.5 text-accent" />
             </div>
-            <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">Smart Recommendations</h2>
+            <div>
+              <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">Smart Recommendations</h2>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground ml-10">Personalized suggestions based on your devices and service history</p>
+          <p className="text-xs text-muted-foreground ml-[46px]">Personalized suggestions based on your devices and service history</p>
         </motion.div>
 
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           {displayRecs.map((rec, i) => {
             const priorityLabel = PRIORITY_LABELS[rec.priority];
             return (
@@ -252,22 +253,22 @@ const V2SmartRecommendations = () => {
                 <Link
                   to={rec.link}
                   onClick={() => track("v2_smart_rec_click", { recommendation: rec.id, priority: rec.priority })}
-                  className="group flex items-start gap-4 bg-card rounded-2xl border border-border/60 p-5 hover:border-primary/30 hover:shadow-card-hover transition-all duration-300 active:scale-[0.99]"
+                  className="group flex items-start gap-4 bg-card rounded-2xl border border-border/50 p-5 hover:border-primary/25 hover:shadow-card-hover transition-all duration-300 active:scale-[0.99]"
                 >
-                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${rec.gradient} ${rec.iconColor} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300`}>
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${rec.gradient} ${rec.iconColor} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300`}>
                     {rec.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="font-heading font-bold text-sm text-foreground">{rec.title}</h3>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-heading font-bold text-sm text-foreground leading-snug">{rec.title}</h3>
                       {priorityLabel && (
                         <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${priorityLabel.className}`}>
                           {priorityLabel.label}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">{rec.description}</p>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:gap-2 transition-all">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">{rec.description}</p>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary group-hover:gap-2.5 transition-all">
                       {rec.action}
                       <ArrowRight className="w-3.5 h-3.5" />
                     </span>
