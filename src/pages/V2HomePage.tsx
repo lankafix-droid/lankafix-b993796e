@@ -11,6 +11,8 @@ import V2NearbyTechnicians from "@/components/v2/V2NearbyTechnicians";
 import V2HowItWorks from "@/components/v2/V2HowItWorks";
 import V2DiagnoseAssistant from "@/components/v2/V2DiagnoseAssistant";
 import V2ServiceBundles from "@/components/v2/V2ServiceBundles";
+import AISmartSearch from "@/components/ai/AISmartSearch";
+import AIPhotoDiagnosis from "@/components/ai/AIPhotoDiagnosis";
 import SuperAppShortcuts from "@/components/v2/SuperAppShortcuts";
 import V2SMEBanner from "@/components/v2/V2SMEBanner";
 import V2SocialProof from "@/components/v2/V2SocialProof";
@@ -48,8 +50,8 @@ const V2HomePage = () => {
         {/* 1. Hero — Cinematic banner + search + availability */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
-        {/* 2. Intent selection — quick path to service type */}
-        <V2IntentLayer />
+        {/* 2. AI Smart Search — natural language discovery */}
+        <AISmartSearch />
 
         {/* 3. Emergency — high-urgency section */}
         <V2EmergencyBlock />
@@ -75,7 +77,10 @@ const V2HomePage = () => {
         {/* 10. Social proof — testimonials + stats */}
         <V2SocialProof />
 
-        {/* 11. Diagnose assistant — AI chat CTA */}
+        {/* 11. AI Photo Diagnosis */}
+        <AIPhotoDiagnosis />
+
+        {/* 12. Diagnose assistant — AI chat CTA */}
         <section id="diagnose" className="py-10 md:py-12">
           <div className="container max-w-2xl">
             <V2DiagnoseAssistant />

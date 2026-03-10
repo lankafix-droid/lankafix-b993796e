@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_interaction_logs: {
+        Row: {
+          ai_model: string | null
+          ai_response: Json | null
+          confidence_score: number | null
+          created_at: string
+          id: string
+          input_image_url: string | null
+          input_query: string | null
+          interaction_type: string
+          matched_category: string | null
+          matched_service: string | null
+          metadata: Json | null
+          session_id: string | null
+          urgency_level: string | null
+          user_accepted: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          ai_model?: string | null
+          ai_response?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          input_image_url?: string | null
+          input_query?: string | null
+          interaction_type?: string
+          matched_category?: string | null
+          matched_service?: string | null
+          metadata?: Json | null
+          session_id?: string | null
+          urgency_level?: string | null
+          user_accepted?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          ai_model?: string | null
+          ai_response?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          input_image_url?: string | null
+          input_query?: string | null
+          interaction_type?: string
+          matched_category?: string | null
+          matched_service?: string | null
+          metadata?: Json | null
+          session_id?: string | null
+          urgency_level?: string | null
+          user_accepted?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       booking_messages: {
         Row: {
           booking_id: string
