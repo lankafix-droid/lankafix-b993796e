@@ -50,8 +50,8 @@ const V2HomePage = () => {
         {/* 1. Hero — Cinematic banner + search + availability */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
-        {/* 2. Intent selection — quick path to service type */}
-        <V2IntentLayer />
+        {/* 2. AI Smart Search — natural language discovery */}
+        <AISmartSearch />
 
         {/* 3. Emergency — high-urgency section */}
         <V2EmergencyBlock />
