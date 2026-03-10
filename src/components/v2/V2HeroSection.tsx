@@ -82,8 +82,8 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
 
   return (
     <section className="relative">
-      {/* Hero banner */}
-      <div className="relative h-[480px] md:h-[560px] overflow-hidden">
+      {/* Hero banner — optimized for 320-430px */}
+      <div className="relative h-[420px] sm:h-[480px] md:h-[560px] overflow-hidden">
         {BANNERS.map((b, i) => (
           <motion.img
             key={i}
