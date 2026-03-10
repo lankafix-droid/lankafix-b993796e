@@ -76,18 +76,18 @@ const RedirectCategory = () => { const { code } = useParams(); return <Navigate 
 
 const queryClient = new QueryClient();
 
-// Premium loading fallback
+// Premium loading fallback with skeleton feel
 const PageLoader = () => (
-  <div className="min-h-screen bg-background flex items-center justify-center">
+  <div className="min-h-screen bg-background flex items-center justify-center safe-area-top">
     <div className="flex flex-col items-center gap-5">
-      <div className="relative w-12 h-12">
-        <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
-        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
-        <div className="absolute inset-2 rounded-full border-2 border-transparent border-b-accent animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.8s" }} />
+      <div className="relative w-14 h-14">
+        <div className="absolute inset-0 rounded-full border-2 border-primary/8" />
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" style={{ animationDuration: "0.9s" }} />
+        <div className="absolute inset-2.5 rounded-full border-2 border-transparent border-b-accent animate-spin" style={{ animationDirection: "reverse", animationDuration: "0.7s" }} />
       </div>
       <div className="flex flex-col items-center gap-1">
         <span className="text-sm text-foreground font-semibold font-heading">Loading</span>
-        <span className="text-xs text-muted-foreground">Just a moment…</span>
+        <span className="text-[11px] text-muted-foreground">Just a moment…</span>
       </div>
     </div>
   </div>
