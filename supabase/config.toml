@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.booking-watchdog]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
+
+[functions.ai-search-query]
+verify_jwt = false
+
+[functions.ai-photo-diagnose]
+verify_jwt = false
