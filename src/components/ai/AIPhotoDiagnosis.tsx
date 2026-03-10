@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Upload, X, Loader2, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, ShieldCheck, Lock } from "lucide-react";
+import { Camera, Upload, X, Loader2, ArrowRight, AlertTriangle, CheckCircle2, Sparkles, ShieldCheck, Lock, ClipboardList, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -40,15 +40,16 @@ const CATEGORY_ROUTE_MAP: Record<string, string> = {
   CCTV: "/book/cctv-solutions",
   SOLAR: "/book/solar-solutions",
   ELECTRICAL: "/book/electrical-services",
-  PLUMBING: "/book/plumbing",
-  ELECTRONICS: "/book/electronics-repair",
-  NETWORK: "/book/network-services",
+  PLUMBING: "/book/plumbing-services",
+  ELECTRONICS: "/book/consumer-electronics",
+  NETWORK: "/book/network-support",
   SMARTHOME: "/book/smart-home-office",
-  SECURITY: "/book/home-security",
+  SECURITY: "/book/security-solutions",
   POWER_BACKUP: "/book/power-backup",
   COPIER: "/book/copier-printer-repair",
   SUPPLIES: "/book/print-supplies",
   APPLIANCE_INSTALL: "/book/appliance-installation",
+  INSPECTION_REQUIRED: "/book/inspection",
 };
 
 const getBookingRoute = (categoryCode: string): string =>
@@ -63,8 +64,8 @@ function getConfidenceBucket(confidence: number): string {
 const MAX_IMAGE_DIMENSION = 1600;
 const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+const ABANDON_TIMEOUT_MS = 30_000;
 
-/** Compress and resize image client-side before uploading */
 function compressImage(file: File): Promise<{ base64: string; preview: string; sizeBytes: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -106,6 +107,8 @@ function compressImage(file: File): Promise<{ base64: string; preview: string; s
 const AIPhotoDiagnosis = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abandonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionTakenRef = useRef(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [description, setDescription] = useState("");
@@ -113,6 +116,45 @@ const AIPhotoDiagnosis = () => {
   const [isCompressing, setIsCompressing] = useState(false);
   const [result, setResult] = useState<PhotoDiagnosisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Abandon tracking
+  useEffect(() => {
+    if (result) {
+      actionTakenRef.current = false;
+      abandonTimerRef.current = setTimeout(() => {
+        if (!actionTakenRef.current) {
+          track("ai_abandon_after_result", {
+            category: result.category_code,
+            confidence: result.overall_confidence,
+            confidence_bucket: getConfidenceBucket(result.overall_confidence),
+            source_module: "ai_photo_diagnosis",
+          });
+        }
+      }, ABANDON_TIMEOUT_MS);
+    }
+    return () => {
+      if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current);
+    };
+  }, [result]);
+
+  useEffect(() => {
+    return () => {
+      if (result && !actionTakenRef.current) {
+        track("ai_abandon_after_result", {
+          category: result.category_code,
+          confidence: result.overall_confidence,
+          confidence_bucket: getConfidenceBucket(result.overall_confidence),
+          source_module: "ai_photo_diagnosis",
+        });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const markAction = () => {
+    actionTakenRef.current = true;
+    if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current);
+  };
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -177,7 +219,7 @@ const AIPhotoDiagnosis = () => {
         confidence_bucket: getConfidenceBucket(data.overall_confidence),
         inspection_recommended: data.inspection_recommended,
         booking_path: data.booking_path,
-        source: "photo_diagnosis",
+        source_module: "ai_photo_diagnosis",
       });
     } catch (e: any) {
       setError(e.message || "Analysis failed. Please try again.");
@@ -192,14 +234,6 @@ const AIPhotoDiagnosis = () => {
     setResult(null);
     setError(null);
     setDescription("");
-    if (result) {
-      track("ai_abandon_after_result", {
-        category: result.category_code,
-        confidence: result.overall_confidence,
-        confidence_bucket: getConfidenceBucket(result.overall_confidence),
-        source: "photo_diagnosis",
-      });
-    }
   };
 
   const severityColor = (s: string) => {
@@ -216,27 +250,41 @@ const AIPhotoDiagnosis = () => {
 
   const isLowConfidence = result ? result.overall_confidence < 60 : false;
   const isInspectionRequired = result?.category_code === "INSPECTION_REQUIRED";
+  const shouldInspect = isInspectionRequired || isLowConfidence || result?.inspection_recommended || result?.booking_path === "inspection";
 
-  const getCtaLabel = (r: PhotoDiagnosisResult) => {
-    if (isInspectionRequired || r.overall_confidence < 60 || r.inspection_recommended) return "Book Inspection";
-    return "Book Service";
-  };
-
-  const handleBookService = (r: PhotoDiagnosisResult) => {
-    const action = isInspectionRequired || r.overall_confidence < 60 || r.inspection_recommended
-      ? "ai_book_inspection"
-      : "ai_book_recommended_service";
-
-    track(action, {
+  const handleBookRecommended = (r: PhotoDiagnosisResult) => {
+    markAction();
+    track("ai_book_recommended_service", {
       category: r.category_code,
       service: r.recommended_service,
       confidence: r.overall_confidence,
       confidence_bucket: getConfidenceBucket(r.overall_confidence),
-      inspection_recommended: r.inspection_recommended,
-      was_low_confidence: isLowConfidence,
-      source: "photo_diagnosis",
+      source_module: "ai_photo_diagnosis",
     });
     navigate(getBookingRoute(r.category_code));
+  };
+
+  const handleBookInspection = (r: PhotoDiagnosisResult) => {
+    markAction();
+    track("ai_book_inspection", {
+      category: r.category_code,
+      service: r.recommended_service,
+      confidence: r.overall_confidence,
+      confidence_bucket: getConfidenceBucket(r.overall_confidence),
+      source_module: "ai_photo_diagnosis",
+    });
+    navigate("/book/inspection");
+  };
+
+  const handleChooseAnother = (r: PhotoDiagnosisResult) => {
+    markAction();
+    track("ai_choose_different_service", {
+      original_category: r.category_code,
+      confidence: r.overall_confidence,
+      confidence_bucket: getConfidenceBucket(r.overall_confidence),
+      source_module: "ai_photo_diagnosis",
+    });
+    navigate("/");
   };
 
   return (
@@ -481,21 +529,54 @@ const AIPhotoDiagnosis = () => {
                       </div>
                     )}
 
-                    <div className="flex gap-3">
-                      <Button
-                        className="flex-1 rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
-                        onClick={() => handleBookService(result)}
-                      >
-                        {getCtaLabel(result)}
-                        <ArrowRight className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="rounded-xl h-11"
-                        onClick={clearImage}
-                      >
-                        New Photo
-                      </Button>
+                    {/* Structured action buttons */}
+                    <div className="space-y-2">
+                      {shouldInspect ? (
+                        <Button
+                          className="w-full rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
+                          onClick={() => handleBookInspection(result)}
+                        >
+                          <ClipboardList className="w-4 h-4" />
+                          Book Inspection
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          className="w-full rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
+                          onClick={() => handleBookRecommended(result)}
+                        >
+                          Book Recommended Service
+                          <ArrowRight className="w-4 h-4" />
+                        </Button>
+                      )}
+
+                      <div className="flex gap-2">
+                        {!shouldInspect && (
+                          <Button
+                            variant="outline"
+                            className="flex-1 rounded-xl h-10 gap-1.5 text-xs"
+                            onClick={() => handleBookInspection(result)}
+                          >
+                            <ClipboardList className="w-3.5 h-3.5" />
+                            Book Inspection
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          className="flex-1 rounded-xl h-10 gap-1.5 text-xs"
+                          onClick={() => handleChooseAnother(result)}
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          Choose Another Service
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="rounded-xl h-10 text-xs"
+                          onClick={clearImage}
+                        >
+                          New Photo
+                        </Button>
+                      </div>
                     </div>
                   </div>
 

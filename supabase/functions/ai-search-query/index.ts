@@ -8,7 +8,6 @@ const corsHeaders = {
 
 const ENDPOINT = "ai-search-query";
 const RATE_LIMIT = 10;
-const RATE_WINDOW_SECONDS = 60;
 
 const VALID_CATEGORIES = [
   "AC", "CCTV", "MOBILE", "IT", "SOLAR", "ELECTRICAL", "PLUMBING",
@@ -19,13 +18,11 @@ const VALID_CATEGORIES = [
 const VALID_URGENCIES = ["high", "medium", "low"];
 const VALID_BOOKING_PATHS = ["direct", "inspection", "quote_required"];
 
-// Safety overrides: certain categories/conditions must force inspection or quote_required
 const SAFETY_OVERRIDES: Record<string, string> = {
   ELECTRICAL: "inspection",
   SOLAR: "quote_required",
 };
 
-// Keywords that trigger safety overrides regardless of AI suggestion
 const SAFETY_KEYWORDS: { pattern: RegExp; booking_path: string }[] = [
   { pattern: /\b(gas|refrigerant|freon|r22|r410)\b/i, booking_path: "inspection" },
   { pattern: /\b(water\s*damage|water\s*damaged|fell\s*in\s*water|wet)\b/i, booking_path: "inspection" },
@@ -59,49 +56,12 @@ function getSupabaseClient() {
   );
 }
 
-async function checkRateLimit(supabase: any, identifier: string): Promise<boolean> {
-  const windowStart = new Date(Date.now() - RATE_WINDOW_SECONDS * 1000).toISOString();
-
-  // Get current count in window
-  const { data } = await supabase
-    .from("ai_rate_limits")
-    .select("id, request_count")
-    .eq("identifier", identifier)
-    .eq("endpoint", ENDPOINT)
-    .gte("window_start", windowStart)
-    .order("window_start", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (!data) {
-    // No entry — create one
-    await supabase.from("ai_rate_limits").insert({
-      identifier,
-      endpoint: ENDPOINT,
-      request_count: 1,
-      window_start: new Date().toISOString(),
-    });
-    return true;
-  }
-
-  if (data.request_count >= RATE_LIMIT) return false;
-
-  // Increment
-  await supabase
-    .from("ai_rate_limits")
-    .update({ request_count: data.request_count + 1 })
-    .eq("id", data.id);
-  return true;
-}
-
 function applySafetyOverrides(parsed: any, query: string): any {
-  // Category-level overrides
   const categoryOverride = SAFETY_OVERRIDES[parsed.category_code];
   if (categoryOverride) {
     parsed.booking_path = categoryOverride;
   }
 
-  // Keyword-based overrides
   for (const rule of SAFETY_KEYWORDS) {
     if (rule.pattern.test(query)) {
       parsed.booking_path = rule.booking_path;
@@ -135,12 +95,16 @@ function validateAndSanitize(raw: any): any {
     booking_path: finalBookingPath,
     estimated_price_range: typeof raw.estimated_price_range === "string" ? raw.estimated_price_range.slice(0, 60) : "Contact for quote",
     problem_summary: typeof raw.problem_summary === "string" ? raw.problem_summary.slice(0, 500) : "",
+    // Filter out invalid alternative services — no IT fallback
     alternative_services: Array.isArray(raw.alternative_services)
-      ? raw.alternative_services.slice(0, 3).map((a: any) => ({
-          category_code: VALID_CATEGORIES.includes(a?.category_code) ? a.category_code : "IT",
-          service_type: typeof a?.service_type === "string" ? a.service_type.slice(0, 80) : "GENERAL",
-          reason: typeof a?.reason === "string" ? a.reason.slice(0, 200) : "",
-        }))
+      ? raw.alternative_services
+          .slice(0, 3)
+          .filter((a: any) => a && VALID_CATEGORIES.includes(a?.category_code))
+          .map((a: any) => ({
+            category_code: a.category_code,
+            service_type: typeof a?.service_type === "string" ? a.service_type.slice(0, 80) : "GENERAL",
+            reason: typeof a?.reason === "string" ? a.reason.slice(0, 200) : "",
+          }))
       : [],
     follow_up_questions: Array.isArray(raw.follow_up_questions)
       ? raw.follow_up_questions.slice(0, 5).filter((q: any) => typeof q === "string").map((q: string) => q.slice(0, 200))
@@ -202,17 +166,23 @@ serve(async (req) => {
   try {
     const supabase = getSupabaseClient();
 
-    // Centralized rate limiting
+    // Atomic rate limiting via RPC
     const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
-    const allowed = await checkRateLimit(supabase, clientIp);
-    if (!allowed) {
+    const { data: allowed, error: rlError } = await supabase.rpc("check_rate_limit", {
+      _identifier: clientIp,
+      _endpoint: ENDPOINT,
+      _max_requests: RATE_LIMIT,
+      _window_seconds: 60,
+    });
+
+    if (rlError) {
+      console.error("Rate limit check failed:", rlError);
+      // Allow request on rate limit failure to avoid blocking users
+    } else if (allowed === false) {
       return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Periodic cleanup (non-blocking)
-    supabase.rpc("cleanup_old_rate_limits").catch(() => {});
 
     const { query, session_id } = await req.json();
     if (!query || typeof query !== "string" || query.trim().length < 2 || query.trim().length > 500) {
