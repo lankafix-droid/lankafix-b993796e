@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useLocationStore, ADDRESS_LABEL_OPTIONS } from "@/store/locationStore";
 import {
   User, MapPin, Clock, ShieldCheck, Phone, Settings, ChevronRight,
-  Smartphone, Monitor, Snowflake, Sun, Wrench, FileText,
+  Smartphone, Monitor, Snowflake, Sun, Wrench, FileText, LogOut, Trash2, Lock, ExternalLink,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
