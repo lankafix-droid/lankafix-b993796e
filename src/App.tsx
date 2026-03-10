@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
+import OfflineBanner from "@/components/layout/OfflineBanner";
 import ChatWidget from "./components/chat/ChatWidget";
 
 // Eager-load homepage for fast first paint
@@ -88,6 +89,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <OfflineBanner />
       <ChatWidget />
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
