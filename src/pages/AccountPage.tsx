@@ -238,6 +238,9 @@ const AccountPage = () => {
               <div className="bg-card rounded-2xl border border-border/60 divide-y divide-border/40 overflow-hidden shadow-[var(--shadow-card)]">
                 <MenuRow icon={Lock} label="Privacy Policy" to="/privacy" iconColor="text-muted-foreground" />
                 <MenuRow icon={FileText} label="Terms of Service" to="/terms" iconColor="text-muted-foreground" />
+                <MenuRow icon={ShieldCheck} label="Warranty Policy" to="/warranty" iconColor="text-muted-foreground" />
+                <MenuRow icon={Info} label="Refund Policy" to="/refund" iconColor="text-muted-foreground" />
+                <MenuRow icon={Trash2} label="Data Deletion Policy" desc="How we handle account deletion" to="/support/account-deletion" iconColor="text-muted-foreground" />
               </div>
             </div>
           </StaggerItem>
