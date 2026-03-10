@@ -18,6 +18,20 @@ export default {
         heading: ['"Montserrat"', 'system-ui', 'sans-serif'],
         body: ['"Poppins"', 'system-ui', 'sans-serif'],
       },
+      fontSize: {
+        "xs": ["var(--text-xs)", { lineHeight: "1.4" }],
+        "sm": ["var(--text-sm)", { lineHeight: "1.5" }],
+        "base": ["var(--text-base)", { lineHeight: "1.6" }],
+        "lg": ["var(--text-lg)", { lineHeight: "1.4" }],
+        "xl": ["var(--text-xl)", { lineHeight: "1.3" }],
+        "2xl": ["var(--text-2xl)", { lineHeight: "1.2" }],
+        "3xl": ["var(--text-3xl)", { lineHeight: "1.15" }],
+        "4xl": ["var(--text-4xl)", { lineHeight: "1.1" }],
+      },
+      spacing: {
+        "18": "4.5rem",
+        "22": "5.5rem",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -83,6 +97,12 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        "2xl": "1rem",
+        "3xl": "1.25rem",
+      },
+      transitionTimingFunction: {
+        "out-expo": "var(--ease-out-expo)",
+        "spring": "var(--ease-spring)",
       },
       keyframes: {
         "accordion-down": {
@@ -94,7 +114,7 @@ export default {
           to: { height: "0" },
         },
         "fade-in": {
-          from: { opacity: "0", transform: "translateY(12px)" },
+          from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "float": {
@@ -105,13 +125,18 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.7" },
         },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-out forwards",
+        "fade-in": "fade-in 0.4s var(--ease-out-expo) forwards",
         "float": "float 3s ease-in-out infinite",
         "pulse-soft": "pulse-soft 2s ease-in-out infinite",
+        "shimmer": "shimmer 2s linear infinite",
       },
     },
   },
