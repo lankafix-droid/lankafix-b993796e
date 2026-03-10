@@ -70,6 +70,15 @@ export default function HomeHealthPage() {
             </div>
           </div>
 
+          {/* AI Predictive Maintenance */}
+          <div className="mb-6">
+            <AIPredictiveMaintenance
+              deviceCategory={passports[0]?.deviceCategory || "AC"}
+              deviceAge={passports[0] ? `${Math.round((Date.now() - new Date(passports[0].purchaseDate || passports[0].createdAt).getTime()) / (365.25 * 24 * 60 * 60 * 1000))} years` : "2 years"}
+              location="Colombo, Sri Lanka"
+            />
+          </div>
+
           {/* Overall Score */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card className="mb-6 border-primary/20 bg-primary/5">
