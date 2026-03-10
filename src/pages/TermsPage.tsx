@@ -9,10 +9,12 @@ const TermsPage = () => (
       <div className="container py-10 max-w-3xl space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground font-heading">Terms of Service</h1>
-          <p className="text-muted-foreground text-sm mt-2">Last updated: March 2026</p>
+          <p className="text-muted-foreground text-sm mt-2">
+            Last updated: <strong className="text-foreground">10 March 2026</strong>
+          </p>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
             These Terms of Service ("Terms") govern your use of the LankaFix platform and services operated by
-            Smart Office (Private) Limited. By using LankaFix, you agree to these Terms.
+            Smart Office (Private) Limited, Colombo, Sri Lanka. By using LankaFix, you agree to these Terms.
           </p>
         </div>
 
@@ -121,9 +123,15 @@ const TermsPage = () => (
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-foreground">10. Account Termination</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            You may delete your account at any time through the app. LankaFix may suspend or terminate accounts that
-            violate these Terms, engage in fraudulent activity, or abuse the platform. Upon termination, any pending
-            bookings will be cancelled and applicable refunds processed.
+            You may delete your account at any time through the app via Account → Delete My Account. LankaFix may
+            suspend or terminate accounts that violate these Terms, engage in fraudulent activity, or abuse the platform.
+          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed mt-2">
+            Upon account deletion: active bookings will be cancelled; LankaFix Care plans and subscriptions will be
+            permanently terminated and unused service credits forfeited; pending refunds will be processed; warranty
+            claims will be resolved before deletion is finalized; and transaction records may be retained for up to
+            90 days for legal compliance. For more details, see our{" "}
+            <a href="/support/account-deletion" className="text-primary hover:underline">Account Deletion</a> page.
           </p>
         </section>
 
@@ -140,9 +148,10 @@ const TermsPage = () => (
           <p className="text-sm text-muted-foreground leading-relaxed">
             For questions about these Terms, contact us at:
           </p>
-          <div className="text-sm text-muted-foreground leading-relaxed">
+          <div className="text-sm text-muted-foreground leading-relaxed bg-muted/30 rounded-lg p-3 space-y-1">
             <p><strong className="text-foreground">Smart Office (Private) Limited</strong></p>
             <p>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">{SUPPORT_EMAIL}</a></p>
+            <p>Website: <a href="https://lankafix.lk" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">lankafix.lk</a></p>
             <p>Location: Colombo, Sri Lanka</p>
           </div>
         </section>

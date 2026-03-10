@@ -1,11 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Trash2, CheckCircle, ShieldCheck, ArrowLeft, LogIn, XCircle, Clock, AlertCircle } from "lucide-react";
+import {
+  AlertTriangle, Trash2, CheckCircle, ShieldCheck, ArrowLeft, LogIn,
+  XCircle, Clock, AlertCircle, Lock, CalendarX, CreditCard, ShieldAlert,
+  HeartPulse, FileText, RotateCcw, Mail, MessageCircle,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { SUPPORT_EMAIL, SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import type { User } from "@supabase/supabase-js";
 
 const DATA_ITEMS = [
@@ -18,23 +23,37 @@ const DATA_ITEMS = [
 ];
 
 const CONSEQUENCES = [
-  "Any active bookings will be cancelled automatically.",
-  "Pending refunds or payouts will be processed before account removal.",
-  "Active warranty claims will be resolved before final deletion.",
-  "Active care plans or subscriptions will be terminated.",
-  "You will lose access to all invoices, service history, and device records.",
-  "Unresolved disputes may delay the deletion process.",
+  { icon: CalendarX, text: "Active bookings will be cancelled. Any in-progress jobs must be completed or cancelled before deletion can proceed." },
+  { icon: CreditCard, text: "Pending refunds or payouts will be processed before your account is removed." },
+  { icon: ShieldAlert, text: "Active warranty claims will be resolved before final deletion. After deletion, warranty-linked support will no longer be accessible." },
+  { icon: HeartPulse, text: "LankaFix Care plans and subscriptions will be permanently cancelled. Unused service credits, prepaid benefits, and scheduled maintenance visits will be forfeited." },
+  { icon: FileText, text: "You will lose access to all invoices, service history, device records, and past quotes." },
+  { icon: RotateCcw, text: "Future maintenance reminders and device health alerts will stop. Unresolved disputes may delay the deletion process." },
 ];
+
+type ActiveGuardrail = {
+  hasActiveBookings: boolean;
+  hasActiveSubscriptions: boolean;
+  count: number;
+};
 
 const AccountDeletionPage = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [step, setStep] = useState<"info" | "confirm" | "submitted" | "failed">("info");
+  const [step, setStep] = useState<"info" | "reauth" | "confirm" | "submitted" | "failed">("info");
   const [confirmText, setConfirmText] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [ticketRef, setTicketRef] = useState<string | null>(null);
+  const [failureMessage, setFailureMessage] = useState("");
+  const [guardrail, setGuardrail] = useState<ActiveGuardrail | null>(null);
+  const [guardrailLoading, setGuardrailLoading] = useState(false);
+
+  // Re-auth state
+  const [reauthPassword, setReauthPassword] = useState("");
+  const [reauthError, setReauthError] = useState("");
+  const [reauthLoading, setReauthLoading] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -48,17 +67,89 @@ const AccountDeletionPage = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Check for active bookings when user is available
+  const checkGuardrails = useCallback(async () => {
+    if (!user) return;
+    setGuardrailLoading(true);
+    try {
+      const activeStatuses = [
+        "requested", "matching", "awaiting_partner_confirmation", "assigned",
+        "tech_en_route", "arrived", "inspection_started", "quote_submitted",
+        "quote_approved", "repair_started", "quality_check", "invoice_ready",
+      ] as const;
+      const { count, error } = await supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("customer_id", user.id)
+        .in("status", [...activeStatuses]);
+
+      setGuardrail({
+        hasActiveBookings: !error && (count ?? 0) > 0,
+        hasActiveSubscriptions: false, // Future: check subscriptions table
+        count: count ?? 0,
+      });
+    } catch {
+      // Non-blocking — proceed without guardrail data
+      setGuardrail(null);
+    } finally {
+      setGuardrailLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    checkGuardrails();
+  }, [checkGuardrails]);
+
   const canSubmit = confirmText.toUpperCase() === "DELETE";
+
+  const handleProceedToReauth = () => {
+    // If user signed in with email/password, show re-auth step
+    const provider = user?.app_metadata?.provider;
+    if (provider === "email") {
+      setStep("reauth");
+    } else {
+      // For OAuth or when we can't re-auth, skip to confirm
+      setStep("confirm");
+    }
+  };
+
+  const handleReauth = async () => {
+    if (!user?.email || !reauthPassword) return;
+    setReauthLoading(true);
+    setReauthError("");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: reauthPassword,
+      });
+      if (error) {
+        setReauthError("Incorrect password. Please try again.");
+      } else {
+        setStep("confirm");
+      }
+    } catch {
+      setReauthError("Verification failed. Please try again.");
+    } finally {
+      setReauthLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!canSubmit || !user) return;
     setSubmitting(true);
+    setFailureMessage("");
 
     try {
       const { data, error } = await supabase.from("support_tickets").insert({
         customer_id: user.id,
         issue_type: "account_deletion",
-        description: `Account deletion request. Reason: ${reason || "Not specified"}. User confirmed by typing DELETE. Email: ${user.email || "N/A"}.`,
+        description: [
+          `Account deletion request.`,
+          `Email: ${user.email || "N/A"}.`,
+          `Reason: ${reason || "Not specified"}.`,
+          `Active bookings at time of request: ${guardrail?.count ?? "unknown"}.`,
+          `User confirmed by typing DELETE and completed identity verification.`,
+        ].join(" "),
         status: "open",
       }).select("id").single();
 
@@ -67,9 +158,15 @@ const AccountDeletionPage = () => {
       const ref = data?.id ? `DEL-${data.id.substring(0, 8).toUpperCase()}` : null;
       setTicketRef(ref);
       setStep("submitted");
-      toast({ title: "Deletion request submitted", description: `Reference: ${ref}` });
-    } catch (err) {
+      toast({ title: "Deletion request submitted", description: ref ? `Reference: ${ref}` : "Request received." });
+    } catch (err: unknown) {
       console.error("Deletion request failed:", err);
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setFailureMessage(
+        msg.includes("permission") || msg.includes("policy")
+          ? "Your request could not be submitted due to a permissions issue. Please contact support directly."
+          : "We couldn't submit your deletion request. Please try again or contact support."
+      );
       setStep("failed");
       toast({ title: "Submission failed", description: "Please try again or contact support.", variant: "destructive" });
     } finally {
@@ -89,12 +186,11 @@ const AccountDeletionPage = () => {
     );
   }
 
-  // Not signed in
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 container max-w-lg py-12 space-y-6">
+        <main className="flex-1 container max-w-lg py-12 px-4 space-y-6">
           <Link to="/account" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Back to Account
@@ -111,6 +207,12 @@ const AccountDeletionPage = () => {
               <LogIn className="w-4 h-4 mr-2" />
               Sign In
             </Button>
+            <p className="text-xs text-muted-foreground pt-4">
+              Can't access your account?{" "}
+              <a href={`mailto:${SUPPORT_EMAIL}?subject=Account%20Deletion%20Request`} className="text-primary hover:underline">
+                Contact support
+              </a>
+            </p>
           </div>
         </main>
         <Footer />
@@ -121,7 +223,7 @@ const AccountDeletionPage = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 container max-w-lg py-6 space-y-6">
+      <main className="flex-1 container max-w-lg py-6 px-4 space-y-5 pb-24">
         <Link to="/account" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
           Back to Account
@@ -132,9 +234,30 @@ const AccountDeletionPage = () => {
             <div className="space-y-2">
               <h1 className="text-xl font-bold text-foreground font-heading">Delete My Account</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                We're sorry to see you go. Before proceeding, please review what happens when your account is deleted.
+                We're sorry to see you go. Please review what happens when your account is deleted.
               </p>
             </div>
+
+            {/* Active booking guardrail */}
+            {!guardrailLoading && guardrail?.hasActiveBookings && (
+              <div className="bg-warning/5 border border-warning/30 rounded-xl p-4 space-y-2">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      You have {guardrail.count} active booking{guardrail.count > 1 ? "s" : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      Active or in-progress bookings will be cancelled if you proceed with account deletion.
+                      We recommend completing or cancelling your current bookings first to avoid any service disruption.
+                    </p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" className="rounded-lg text-xs ml-8" asChild>
+                  <Link to="/track">View My Bookings</Link>
+                </Button>
+              </div>
+            )}
 
             {/* What gets deleted */}
             <div className="bg-card rounded-xl border p-5 space-y-4">
@@ -159,16 +282,16 @@ const AccountDeletionPage = () => {
             <div className="bg-card rounded-xl border p-5 space-y-3">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-warning" />
-                Before you proceed
+                What you should know
               </h2>
-              <ul className="space-y-2">
+              <div className="space-y-3">
                 {CONSEQUENCES.map((c, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-2">
-                    <span className="text-warning mt-0.5">•</span>
-                    {c}
-                  </li>
+                  <div key={i} className="flex items-start gap-3">
+                    <c.icon className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">{c.text}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
 
             {/* Timeline */}
@@ -178,10 +301,11 @@ const AccountDeletionPage = () => {
                 Deletion timeline
               </h2>
               <div className="space-y-2 text-xs text-muted-foreground">
-                <p>• Your request will be reviewed within <strong className="text-foreground">3 business days</strong>.</p>
-                <p>• Personal data is permanently deleted within <strong className="text-foreground">7 business days</strong>.</p>
-                <p>• You'll receive a confirmation email at <strong className="text-foreground">{user.email}</strong> once deletion is complete.</p>
-                <p>• Some transaction records may be retained for up to 90 days for legal compliance.</p>
+                <p>• Request reviewed within <strong className="text-foreground">3 business days</strong></p>
+                <p>• Personal data permanently deleted within <strong className="text-foreground">7 business days</strong></p>
+                <p>• Confirmation sent to <strong className="text-foreground">{user.email}</strong></p>
+                <p>• Transaction records retained up to 90 days for legal compliance</p>
+                <p>• You can cancel the request by contacting support before processing begins</p>
               </div>
             </div>
 
@@ -190,8 +314,8 @@ const AccountDeletionPage = () => {
               <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-destructive">This action cannot be undone</p>
-                <p className="text-xs text-destructive/70 mt-0.5">
-                  Once your account is deleted, all your data, booking history, device passports, and saved addresses will be permanently removed.
+                <p className="text-xs text-destructive/70 mt-0.5 leading-relaxed">
+                  Once processed, all your data, booking history, device passports, care plan benefits, and saved addresses will be permanently removed.
                 </p>
               </div>
             </div>
@@ -209,31 +333,86 @@ const AccountDeletionPage = () => {
               />
             </div>
 
-            <Button variant="destructive" className="w-full h-12 rounded-xl font-semibold" onClick={() => setStep("confirm")}>
+            <Button variant="destructive" className="w-full h-12 rounded-xl font-semibold" onClick={handleProceedToReauth}>
               Continue to Delete Account
             </Button>
+          </>
+        )}
+
+        {step === "reauth" && (
+          <>
+            <div className="space-y-2">
+              <h1 className="text-xl font-bold text-foreground font-heading">Verify Your Identity</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                For your security, please re-enter your password to continue with account deletion.
+              </p>
+            </div>
+
+            <div className="bg-card rounded-xl border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Signed in as</p>
+              <p className="text-sm font-medium text-foreground">{user.email}</p>
+            </div>
+
+            <div className="bg-card rounded-xl border p-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <Lock className="w-5 h-5 text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">Re-enter your password</p>
+              </div>
+              <input
+                type="password"
+                className="w-full rounded-xl border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Your password"
+                value={reauthPassword}
+                onChange={(e) => { setReauthPassword(e.target.value); setReauthError(""); }}
+                autoComplete="current-password"
+              />
+              {reauthError && (
+                <p className="text-xs text-destructive">{reauthError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => { setStep("info"); setReauthPassword(""); setReauthError(""); }}>
+                Go Back
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 h-12 rounded-xl font-semibold"
+                disabled={!reauthPassword || reauthLoading}
+                onClick={handleReauth}
+              >
+                {reauthLoading ? "Verifying…" : "Verify & Continue"}
+              </Button>
+            </div>
+
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors mx-auto block"
+              onClick={() => setStep("confirm")}
+            >
+              Skip verification →
+            </button>
           </>
         )}
 
         {step === "confirm" && (
           <>
             <div className="space-y-2">
-              <h1 className="text-xl font-bold text-foreground font-heading">Confirm Account Deletion</h1>
+              <h1 className="text-xl font-bold text-foreground font-heading">Final Confirmation</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                To confirm, please type <strong className="text-foreground">DELETE</strong> in the field below.
+                Type <strong className="text-foreground">DELETE</strong> below to permanently delete your account.
               </p>
             </div>
 
-            <div className="bg-card rounded-xl border p-4 space-y-2">
-              <p className="text-xs text-muted-foreground">Signed in as</p>
+            <div className="bg-card rounded-xl border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground">Deleting account for</p>
               <p className="text-sm font-medium text-foreground">{user.email}</p>
             </div>
 
             <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-5 space-y-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6 text-destructive shrink-0" />
-                <p className="text-sm font-medium text-destructive">
-                  This will permanently delete your LankaFix account and all associated data.
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <p className="text-sm text-destructive leading-relaxed">
+                  This will permanently delete your LankaFix account, all personal data, device records, booking history, and care plan benefits.
                 </p>
               </div>
               <div className="space-y-2">
@@ -252,7 +431,7 @@ const AccountDeletionPage = () => {
 
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => { setStep("info"); setConfirmText(""); }}>
-                Go Back
+                Cancel
               </Button>
               <Button variant="destructive" className="flex-1 h-12 rounded-xl font-semibold" disabled={!canSubmit || submitting} onClick={handleSubmit}>
                 {submitting ? "Submitting…" : "Delete My Account"}
@@ -262,25 +441,27 @@ const AccountDeletionPage = () => {
         )}
 
         {step === "submitted" && (
-          <div className="text-center py-12 space-y-4">
+          <div className="text-center py-10 space-y-5">
             <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mx-auto">
               <CheckCircle className="w-8 h-8 text-success" />
             </div>
             <h1 className="text-xl font-bold text-foreground font-heading">Request Submitted</h1>
             {ticketRef && (
-              <div className="bg-card rounded-xl border p-4 inline-block mx-auto">
-                <p className="text-xs text-muted-foreground">Reference Number</p>
+              <div className="bg-card rounded-xl border p-4 mx-auto inline-block">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wider">Reference Number</p>
                 <p className="text-lg font-mono font-bold text-foreground mt-1">{ticketRef}</p>
               </div>
             )}
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-              Your account deletion request has been received. We'll process it within 7 business days and send a confirmation email to <strong className="text-foreground">{user.email}</strong>.
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Need help? Contact us at{" "}
-              <a href="mailto:hello@lankafix.lk" className="text-primary hover:underline">hello@lankafix.lk</a>
-              {ticketRef && <> and reference <strong>{ticketRef}</strong></>}.
-            </p>
+            <div className="space-y-2 max-w-sm mx-auto">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Your account deletion request has been received. We'll process it within <strong className="text-foreground">7 business days</strong> and send a confirmation to <strong className="text-foreground">{user.email}</strong>.
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Changed your mind? Contact us at{" "}
+                <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">{SUPPORT_EMAIL}</a>
+                {ticketRef && <> with reference <strong className="text-foreground">{ticketRef}</strong></>} before processing begins.
+              </p>
+            </div>
             <Button asChild className="mt-4 rounded-xl">
               <Link to="/">Return to Home</Link>
             </Button>
@@ -288,25 +469,27 @@ const AccountDeletionPage = () => {
         )}
 
         {step === "failed" && (
-          <div className="text-center py-12 space-y-4">
+          <div className="text-center py-10 space-y-5">
             <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
               <XCircle className="w-8 h-8 text-destructive" />
             </div>
             <h1 className="text-xl font-bold text-foreground font-heading">Submission Failed</h1>
             <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
-              We couldn't submit your deletion request automatically. Please try again or contact our support team directly.
+              {failureMessage || "We couldn't submit your deletion request automatically. Please try again or contact our support team directly."}
             </p>
             <div className="flex flex-col gap-3 max-w-xs mx-auto">
-              <Button variant="destructive" className="rounded-xl" onClick={() => { setStep("confirm"); setConfirmText(""); }}>
+              <Button variant="destructive" className="rounded-xl h-11" onClick={() => { setStep("confirm"); setConfirmText(""); }}>
                 Try Again
               </Button>
-              <Button variant="outline" className="rounded-xl" asChild>
-                <a href="mailto:hello@lankafix.lk?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20LankaFix%20account.%20Email%3A%20{user.email}">
-                  Email Support Instead
+              <Button variant="outline" className="rounded-xl h-11" asChild>
+                <a href={`mailto:${SUPPORT_EMAIL}?subject=Account%20Deletion%20Request&body=Please%20delete%20my%20LankaFix%20account.%20Email%3A%20${encodeURIComponent(user.email || "")}`}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email Support
                 </a>
               </Button>
-              <Button variant="outline" className="rounded-xl" asChild>
-                <a href="https://wa.me/94701234567?text=Hi%2C%20I%20need%20help%20deleting%20my%20LankaFix%20account." target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" className="rounded-xl h-11" asChild>
+                <a href={whatsappLink(SUPPORT_WHATSAPP, "Hi, I need help deleting my LankaFix account.")} target="_blank" rel="noopener noreferrer">
+                  <MessageCircle className="w-4 h-4 mr-2" />
                   WhatsApp Support
                 </a>
               </Button>
