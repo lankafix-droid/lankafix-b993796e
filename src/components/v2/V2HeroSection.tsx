@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock, MapPin, Users, TrendingUp } from "lucide-react";
+import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock, MapPin, CheckCircle2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
@@ -256,18 +256,18 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
         </div>
       </div>
 
-      {/* Local Availability Strip */}
+      {/* Local Availability Strip — platform status feel */}
       <div className="container mt-4">
         <motion.div
-          className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2"
+          className="flex items-center gap-5 overflow-x-auto scrollbar-hide py-2.5 px-1"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.4 }}
         >
           {[
             { icon: <MapPin className="w-3.5 h-3.5 text-primary" />, text: "Active across Greater Colombo" },
-            { icon: <Users className="w-3.5 h-3.5 text-success" />, text: "120+ verified technicians" },
-            { icon: <TrendingUp className="w-3.5 h-3.5 text-primary" />, text: "Avg response 25 min" },
+            { icon: <CheckCircle2 className="w-3.5 h-3.5 text-success" />, text: "Verified technician network" },
+            { icon: <Clock className="w-3.5 h-3.5 text-warning" />, text: "Same-day support available" },
           ].map((item) => (
             <span
               key={item.text}

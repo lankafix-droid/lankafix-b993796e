@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Star, CheckCircle2, Users, TrendingUp, Shield, Banknote } from "lucide-react";
+import { Star, CheckCircle2, Users, Shield, Banknote, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const TESTIMONIALS = [
@@ -21,11 +21,12 @@ const LIVE_ACTIVITIES = [
   "Printer repair booked in Colombo 3",
 ];
 
+// Safer trust-led metrics — not fake precision
 const STATS = [
-  { icon: <Users className="w-5 h-5" />, value: "2,500+", label: "Happy Customers", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
-  { icon: <CheckCircle2 className="w-5 h-5" />, value: "8,000+", label: "Jobs Completed", gradient: "from-success/15 to-success/5", color: "text-success" },
+  { icon: <Users className="w-5 h-5" />, value: "Thousands", label: "Happy Customers", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
+  { icon: <CheckCircle2 className="w-5 h-5" />, value: "Growing", label: "Jobs Completed Daily", gradient: "from-success/15 to-success/5", color: "text-success" },
   { icon: <Star className="w-5 h-5" />, value: "4.8/5", label: "Average Rating", gradient: "from-warning/15 to-warning/5", color: "text-warning" },
-  { icon: <TrendingUp className="w-5 h-5" />, value: "94%", label: "Repeat Customers", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
+  { icon: <MapPin className="w-5 h-5" />, value: "Colombo+", label: "Service Coverage", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
 ];
 
 const V2SocialProof = () => {
@@ -81,12 +82,12 @@ const V2SocialProof = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08, duration: 0.4 }}
-              className="bg-card rounded-2xl border border-border/60 p-6 text-center hover:shadow-card-hover transition-shadow duration-300"
+              className="bg-card rounded-2xl border border-border/60 p-5 text-center hover:shadow-card-hover transition-shadow duration-300"
             >
-              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${stat.gradient} ${stat.color} flex items-center justify-center mx-auto mb-3`}>
+              <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${stat.gradient} ${stat.color} flex items-center justify-center mx-auto mb-3`}>
                 {stat.icon}
               </div>
-              <p className="font-heading text-2xl md:text-3xl font-extrabold text-foreground">{stat.value}</p>
+              <p className="font-heading text-xl md:text-2xl font-extrabold text-foreground">{stat.value}</p>
               <p className="text-[11px] text-muted-foreground font-medium mt-1">{stat.label}</p>
             </motion.div>
           ))}
@@ -102,7 +103,7 @@ const V2SocialProof = () => {
             transition={{ duration: 0.4 }}
           >
             <h2 className="font-heading text-xl md:text-2xl font-bold text-foreground mb-1">What Our Customers Say</h2>
-            <p className="text-xs text-muted-foreground">Real reviews from real Sri Lankan customers</p>
+            <p className="text-xs text-muted-foreground">Real reviews from Sri Lankan homes and businesses</p>
           </motion.div>
 
           <div className="max-w-lg mx-auto">
@@ -133,7 +134,6 @@ const V2SocialProof = () => {
               </motion.div>
             </AnimatePresence>
 
-            {/* Dots */}
             <div className="flex justify-center gap-2 mt-5">
               {TESTIMONIALS.map((_, i) => (
                 <button
@@ -146,7 +146,7 @@ const V2SocialProof = () => {
           </div>
         </div>
 
-        {/* LankaFix Guarantee + Pay After Service */}
+        {/* Guarantee cards */}
         <div className="grid md:grid-cols-2 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
