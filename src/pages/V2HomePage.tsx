@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
+import V2SeasonalPromos from "@/components/v2/V2SeasonalPromos";
 import V2IntentLayer from "@/components/v2/V2IntentLayer";
 import V2EmergencyBlock from "@/components/v2/V2EmergencyBlock";
 import V2SmartRecommendations from "@/components/v2/V2SmartRecommendations";
@@ -60,6 +61,9 @@ const V2HomePage = () => {
 
         {/* 6. Super-app shortcuts */}
         <SuperAppShortcuts />
+
+        {/* 6.5 Seasonal promotions */}
+        <V2SeasonalPromos />
 
         {/* 7. Service bundles */}
         <V2ServiceBundles />
