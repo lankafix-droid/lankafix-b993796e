@@ -941,7 +941,7 @@ export const v2CategoryFlows: Record<string, V2CategoryFlow> = {
 };
 
 export function getV2Flow(code: string): V2CategoryFlow | undefined {
-  return v2CategoryFlows[code];
+  return v2CategoryFlows[code] || v2CategoryFlows[code.toUpperCase()];
 }
 
 export function getFlowStepCount(flowType: V2FlowType): number {
