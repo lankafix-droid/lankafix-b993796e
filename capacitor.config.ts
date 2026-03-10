@@ -4,10 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.lankafix.app',
   appName: 'LankaFix',
   webDir: 'dist',
-  server: {
-    url: 'https://39102789-3cdf-4fec-be91-3555106a96e7.lovableproject.com?forceHideBadge=true',
-    cleartext: true,
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
