@@ -128,7 +128,7 @@ const DiagnosePage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <PageTransition className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 bg-background">
         <div className="container py-6 max-w-lg">
