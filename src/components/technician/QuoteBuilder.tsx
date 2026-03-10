@@ -167,6 +167,13 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
             <div className="text-right text-xs font-semibold pt-1 border-t">
               Total: LKR {opt.totals.total.toLocaleString()}
             </div>
+            {/* Guardrail validation */}
+            {opt.totals.total > 0 && (
+              <QuoteGuardrailBanner
+                guardrails={validateQuoteAgainstGuardrails(opt.totals.total, categoryCode)}
+                quoteTotalLKR={opt.totals.total}
+              />
+            )}
           </div>
         ))}
 
