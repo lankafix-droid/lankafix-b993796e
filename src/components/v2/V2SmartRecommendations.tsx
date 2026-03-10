@@ -24,10 +24,10 @@ const V2SmartRecommendations = () => {
   const recommendations: Recommendation[] = [];
 
   // Check device-specific recommendations
-  const acDevices = passports.filter(p => p.deviceCategory === "AC" || p.deviceCategory === "ac");
-  const laptopDevices = passports.filter(p => p.deviceCategory === "Laptop" || p.deviceCategory === "laptop" || p.deviceCategory === "IT");
-  const cctvDevices = passports.filter(p => p.deviceCategory === "CCTV" || p.deviceCategory === "cctv");
-  const printerDevices = passports.filter(p => p.deviceCategory === "Printer" || p.deviceCategory === "printer" || p.deviceCategory === "COPIER");
+  const acDevices = passports.filter(p => p.deviceCategory === "AC");
+  const laptopDevices = passports.filter(p => p.deviceCategory === "IT");
+  const cctvDevices = passports.filter(p => p.deviceCategory === "CCTV");
+  const printerDevices = passports.filter(p => p.deviceCategory === "COPIER");
 
   if (acDevices.length > 0) {
     const ac = acDevices[0];
