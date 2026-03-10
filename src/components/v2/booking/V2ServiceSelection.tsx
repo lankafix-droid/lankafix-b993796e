@@ -39,7 +39,7 @@ const V2ServiceSelection = ({ options, selected, onSelect, title }: Props) => {
       {grouped.map((group) => (
         <div key={group.name || "__ungrouped"} className="space-y-2.5">
           {hasGroups && group.name && (
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-2">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-2">
               {group.name}
             </h3>
           )}
@@ -52,11 +52,11 @@ const V2ServiceSelection = ({ options, selected, onSelect, title }: Props) => {
                   onClick={() => onSelect(opt.id)}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  className={`w-full text-left rounded-2xl border p-4 transition-all ${
+                  transition={{ delay: i * 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] as const }}
+                  className={`w-full text-left rounded-2xl border p-4 transition-all active:scale-[0.98] ${
                     isSelected
                       ? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20"
-                      : "border-border bg-card hover:border-primary/30 hover:shadow-sm"
+                      : "border-border/60 bg-card hover:border-primary/30 hover:shadow-sm"
                   }`}
                 >
                   <div className="flex items-start gap-3">
@@ -87,11 +87,12 @@ const V2ServiceSelection = ({ options, selected, onSelect, title }: Props) => {
                         </div>
                       )}
                     </div>
-                    {isSelected ? (
-                      <CheckCircle2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/20 shrink-0 mt-0.5" />
-                    )}
+                    {/* Radio-style indicator */}
+                    <div className={`w-5 h-5 rounded-full shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+                      isSelected ? "bg-primary" : "border-2 border-muted-foreground/20"
+                    }`}>
+                      {isSelected && <CheckCircle2 className="w-5 h-5 text-primary-foreground" />}
+                    </div>
                   </div>
                 </motion.button>
               );
