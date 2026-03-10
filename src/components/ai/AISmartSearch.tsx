@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Sparkles, Loader2, ArrowRight, AlertTriangle, ShieldCheck, Zap } from "lucide-react";
+import { Search, Sparkles, Loader2, ArrowRight, AlertTriangle, ShieldCheck, Zap, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
@@ -39,15 +39,16 @@ const CATEGORY_ROUTE_MAP: Record<string, string> = {
   CCTV: "/book/cctv-solutions",
   SOLAR: "/book/solar-solutions",
   ELECTRICAL: "/book/electrical-services",
-  PLUMBING: "/book/plumbing",
-  ELECTRONICS: "/book/electronics-repair",
-  NETWORK: "/book/network-services",
+  PLUMBING: "/book/plumbing-services",
+  ELECTRONICS: "/book/consumer-electronics",
+  NETWORK: "/book/network-support",
   SMARTHOME: "/book/smart-home-office",
-  SECURITY: "/book/home-security",
+  SECURITY: "/book/security-solutions",
   POWER_BACKUP: "/book/power-backup",
   COPIER: "/book/copier-printer-repair",
   SUPPLIES: "/book/print-supplies",
   APPLIANCE_INSTALL: "/book/appliance-installation",
+  INSPECTION_REQUIRED: "/book/inspection",
 };
 
 const getBookingRoute = (categoryCode: string): string =>
@@ -59,13 +60,57 @@ function getConfidenceBucket(confidence: number): string {
   return "low";
 }
 
+const ABANDON_TIMEOUT_MS = 30_000;
+
 const AISmartSearch = () => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const abandonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const actionTakenRef = useRef(false);
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState<AISearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Abandon tracking: start timer when result appears, clear on action
+  useEffect(() => {
+    if (result) {
+      actionTakenRef.current = false;
+      abandonTimerRef.current = setTimeout(() => {
+        if (!actionTakenRef.current) {
+          track("ai_abandon_after_result", {
+            category: result.category_code,
+            confidence: result.confidence,
+            confidence_bucket: getConfidenceBucket(result.confidence),
+            source_module: "ai_search",
+          });
+        }
+      }, ABANDON_TIMEOUT_MS);
+    }
+    return () => {
+      if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current);
+    };
+  }, [result]);
+
+  // Also log abandon on unmount if result was shown but no action taken
+  useEffect(() => {
+    return () => {
+      if (result && !actionTakenRef.current) {
+        track("ai_abandon_after_result", {
+          category: result.category_code,
+          confidence: result.confidence,
+          confidence_bucket: getConfidenceBucket(result.confidence),
+          source_module: "ai_search",
+        });
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const markAction = () => {
+    actionTakenRef.current = true;
+    if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current);
+  };
 
   const performSearch = useCallback(async (searchQuery: string) => {
     if (searchQuery.trim().length < 3) return;
@@ -95,6 +140,7 @@ const AISmartSearch = () => {
         confidence: data.confidence,
         confidence_bucket: getConfidenceBucket(data.confidence),
         booking_path: data.booking_path,
+        source_module: "ai_search",
       });
     } catch (e: any) {
       setError(e.message || "Search failed. Please try again.");
@@ -116,6 +162,7 @@ const AISmartSearch = () => {
 
   const isLowConfidence = result ? result.confidence < 60 : false;
   const isInspectionRequired = result?.category_code === "INSPECTION_REQUIRED";
+  const shouldInspect = isInspectionRequired || isLowConfidence || result?.booking_path === "inspection";
 
   const urgencyBadge = (u: string) => {
     if (u === "high") return "destructive" as const;
@@ -123,35 +170,51 @@ const AISmartSearch = () => {
     return "outline" as const;
   };
 
-  const getCtaLabel = (r: AISearchResult) => {
-    if (isInspectionRequired || r.confidence < 60 || r.booking_path === "inspection") return "Book Inspection";
-    if (r.booking_path === "quote_required") return "Get Quote";
-    return "Book Now";
-  };
-
-  const handleBookService = (r: AISearchResult) => {
-    const action = isInspectionRequired || r.confidence < 60 || r.booking_path === "inspection"
-      ? "ai_book_inspection"
-      : "ai_book_recommended_service";
-
-    track(action, {
+  const handleBookRecommended = (r: AISearchResult) => {
+    markAction();
+    track("ai_book_recommended_service", {
       category: r.category_code,
       service: r.service_type,
       confidence: r.confidence,
       confidence_bucket: getConfidenceBucket(r.confidence),
       booking_path: r.booking_path,
-      was_low_confidence: isLowConfidence,
+      source_module: "ai_search",
     });
     navigate(getBookingRoute(r.category_code));
   };
 
+  const handleBookInspection = (r: AISearchResult) => {
+    markAction();
+    track("ai_book_inspection", {
+      category: r.category_code,
+      service: r.service_type,
+      confidence: r.confidence,
+      confidence_bucket: getConfidenceBucket(r.confidence),
+      source_module: "ai_search",
+    });
+    navigate("/book/inspection");
+  };
+
+  const handleChooseAnother = (r: AISearchResult) => {
+    markAction();
+    track("ai_choose_different_service", {
+      original_category: r.category_code,
+      confidence: r.confidence,
+      confidence_bucket: getConfidenceBucket(r.confidence),
+      source_module: "ai_search",
+    });
+    navigate("/");
+  };
+
   const handleAltClick = (alt: { category_code: string; service_type: string }, originalResult: AISearchResult) => {
+    markAction();
     track("ai_choose_different_service", {
       original_category: originalResult.category_code,
       selected_category: alt.category_code,
       selected_service: alt.service_type,
       confidence: originalResult.confidence,
       confidence_bucket: getConfidenceBucket(originalResult.confidence),
+      source_module: "ai_search",
     });
     navigate(getBookingRoute(alt.category_code));
   };
@@ -308,26 +371,49 @@ const AISmartSearch = () => {
                   </div>
                 </div>
 
-                {/* Action buttons */}
-                <div className="flex gap-3">
-                  <Button
-                    className="flex-1 rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
-                    onClick={() => handleBookService(result)}
-                  >
-                    {getCtaLabel(result)}
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="rounded-xl h-11 gap-1.5"
-                    onClick={() => {
-                      track("ai_search_diagnose", { category: result.category_code });
-                      navigate("/diagnose");
-                    }}
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    Diagnose
-                  </Button>
+                {/* Structured action buttons */}
+                <div className="space-y-2">
+                  {/* Primary CTA */}
+                  {shouldInspect ? (
+                    <Button
+                      className="w-full rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
+                      onClick={() => handleBookInspection(result)}
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      Book Inspection
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
+                      onClick={() => handleBookRecommended(result)}
+                    >
+                      Book Recommended Service
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  )}
+
+                  {/* Secondary CTAs */}
+                  <div className="flex gap-2">
+                    {!shouldInspect && (
+                      <Button
+                        variant="outline"
+                        className="flex-1 rounded-xl h-10 gap-1.5 text-xs"
+                        onClick={() => handleBookInspection(result)}
+                      >
+                        <ClipboardList className="w-3.5 h-3.5" />
+                        Book Inspection
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-xl h-10 gap-1.5 text-xs"
+                      onClick={() => handleChooseAnother(result)}
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      Choose Another Service
+                    </Button>
+                  </div>
                 </div>
               </div>
 

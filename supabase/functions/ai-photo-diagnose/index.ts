@@ -8,7 +8,6 @@ const corsHeaders = {
 
 const ENDPOINT = "ai-photo-diagnose";
 const RATE_LIMIT = 5;
-const RATE_WINDOW_SECONDS = 60;
 
 const VALID_CATEGORIES = [
   "AC", "CCTV", "MOBILE", "IT", "SOLAR", "ELECTRICAL", "PLUMBING",
@@ -19,7 +18,6 @@ const VALID_URGENCIES = ["high", "medium", "low"];
 const VALID_SEVERITIES = ["high", "medium", "low"];
 const VALID_BOOKING_PATHS = ["direct", "inspection", "quote_required"];
 
-// Safety overrides for categories
 const SAFETY_OVERRIDES: Record<string, string> = {
   ELECTRICAL: "inspection",
   SOLAR: "quote_required",
@@ -60,38 +58,6 @@ function getSupabaseClient() {
   );
 }
 
-async function checkRateLimit(supabase: any, identifier: string): Promise<boolean> {
-  const windowStart = new Date(Date.now() - RATE_WINDOW_SECONDS * 1000).toISOString();
-
-  const { data } = await supabase
-    .from("ai_rate_limits")
-    .select("id, request_count")
-    .eq("identifier", identifier)
-    .eq("endpoint", ENDPOINT)
-    .gte("window_start", windowStart)
-    .order("window_start", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (!data) {
-    await supabase.from("ai_rate_limits").insert({
-      identifier,
-      endpoint: ENDPOINT,
-      request_count: 1,
-      window_start: new Date().toISOString(),
-    });
-    return true;
-  }
-
-  if (data.request_count >= RATE_LIMIT) return false;
-
-  await supabase
-    .from("ai_rate_limits")
-    .update({ request_count: data.request_count + 1 })
-    .eq("id", data.id);
-  return true;
-}
-
 function applySafetyOverrides(parsed: any, description: string): any {
   const categoryOverride = SAFETY_OVERRIDES[parsed.category_code];
   if (categoryOverride) {
@@ -107,7 +73,6 @@ function applySafetyOverrides(parsed: any, description: string): any {
     }
   }
 
-  // Also check detected issue text for safety keywords
   if (Array.isArray(parsed.detected_issues)) {
     for (const issue of parsed.detected_issues) {
       for (const rule of SAFETY_KEYWORDS) {
@@ -213,17 +178,22 @@ serve(async (req) => {
   try {
     const supabase = getSupabaseClient();
 
-    // Centralized rate limiting
+    // Atomic rate limiting via RPC
     const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
-    const allowed = await checkRateLimit(supabase, clientIp);
-    if (!allowed) {
+    const { data: allowed, error: rlError } = await supabase.rpc("check_rate_limit", {
+      _identifier: clientIp,
+      _endpoint: ENDPOINT,
+      _max_requests: RATE_LIMIT,
+      _window_seconds: 60,
+    });
+
+    if (rlError) {
+      console.error("Rate limit check failed:", rlError);
+    } else if (allowed === false) {
       return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Periodic cleanup (non-blocking)
-    supabase.rpc("cleanup_old_rate_limits").catch(() => {});
 
     const { image_base64, image_url, description, session_id } = await req.json();
 
@@ -233,7 +203,6 @@ serve(async (req) => {
       });
     }
 
-    // Reject images > ~10MB (base64 encoded ~13.3MB)
     if (image_base64 && image_base64.length > 13_300_000) {
       return new Response(JSON.stringify({ error: "Image too large (max 10MB). Please compress and retry." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -317,14 +286,12 @@ serve(async (req) => {
       parsed = { ...INSPECTION_FALLBACK };
     }
 
-    // Apply safety overrides
     parsed = applySafetyOverrides(parsed, description || "");
 
     const responseTimeMs = Date.now() - startTime;
     const imageSizeBytes = image_base64 ? Math.round(image_base64.length * 0.75) : null;
     const confidenceBucket = getConfidenceBucket(parsed.overall_confidence);
 
-    // Log using service role only
     try {
       await supabase.from("ai_interaction_logs").insert({
         interaction_type: "photo_diagnosis",
