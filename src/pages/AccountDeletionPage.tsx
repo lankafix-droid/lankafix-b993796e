@@ -76,12 +76,12 @@ const AccountDeletionPage = () => {
         "requested", "matching", "awaiting_partner_confirmation", "assigned",
         "tech_en_route", "arrived", "inspection_started", "quote_submitted",
         "quote_approved", "repair_started", "quality_check", "invoice_ready",
-      ];
+      ] as const;
       const { count, error } = await supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("customer_id", user.id)
-        .in("status", activeStatuses);
+        .in("status", [...activeStatuses]);
 
       setGuardrail({
         hasActiveBookings: !error && (count ?? 0) > 0,
