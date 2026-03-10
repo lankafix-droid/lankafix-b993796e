@@ -182,7 +182,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
               <Phone className="w-4 h-4" /> Call
             </Button>
           </a>
-          <a href={whatsappLink(SUPPORT_WHATSAPP, `Job ${jobId} - Need help`)} target="_blank" rel="noopener noreferrer" className="flex-1">
+          <a href={whatsappLink(SUPPORT_WHATSAPP, `Job ${createdJobId} - Need help`)} target="_blank" rel="noopener noreferrer" className="flex-1">
             <Button variant="outline" className="w-full gap-2 rounded-xl h-11">
               <MessageCircle className="w-4 h-4" /> WhatsApp
             </Button>
