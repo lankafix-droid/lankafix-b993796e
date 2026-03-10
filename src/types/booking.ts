@@ -68,28 +68,66 @@ export const BOOKING_STATUS_COLORS: Record<BookingStatus, string> = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
-export const BOOKING_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = [
-  { status: "requested", label: "Booking Created" },
-  { status: "matching", label: "Matching Technician" },
-  { status: "assigned", label: "Technician Assigned" },
-  { status: "tech_en_route", label: "Technician En Route" },
-  { status: "arrived", label: "Technician Arrived" },
-  { status: "in_progress", label: "Work In Progress" },
-  { status: "completed", label: "Service Completed" },
+export interface TimelineStepDef {
+  status: BookingStatus;
+  label: string;
+  icon?: string;
+  description?: string;
+}
+
+export const BOOKING_TIMELINE_STEPS: TimelineStepDef[] = [
+  { status: "requested", label: "Booking Created", icon: "clipboard", description: "Your service request has been submitted" },
+  { status: "matching", label: "Matching Technician", icon: "search", description: "Finding the best available technician nearby" },
+  { status: "assigned", label: "Technician Assigned", icon: "user-check", description: "A verified technician has been assigned" },
+  { status: "tech_en_route", label: "Technician En Route", icon: "navigation", description: "Your technician is on the way" },
+  { status: "arrived", label: "Technician Arrived", icon: "map-pin", description: "Technician has arrived at your location" },
+  { status: "in_progress", label: "Work In Progress", icon: "wrench", description: "Service work is being performed" },
+  { status: "completed", label: "Service Completed", icon: "check-circle", description: "Your service has been completed successfully" },
 ];
 
-export const QUOTE_TIMELINE_STEPS: { status: BookingStatus; label: string }[] = [
-  { status: "requested", label: "Booking Created" },
-  { status: "matching", label: "Matching Technician" },
-  { status: "assigned", label: "Technician Assigned" },
-  { status: "tech_en_route", label: "Technician En Route" },
-  { status: "arrived", label: "Technician Arrived" },
-  { status: "inspection_started", label: "Inspection Started" },
-  { status: "quote_submitted", label: "Quote Submitted" },
-  { status: "quote_approved", label: "Quote Approved" },
-  { status: "repair_started", label: "Repair Started" },
-  { status: "completed", label: "Service Completed" },
+export const QUOTE_TIMELINE_STEPS: TimelineStepDef[] = [
+  { status: "requested", label: "Booking Created", icon: "clipboard", description: "Your service request has been submitted" },
+  { status: "matching", label: "Matching Technician", icon: "search", description: "Finding the best available technician nearby" },
+  { status: "assigned", label: "Technician Assigned", icon: "user-check", description: "A verified technician has been assigned" },
+  { status: "tech_en_route", label: "Technician En Route", icon: "navigation", description: "Your technician is on the way" },
+  { status: "arrived", label: "Technician Arrived", icon: "map-pin", description: "Technician has arrived at your location" },
+  { status: "inspection_started", label: "Inspection Started", icon: "search-check", description: "Technician is diagnosing the issue" },
+  { status: "quote_submitted", label: "Quote Submitted", icon: "file-text", description: "Review and approve the technician's quote" },
+  { status: "quote_approved", label: "Quote Approved", icon: "check-square", description: "You've approved — work will begin" },
+  { status: "repair_started", label: "Repair Started", icon: "wrench", description: "Repair work is underway" },
+  { status: "completed", label: "Service Completed", icon: "check-circle", description: "Your service has been completed successfully" },
 ];
+
+export const PICKUP_TIMELINE_STEPS: TimelineStepDef[] = [
+  { status: "requested", label: "Pickup Requested", icon: "clipboard", description: "Your pickup request has been submitted" },
+  { status: "matching", label: "Assigning Rider", icon: "search", description: "Finding a pickup agent nearby" },
+  { status: "assigned", label: "Rider Assigned", icon: "user-check", description: "A pickup agent has been assigned" },
+  { status: "tech_en_route", label: "Rider En Route", icon: "navigation", description: "Pickup agent is heading to your location" },
+  { status: "arrived", label: "Device Collected", icon: "package", description: "Your device has been collected" },
+  { status: "inspection_started", label: "Diagnosis Started", icon: "search-check", description: "Technician is inspecting your device" },
+  { status: "quote_submitted", label: "Quote Ready", icon: "file-text", description: "Review the repair quote" },
+  { status: "quote_approved", label: "Repair Approved", icon: "check-square", description: "Repair work will begin" },
+  { status: "repair_started", label: "Repair In Progress", icon: "wrench", description: "Your device is being repaired" },
+  { status: "completed", label: "Ready for Return", icon: "check-circle", description: "Your device is ready for delivery" },
+];
+
+export const DROPOFF_TIMELINE_STEPS: TimelineStepDef[] = [
+  { status: "requested", label: "Drop-Off Booked", icon: "clipboard", description: "Your drop-off appointment is confirmed" },
+  { status: "assigned", label: "Shop Confirmed", icon: "building", description: "The service center is ready for your visit" },
+  { status: "arrived", label: "Device Received", icon: "package", description: "Your device has been received at the center" },
+  { status: "inspection_started", label: "Diagnosis Started", icon: "search-check", description: "Technician is inspecting your device" },
+  { status: "quote_submitted", label: "Quote Ready", icon: "file-text", description: "Review the repair quote" },
+  { status: "quote_approved", label: "Repair Approved", icon: "check-square", description: "Repair work will begin" },
+  { status: "repair_started", label: "Repair In Progress", icon: "wrench", description: "Your device is being repaired" },
+  { status: "completed", label: "Ready for Collection", icon: "check-circle", description: "Your device is ready to collect" },
+];
+
+/** Get the right timeline steps based on service mode and quote requirement */
+export function getTimelineStepsForBooking(serviceMode: ServiceMode, quoteRequired: boolean): TimelineStepDef[] {
+  if (serviceMode === "pickup_return") return PICKUP_TIMELINE_STEPS;
+  if (serviceMode === "drop_off") return DROPOFF_TIMELINE_STEPS;
+  return quoteRequired ? QUOTE_TIMELINE_STEPS : BOOKING_TIMELINE_STEPS;
+}
 
 // ============================================================
 // Pre-check & Service Models
