@@ -311,7 +311,7 @@ const TrackerPage = () => {
 
   const canCancel = CANCELLABLE_STATUSES.includes(booking.status);
   const isQuoteFlow = booking.pricing.quoteRequired;
-  const timelineSteps = isQuoteFlow ? QUOTE_TIMELINE_STEPS : BOOKING_TIMELINE_STEPS;
+  const timelineSteps = getTimelineStepsForBooking(booking.serviceMode, isQuoteFlow);
   const statusOrder = timelineSteps.map((s) => s.status);
   const currentIdx = statusOrder.indexOf(booking.status);
   const mascotState = statusToMascotState[booking.status];
