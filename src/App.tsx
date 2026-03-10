@@ -66,6 +66,7 @@ const PartnerPremiumPage = lazy(() => import("./pages/partner/PartnerPremiumPage
 const ConsumablesPage = lazy(() => import("./pages/ConsumablesPage"));
 const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
+const AccountDeletionPage = lazy(() => import("./pages/AccountDeletionPage"));
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
