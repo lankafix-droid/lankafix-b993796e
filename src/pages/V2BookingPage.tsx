@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
+import PageTransition from "@/components/motion/PageTransition";
 import { useState, useMemo, useEffect } from "react";
 import { getV2Flow } from "@/data/v2CategoryFlows";
 import type { PartGradeCode } from "@/data/partsPricing";
@@ -175,7 +176,7 @@ const V2BookingPage = () => {
     : flow.assignmentType;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
         {/* Premium progress stepper */}
@@ -389,7 +390,7 @@ const V2BookingPage = () => {
         </div>
       </main>
       {step === 0 && <Footer />}
-    </div>
+    </PageTransition>
   );
 };
 

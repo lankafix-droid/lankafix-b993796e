@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import PageTransition from "@/components/motion/PageTransition";
 import { useBookingStore } from "@/store/bookingStore";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -339,7 +340,7 @@ const TrackerPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
         {/* ─── Sticky Status Header ─── */}
@@ -744,7 +745,7 @@ const TrackerPage = () => {
         type={showOtp || "start"}
         jobId={booking.jobId}
       />
-    </div>
+    </PageTransition>
   );
 };
 

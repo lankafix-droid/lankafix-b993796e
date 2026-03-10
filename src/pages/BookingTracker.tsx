@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import PageTransition from "@/components/motion/PageTransition";
 import { useBookingStore } from "@/store/bookingStore";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -97,7 +98,7 @@ const BookingTracker = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <PageTransition className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 bg-background">
         <div className="container py-8 max-w-2xl">
@@ -388,7 +389,7 @@ const BookingTracker = () => {
         jobId={booking.jobId}
         technicianName={booking.technician?.name}
       />
-    </div>
+    </PageTransition>
   );
 };
 

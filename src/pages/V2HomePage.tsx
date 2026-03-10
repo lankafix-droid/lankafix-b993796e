@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PageTransition from "@/components/motion/PageTransition";
 import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2SeasonalPromos from "@/components/v2/V2SeasonalPromos";
@@ -41,7 +42,7 @@ const V2HomePage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
         {/* 1. Trust + Quick access + Search */}
@@ -94,7 +95,7 @@ const V2HomePage = () => {
         <V2TrustStrip />
       </main>
       <Footer />
-    </div>
+    </PageTransition>
   );
 };
 

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import PageTransition from "@/components/motion/PageTransition";
+import { StaggerList, StaggerItem } from "@/components/motion/StaggerList";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -51,9 +53,11 @@ const AccountPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 container max-w-2xl py-6 space-y-6">
+      <main className="flex-1 container max-w-2xl py-6">
+        <StaggerList className="space-y-6">
+        <StaggerItem>
         {/* Profile header */}
         <div className="bg-card rounded-2xl border p-6 flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -68,7 +72,9 @@ const AccountPage = () => {
             )}
           </div>
         </div>
+        </StaggerItem>
 
+        <StaggerItem>
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
           <Link to="/track" className="bg-card rounded-xl border p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
@@ -86,7 +92,9 @@ const AccountPage = () => {
             </div>
           </Link>
         </div>
+        </StaggerItem>
 
+        <StaggerItem>
         {/* Booking history */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Recent Bookings</h2>
@@ -122,7 +130,9 @@ const AccountPage = () => {
             </div>
           )}
         </div>
+        </StaggerItem>
 
+        <StaggerItem>
         {/* Saved addresses */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Saved Addresses</h2>
@@ -150,7 +160,9 @@ const AccountPage = () => {
             </div>
           )}
         </div>
+        </StaggerItem>
 
+        <StaggerItem>
         {/* Trust features */}
         <div className="bg-card rounded-xl border p-5 space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Your Protection</h2>
@@ -170,7 +182,9 @@ const AccountPage = () => {
             ))}
           </div>
         </div>
+        </StaggerItem>
 
+        <StaggerItem>
         {/* ─── Settings, Legal & Support ─── */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Settings & Support</h2>
@@ -226,7 +240,9 @@ const AccountPage = () => {
             </div>
           </div>
         </div>
+        </StaggerItem>
 
+        <StaggerItem>
         {/* ─── Account Actions ─── */}
         <div className="space-y-3 pb-6">
           {user && (
@@ -251,9 +267,11 @@ const AccountPage = () => {
             </Link>
           </Button>
         </div>
+        </StaggerItem>
+        </StaggerList>
       </main>
       <Footer />
-    </div>
+    </PageTransition>
   );
 };
 
