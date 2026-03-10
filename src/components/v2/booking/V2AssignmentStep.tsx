@@ -41,6 +41,16 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   // Smart dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
   const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch, bookingId);
+  const { phase, bestMatch, candidates, totalEligible, acceptCountdown, dispatchMode, dispatchRound } = dispatch;
+  const tech = bestMatch?.partner;
+  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type || "motorcycle"] || Car) : Car;
+  const searchingTechCount = totalEligible;
+
+  // Compute match intelligence for best match
+  const matchIntelligence = useMemo(() => {
+    if (!bestMatch) return null;
+    return intelligenceFromCandidate(bestMatch, categoryCode, isEmergency, customerZoneId);
+  }, [bestMatch, categoryCode, isEmergency, customerZoneId]);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
