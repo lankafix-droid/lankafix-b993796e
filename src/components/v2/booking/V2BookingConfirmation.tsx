@@ -67,7 +67,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
 
     // Build pricing breakdown
     const basePrice = selectedPackage?.price || 2500;
-    const isQuoteRequired = flow.pricingArchetype === "diagnostic_first" || flow.pricingArchetype === "inspection_required";
+    const isQuoteRequired = flow.pricingArchetype === "diagnostic_first" || flow.pricingArchetype === "quote_required";
     const pricing: PricingBreakdown = {
       visitFee: travelZone.fee,
       diagnosticFee: isQuoteRequired ? 500 : 0,
@@ -78,7 +78,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
       depositAmount: flow.commitmentFeeAmount || 0,
       partsSeparate: true,
       quoteRequired: isQuoteRequired,
-      cancelPolicy: { freeWindowMinutes: 30, afterWindowPercent: 50, afterAssignmentPercent: 100 },
+      cancelPolicy: { freeCancelMinutes: 30, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
     };
 
     const jobId = confirmBooking(pricing, isQuoteRequired);
