@@ -745,7 +745,7 @@ const TrackerPage = () => {
         type={showOtp || "start"}
         jobId={booking.jobId}
       />
-    </div>
+    </PageTransition>
   );
 };
 
