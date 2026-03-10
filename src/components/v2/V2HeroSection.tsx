@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock } from "lucide-react";
+import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, Lock, MapPin, Users, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
@@ -28,6 +28,11 @@ const TRUST_PILLS = [
   { icon: <Lock className="w-3.5 h-3.5" />, label: "Secure Booking" },
 ];
 
+const POPULAR_SEARCHES = [
+  "AC not cooling", "phone screen broken", "WiFi slow", "water leak",
+  "power trip", "CCTV install", "laptop repair", "washing machine",
+];
+
 interface Props {
   onSetupLocation?: () => void;
 }
@@ -38,6 +43,8 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setActive((p) => (p + 1) % BANNERS.length), 5000);
@@ -56,7 +63,14 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
     track("v2_search_select", { category: result.categoryCode, service: result.serviceTypeId, query: searchQuery });
     setShowResults(false);
     setSearchQuery("");
+    setSearchFocused(false);
     navigate(`/book/${result.categoryCode}`);
+  };
+
+  const handleSuggestionClick = (term: string) => {
+    setSearchQuery(term);
+    searchRef.current?.focus();
+    track("v2_search_suggestion_click", { term });
   };
 
   return (
@@ -75,7 +89,6 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
             loading={i === 0 ? "eager" : "lazy"}
           />
         ))}
-        {/* Premium cinematic gradient */}
         <div className="absolute inset-0" style={{
           background: "linear-gradient(to top, rgba(8,27,51,0.92) 0%, rgba(8,27,51,0.65) 40%, rgba(8,27,51,0.25) 70%, rgba(8,27,51,0.15) 100%)"
         }} />
@@ -185,12 +198,16 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
               <Search className="w-5 h-5 text-primary-foreground" />
             </div>
             <input
+              ref={searchRef}
               type="text"
-              placeholder="Try: phone screen broken, AC not cooling, wifi problem..."
+              placeholder="What do you need fixed?"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => searchResults.length > 0 && setShowResults(true)}
-              onBlur={() => setTimeout(() => setShowResults(false), 200)}
+              onFocus={() => {
+                setSearchFocused(true);
+                if (searchResults.length > 0) setShowResults(true);
+              }}
+              onBlur={() => setTimeout(() => { setShowResults(false); setSearchFocused(false); }, 200)}
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none min-h-[56px] font-medium"
             />
             {searchQuery && (
@@ -199,6 +216,24 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
               </button>
             )}
           </div>
+
+          {/* Search suggestions when focused but no query */}
+          {searchFocused && !searchQuery && !showResults && (
+            <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl border border-border shadow-xl overflow-hidden z-50 p-4">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Popular searches</p>
+              <div className="flex flex-wrap gap-2">
+                {POPULAR_SEARCHES.map((term) => (
+                  <button
+                    key={term}
+                    onMouseDown={() => handleSuggestionClick(term)}
+                    className="text-xs font-medium px-3 py-2 rounded-full border border-border/60 bg-secondary/50 text-foreground hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Search results */}
           {showResults && (
@@ -219,6 +254,30 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Local Availability Strip */}
+      <div className="container mt-4">
+        <motion.div
+          className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-2"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.4 }}
+        >
+          {[
+            { icon: <MapPin className="w-3.5 h-3.5 text-primary" />, text: "Active across Greater Colombo" },
+            { icon: <Users className="w-3.5 h-3.5 text-success" />, text: "120+ verified technicians" },
+            { icon: <TrendingUp className="w-3.5 h-3.5 text-primary" />, text: "Avg response 25 min" },
+          ].map((item) => (
+            <span
+              key={item.text}
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground whitespace-nowrap shrink-0"
+            >
+              {item.icon}
+              {item.text}
+            </span>
+          ))}
+        </motion.div>
       </div>
     </section>
   );
