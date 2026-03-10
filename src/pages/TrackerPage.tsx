@@ -43,6 +43,7 @@ import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
 import type { TrackingSimulation } from "@/lib/trackingEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { motion, AnimatePresence } from "framer-motion";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -84,17 +85,17 @@ function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label:
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-card/80 backdrop-blur-md border rounded-2xl p-5 mb-5 shadow-sm"
+      className="bg-card/80 backdrop-blur-md border border-border/60 rounded-2xl p-5 mb-5 shadow-[var(--shadow-card)]"
     >
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground">Job Progress</h3>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground font-medium">
           Step {Math.min(currentIdx + 1, steps.length)} of {steps.length}
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="relative h-2 bg-secondary rounded-full mb-4 overflow-hidden">
+      <div className="relative h-2.5 bg-secondary rounded-full mb-4 overflow-hidden">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-accent"
           initial={{ width: "0%" }}
@@ -109,11 +110,11 @@ function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label:
           const completed = currentIdx >= i;
           const isCurrent = i === currentIdx;
           return (
-            <div key={step.status} className="flex flex-col items-center gap-1 flex-1">
+            <div key={step.status} className="flex flex-col items-center gap-1.5 flex-1">
               <motion.div
                 initial={{ scale: 0.8 }}
                 animate={{ scale: isCurrent ? 1.2 : 1 }}
-                className={`w-3 h-3 rounded-full transition-colors ${
+                className={`w-3.5 h-3.5 rounded-full transition-colors ${
                   completed
                     ? isCurrent
                       ? "bg-primary ring-4 ring-primary/20"
@@ -148,7 +149,7 @@ function TrustBadgeRow() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.3 }}
-      className="flex gap-2 mb-5 overflow-x-auto scrollbar-none"
+      className="flex gap-2 mb-5 overflow-x-auto scrollbar-none pb-1"
     >
       {badges.map((b, i) => (
         <motion.span
@@ -173,10 +174,19 @@ function Section({ children, delay = 0 }: { children: React.ReactNode; delay?: n
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
-      className="mb-4"
+      className="mb-5"
     >
       {children}
     </motion.div>
+  );
+}
+
+// ─── Section Card Wrapper ───
+function SectionCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] ${className}`}>
+      {children}
+    </div>
   );
 }
 
@@ -244,17 +254,14 @@ const TrackerPage = () => {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center px-6"
-          >
-            <MascotIcon state="default" size="lg" className="mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-foreground mb-2">Booking Not Found</h1>
-            <p className="text-muted-foreground mb-4">No booking found for &quot;{jobId}&quot;</p>
-            <Button asChild variant="outline" className="rounded-xl"><Link to="/track">Track a Job</Link></Button>
-          </motion.div>
+        <main className="flex-1 flex items-center justify-center px-6">
+          <EmptyState
+            icon={MapPin}
+            title="Booking Not Found"
+            description={`No booking found for "${jobId}". Check the Job ID and try again.`}
+            actionLabel="Track a Job"
+            onAction={() => navigate("/track")}
+          />
         </main>
         <Footer />
       </div>
@@ -344,20 +351,20 @@ const TrackerPage = () => {
       <Header />
       <main className="flex-1">
         {/* ─── Sticky Status Header ─── */}
-        <div className="sticky top-0 z-30 bg-card/90 backdrop-blur-lg border-b">
-          <div className="container max-w-2xl py-3">
+        <div className="sticky top-0 z-30 bg-card/90 backdrop-blur-xl border-b border-border/50 shadow-sm">
+          <div className="container max-w-2xl py-3 px-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+              <div className="flex items-center gap-3 min-w-0">
+                <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
                   <ArrowLeft className="w-5 h-5" />
                 </Link>
                 <MascotIcon state={mascotState} badge={booking.isEmergency ? "emergency" : "verified"} size="sm" />
-                <div>
-                  <p className="font-bold text-foreground text-sm leading-tight">{booking.jobId}</p>
-                  <p className="text-xs text-muted-foreground">{booking.categoryName}</p>
+                <div className="min-w-0">
+                  <p className="font-bold text-foreground text-sm leading-tight truncate">{booking.jobId}</p>
+                  <p className="text-xs text-muted-foreground truncate">{booking.categoryName}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Badge className={`text-xs ${BOOKING_STATUS_COLORS[booking.status]}`}>
                   {BOOKING_STATUS_LABELS[booking.status]}
                 </Badge>
@@ -371,7 +378,7 @@ const TrackerPage = () => {
           </div>
         </div>
 
-        <div className="container py-6 max-w-2xl">
+        <div className="container py-6 px-4 max-w-2xl pb-28">
           {/* Mascot Guide */}
           <Section delay={0.1}>
             <MascotGuide messageKey={mascotKey} />
@@ -394,7 +401,7 @@ const TrackerPage = () => {
                 status={booking.status as "matching" | "awaiting_partner_confirmation"}
               />
               {booking.status === "awaiting_partner_confirmation" && (
-                <Button variant="outline" size="sm" className="w-full mt-2 rounded-xl" onClick={handleDemoConfirmPartner}>
+                <Button variant="outline" size="sm" className="w-full mt-3 rounded-xl" onClick={handleDemoConfirmPartner}>
                   <Play className="w-4 h-4 mr-2" /> Confirm Partner (Demo)
                 </Button>
               )}
@@ -418,7 +425,7 @@ const TrackerPage = () => {
           {/* Live Tracking Map */}
           {booking.trackingData?.isTracking && booking.technician && (
             <Section delay={0.2}>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <TechnicianMap
                   tracking={booking.trackingData}
                   technicianName={booking.technician.name}
@@ -443,61 +450,70 @@ const TrackerPage = () => {
 
           {/* ─── Booking Confirmation Card ─── */}
           <Section delay={0.25}>
-            <div className="bg-card rounded-2xl border p-5 shadow-sm">
+            <SectionCard>
               <div className="flex items-center justify-between mb-4">
                 <LankaFixLogo size="sm" />
-                <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-1 rounded-full font-medium">
+                <span className="text-[10px] text-muted-foreground bg-secondary px-2.5 py-1 rounded-full font-medium">
                   Booking Confirmation
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-muted-foreground">Date:</span>
-                  <span className="font-medium text-foreground">{booking.scheduledDate || "TBD"}</span>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-xs text-muted-foreground block">Date</span>
+                    <span className="font-medium text-foreground text-sm">{booking.scheduledDate || "TBD"}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-muted-foreground">Time:</span>
-                  <span className="font-medium text-foreground">{booking.scheduledTime || booking.preferredWindow || "TBD"}</span>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-xs text-muted-foreground block">Time</span>
+                    <span className="font-medium text-foreground text-sm">{booking.scheduledTime || booking.preferredWindow || "TBD"}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-muted-foreground">Zone:</span>
-                  <span className="font-medium text-foreground">{booking.zone}</span>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-xs text-muted-foreground block">Zone</span>
+                    <span className="font-medium text-foreground text-sm">{booking.zone}</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Mode: </span>
-                  <span className="font-medium text-foreground">{SERVICE_MODE_LABELS[booking.serviceMode]}</span>
+                <div className="flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-xs text-muted-foreground block">Mode</span>
+                    <span className="font-medium text-foreground text-sm">{SERVICE_MODE_LABELS[booking.serviceMode]}</span>
+                  </div>
                 </div>
               </div>
               {booking.address && (
-                <p className="text-xs text-muted-foreground mt-3 border-t pt-3">{booking.address}</p>
+                <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-border/50">{booking.address}</p>
               )}
               {booking.payments.deposit && (
-                <div className={`mt-3 pt-3 border-t text-xs flex items-center gap-1.5 ${depositPaid ? "text-success" : "text-warning"}`}>
-                  {depositPaid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                  Deposit: LKR {booking.payments.deposit.amount.toLocaleString("en-LK")} — {depositPaid ? "Paid" : "Pending"}
+                <div className={`mt-4 pt-4 border-t border-border/50 text-xs flex items-center gap-2 ${depositPaid ? "text-success" : "text-warning"}`}>
+                  {depositPaid ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                  <span className="font-medium">Deposit: LKR {booking.payments.deposit.amount.toLocaleString("en-LK")} — {depositPaid ? "Paid" : "Pending"}</span>
                 </div>
               )}
-              <div className="mt-3 pt-3 border-t flex items-center gap-2 text-xs text-success">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Payment only happens after job completion
+              <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-2 text-xs text-success">
+                <CheckCircle2 className="w-4 h-4" />
+                <span className="font-medium">Payment only happens after job completion</span>
               </div>
-            </div>
+            </SectionCard>
           </Section>
 
           {/* ─── Action Panel ─── */}
           <Section delay={0.3}>
-            <div className="bg-card rounded-2xl border p-4 space-y-2 shadow-sm">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Actions</h3>
+            <SectionCard>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Actions</h3>
 
               {/* OTP Controls */}
               {(["assigned", "tech_en_route", "arrived", "inspection_started", "in_progress", "repair_started"] as BookingStatus[]).includes(booking.status) && (
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <Button
                     variant={booking.startOtpVerifiedAt ? "outline" : "hero"}
-                    size="sm" className="flex-1 rounded-xl"
+                    size="sm" className="flex-1 rounded-xl h-11"
                     disabled={!!booking.startOtpVerifiedAt}
                     onClick={() => setShowOtp("start")}
                   >
@@ -505,7 +521,7 @@ const TrackerPage = () => {
                   </Button>
                   <Button
                     variant={booking.completionOtpVerifiedAt ? "outline" : "hero"}
-                    size="sm" className="flex-1 rounded-xl"
+                    size="sm" className="flex-1 rounded-xl h-11"
                     disabled={!!booking.completionOtpVerifiedAt}
                     onClick={() => setShowOtp("completion")}
                   >
@@ -516,9 +532,9 @@ const TrackerPage = () => {
 
               {/* Quote actions */}
               {isQuoteFlow && (
-                <>
+                <div className="mt-3">
                   {booking.quote && (
-                    <Button variant="outline" className="w-full rounded-xl" asChild>
+                    <Button variant="outline" className="w-full rounded-xl h-11" asChild>
                       <Link to={`/quote/${booking.jobId}`}>
                         <FileText className="w-4 h-4 mr-2" />
                         {booking.status === "quote_submitted" ? "View & Approve Quote" : "View Quote Details"}
@@ -526,17 +542,17 @@ const TrackerPage = () => {
                     </Button>
                   )}
                   {!booking.quote && (
-                    <Button variant="outline" className="w-full rounded-xl" onClick={handleGenerateQuote}>
+                    <Button variant="outline" className="w-full rounded-xl h-11" onClick={handleGenerateQuote}>
                       <FileText className="w-4 h-4 mr-2" />
                       Generate Quote (Demo)
                     </Button>
                   )}
-                </>
+                </div>
               )}
 
               {/* Demo dispatch/arrival/inspection/repair */}
               {booking.status === "assigned" && booking.dispatchStatus === "pending" && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => {
+                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={() => {
                   const techGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
                   const custGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
                   startTravel(booking.jobId, techGeo.lat, techGeo.lng, custGeo.lat, custGeo.lng);
@@ -546,21 +562,21 @@ const TrackerPage = () => {
                 </Button>
               )}
               {booking.status === "tech_en_route" && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={() => markArrived(booking.jobId)}>
+                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={() => markArrived(booking.jobId)}>
                   <MapPin className="w-4 h-4 mr-2" /> Mark Arrived (Demo)
                 </Button>
               )}
               {booking.status === "arrived" && isQuoteFlow && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={handleDemoInspection}>
+                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={handleDemoInspection}>
                   <Play className="w-4 h-4 mr-2" /> Start Inspection (Demo)
                 </Button>
               )}
               {booking.status === "quote_approved" && (
-                <Button variant="outline" size="sm" className="w-full rounded-xl" onClick={handleDemoRepairStarted}>
+                <Button variant="outline" size="sm" className="w-full rounded-xl h-11 mt-3" onClick={handleDemoRepairStarted}>
                   <Play className="w-4 h-4 mr-2" /> Start Repair (Demo)
                 </Button>
               )}
-            </div>
+            </SectionCard>
           </Section>
 
           {/* Payment Card */}
@@ -616,8 +632,8 @@ const TrackerPage = () => {
           {/* ─── Rating ─── */}
           {isCompleted && (
             <Section delay={0.75}>
-              <div className="bg-card rounded-2xl border p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
+              <SectionCard>
+                <div className="flex items-center gap-2 mb-4">
                   <MascotIcon state="completed" size="sm" />
                   <h3 className="text-sm font-semibold text-foreground">Rate Your Experience</h3>
                 </div>
@@ -625,19 +641,19 @@ const TrackerPage = () => {
                   <motion.div
                     initial={{ scale: 0.9 }}
                     animate={{ scale: 1 }}
-                    className="text-center py-3"
+                    className="text-center py-4"
                   >
-                    <CheckCircle2 className="w-10 h-10 text-success mx-auto mb-2" />
-                    <p className="text-sm text-success font-medium">Thank you for your rating!</p>
-                    <div className="flex justify-center gap-1 mt-2">
+                    <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-3" />
+                    <p className="text-sm text-success font-semibold">Thank you for your rating!</p>
+                    <div className="flex justify-center gap-1.5 mt-3">
                       {[1, 2, 3, 4, 5].map((s) => (
-                        <Star key={s} className={`w-5 h-5 ${s <= (booking.rating || rating) ? "text-warning fill-warning" : "text-muted-foreground/30"}`} />
+                        <Star key={s} className={`w-6 h-6 ${s <= (booking.rating || rating) ? "text-warning fill-warning" : "text-muted-foreground/30"}`} />
                       ))}
                     </div>
                   </motion.div>
                 ) : (
                   <div>
-                    <div className="flex gap-2 mb-4 justify-center">
+                    <div className="flex gap-3 mb-5 justify-center">
                       {[1, 2, 3, 4, 5].map((s) => (
                         <motion.button
                           key={s}
@@ -645,17 +661,18 @@ const TrackerPage = () => {
                           whileTap={{ scale: 0.95 }}
                           onClick={() => setRating(s)}
                           aria-label={`Rate ${s} stars`}
+                          className="p-1"
                         >
-                          <Star className={`w-8 h-8 cursor-pointer transition-colors ${s <= rating ? "text-warning fill-warning" : "text-muted-foreground/30 hover:text-warning/50"}`} />
+                          <Star className={`w-9 h-9 cursor-pointer transition-colors ${s <= rating ? "text-warning fill-warning" : "text-muted-foreground/30 hover:text-warning/50"}`} />
                         </motion.button>
                       ))}
                     </div>
-                    <Button variant="hero" size="sm" className="w-full rounded-xl" onClick={handleRate} disabled={rating === 0}>
+                    <Button variant="hero" className="w-full rounded-xl h-12" onClick={handleRate} disabled={rating === 0}>
                       Submit Rating
                     </Button>
                   </div>
                 )}
-              </div>
+              </SectionCard>
             </Section>
           )}
 
@@ -667,7 +684,7 @@ const TrackerPage = () => {
               ) : (
                 <Button
                   variant="outline"
-                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/5 rounded-xl"
+                  className="w-full border-destructive/30 text-destructive hover:bg-destructive/5 rounded-xl h-12"
                   onClick={() => setShowSos(true)}
                 >
                   <AlertTriangle className="w-4 h-4 mr-2" />
@@ -689,33 +706,33 @@ const TrackerPage = () => {
                     exit={{ opacity: 0, height: 0 }}
                     className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 overflow-hidden"
                   >
-                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                    <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                       <XCircle className="w-4 h-4 text-destructive" /> Cancel Booking
                     </h3>
                     {booking.pricing.depositRequired && (
-                      <p className="text-xs text-warning bg-warning/10 rounded-xl px-3 py-2 mb-3">
+                      <p className="text-xs text-warning bg-warning/10 rounded-xl px-3 py-2.5 mb-4">
                         ⚠ Refund: {refundInfo.refundPercent}% — {refundInfo.reason}
                       </p>
                     )}
-                    <div className="space-y-2 mb-3">
+                    <div className="space-y-2.5 mb-4">
                       {CANCEL_REASONS.map((r) => (
                         <button
                           key={r}
                           onClick={() => setCancelReason(r)}
-                          className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-all ${cancelReason === r ? "bg-destructive/10 border-destructive/30 text-destructive font-medium" : "bg-card text-foreground hover:border-destructive/20"}`}
+                          className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all min-h-[44px] ${cancelReason === r ? "bg-destructive/10 border-destructive/30 text-destructive font-medium" : "bg-card text-foreground hover:border-destructive/20"}`}
                         >
                           {r}
                         </button>
                       ))}
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="destructive" size="sm" className="rounded-xl" onClick={handleCancel} disabled={!cancelReason}>Confirm Cancel</Button>
-                      <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => setShowCancel(false)}>Go Back</Button>
+                    <div className="flex gap-3">
+                      <Button variant="destructive" className="flex-1 rounded-xl h-11" onClick={handleCancel} disabled={!cancelReason}>Confirm Cancel</Button>
+                      <Button variant="ghost" className="flex-1 rounded-xl h-11" onClick={() => setShowCancel(false)}>Go Back</Button>
                     </div>
                   </motion.div>
                 ) : (
                   <motion.div key="cancel-btn">
-                    <Button variant="outline" className="w-full text-destructive hover:text-destructive rounded-xl" onClick={() => setShowCancel(true)}>
+                    <Button variant="outline" className="w-full text-destructive hover:text-destructive rounded-xl h-12" onClick={() => setShowCancel(true)}>
                       Cancel Booking
                     </Button>
                   </motion.div>
@@ -726,10 +743,10 @@ const TrackerPage = () => {
 
           {booking.status === "cancelled" && (
             <Section delay={0.85}>
-              <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-5 text-center">
-                <XCircle className="w-10 h-10 text-destructive mx-auto mb-2" />
-                <p className="font-semibold text-destructive">Booking Cancelled</p>
-                {booking.cancelReason && <p className="text-xs text-muted-foreground mt-1">Reason: {booking.cancelReason}</p>}
+              <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6 text-center">
+                <XCircle className="w-12 h-12 text-destructive mx-auto mb-3" />
+                <p className="font-semibold text-destructive text-base">Booking Cancelled</p>
+                {booking.cancelReason && <p className="text-sm text-muted-foreground mt-2">Reason: {booking.cancelReason}</p>}
               </div>
             </Section>
           )}
