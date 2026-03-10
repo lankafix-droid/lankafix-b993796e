@@ -56,20 +56,28 @@ function getSupabaseClient() {
   );
 }
 
-function applySafetyOverrides(parsed: any, query: string): any {
+function applySafetyOverrides(parsed: any, query: string): { result: any; safety_override_applied: boolean; override_reason: string | null } {
+  let safety_override_applied = false;
+  let override_reason: string | null = null;
+
   const categoryOverride = SAFETY_OVERRIDES[parsed.category_code];
   if (categoryOverride) {
     parsed.booking_path = categoryOverride;
+    safety_override_applied = true;
+    override_reason = `category_rule_${parsed.category_code.toLowerCase()}`;
   }
 
   for (const rule of SAFETY_KEYWORDS) {
     if (rule.pattern.test(query)) {
       parsed.booking_path = rule.booking_path;
+      safety_override_applied = true;
+      const matched = query.match(rule.pattern)?.[0]?.toLowerCase().replace(/\s+/g, "_") || "keyword";
+      override_reason = `${matched}_detected`;
       break;
     }
   }
 
-  return parsed;
+  return { result: parsed, safety_override_applied, override_reason };
 }
 
 function validateAndSanitize(raw: any): any {

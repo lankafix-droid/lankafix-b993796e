@@ -58,17 +58,25 @@ function getSupabaseClient() {
   );
 }
 
-function applySafetyOverrides(parsed: any, description: string): any {
+function applySafetyOverrides(parsed: any, description: string): { result: any; safety_override_applied: boolean; override_reason: string | null } {
+  let safety_override_applied = false;
+  let override_reason: string | null = null;
+
   const categoryOverride = SAFETY_OVERRIDES[parsed.category_code];
   if (categoryOverride) {
     parsed.booking_path = categoryOverride;
     if (categoryOverride === "inspection") parsed.inspection_recommended = true;
+    safety_override_applied = true;
+    override_reason = `category_rule_${parsed.category_code.toLowerCase()}`;
   }
 
   for (const rule of SAFETY_KEYWORDS) {
     if (rule.pattern.test(description)) {
       parsed.booking_path = rule.booking_path;
       if (rule.booking_path === "inspection") parsed.inspection_recommended = true;
+      safety_override_applied = true;
+      const matched = description.match(rule.pattern)?.[0]?.toLowerCase().replace(/\s+/g, "_") || "keyword";
+      override_reason = `${matched}_detected`;
       break;
     }
   }
@@ -79,13 +87,18 @@ function applySafetyOverrides(parsed: any, description: string): any {
         if (rule.pattern.test(issue.issue || "") || rule.pattern.test(issue.description || "")) {
           parsed.booking_path = rule.booking_path;
           if (rule.booking_path === "inspection") parsed.inspection_recommended = true;
+          if (!safety_override_applied) {
+            safety_override_applied = true;
+            const matched = (issue.issue || issue.description || "").match(rule.pattern)?.[0]?.toLowerCase().replace(/\s+/g, "_") || "issue_keyword";
+            override_reason = `${matched}_detected`;
+          }
           break;
         }
       }
     }
   }
 
-  return parsed;
+  return { result: parsed, safety_override_applied, override_reason };
 }
 
 function validateAndSanitize(raw: any): any {
