@@ -67,6 +67,7 @@ const ConsumablesPage = lazy(() => import("./pages/ConsumablesPage"));
 const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
 const AccountDeletionPage = lazy(() => import("./pages/AccountDeletionPage"));
+const AccountDeletionPublicPage = lazy(() => import("./pages/AccountDeletionPublicPage"));
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -106,6 +107,7 @@ const App = () => (
             <Route path="/waitlist" element={<WaitlistPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/account/delete" element={<AccountDeletionPage />} />
+            <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
             <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
             <Route path="/sme" element={<SMEServicesPage />} />
             <Route path="/referral" element={<ReferralPage />} />

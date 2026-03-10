@@ -1,15 +1,19 @@
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLocationStore, ADDRESS_LABEL_OPTIONS } from "@/store/locationStore";
 import {
-  User, MapPin, Clock, ShieldCheck, Phone, Settings, ChevronRight,
+  User, MapPin, Clock, ShieldCheck, Phone, ChevronRight,
   Smartphone, Snowflake, Wrench, FileText, LogOut, Trash2,
-  Lock, ExternalLink, MessageCircle, Mail, Info, HelpCircle,
+  Lock, MessageCircle, Mail, Info,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP, SUPPORT_PHONE, whatsappLink } from "@/config/contact";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import type { User as SupaUser } from "@supabase/supabase-js";
 
 const APP_VERSION = "1.0.0";
 
@@ -25,7 +29,26 @@ const STATUS_STYLES: Record<string, { label: string; className: string }> = {
 };
 
 const AccountPage = () => {
+  const navigate = useNavigate();
   const { savedAddresses } = useLocationStore();
+  const [user, setUser] = useState<SupaUser | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await supabase.auth.signOut();
+    toast({ title: "Signed out", description: "You've been signed out successfully." });
+    navigate("/");
+    setLoggingOut(false);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -38,7 +61,11 @@ const AccountPage = () => {
           </div>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-foreground">My Account</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Manage your bookings, addresses, and preferences</p>
+            {user ? (
+              <p className="text-sm text-muted-foreground mt-0.5">{user.email}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-0.5">Manage your bookings, addresses, and preferences</p>
+            )}
           </div>
         </div>
 
@@ -162,10 +189,7 @@ const AccountPage = () => {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </a>
-            <a
-              href={`mailto:${SUPPORT_EMAIL}`}
-              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
-            >
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
               <Mail className="w-5 h-5 text-primary" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">Email Support</p>
@@ -173,10 +197,7 @@ const AccountPage = () => {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </a>
-            <a
-              href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`}
-              className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors"
-            >
+            <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
               <Phone className="w-5 h-5 text-primary" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">Call Support</p>
@@ -196,11 +217,6 @@ const AccountPage = () => {
               <span className="text-sm font-medium text-foreground flex-1">Terms of Service</span>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </Link>
-            <Link to="/faq" className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-              <HelpCircle className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground flex-1">FAQ & Help</span>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </Link>
 
             {/* App version */}
             <div className="flex items-center gap-3 p-4">
@@ -213,10 +229,17 @@ const AccountPage = () => {
 
         {/* ─── Account Actions ─── */}
         <div className="space-y-3 pb-6">
-          <Button variant="outline" className="w-full justify-start gap-3 h-12 rounded-xl text-foreground">
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Log Out</span>
-          </Button>
+          {user && (
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-3 h-12 rounded-xl text-foreground"
+              disabled={loggingOut}
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-sm font-medium">{loggingOut ? "Signing out…" : "Log Out"}</span>
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="w-full justify-start gap-3 h-12 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/5"
