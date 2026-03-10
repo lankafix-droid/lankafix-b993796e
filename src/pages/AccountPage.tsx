@@ -94,30 +94,12 @@ const AccountPage = () => {
         </div>
         </StaggerItem>
 
+        <StaggerItem>
         {/* Booking history */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Recent Bookings</h2>
           {MOCK_BOOKINGS.map((booking) => {
-            const statusStyle = STATUS_STYLES[booking.status] || STATUS_STYLES.pending;
-            const Icon = booking.icon;
-            return (
-              <div key={booking.id} className="bg-card rounded-xl border p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground truncate">{booking.category}</p>
-                    <Badge variant="outline" className={`text-[10px] ${statusStyle.className}`}>
-                      {statusStyle.label}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{booking.service} · {booking.date}</p>
-                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">{booking.id}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </div>
-            );
+...
           })}
           {MOCK_BOOKINGS.length === 0 && (
             <div className="bg-muted/30 rounded-xl border border-dashed p-8 text-center">
@@ -129,6 +111,7 @@ const AccountPage = () => {
             </div>
           )}
         </div>
+        </StaggerItem>
 
         {/* Saved addresses */}
         <div className="space-y-3">
