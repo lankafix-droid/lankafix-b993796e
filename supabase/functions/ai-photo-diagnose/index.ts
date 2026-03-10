@@ -299,7 +299,14 @@ serve(async (req) => {
       parsed = { ...INSPECTION_FALLBACK };
     }
 
-    parsed = applySafetyOverrides(parsed, description || "");
+    const { result: safeResult, safety_override_applied, override_reason } = applySafetyOverrides(parsed, description || "");
+    parsed = safeResult;
+
+    // Include safety flags in response
+    parsed.safety_override_applied = safety_override_applied;
+    if (safety_override_applied) {
+      parsed.override_reason = override_reason;
+    }
 
     const responseTimeMs = Date.now() - startTime;
     const imageSizeBytes = image_base64 ? Math.round(image_base64.length * 0.75) : null;
@@ -321,6 +328,10 @@ serve(async (req) => {
         response_time_ms: responseTimeMs,
         image_size_bytes: imageSizeBytes,
         client_platform: "web",
+        metadata: {
+          safety_override_applied,
+          override_reason,
+        },
       });
     } catch (logErr) {
       console.error("Failed to log AI interaction:", logErr);

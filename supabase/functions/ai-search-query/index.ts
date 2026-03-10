@@ -250,7 +250,14 @@ serve(async (req) => {
     }
 
     // Apply safety overrides based on category and keywords
-    parsed = applySafetyOverrides(parsed, query.trim());
+    const { result: safeResult, safety_override_applied, override_reason } = applySafetyOverrides(parsed, query.trim());
+    parsed = safeResult;
+
+    // Include safety flags in response
+    parsed.safety_override_applied = safety_override_applied;
+    if (safety_override_applied) {
+      parsed.override_reason = override_reason;
+    }
 
     const responseTimeMs = Date.now() - startTime;
     const confidenceBucket = getConfidenceBucket(parsed.confidence);
@@ -270,6 +277,10 @@ serve(async (req) => {
         session_id: session_id || null,
         response_time_ms: responseTimeMs,
         client_platform: "web",
+        metadata: {
+          safety_override_applied,
+          override_reason,
+        },
       });
     } catch (logErr) {
       console.error("Failed to log AI interaction:", logErr);
