@@ -129,25 +129,15 @@ const AccountPage = () => {
         </div>
         </StaggerItem>
 
+        <StaggerItem>
         {/* Trust features */}
         <div className="bg-card rounded-xl border p-5 space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Your Protection</h2>
           <div className="space-y-2.5">
-            {[
-              { icon: ShieldCheck, label: "Verified Technicians", desc: "All LankaFix technicians are background-checked and certified" },
-              { icon: FileText, label: "Quote Approval Required", desc: "No work begins without your explicit approval of the quote" },
-              { icon: Phone, label: "OTP Job Verification", desc: "Secure job start and completion with one-time passwords" },
-            ].map((item) => (
-              <div key={item.label} className="flex items-start gap-3">
-                <item.icon className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{item.label}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
-                </div>
-              </div>
-            ))}
+...
           </div>
         </div>
+        </StaggerItem>
 
         {/* ─── Settings, Legal & Support ─── */}
         <div className="space-y-3">
