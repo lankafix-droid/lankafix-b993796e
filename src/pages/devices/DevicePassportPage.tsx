@@ -10,10 +10,10 @@ import {
   Calendar, DollarSign, ArrowRightLeft, TrendingDown, Package,
 } from "lucide-react";
 import {
-  useDevicePassportStore,
   getHealthLabel,
   estimateResaleValue,
 } from "@/store/devicePassportStore";
+import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 
 const WARRANTY_TYPE_LABELS = {
   manufacturer: "Manufacturer",
