@@ -53,9 +53,10 @@ const AccountPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 container max-w-2xl py-6 space-y-6">
+      <main className="flex-1 container max-w-2xl py-6">
+        <StaggerList className="space-y-6">
         {/* Profile header */}
         <div className="bg-card rounded-2xl border p-6 flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
