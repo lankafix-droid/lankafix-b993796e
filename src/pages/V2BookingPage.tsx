@@ -390,7 +390,7 @@ const V2BookingPage = () => {
         </div>
       </main>
       {step === 0 && <Footer />}
-    </div>
+    </PageTransition>
   );
 };
 
