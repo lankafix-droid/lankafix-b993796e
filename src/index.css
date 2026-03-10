@@ -65,6 +65,7 @@
 
     /* Brand gradients */
     --gradient-brand: linear-gradient(135deg, hsl(147, 57%, 43%), hsl(180, 60%, 38%), hsl(211, 82%, 31%));
+    --gradient-brand-text: linear-gradient(135deg, hsl(147, 57%, 43%), hsl(180, 60%, 38%), hsl(211, 82%, 31%));
     --shadow-brand: 0 10px 40px -12px hsl(211 82% 31% / 0.25);
     --shadow-card: 0 1px 3px 0 hsl(214 33% 8% / 0.06), 0 1px 2px -1px hsl(214 33% 8% / 0.06);
     --shadow-card-hover: 0 10px 25px -5px hsl(211 82% 31% / 0.12), 0 8px 10px -6px hsl(211 82% 31% / 0.06);
