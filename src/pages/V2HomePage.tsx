@@ -62,6 +62,9 @@ const V2HomePage = () => {
         {/* 6. Super-app shortcuts */}
         <SuperAppShortcuts />
 
+        {/* 6.5 Seasonal promotions */}
+        <V2SeasonalPromos />
+
         {/* 7. Service bundles */}
         <V2ServiceBundles />
 
