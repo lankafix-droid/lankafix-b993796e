@@ -2,6 +2,8 @@ import type { CategoryCode } from "@/types/booking";
 import type { V2AssignmentType, V2PartnerShopInfo } from "@/data/v2CategoryFlows";
 import { useLocationStore, getTravelFeeForZone } from "@/store/locationStore";
 import { useSmartDispatch, type SmartDispatchCandidate } from "@/hooks/useSmartDispatch";
+import { intelligenceFromCandidate } from "@/engines/matchIntelligenceEngine";
+import MatchReasoningPanel from "@/components/v2/booking/MatchReasoningPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,6 +41,16 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   // Smart dispatch — only for technician match type
   const isLiveMatch = effectiveType !== "partner_shop" && effectiveType !== "site_inspection" && effectiveType !== "remote_support";
   const dispatch = useSmartDispatch(categoryCode, isEmergency, undefined, undefined, isLiveMatch, bookingId);
+  const { phase, bestMatch, candidates, totalEligible, acceptCountdown, dispatchMode, dispatchRound } = dispatch;
+  const tech = bestMatch?.partner;
+  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type || "motorcycle"] || Car) : Car;
+  const searchingTechCount = totalEligible;
+
+  // Compute match intelligence for best match
+  const matchIntelligence = useMemo(() => {
+    if (!bestMatch) return null;
+    return intelligenceFromCandidate(bestMatch, categoryCode, isEmergency, customerZoneId);
+  }, [bestMatch, categoryCode, isEmergency, customerZoneId]);
 
   // Travel fee for active address
   const travelFee = activeAddress ? getTravelFeeForZone(activeAddress.zoneStatus) : null;
@@ -241,10 +253,6 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
   }
 
   // ─── Default: Smart Technician Match ─────────────────────────────
-  const { phase, bestMatch, candidates, totalEligible, acceptCountdown, dispatchMode, dispatchRound } = dispatch;
-  const tech = bestMatch?.partner;
-  const VehicleIcon = tech ? (VEHICLE_ICONS[tech.vehicle_type || "motorcycle"] || Car) : Car;
-  const searchingTechCount = totalEligible;
 
   return (
     <div className="space-y-5">
@@ -361,8 +369,8 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             {/* Smart dispatch stats grid */}
             <div className="grid grid-cols-4 gap-2">
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">{bestMatch.score?.total || 0}%</div>
-                <div className="text-[10px] text-muted-foreground">AI Score</div>
+                <div className="text-sm font-bold text-foreground">{matchIntelligence?.confidenceScore || bestMatch.score?.total || 0}%</div>
+                <div className="text-[10px] text-muted-foreground">{matchIntelligence?.tierLabel || "Match"}</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2.5 text-center">
                 <div className="text-sm font-bold text-foreground">{bestMatch.distance_km} km</div>
@@ -378,21 +386,9 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               </div>
             </div>
 
-            {/* Score breakdown mini bar */}
-            {bestMatch.score && (
-              <div className="bg-muted/30 rounded-lg p-3 space-y-1.5">
-                <p className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
-                  <BarChart3 className="w-3 h-3" /> AI Match Breakdown
-                </p>
-                <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[10px]">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Proximity</span><span className="font-medium text-foreground">{bestMatch.score.proximity}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Skill</span><span className="font-medium text-foreground">{bestMatch.score.specialization}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Rating</span><span className="font-medium text-foreground">{bestMatch.score.rating}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Speed</span><span className="font-medium text-foreground">{bestMatch.score.response_speed}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Load</span><span className="font-medium text-foreground">{bestMatch.score.workload}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Reliability</span><span className="font-medium text-foreground">{bestMatch.score.completion_rate}</span></div>
-                </div>
-              </div>
+            {/* Match Intelligence Panel — replaces raw score breakdown */}
+            {matchIntelligence && (
+              <MatchReasoningPanel intelligence={matchIntelligence} compact />
             )}
 
             {/* ETA & Traffic detail */}
