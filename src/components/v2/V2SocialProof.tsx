@@ -21,7 +21,6 @@ const LIVE_ACTIVITIES = [
   "Printer repair booked in Colombo 3",
 ];
 
-// Safer trust-led metrics
 const STATS = [
   { icon: <Users className="w-5 h-5" />, value: "Thousands", label: "Happy Customers", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
   { icon: <CheckCircle2 className="w-5 h-5" />, value: "Growing", label: "Jobs Completed Daily", gradient: "from-success/15 to-success/5", color: "text-success" },
@@ -54,26 +53,27 @@ const V2SocialProof = () => {
   const t = TESTIMONIALS[activeTestimonial];
 
   return (
-    <section className="py-10 md:py-16">
+    <section className="py-12 md:py-16">
       <div className="container space-y-12">
-        {/* Live Activity Toast */}
+        {/* Live Activity Toast — refined positioning */}
         <AnimatePresence>
           {showActivity && (
             <motion.div
               initial={{ opacity: 0, y: 20, x: "-50%" }}
               animate={{ opacity: 1, y: 0, x: "-50%" }}
               exit={{ opacity: 0, y: -10, x: "-50%" }}
-              transition={{ duration: 0.4 }}
-              className="fixed bottom-20 left-1/2 z-40 bg-card border border-border/60 rounded-full px-5 py-2.5 shadow-lg flex items-center gap-2.5 max-w-[90vw]"
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed bottom-24 left-1/2 z-40 bg-card border border-border/50 rounded-full px-5 py-3 flex items-center gap-2.5 max-w-[90vw]"
+              style={{ boxShadow: "var(--shadow-lg)" }}
             >
               <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
               <p className="text-xs font-medium text-foreground whitespace-nowrap">{LIVE_ACTIVITIES[liveActivity]}</p>
-              <span className="text-[10px] text-muted-foreground">just now</span>
+              <span className="text-[10px] text-muted-foreground font-medium">just now</span>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Household + SME trust message */}
+        {/* Trust message */}
         <motion.p
           className="text-center text-sm text-muted-foreground font-medium"
           initial={{ opacity: 0 }}
@@ -84,7 +84,7 @@ const V2SocialProof = () => {
           Trusted by homes, offices, and small businesses across Greater Colombo.
         </motion.p>
 
-        {/* Stats Strip */}
+        {/* Stats Strip — premium cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {STATS.map((stat, i) => (
             <motion.div
@@ -93,9 +93,9 @@ const V2SocialProof = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08, duration: 0.4 }}
-              className="bg-card rounded-2xl border border-border/60 p-5 text-center hover:shadow-card-hover transition-shadow duration-300"
+              className="bg-card rounded-2xl border border-border/40 p-5 text-center hover:shadow-card-hover transition-shadow duration-300"
             >
-              <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${stat.gradient} ${stat.color} flex items-center justify-center mx-auto mb-3`}>
+              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${stat.gradient} ${stat.color} flex items-center justify-center mx-auto mb-3`}>
                 {stat.icon}
               </div>
               <p className="font-heading text-xl md:text-2xl font-extrabold text-foreground">{stat.value}</p>
@@ -104,7 +104,7 @@ const V2SocialProof = () => {
           ))}
         </div>
 
-        {/* Testimonials */}
+        {/* Testimonials — refined */}
         <div>
           <motion.div
             className="text-center mb-8"
@@ -113,7 +113,7 @@ const V2SocialProof = () => {
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
           >
-            <h2 className="font-heading text-xl md:text-2xl font-bold text-foreground mb-1">What Our Customers Say</h2>
+            <h2 className="font-heading text-xl md:text-2xl font-bold text-foreground mb-1.5">What Our Customers Say</h2>
             <p className="text-xs text-muted-foreground">Real reviews from Sri Lankan homes and businesses</p>
           </motion.div>
 
@@ -125,17 +125,18 @@ const V2SocialProof = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.4 }}
-                className="bg-card rounded-2xl border border-border/60 p-6 shadow-card"
+                className="bg-card rounded-2xl border border-border/40 p-6"
+                style={{ boxShadow: "var(--shadow-card)" }}
               >
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-11 h-11 rounded-full bg-gradient-brand text-primary-foreground flex items-center justify-center font-heading font-bold text-sm">
+                  <div className="w-12 h-12 rounded-full bg-gradient-brand text-primary-foreground flex items-center justify-center font-heading font-bold text-sm">
                     {t.avatar}
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-heading font-bold text-sm text-foreground">{t.name}</p>
                     <p className="text-[11px] text-muted-foreground">{t.location} · {t.service}</p>
                   </div>
-                  <div className="ml-auto flex gap-0.5">
+                  <div className="flex gap-0.5 shrink-0">
                     {Array.from({ length: t.rating }).map((_, i) => (
                       <Star key={i} className="w-3.5 h-3.5 fill-warning text-warning" />
                     ))}
@@ -150,26 +151,26 @@ const V2SocialProof = () => {
                 <button
                   key={i}
                   onClick={() => setActiveTestimonial(i)}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${i === activeTestimonial ? "w-6 bg-gradient-brand" : "w-3 bg-border"}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${i === activeTestimonial ? "w-7 bg-gradient-brand" : "w-3 bg-border hover:bg-muted-foreground/20"}`}
                 />
               ))}
             </div>
           </div>
         </div>
 
-        {/* Guarantee cards */}
+        {/* Guarantee cards — refined spacing */}
         <div className="grid md:grid-cols-2 gap-4">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-primary/5 border border-primary/15 rounded-2xl p-6 flex items-start gap-4"
+            className="bg-primary/5 border border-primary/12 rounded-2xl p-6 flex items-start gap-4"
           >
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary flex items-center justify-center shrink-0">
               <Shield className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-heading font-bold text-foreground mb-1">LankaFix Guarantee</h3>
+              <h3 className="font-heading font-bold text-foreground mb-1.5">LankaFix Guarantee</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Every job backed by verified technicians, OTP security, transparent quotes, and service warranty. If something goes wrong, we make it right.
               </p>
@@ -181,16 +182,16 @@ const V2SocialProof = () => {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="bg-success/5 border border-success/15 rounded-2xl p-6 flex items-start gap-4"
+            className="bg-success/5 border border-success/12 rounded-2xl p-6 flex items-start gap-4"
           >
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-success/20 to-success/5 text-success flex items-center justify-center shrink-0">
               <Banknote className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-heading font-bold text-foreground mb-1">Pay After Service</h3>
+              <h3 className="font-heading font-bold text-foreground mb-1.5">Pay After Service</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Prefer cash? No problem. Pay the technician after the job is done and verified. No advance payment required for most services.
-                <span className="text-[11px] block mt-1 text-muted-foreground/70">Online payment also available</span>
+                <span className="text-[11px] block mt-1.5 text-muted-foreground/60">Online payment also available</span>
               </p>
             </div>
           </motion.div>
