@@ -13,6 +13,8 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { SUPPORT_PHONE, SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { motion } from "framer-motion";
+import { useBookingStore } from "@/store/bookingStore";
+import type { CategoryCode, ServiceMode, PricingBreakdown } from "@/types/booking";
 
 interface Props {
   flow: V2CategoryFlow;
@@ -44,16 +46,45 @@ function SummaryRow({ label, value, bold }: { label: string; value: React.ReactN
 const V2BookingConfirmation = ({ flow, booking }: Props) => {
   const navigate = useNavigate();
   const [confirmed, setConfirmed] = useState(false);
+  const [createdJobId, setCreatedJobId] = useState<string | null>(null);
+  const { setDraftCategory, setDraftService, setDraftMode, setDraftEmergency, setDraftLocation, confirmBooking } = useBookingStore();
 
   const selectedService = flow.serviceTypes.find((s) => s.id === booking.serviceTypeId);
   const selectedPackage = flow.packages.find((p) => p.id === booking.packageId);
   const selectedMode = flow.serviceModes?.find((m) => m.id === booking.serviceModeId);
   const selectedGrade = booking.partGrade ? PART_GRADES.find(g => g.code === booking.partGrade) : null;
   const warranty = getServiceWarranty(flow.code, booking.serviceTypeId);
-  const jobId = `LF-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
   const travelZone = TRAVEL_ZONES[0];
 
-  const handleConfirm = () => setConfirmed(true);
+  const handleConfirm = () => {
+    // Set up draft in store
+    setDraftCategory(flow.code as CategoryCode, flow.name);
+    setDraftService(booking.serviceTypeId || flow.code, selectedService?.label || flow.name);
+    const modeMap: Record<string, ServiceMode> = { on_site: "on_site", drop_off: "drop_off", pickup_return: "pickup_return", remote: "remote" };
+    setDraftMode(modeMap[booking.serviceModeId] || "on_site");
+    setDraftEmergency(booking.isEmergency || false);
+    setDraftLocation("Colombo 7", "Greater Colombo Area");
+
+    // Build pricing breakdown
+    const basePrice = selectedPackage?.price || 2500;
+    const isQuoteRequired = flow.pricingArchetype === "diagnostic_first" || flow.pricingArchetype === "inspection_required";
+    const pricing: PricingBreakdown = {
+      visitFee: travelZone.fee,
+      diagnosticFee: isQuoteRequired ? 500 : 0,
+      emergencySurcharge: booking.isEmergency ? 500 : 0,
+      estimatedMin: basePrice,
+      estimatedMax: selectedPackage?.priceMax || basePrice * 1.5,
+      depositRequired: flow.requiresCommitmentFee || false,
+      depositAmount: flow.commitmentFeeAmount || 0,
+      partsSeparate: true,
+      quoteRequired: isQuoteRequired,
+      cancelPolicy: { freeWindowMinutes: 30, afterWindowPercent: 50, afterAssignmentPercent: 100 },
+    };
+
+    const jobId = confirmBooking(pricing, isQuoteRequired);
+    setCreatedJobId(jobId);
+    setConfirmed(true);
+  };
 
   /* ─── SUCCESS STATE ─── */
   if (confirmed) {
