@@ -6,6 +6,71 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Simple in-memory rate limiter (per-instance)
+const rateLimiter = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 5; // photo diagnoses per window (stricter — heavier endpoint)
+const RATE_WINDOW_MS = 60_000;
+
+function checkRateLimit(key: string): boolean {
+  const now = Date.now();
+  const entry = rateLimiter.get(key);
+  if (!entry || now > entry.resetAt) {
+    rateLimiter.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
+const VALID_CATEGORIES = [
+  "AC", "CCTV", "MOBILE", "IT", "SOLAR", "ELECTRICAL", "PLUMBING",
+  "ELECTRONICS", "NETWORK", "SMARTHOME", "SECURITY", "POWER_BACKUP",
+  "COPIER", "SUPPLIES", "APPLIANCE_INSTALL",
+];
+const VALID_URGENCIES = ["high", "medium", "low"];
+const VALID_SEVERITIES = ["high", "medium", "low"];
+const VALID_BOOKING_PATHS = ["direct", "inspection", "quote_required"];
+
+function validateAndSanitize(raw: any): any {
+  if (!raw || typeof raw !== "object") throw new Error("Invalid AI response structure");
+
+  const category_code = VALID_CATEGORIES.includes(raw.category_code) ? raw.category_code : "IT";
+  const urgency = VALID_URGENCIES.includes(raw.urgency) ? raw.urgency : "medium";
+  const overall_confidence = typeof raw.overall_confidence === "number"
+    ? Math.max(0, Math.min(100, Math.round(raw.overall_confidence))) : 50;
+
+  // Force low-confidence results to inspection
+  const inspection_recommended = overall_confidence < 60 ? true : !!raw.inspection_recommended;
+  const booking_path = overall_confidence < 60 ? "inspection"
+    : VALID_BOOKING_PATHS.includes(raw.booking_path) ? raw.booking_path : "inspection";
+
+  const detected_issues = Array.isArray(raw.detected_issues)
+    ? raw.detected_issues.slice(0, 5).map((issue: any) => ({
+        issue: typeof issue?.issue === "string" ? issue.issue.slice(0, 150) : "Unknown issue",
+        confidence: typeof issue?.confidence === "number" ? Math.max(0, Math.min(100, Math.round(issue.confidence))) : 50,
+        severity: VALID_SEVERITIES.includes(issue?.severity) ? issue.severity : "medium",
+        description: typeof issue?.description === "string" ? issue.description.slice(0, 300) : "",
+      }))
+    : [{ issue: "Unable to identify specific issue", confidence: 30, severity: "medium" as const, description: "Inspection recommended" }];
+
+  return {
+    detected_issues,
+    category_code,
+    category_name: typeof raw.category_name === "string" ? raw.category_name.slice(0, 100) : category_code,
+    recommended_service: typeof raw.recommended_service === "string" ? raw.recommended_service.slice(0, 80) : "GENERAL",
+    recommended_service_name: typeof raw.recommended_service_name === "string" ? raw.recommended_service_name.slice(0, 100) : "General Inspection",
+    overall_confidence,
+    urgency,
+    estimated_price_range: typeof raw.estimated_price_range === "string" ? raw.estimated_price_range.slice(0, 60) : "Contact for quote",
+    booking_path,
+    inspection_recommended,
+    additional_notes: typeof raw.additional_notes === "string" ? raw.additional_notes.slice(0, 500) : null,
+    self_fix_possible: !!raw.self_fix_possible,
+    self_fix_tip: typeof raw.self_fix_tip === "string" ? raw.self_fix_tip.slice(0, 300) : null,
+  };
+}
+
 const SYSTEM_PROMPT = `You are LankaFix's AI Photo Diagnosis engine. Analyze images of devices, appliances, or home systems to identify issues.
 
 CAPABILITIES:
@@ -51,7 +116,16 @@ RULES:
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const startTime = Date.now();
+
   try {
+    const clientIp = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown";
+    if (!checkRateLimit(clientIp)) {
+      return new Response(JSON.stringify({ error: "Too many requests. Please wait a moment." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { image_base64, image_url, description, session_id } = await req.json();
     
     if (!image_base64 && !image_url) {
@@ -60,10 +134,23 @@ serve(async (req) => {
       });
     }
 
+    // Validate base64 size (max ~5MB base64 ≈ 6.7MB encoded)
+    if (image_base64 && image_base64.length > 7_000_000) {
+      return new Response(JSON.stringify({ error: "Image too large. Please compress and retry." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate description length
+    if (description && (typeof description !== "string" || description.length > 500)) {
+      return new Response(JSON.stringify({ error: "Description must be under 500 characters." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Build multimodal message
     const userContent: any[] = [];
     
     if (image_base64) {
@@ -122,18 +209,23 @@ serve(async (req) => {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
     
-    let parsed;
+    let rawParsed;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
+      rawParsed = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(content);
     } catch {
       console.error("Failed to parse AI photo response:", content);
-      return new Response(JSON.stringify({ error: "Failed to parse AI response", raw: content }), {
+      return new Response(JSON.stringify({ error: "Failed to parse AI response" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Log for ML training
+    // Strict validation
+    const parsed = validateAndSanitize(rawParsed);
+    const responseTimeMs = Date.now() - startTime;
+    const imageSizeBytes = image_base64 ? Math.round(image_base64.length * 0.75) : null;
+
+    // Log using service role only
     try {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
@@ -150,6 +242,9 @@ serve(async (req) => {
         matched_service: parsed.recommended_service,
         urgency_level: parsed.urgency,
         session_id: session_id || null,
+        response_time_ms: responseTimeMs,
+        image_size_bytes: imageSizeBytes,
+        client_platform: "web",
       });
     } catch (logErr) {
       console.error("Failed to log AI interaction:", logErr);

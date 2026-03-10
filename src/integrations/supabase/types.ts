@@ -18,15 +18,20 @@ export type Database = {
         Row: {
           ai_model: string | null
           ai_response: Json | null
+          booking_id: string | null
+          client_platform: string | null
           confidence_score: number | null
+          converted_to_booking: boolean | null
           created_at: string
           id: string
+          image_size_bytes: number | null
           input_image_url: string | null
           input_query: string | null
           interaction_type: string
           matched_category: string | null
           matched_service: string | null
           metadata: Json | null
+          response_time_ms: number | null
           session_id: string | null
           urgency_level: string | null
           user_accepted: boolean | null
@@ -35,15 +40,20 @@ export type Database = {
         Insert: {
           ai_model?: string | null
           ai_response?: Json | null
+          booking_id?: string | null
+          client_platform?: string | null
           confidence_score?: number | null
+          converted_to_booking?: boolean | null
           created_at?: string
           id?: string
+          image_size_bytes?: number | null
           input_image_url?: string | null
           input_query?: string | null
           interaction_type?: string
           matched_category?: string | null
           matched_service?: string | null
           metadata?: Json | null
+          response_time_ms?: number | null
           session_id?: string | null
           urgency_level?: string | null
           user_accepted?: boolean | null
@@ -52,15 +62,20 @@ export type Database = {
         Update: {
           ai_model?: string | null
           ai_response?: Json | null
+          booking_id?: string | null
+          client_platform?: string | null
           confidence_score?: number | null
+          converted_to_booking?: boolean | null
           created_at?: string
           id?: string
+          image_size_bytes?: number | null
           input_image_url?: string | null
           input_query?: string | null
           interaction_type?: string
           matched_category?: string | null
           matched_service?: string | null
           metadata?: Json | null
+          response_time_ms?: number | null
           session_id?: string | null
           urgency_level?: string | null
           user_accepted?: boolean | null

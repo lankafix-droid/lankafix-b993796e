@@ -31,6 +31,28 @@ const EXAMPLE_QUERIES = [
   "solar panel not generating",
 ];
 
+// Strict category → route mapping (no dynamic generation from AI response)
+const CATEGORY_ROUTE_MAP: Record<string, string> = {
+  AC: "/book/ac",
+  CCTV: "/book/cctv",
+  MOBILE: "/book/mobile",
+  IT: "/book/it",
+  SOLAR: "/book/solar",
+  ELECTRICAL: "/book/electrical",
+  PLUMBING: "/book/plumbing",
+  ELECTRONICS: "/book/electronics",
+  NETWORK: "/book/network",
+  SMARTHOME: "/book/smarthome",
+  SECURITY: "/book/security",
+  POWER_BACKUP: "/book/power-backup",
+  COPIER: "/book/copier",
+  SUPPLIES: "/book/supplies",
+  APPLIANCE_INSTALL: "/book/appliance-install",
+};
+
+const getBookingRoute = (categoryCode: string): string =>
+  CATEGORY_ROUTE_MAP[categoryCode] || "/book/it";
+
 const AISmartSearch = () => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,7 +60,6 @@ const AISmartSearch = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState<AISearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
 
   const performSearch = useCallback(async (searchQuery: string) => {
     if (searchQuery.trim().length < 3) return;
@@ -63,7 +84,7 @@ const AISmartSearch = () => {
 
       const data: AISearchResult = await resp.json();
       setResult(data);
-      track("ai_search_complete", { category: data.category_code, confidence: data.confidence });
+      track("ai_search_complete", { category: data.category_code, confidence: data.confidence, booking_path: data.booking_path });
     } catch (e: any) {
       setError(e.message || "Search failed");
     } finally {
@@ -82,10 +103,19 @@ const AISmartSearch = () => {
     performSearch(example);
   };
 
+  const isLowConfidence = result ? result.confidence < 60 : false;
+
   const urgencyBadge = (u: string) => {
     if (u === "high") return "destructive" as const;
     if (u === "medium") return "secondary" as const;
     return "outline" as const;
+  };
+
+  const getCtaLabel = (r: AISearchResult) => {
+    if (r.confidence < 60) return "Book Inspection";
+    if (r.booking_path === "inspection") return "Book Inspection";
+    if (r.booking_path === "quote_required") return "Get Quote";
+    return "Book Now";
   };
 
   return (
@@ -125,6 +155,7 @@ const AISmartSearch = () => {
               value={query}
               onChange={(e) => { setQuery(e.target.value); setResult(null); }}
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/70 outline-none min-h-[56px] font-medium"
+              maxLength={500}
             />
             <Button
               type="submit"
@@ -184,6 +215,16 @@ const AISmartSearch = () => {
                 </Badge>
               </div>
 
+              {/* Low confidence warning */}
+              {isLowConfidence && (
+                <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground">
+                    AI confidence is low. We recommend booking an <strong>on-site inspection</strong> for an accurate diagnosis by a verified technician.
+                  </p>
+                </div>
+              )}
+
               {/* Main result card */}
               <div className="bg-card rounded-2xl border border-primary/20 p-5" style={{ boxShadow: "var(--shadow-lg)" }}>
                 <div className="flex items-start justify-between mb-3">
@@ -232,12 +273,17 @@ const AISmartSearch = () => {
                   <Button
                     className="flex-1 rounded-xl h-11 bg-gradient-brand text-primary-foreground font-bold gap-2"
                     onClick={() => {
-                      track("ai_search_book", { category: result.category_code, service: result.service_type });
-                      navigate(`/book/${result.category_code.toLowerCase()}`);
+                      track("ai_search_book", {
+                        category: result.category_code,
+                        service: result.service_type,
+                        confidence: result.confidence,
+                        booking_path: result.booking_path,
+                        was_low_confidence: isLowConfidence,
+                      });
+                      navigate(getBookingRoute(result.category_code));
                     }}
                   >
-                    {result.booking_path === "inspection" ? "Book Inspection" :
-                     result.booking_path === "quote_required" ? "Get Quote" : "Book Now"}
+                    {getCtaLabel(result)}
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                   <Button
@@ -263,7 +309,7 @@ const AISmartSearch = () => {
                       key={i}
                       onClick={() => {
                         track("ai_search_alt_click", { category: alt.category_code, service: alt.service_type });
-                        navigate(`/book/${alt.category_code.toLowerCase()}`);
+                        navigate(getBookingRoute(alt.category_code));
                       }}
                       className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-secondary/50 transition-smooth text-left"
                     >
@@ -280,7 +326,7 @@ const AISmartSearch = () => {
               {/* Trust footer */}
               <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
                 <ShieldCheck className="w-3 h-3" />
-                <span>AI recommendation · Human technician confirms final diagnosis</span>
+                <span>AI recommendation · Final diagnosis verified by certified technician</span>
               </div>
             </motion.div>
           )}
