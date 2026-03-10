@@ -10,7 +10,9 @@ const PrivacyPage = () => (
       <div className="container py-10 max-w-3xl space-y-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground font-heading">Privacy Policy</h1>
-          <p className="text-muted-foreground text-sm mt-2">Last updated: March 2026</p>
+          <p className="text-muted-foreground text-sm mt-2">
+            Last updated: <strong className="text-foreground">10 March 2026</strong>
+          </p>
           <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
             This Privacy Policy explains how LankaFix, operated by Smart Office (Private) Limited ("we", "us", "our"),
             collects, uses, stores, and protects your personal information when you use our platform and services.
@@ -23,9 +25,12 @@ const PrivacyPage = () => (
             LankaFix is a technology platform operated by Smart Office (Private) Limited, registered in Sri Lanka.
             We connect customers with verified independent technicians for repairs, installations, and technical support services.
           </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            <strong className="text-foreground">Contact:</strong> {SUPPORT_EMAIL} · Colombo, Sri Lanka
-          </p>
+          <div className="text-sm text-muted-foreground leading-relaxed bg-muted/30 rounded-lg p-3 space-y-1">
+            <p><strong className="text-foreground">Legal Entity:</strong> Smart Office (Private) Limited</p>
+            <p><strong className="text-foreground">Email:</strong> <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">{SUPPORT_EMAIL}</a></p>
+            <p><strong className="text-foreground">Website:</strong> <a href="https://lankafix.lk" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">lankafix.lk</a></p>
+            <p><strong className="text-foreground">Location:</strong> Colombo, Sri Lanka</p>
+          </div>
         </section>
 
         <section className="space-y-2">

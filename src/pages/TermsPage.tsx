@@ -148,9 +148,10 @@ const TermsPage = () => (
           <p className="text-sm text-muted-foreground leading-relaxed">
             For questions about these Terms, contact us at:
           </p>
-          <div className="text-sm text-muted-foreground leading-relaxed">
+          <div className="text-sm text-muted-foreground leading-relaxed bg-muted/30 rounded-lg p-3 space-y-1">
             <p><strong className="text-foreground">Smart Office (Private) Limited</strong></p>
             <p>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">{SUPPORT_EMAIL}</a></p>
+            <p>Website: <a href="https://lankafix.lk" className="text-primary hover:underline" target="_blank" rel="noopener noreferrer">lankafix.lk</a></p>
             <p>Location: Colombo, Sri Lanka</p>
           </div>
         </section>
