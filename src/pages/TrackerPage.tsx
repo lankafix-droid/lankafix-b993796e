@@ -129,20 +129,43 @@ function getNextBestAction(
   return null;
 }
 
-// ─── Premium Progress Stepper (simplified) ───
-function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label: string }[]; currentIdx: number }) {
+// ─── Step Icon Mapper ───
+const STEP_ICON_MAP: Record<string, React.ElementType> = {
+  clipboard: ClipboardList, search: Search, "user-check": UserCheck,
+  navigation: Navigation, "map-pin": MapPin, wrench: Wrench,
+  "check-circle": CheckCircle2, "search-check": SearchCheck,
+  "file-text": FileText, "check-square": CheckSquare,
+  package: Package, building: Building2,
+};
+
+function getStepIcon(iconName?: string): React.ElementType {
+  return (iconName && STEP_ICON_MAP[iconName]) || Circle;
+}
+
+// ─── Premium Progress Stepper (enhanced with icons + descriptions) ───
+function PremiumStepper({ steps, currentIdx }: { steps: TimelineStepDef[]; currentIdx: number }) {
   const progress = steps.length > 1 ? Math.max(0, currentIdx / (steps.length - 1)) * 100 : 0;
+  const currentStep = steps[Math.min(currentIdx, steps.length - 1)];
+  const CurrentIcon = getStepIcon(currentStep?.icon);
 
   return (
     <div className="bg-card/80 backdrop-blur-md border border-border/60 rounded-2xl p-4 mb-4 shadow-[var(--shadow-card)]">
-      <div className="flex items-center justify-between mb-2.5">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Progress</h3>
-        <span className="text-[10px] text-muted-foreground font-medium">
+      {/* Current status highlight */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+          <CurrentIcon className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-foreground">{currentStep?.label}</p>
+          <p className="text-[11px] text-muted-foreground">{currentStep?.description}</p>
+        </div>
+        <span className="text-[10px] text-muted-foreground font-medium bg-secondary px-2 py-1 rounded-full shrink-0">
           {Math.min(currentIdx + 1, steps.length)}/{steps.length}
         </span>
       </div>
+
       {/* Progress bar */}
-      <div className="relative h-2 bg-secondary rounded-full overflow-hidden">
+      <div className="relative h-2 bg-secondary rounded-full overflow-hidden mb-3">
         <motion.div
           className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary to-accent"
           initial={{ width: "0%" }}
@@ -150,19 +173,31 @@ function PremiumStepper({ steps, currentIdx }: { steps: { status: string; label:
           transition={{ duration: 0.8, ease: "easeOut" }}
         />
       </div>
-      {/* Only show: first, current, last labels */}
-      <div className="flex justify-between mt-2.5">
+
+      {/* Milestone dots */}
+      <div className="flex items-center justify-between px-1">
         {steps.map((step, i) => {
-          const show = i === 0 || i === currentIdx || i === steps.length - 1;
-          if (!show) return <div key={step.status} className="flex-1" />;
           const completed = currentIdx >= i;
           const isCurrent = i === currentIdx;
+          const StepIcon = getStepIcon(step.icon);
           return (
-            <div key={step.status} className="flex flex-col items-center flex-1">
-              <div className={`w-2.5 h-2.5 rounded-full ${isCurrent ? "bg-primary ring-3 ring-primary/20" : completed ? "bg-success" : "bg-muted"}`} />
-              <span className={`text-[9px] text-center leading-tight mt-1 max-w-[56px] ${isCurrent ? "text-primary font-semibold" : completed ? "text-foreground" : "text-muted-foreground"}`}>
-                {step.label}
-              </span>
+            <div key={step.status} className="flex flex-col items-center" style={{ flex: "0 0 auto" }}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                isCurrent
+                  ? "bg-primary ring-3 ring-primary/20"
+                  : completed
+                  ? "bg-success"
+                  : "bg-muted"
+              }`}>
+                <StepIcon className={`w-3 h-3 ${isCurrent || completed ? "text-primary-foreground" : "text-muted-foreground"}`} />
+              </div>
+              {(i === 0 || isCurrent || i === steps.length - 1) && (
+                <span className={`text-[8px] text-center leading-tight mt-1.5 max-w-[48px] ${
+                  isCurrent ? "text-primary font-semibold" : completed ? "text-foreground" : "text-muted-foreground"
+                }`}>
+                  {step.label}
+                </span>
+              )}
             </div>
           );
         })}
