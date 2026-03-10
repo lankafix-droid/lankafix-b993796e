@@ -16,7 +16,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function DevicesDashboardPage() {
-  const { passports, getAlerts } = useDevicePassportStore();
+  const { passports, getAlerts } = useDevicePassportsDB();
 
   // Gather all alerts
   const allAlerts = passports.flatMap((p) => getAlerts(p.devicePassportId));

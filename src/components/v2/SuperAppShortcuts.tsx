@@ -4,7 +4,7 @@ import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 
 const SuperAppShortcuts = () => {
-  const { passports } = useDevicePassportStore();
+  const { passports } = useDevicePassportsDB();
   const { subscriptions } = useSubscriptionStore();
   const activeSubs = subscriptions.filter((s) => s.status === "active");
 

@@ -23,7 +23,7 @@ const WARRANTY_TYPE_LABELS = {
 
 export default function DevicePassportPage() {
   const { passportId } = useParams<{ passportId: string }>();
-  const { getPassport, getPassportServices, getPassportWarranties, getAlerts } = useDevicePassportStore();
+  const { getPassport, getPassportServices, getPassportWarranties, getAlerts } = useDevicePassportsDB();
 
   const passport = getPassport(passportId || "");
   const services = getPassportServices(passportId || "");

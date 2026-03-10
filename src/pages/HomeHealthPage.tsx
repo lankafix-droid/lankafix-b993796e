@@ -33,7 +33,7 @@ const Section = ({ title, action, children }: { title: string; action?: React.Re
 );
 
 export default function HomeHealthPage() {
-  const { passports, getAlerts } = useDevicePassportStore();
+  const { passports, getAlerts } = useDevicePassportsDB();
   const { subscriptions } = useSubscriptionStore();
 
   const allAlerts = passports.flatMap((p) => getAlerts(p.devicePassportId));
