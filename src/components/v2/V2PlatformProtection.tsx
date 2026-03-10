@@ -1,4 +1,5 @@
-import { ShieldCheck, Eye, KeyRound, FileCheck, Award, Lock, HeartHandshake, MessageCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ShieldCheck, Eye, KeyRound, FileCheck, Award, Lock, HeartHandshake, MessageCircle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 
 const protections = [
@@ -49,6 +50,23 @@ const V2PlatformProtection = () => {
             </motion.div>
           ))}
         </div>
+
+        {/* Educational CTA */}
+        <motion.div
+          className="text-center mt-8"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+        >
+          <Link
+            to="/how-pricing-works"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all duration-300"
+          >
+            Learn how LankaFix protects your booking
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </motion.div>
       </div>
     </section>
   );

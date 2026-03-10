@@ -58,23 +58,23 @@ const ESTIMATED_TIMES: Record<string, string> = {
   HOME_SECURITY: "2–4 hrs", POWER_BACKUP: "60–180 min", APPLIANCE_INSTALL: "60–180 min",
 };
 
-// Clearer pricing microcopy per archetype
+// Improved pricing microcopy — trust-focused, dispute-reducing
 const PRICING_MICROCOPY: Record<string, string> = {
   AC: "Inspection from Rs 2,500",
-  MOBILE: "Repair from Rs 3,000",
-  IT: "Diagnosis from Rs 2,000",
+  MOBILE: "Repair from Rs 3,000 depending on issue",
+  IT: "Diagnosis from Rs 2,000 · parts separate",
   ELECTRICAL: "Visit from Rs 1,500",
   PLUMBING: "Visit from Rs 1,500",
   NETWORK: "Setup from Rs 2,000",
-  CCTV: "Site visit required · Quote after inspection",
-  SMART_HOME_OFFICE: "Site visit required",
-  HOME_SECURITY: "Inspection required · Custom quote",
-  POWER_BACKUP: "From Rs 3,000 · Parts separate",
-  SOLAR: "Free site inspection · Custom quote",
+  CCTV: "Site visit required · final quote after inspection",
+  SMART_HOME_OFFICE: "Project quote after site assessment",
+  HOME_SECURITY: "Inspection required · equipment quoted separately",
+  POWER_BACKUP: "From Rs 3,000 · parts separate",
+  SOLAR: "Free site inspection · custom quotation",
   CONSUMER_ELEC: "Final quote after diagnosis",
   COPIER: "Diagnosis from Rs 2,000",
   PRINT_SUPPLIES: "Delivery available",
-  APPLIANCE_INSTALL: "From Rs 2,500 · Parts separate",
+  APPLIANCE_INSTALL: "From Rs 2,500 · installation only",
 };
 
 const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
@@ -155,7 +155,6 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
         </div>
 
         <div className="p-3.5">
-          {/* Pricing microcopy — clearer per archetype */}
           <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
             {pricingMicrocopy || cat.description}
           </p>
