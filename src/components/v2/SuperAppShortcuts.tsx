@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Smartphone, Shield, Package, History, ChevronRight } from "lucide-react";
-import { useDevicePassportStore } from "@/store/devicePassportStore";
+import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 
 const SuperAppShortcuts = () => {
