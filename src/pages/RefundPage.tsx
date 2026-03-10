@@ -1,59 +1,80 @@
 import Header from "@/components/layout/Header";
-import Footer from "@/components/landing/Footer";
+import PageTransition from "@/components/motion/PageTransition";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-const RefundPage = () => (
-  <div className="min-h-screen flex flex-col bg-background">
-    <Header />
-    <main className="flex-1 container max-w-3xl py-10 space-y-8">
-      <h1 className="text-3xl font-bold text-foreground">Refund Policy</h1>
-      <p className="text-sm text-muted-foreground">Effective: 1 March 2026</p>
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-card rounded-2xl border border-border/60 p-5 space-y-2.5 shadow-[var(--shadow-card)]">
+      <h2 className="text-base font-bold text-foreground">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold text-foreground">Cancellation Before Service</h2>
-        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1.5 ml-2">
-          <li><strong>Within 10 minutes of booking:</strong> Full refund, no questions asked</li>
-          <li><strong>Before technician dispatch:</strong> Full refund of any commitment fee</li>
-          <li><strong>After technician dispatch:</strong> Travel fee may apply (LKR 500–1,000)</li>
-        </ul>
-      </section>
+const RefundPage = () => {
+  const navigate = useNavigate();
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold text-foreground">Diagnostic & Inspection Fees</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Diagnostic and inspection fees are non-refundable once the technician completes the on-site assessment. However, if you proceed with the repair, the diagnostic fee is deducted from the total repair cost.
-        </p>
-      </section>
+  return (
+    <PageTransition className="min-h-screen flex flex-col bg-background">
+      <Header />
+      <main className="flex-1 container max-w-lg py-5 px-4 space-y-4 pb-28">
+        {/* Back */}
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors h-10 active:scale-95">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold text-foreground">Quote Rejection</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          If you reject the technician's quote after diagnosis, you only pay the diagnostic/inspection fee. No repair charges apply. You are never charged for work you haven't approved.
-        </p>
-      </section>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Refund Policy</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Effective: 1 March 2026</p>
+        </div>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold text-foreground">Service Quality Issues</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          If the repair does not resolve the reported issue within the warranty period, LankaFix will arrange a complimentary re-visit. If the issue persists after the re-visit, you may request a partial or full refund through our mediation team.
-        </p>
-      </section>
+        <Section title="Cancellation Before Service">
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="flex gap-2"><span className="text-primary font-bold shrink-0">•</span><span><strong className="text-foreground">Within 10 min:</strong> Full refund, no questions asked</span></li>
+            <li className="flex gap-2"><span className="text-primary font-bold shrink-0">•</span><span><strong className="text-foreground">Before dispatch:</strong> Full refund of commitment fee</span></li>
+            <li className="flex gap-2"><span className="text-primary font-bold shrink-0">•</span><span><strong className="text-foreground">After dispatch:</strong> Travel fee may apply (LKR 500–1,000)</span></li>
+          </ul>
+        </Section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold text-foreground">Emergency Booking Surcharge</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          The 25% emergency surcharge is non-refundable once a technician has been dispatched. If the technician fails to arrive within the 2-hour window, the surcharge will be refunded automatically.
-        </p>
-      </section>
+        <Section title="Diagnostic & Inspection Fees">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Non-refundable once assessment is complete. If you proceed with repair, the diagnostic fee is deducted from the total cost.
+          </p>
+        </Section>
 
-      <section className="space-y-3">
-        <h2 className="text-xl font-semibold text-foreground">How to Request a Refund</h2>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Contact LankaFix support via WhatsApp or call with your booking reference. Refund requests are reviewed within 24 hours. Approved refunds are processed within 3–5 business days to your original payment method.
-        </p>
-      </section>
-    </main>
-    <Footer />
-  </div>
-);
+        <Section title="Quote Rejection">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            If you reject the quote after diagnosis, you only pay the diagnostic fee. No repair charges apply. You're never charged for unapproved work.
+          </p>
+        </Section>
+
+        <Section title="Service Quality Issues">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            If the repair doesn't resolve the issue within the warranty period, LankaFix arranges a free re-visit. If it persists, request a partial or full refund through mediation.
+          </p>
+        </Section>
+
+        <Section title="Emergency Surcharge">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The 25% emergency surcharge is non-refundable after dispatch. If the technician fails to arrive within 2 hours, the surcharge is refunded automatically.
+          </p>
+        </Section>
+
+        <Section title="How to Request a Refund">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Contact support via WhatsApp or call with your booking reference. Requests are reviewed within 24 hours. Approved refunds process in 3–5 business days.
+          </p>
+        </Section>
+
+        {/* Trust footer */}
+        <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground pt-2">
+          <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+          <span>LankaFix Fair Pricing Guarantee</span>
+        </div>
+      </main>
+    </PageTransition>
+  );
+};
 
 export default RefundPage;
