@@ -2,6 +2,8 @@ import type { CategoryCode } from "@/types/booking";
 import type { V2AssignmentType, V2PartnerShopInfo } from "@/data/v2CategoryFlows";
 import { useLocationStore, getTravelFeeForZone } from "@/store/locationStore";
 import { useSmartDispatch, type SmartDispatchCandidate } from "@/hooks/useSmartDispatch";
+import { intelligenceFromCandidate } from "@/engines/matchIntelligenceEngine";
+import MatchReasoningPanel from "@/components/v2/booking/MatchReasoningPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
