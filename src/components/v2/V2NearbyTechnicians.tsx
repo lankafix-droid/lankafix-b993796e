@@ -18,7 +18,7 @@ const STATUS_STYLES: Record<string, { text: string; dot: string }> = {
 
 const V2NearbyTechnicians = () => {
   return (
-    <section className="py-10 md:py-14 bg-secondary/30">
+    <section className="py-8 md:py-14 bg-secondary/30">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}

@@ -15,7 +15,7 @@ const protections = [
 
 const V2PlatformProtection = () => {
   return (
-    <section className="py-12 md:py-16">
+    <section className="py-10 md:py-16">
       <div className="container">
         <motion.div
           className="text-center mb-10"

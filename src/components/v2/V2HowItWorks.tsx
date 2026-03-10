@@ -10,7 +10,7 @@ const steps = [
 
 const V2HowItWorks = () => {
   return (
-    <section className="py-14 md:py-20 bg-card border-t border-border/40">
+    <section className="py-10 md:py-20 bg-card border-t border-border/40">
       <div className="container">
         <motion.div
           className="text-center mb-12"

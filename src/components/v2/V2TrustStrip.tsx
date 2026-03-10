@@ -14,7 +14,7 @@ const badges = [
 
 const V2TrustStrip = () => {
   return (
-    <section className="py-16 md:py-20 bg-navy relative overflow-hidden">
+    <section className="py-12 md:py-20 bg-navy relative overflow-hidden">
       {/* Subtle pattern overlay */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
         backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",

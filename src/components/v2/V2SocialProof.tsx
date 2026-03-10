@@ -54,7 +54,7 @@ const V2SocialProof = () => {
   const t = TESTIMONIALS[activeTestimonial];
 
   return (
-    <section className="py-14 md:py-18">
+    <section className="py-10 md:py-16">
       <div className="container space-y-12">
         {/* Live Activity Toast */}
         <AnimatePresence>

@@ -100,7 +100,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
           background: "linear-gradient(to top, rgba(8,27,51,0.92) 0%, rgba(8,27,51,0.55) 45%, rgba(8,27,51,0.15) 100%)"
         }} />
 
-        <div className="container relative h-full flex flex-col justify-end pb-24 md:pb-28">
+        <div className="container relative h-full flex flex-col justify-end pb-20 sm:pb-24 md:pb-28">
           {/* Location + Emergency */}
           <div className="flex items-center justify-between mb-6">
             <LocationBar onSetupLocation={onSetupLocation} />
