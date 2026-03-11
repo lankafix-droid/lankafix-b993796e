@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/motion/PageTransition";
 import { useBookingStore } from "@/store/bookingStore";
+import { useBookingFromDB, useBookingTimeline } from "@/hooks/useBookingFromDB";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
