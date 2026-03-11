@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle, Rocket, Target, Megaphone, Layers } from "lucide-react";
+import { ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle, Rocket, Target, Megaphone, Layers, Zap, CheckCircle2, Clock, FileText, Shield } from "lucide-react";
+import { useOpsMetrics } from "@/services/opsMetricsService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
