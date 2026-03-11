@@ -807,39 +807,74 @@ function StepDocuments() {
       {DOCUMENT_TYPES.map((doc) => {
         const uploaded = profile.documents.find((d) => d.type === doc.value);
         const isUploading = uploadingType === doc.value;
+        const isRejected = uploaded?.verificationStatus === "rejected";
+        const isVerified = uploaded?.verificationStatus === "verified";
+        const isPending = uploaded?.verificationStatus === "pending";
+
+        const VERIFICATION_LABELS: Record<string, { text: string; className: string }> = {
+          pending: { text: "Pending Review", className: "bg-warning/10 text-warning border-warning/30" },
+          verified: { text: "Verified", className: "bg-success/10 text-success border-success/30" },
+          rejected: { text: "Action Needed — Please Re-upload", className: "bg-destructive/10 text-destructive border-destructive/30" },
+        };
+
+        const statusConfig = uploaded?.verificationStatus ? VERIFICATION_LABELS[uploaded.verificationStatus] : null;
+
         return (
-          <Card key={doc.value}>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FileCheck className={`w-5 h-5 ${uploaded ? "text-success" : "text-muted-foreground"}`} />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {doc.label} {doc.required && <span className="text-destructive">*</span>}
-                  </p>
-                  {uploaded && (
-                    <div>
-                      <p className="text-xs text-success">✓ {uploaded.fileName}</p>
-                      {uploaded.verificationStatus && (
-                        <Badge variant="outline" className="text-[10px] mt-0.5">
-                          {uploaded.verificationStatus}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+          <Card key={doc.value} className={isRejected ? "border-destructive/30" : isVerified ? "border-success/30" : ""}>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileCheck className={`w-5 h-5 ${isVerified ? "text-success" : isRejected ? "text-destructive" : uploaded ? "text-primary" : "text-muted-foreground"}`} />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {doc.label} {doc.required && <span className="text-destructive">*</span>}
+                    </p>
+                    {uploaded && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {uploaded.fileName}
+                      </p>
+                    )}
+                  </div>
                 </div>
+                {uploaded && !isVerified ? (
+                  <div className="flex items-center gap-1">
+                    <label className="cursor-pointer">
+                      <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocUpload(doc.value, e)} className="hidden" />
+                      <Button variant="outline" size="sm" asChild disabled={isUploading}>
+                        <span>
+                          {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                          {isRejected ? "Re-upload" : "Replace"}
+                        </span>
+                      </Button>
+                    </label>
+                    <Button variant="ghost" size="sm" onClick={() => removeDocument(doc.value)} className="text-destructive px-2">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : uploaded && isVerified ? (
+                  <CheckCircle className="w-5 h-5 text-success" />
+                ) : (
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocUpload(doc.value, e)} className="hidden" />
+                    <Button variant="outline" size="sm" asChild disabled={isUploading}>
+                      <span>
+                        {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                        {isUploading ? "..." : "Upload"}
+                      </span>
+                    </Button>
+                  </label>
+                )}
               </div>
-              {uploaded ? (
-                <Button variant="ghost" size="sm" onClick={() => removeDocument(doc.value)} className="text-destructive">Remove</Button>
-              ) : (
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocUpload(doc.value, e)} className="hidden" />
-                  <Button variant="outline" size="sm" asChild disabled={isUploading}>
-                    <span>
-                      {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
-                      {isUploading ? "..." : "Upload"}
-                    </span>
-                  </Button>
-                </label>
+              {statusConfig && (
+                <Badge variant="outline" className={`text-[10px] ${statusConfig.className}`}>
+                  {statusConfig.text}
+                </Badge>
+              )}
+              {isRejected && uploaded?.rejectionReason && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-2 flex items-start gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-xs text-destructive">{uploaded.rejectionReason}</p>
+                </div>
               )}
             </CardContent>
           </Card>
