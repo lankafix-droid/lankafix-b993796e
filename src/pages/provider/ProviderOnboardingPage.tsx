@@ -784,14 +784,15 @@ function StepDocuments() {
       const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
       if (error) throw error;
 
-      const { data: urlData } = supabase.storage.from("partner-uploads").getPublicUrl(path);
+      // Private bucket: store the storage path; use signed URLs for viewing
+      const storagePath = path;
       addDocument({
         type: docType as any,
         fileName: file.name,
         uploadedAt: new Date().toISOString(),
-        fileUrl: urlData.publicUrl,
+        fileUrl: storagePath,
       });
-      toast({ title: "Document uploaded!" });
+      toast({ title: "Document uploaded securely!" });
     } catch (err: any) {
       console.error("Doc upload error:", err);
       toast({ title: "Upload failed", description: "Please sign in first, or try again.", variant: "destructive" });
