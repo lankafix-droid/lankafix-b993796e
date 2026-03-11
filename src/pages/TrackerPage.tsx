@@ -63,7 +63,7 @@ function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookin
   // Only show live tracking during active travel — tech_en_route only
   const { data: tracking } = useTechnicianTracking(bookingId, partnerId, bookingStatus);
 
-  if (!isTrackable || !tracking || !tracking.technicianLat) return null;
+  if (!tracking || !tracking.technicianLat) return null;
 
   return (
     <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)] space-y-3">

@@ -1,12 +1,13 @@
 /**
  * LankaFix — Real-time technician location tracking hook.
  * Polls partner's current_latitude/longitude from DB for customer view.
- * Falls back to simulation for demo/testing.
+ * Only active during travel-related statuses (tech_en_route).
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateETA, detectTrafficLevel } from "@/lib/etaEngine";
 import type { TrafficLevel } from "@/lib/etaEngine";
+import { isProductionMode } from "@/config/productionMode";
 
 export interface LiveTrackingData {
   technicianLat: number | null;
@@ -41,17 +42,25 @@ function getETARange(etaMinutes: number): string {
   return "1+ hours";
 }
 
+/** Statuses where live tracking polling is active */
+const TRACKABLE_STATUSES = ["tech_en_route"];
+
 /**
- * Poll technician location for a booking that is tech_en_route or arrived.
- * Refreshes every 15 seconds for live tracking.
+ * Poll technician location for a booking that is tech_en_route.
+ * Stops polling when status changes away from travel state.
  */
-export function useTechnicianTracking(bookingId: string | undefined, partnerId: string | null | undefined) {
+export function useTechnicianTracking(
+  bookingId: string | undefined,
+  partnerId: string | null | undefined,
+  bookingStatus?: string
+) {
+  const isTrackable = bookingStatus ? TRACKABLE_STATUSES.includes(bookingStatus) : true;
+
   return useQuery<LiveTrackingData | null>({
     queryKey: ["technician-tracking", bookingId, partnerId],
     queryFn: async () => {
       if (!bookingId || !partnerId) return null;
 
-      // Fetch partner location + booking location in parallel
       const [partnerRes, bookingRes] = await Promise.all([
         supabase
           .from("partners")
@@ -75,7 +84,6 @@ export function useTechnicianTracking(bookingId: string | undefined, partnerId: 
       const custLat = booking?.customer_latitude ?? null;
       const custLng = booking?.customer_longitude ?? null;
 
-      // Determine if location is live (pinged within last 2 minutes)
       const lastPing = partner.last_location_ping_at;
       const isLive = lastPing ? (Date.now() - new Date(lastPing).getTime()) < 120_000 : false;
 
@@ -104,14 +112,15 @@ export function useTechnicianTracking(bookingId: string | undefined, partnerId: 
         vehicleType: partner.vehicle_type || "motorcycle",
       };
     },
-    enabled: !!bookingId && !!partnerId,
-    refetchInterval: 15_000, // Poll every 15s
+    enabled: !!bookingId && !!partnerId && isTrackable,
+    refetchInterval: isTrackable ? 15_000 : false, // Only poll during travel
     staleTime: 10_000,
   });
 }
 
 /**
  * Push location from partner's device using browser Geolocation API.
+ * In production mode, ONLY real GPS is used. Simulated fallback is dev-only.
  */
 export async function pushPartnerLocation(
   partnerId: string,
@@ -119,7 +128,13 @@ export async function pushPartnerLocation(
 ): Promise<{ success: boolean; error?: string }> {
   return new Promise((resolve) => {
     if (!navigator.geolocation) {
-      resolve({ success: false, error: "Geolocation not supported" });
+      // In production, fail cleanly. In dev, allow simulation.
+      if (isProductionMode()) {
+        resolve({ success: false, error: "Geolocation not supported" });
+        return;
+      }
+      console.warn("[LocationPush] No geolocation, using dev simulation");
+      simulateLocationPush(partnerId, bookingId).then(resolve);
       return;
     }
 
@@ -156,8 +171,14 @@ export async function pushPartnerLocation(
         }
       },
       (err) => {
-        // Fallback: simulate location for testing
-        console.warn("[LocationPush] Geolocation failed, using simulated fallback:", err.message);
+        // In production — no fallback, fail cleanly
+        if (isProductionMode()) {
+          console.warn("[LocationPush] Geolocation denied in production:", err.message);
+          resolve({ success: false, error: `Geolocation denied: ${err.message}` });
+          return;
+        }
+        // Dev/demo only — simulated fallback
+        console.warn("[LocationPush] Geolocation failed, using DEV simulated fallback:", err.message);
         simulateLocationPush(partnerId, bookingId).then(resolve);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
@@ -166,19 +187,22 @@ export async function pushPartnerLocation(
 }
 
 /**
- * Simulated location push for testing/demo.
+ * Simulated location push — ONLY available in demo/dev mode.
  * Uses random Colombo coordinates with slight drift.
  */
 async function simulateLocationPush(
   partnerId: string,
   bookingId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  if (isProductionMode()) {
+    return { success: false, error: "Simulated location not available in production" };
+  }
+
   try {
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const session = await supabase.auth.getSession();
 
-    // Simulate Colombo area coordinates with drift
     const baseLat = 6.9271 + (Math.random() - 0.5) * 0.04;
     const baseLng = 79.8612 + (Math.random() - 0.5) * 0.04;
 

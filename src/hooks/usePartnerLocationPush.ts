@@ -9,6 +9,7 @@ const PUSH_INTERVAL_MS = 20_000; // 20 seconds
 
 /**
  * Automatically pushes location every 20s when active.
+ * Only active when isActive=true (typically tech_en_route status).
  */
 export function usePartnerLocationPush(
   partnerId: string | undefined,

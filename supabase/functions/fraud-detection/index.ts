@@ -9,11 +9,12 @@ const corsHeaders = {
 
 /**
  * fraud-detection: Runs fraud checks on bookings/quotes.
- * Checks:
- * 1. Price gouging — quote total exceeds 150% of category average
- * 2. Ghost jobs — completion without proper status transitions
- * 3. Bypass attempts — historical bypass count
- * 4. Suspicious patterns — too many cancellations, rapid completions
+ *
+ * GUARDRAILS:
+ * - Returns structured alerts with severity and metadata for ops review
+ * - Does NOT auto-block, auto-suspend, or auto-punish partners
+ * - Alerts are review signals only — human ops makes final decisions
+ * - Logs alerts to notification_events for ops dashboard
  */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -32,7 +33,13 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const alerts: Array<{ type: string; severity: "low" | "medium" | "high" | "critical"; message: string; metadata?: any }> = [];
+    const alerts: Array<{
+      type: string;
+      severity: "info" | "low" | "medium" | "high" | "critical";
+      message: string;
+      action: "review" | "flag_for_review" | "escalate_to_ops";
+      metadata?: Record<string, unknown>;
+    }> = [];
 
     // Fetch booking
     const { data: booking } = await supabase
@@ -59,22 +66,9 @@ serve(async (req) => {
         .maybeSingle();
 
       if (quote?.total_lkr) {
-        // Get average quote for this category
-        const { data: avgData } = await supabase
-          .from("quotes")
-          .select("total_lkr")
-          .eq("status", "approved")
-          .limit(100);
-
-        // Filter by same category through bookings
-        const { data: categoryQuotes } = await supabase
-          .rpc("get_category_quote_avg" as any, { cat: booking.category_code })
-          .maybeSingle();
-
-        // Simple average from recent approved quotes for same category
         const { data: recentQuotes } = await supabase
           .from("quotes")
-          .select("total_lkr, booking_id")
+          .select("total_lkr")
           .eq("status", "approved")
           .order("created_at", { ascending: false })
           .limit(50);
@@ -82,13 +76,15 @@ serve(async (req) => {
         if (recentQuotes && recentQuotes.length >= 5) {
           const totals = recentQuotes.map((q: any) => q.total_lkr).filter(Boolean);
           const avg = totals.reduce((a: number, b: number) => a + b, 0) / totals.length;
+          const ratio = quote.total_lkr / avg;
 
-          if (quote.total_lkr > avg * 1.5) {
+          if (ratio > 1.5) {
             alerts.push({
               type: "price_gouging",
-              severity: quote.total_lkr > avg * 2.0 ? "critical" : "high",
-              message: `Quote LKR ${quote.total_lkr} exceeds category average of LKR ${Math.round(avg)} by ${Math.round((quote.total_lkr / avg - 1) * 100)}%`,
-              metadata: { quote_total: quote.total_lkr, category_avg: Math.round(avg), ratio: (quote.total_lkr / avg).toFixed(2) },
+              severity: ratio > 2.0 ? "critical" : "high",
+              message: `Quote LKR ${quote.total_lkr} exceeds category average of LKR ${Math.round(avg)} by ${Math.round((ratio - 1) * 100)}%`,
+              action: ratio > 2.0 ? "escalate_to_ops" : "flag_for_review",
+              metadata: { quote_total: quote.total_lkr, category_avg: Math.round(avg), ratio: ratio.toFixed(2), partner_id: quote.partner_id },
             });
           }
         }
@@ -113,6 +109,7 @@ serve(async (req) => {
             type: "ghost_job",
             severity: missingSteps.length >= 2 ? "high" : "medium",
             message: `Job completed without expected steps: ${missingSteps.join(", ")}`,
+            action: "flag_for_review",
             metadata: { missing_steps: missingSteps, total_timeline_events: timeline.length },
           });
         }
@@ -127,6 +124,7 @@ serve(async (req) => {
               type: "rapid_completion",
               severity: "high",
               message: `Job completed in ${Math.round(durationMin)} minutes — suspiciously fast`,
+              action: "flag_for_review",
               metadata: { duration_minutes: Math.round(durationMin) },
             });
           }
@@ -146,7 +144,8 @@ serve(async (req) => {
           type: "bypass_history",
           severity: bypasses.length >= 5 ? "critical" : "high",
           message: `Partner has ${bypasses.length} recorded bypass attempts`,
-          metadata: { bypass_count: bypasses.length },
+          action: bypasses.length >= 5 ? "escalate_to_ops" : "flag_for_review",
+          metadata: { bypass_count: bypasses.length, partner_id: booking.partner_id },
         });
       }
     }
@@ -166,19 +165,30 @@ serve(async (req) => {
             type: "active_warnings",
             severity: "high",
             message: `Partner has ${highSeverity.length} unresolved high-severity warnings`,
-            metadata: { warning_count: warnings.length, high_severity: highSeverity.length },
+            action: "flag_for_review",
+            metadata: { warning_count: warnings.length, high_severity: highSeverity.length, partner_id: booking.partner_id },
           });
         }
       }
     }
 
-    // Log fraud check result
+    // Determine overall risk level
+    const riskLevel = alerts.some(a => a.severity === "critical") ? "critical"
+      : alerts.some(a => a.severity === "high") ? "high"
+      : alerts.length > 0 ? "medium" : "low";
+
+    // Log alerts for ops review (never auto-punish)
     if (alerts.length > 0) {
       await supabase.from("notification_events").insert({
         event_type: "fraud_alert",
         booking_id,
         partner_id: booking.partner_id,
-        metadata: { alerts, check_type },
+        metadata: {
+          alerts,
+          check_type,
+          risk_level: riskLevel,
+          recommendation: "manual_review_required",
+        },
       });
     }
 
@@ -186,9 +196,9 @@ serve(async (req) => {
       success: true,
       booking_id,
       alerts,
-      risk_level: alerts.some(a => a.severity === "critical") ? "critical"
-        : alerts.some(a => a.severity === "high") ? "high"
-        : alerts.length > 0 ? "medium" : "low",
+      risk_level: riskLevel,
+      action_taken: "none", // No automatic punishment
+      recommendation: alerts.length > 0 ? "Flagged for ops review — no automatic action taken" : "No issues detected",
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
