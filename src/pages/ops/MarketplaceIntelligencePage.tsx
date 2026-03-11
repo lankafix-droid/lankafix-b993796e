@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,17 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Brain, TrendingUp, TrendingDown, Minus, MapPin, Users, AlertTriangle,
   BarChart3, Search, ShieldAlert, Package, ArrowLeft, Loader2, RefreshCw,
-  Zap, CheckCircle2, XCircle, Target, Lightbulb, Activity,
+  Zap, CheckCircle2, XCircle, Target, Lightbulb, Activity, Filter,
+  ChevronRight, Flame, Gauge,
 } from "lucide-react";
 
 // ─── Types ───
 interface Summary {
   total_bookings_30d: number;
   total_bookings_prev_30d: number;
+  total_bookings_7d: number;
   booking_growth_pct: number;
   total_emergencies_30d: number;
   total_completed_30d: number;
@@ -31,6 +34,7 @@ interface Summary {
   search_conversion_rate: number;
   active_alerts: number;
   total_zones_active: number;
+  categories_tracked: number;
 }
 
 interface DemandCategory {
@@ -38,8 +42,10 @@ interface DemandCategory {
   category_name: string;
   current_period: number;
   previous_period: number;
+  recent_7d: number;
   growth_pct: number;
   trending: string;
+  momentum: string;
   emergency_count: number;
   completed_count: number;
   completion_rate: number;
@@ -51,6 +57,7 @@ interface DemandZone {
   booking_count: number;
   emergency_count: number;
   top_category: string;
+  top_category_name: string;
   demand_level: string;
 }
 
@@ -76,6 +83,7 @@ interface SupplyItem {
   category_name: string;
   verified_partners: number;
   online_now: number;
+  emergency_capable: number;
   zones_covered: number;
   demand_30d: number;
   demand_to_partner_ratio: number;
@@ -86,15 +94,22 @@ interface ZoneGap {
   zone_code: string;
   zone_name: string;
   category_code: string;
+  category_name: string;
   demand: number;
   partners: number;
   gap_severity: string;
+  acquisition_priority_score: number;
+  recommended_action: string;
 }
 
 interface ServiceGap {
   category_code: string;
   category_name: string;
+  search_volume: number;
   unconverted_searches: number;
+  search_conversion_gap: number;
+  no_match_rate: number;
+  quote_rejection_rate: number;
   sample_queries: string[];
   gap_score: number;
 }
@@ -114,7 +129,7 @@ interface IntelligenceData {
   demand_by_category: DemandCategory[];
   demand_by_zone: DemandZone[];
   no_match_insights: NoMatchInsight[];
-  no_match_hotspots: { zone_code: string; zone_name: string; no_match_count: number; no_match_rate: number }[];
+  no_match_hotspots: { zone_code: string; zone_name: string; total_matches: number; no_match_count: number; no_match_rate: number }[];
   quote_insights: QuoteInsight[];
   supply_analysis: SupplyItem[];
   zone_supply_gaps: ZoneGap[];
@@ -127,7 +142,15 @@ interface IntelligenceData {
 const trendIcon = (t: string) =>
   t === "rising" ? <TrendingUp className="w-3.5 h-3.5 text-success" /> :
   t === "declining" ? <TrendingDown className="w-3.5 h-3.5 text-destructive" /> :
+  t === "insufficient_data" ? <Minus className="w-3.5 h-3.5 text-muted-foreground/50" /> :
   <Minus className="w-3.5 h-3.5 text-muted-foreground" />;
+
+const momentumBadge = (m: string) => {
+  if (m === "accelerating") return <Badge variant="outline" className="text-[8px] gap-0.5 bg-success/10 text-success border-success/30"><Flame className="w-2.5 h-2.5" />Accelerating</Badge>;
+  if (m === "decelerating") return <Badge variant="outline" className="text-[8px] gap-0.5 bg-warning/10 text-warning border-warning/30"><TrendingDown className="w-2.5 h-2.5" />Slowing</Badge>;
+  if (m === "insufficient_data") return null;
+  return null;
+};
 
 const severityStyles: Record<string, string> = {
   critical: "bg-destructive/10 border-destructive/20 text-destructive",
@@ -135,14 +158,14 @@ const severityStyles: Record<string, string> = {
   info: "bg-primary/10 border-primary/20 text-primary",
 };
 
-const supplyStatusBadge = (s: string) => {
-  const styles: Record<string, string> = {
+const supplyBadge = (s: string) => {
+  const m: Record<string, string> = {
     critical: "bg-destructive/10 text-destructive border-destructive/30",
+    none: "bg-destructive text-destructive-foreground border-destructive",
     low: "bg-warning/10 text-warning border-warning/30",
     adequate: "bg-success/10 text-success border-success/30",
-    none: "bg-destructive text-destructive-foreground",
   };
-  return styles[s] || "bg-muted text-muted-foreground";
+  return m[s] || "bg-muted text-muted-foreground";
 };
 
 function KPICard({ label, value, sub, icon: Icon, trend }: {
@@ -173,6 +196,11 @@ export default function MarketplaceIntelligencePage() {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState("overview");
 
+  // Filters
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterSeverity, setFilterSeverity] = useState("all");
+  const [filterZone, setFilterZone] = useState("all");
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -180,14 +208,65 @@ export default function MarketplaceIntelligencePage() {
       const { data: res, error: err } = await supabase.functions.invoke("marketplace-intelligence");
       if (err) throw new Error(err.message);
       setData(res as IntelligenceData);
-    } catch (e: any) {
-      setError(e.message || "Failed to load intelligence data");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load intelligence data");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Extract unique categories/zones for filters
+  const allCategories = useMemo(() => {
+    if (!data) return [];
+    const cats = new Set<string>();
+    data.demand_by_category.forEach(d => cats.add(d.category_code));
+    data.supply_analysis.forEach(d => cats.add(d.category_code));
+    return [...cats].sort();
+  }, [data]);
+
+  const allZones = useMemo(() => {
+    if (!data) return [];
+    return data.demand_by_zone.map(z => z.zone_code).sort();
+  }, [data]);
+
+  // Filtered data
+  const filteredAlerts = useMemo(() => {
+    if (!data) return [];
+    return data.alerts.filter(a => {
+      if (filterCategory !== "all" && a.category && a.category !== filterCategory) return false;
+      if (filterSeverity !== "all" && a.severity !== filterSeverity) return false;
+      if (filterZone !== "all" && a.zone && a.zone !== filterZone) return false;
+      return true;
+    });
+  }, [data, filterCategory, filterSeverity, filterZone]);
+
+  const filteredDemand = useMemo(() => {
+    if (!data) return [];
+    if (filterCategory === "all") return data.demand_by_category;
+    return data.demand_by_category.filter(d => d.category_code === filterCategory);
+  }, [data, filterCategory]);
+
+  const filteredZones = useMemo(() => {
+    if (!data) return [];
+    if (filterZone === "all") return data.demand_by_zone;
+    return data.demand_by_zone.filter(z => z.zone_code === filterZone);
+  }, [data, filterZone]);
+
+  const filteredSupply = useMemo(() => {
+    if (!data) return [];
+    if (filterCategory === "all") return data.supply_analysis;
+    return data.supply_analysis.filter(s => s.category_code === filterCategory);
+  }, [data, filterCategory]);
+
+  const filteredGaps = useMemo(() => {
+    if (!data) return [];
+    let gaps = data.zone_supply_gaps;
+    if (filterCategory !== "all") gaps = gaps.filter(g => g.category_code === filterCategory);
+    if (filterZone !== "all") gaps = gaps.filter(g => g.zone_code === filterZone);
+    return gaps;
+  }, [data, filterCategory, filterZone]);
 
   if (loading) {
     return (
@@ -215,6 +294,9 @@ export default function MarketplaceIntelligencePage() {
   }
 
   const s = data.summary;
+  const criticalCount = data.alerts.filter(a => a.severity === "critical").length;
+  const risingCats = data.demand_by_category.filter(c => c.trending === "rising");
+  const shortageCats = data.supply_analysis.filter(c => c.supply_status === "critical" || c.supply_status === "none");
 
   return (
     <div className="min-h-screen bg-background">
@@ -227,15 +309,14 @@ export default function MarketplaceIntelligencePage() {
             <div>
               <h1 className="text-lg font-bold text-foreground">Marketplace Intelligence</h1>
               <p className="text-[10px] text-muted-foreground">
-                Live data · Updated {new Date(data.generated_at).toLocaleTimeString("en-LK")}
+                Updated {new Date(data.generated_at).toLocaleTimeString("en-LK")} · {s.categories_tracked} categories
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {data.alerts.filter(a => a.severity === "critical").length > 0 && (
+            {criticalCount > 0 && (
               <Badge variant="destructive" className="gap-1 text-[10px]">
-                <ShieldAlert className="w-3 h-3" />
-                {data.alerts.filter(a => a.severity === "critical").length} Critical
+                <ShieldAlert className="w-3 h-3" />{criticalCount} Critical
               </Badge>
             )}
             <Button variant="ghost" size="sm" onClick={fetchData} className="h-7 gap-1 text-xs">
@@ -246,20 +327,56 @@ export default function MarketplaceIntelligencePage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-5">
+        {/* ─── Filters ─── */}
+        <Card>
+          <CardContent className="p-3 flex flex-wrap items-center gap-3">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="All Categories" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {allCategories.map(c => <SelectItem key={c} value={c}>{data.demand_by_category.find(d => d.category_code === c)?.category_name || c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterZone} onValueChange={setFilterZone}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="All Zones" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Zones</SelectItem>
+                {allZones.map(z => <SelectItem key={z} value={z}>{data.demand_by_zone.find(d => d.zone_code === z)?.zone_name || z}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterSeverity} onValueChange={setFilterSeverity}>
+              <SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="All Severity" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Severity</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="info">Info</SelectItem>
+              </SelectContent>
+            </Select>
+            {(filterCategory !== "all" || filterZone !== "all" || filterSeverity !== "all") && (
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setFilterCategory("all"); setFilterZone("all"); setFilterSeverity("all"); }}>
+                Clear filters
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full">
+          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full">
             <TabsTrigger value="overview" className="text-[11px]">Overview</TabsTrigger>
             <TabsTrigger value="demand" className="text-[11px]">Demand</TabsTrigger>
             <TabsTrigger value="supply" className="text-[11px]">Supply</TabsTrigger>
+            <TabsTrigger value="acquisition" className="text-[11px]">Acquisition</TabsTrigger>
             <TabsTrigger value="quotes" className="text-[11px]">Quotes</TabsTrigger>
             <TabsTrigger value="gaps" className="text-[11px]">Gaps</TabsTrigger>
-            <TabsTrigger value="alerts" className="text-[11px]">Alerts</TabsTrigger>
+            <TabsTrigger value="alerts" className="text-[11px]">Alerts{criticalCount > 0 ? ` (${criticalCount})` : ""}</TabsTrigger>
           </TabsList>
 
           {/* ═══ OVERVIEW ═══ */}
           <TabsContent value="overview" className="space-y-5 mt-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KPICard label="Bookings (30d)" value={s.total_bookings_30d} sub={`${s.booking_growth_pct > 0 ? "+" : ""}${s.booking_growth_pct}% vs prev period`} icon={BarChart3} trend={s.booking_growth_pct > 0 ? "up" : s.booking_growth_pct < 0 ? "down" : "neutral"} />
+              <KPICard label="Bookings (30d)" value={s.total_bookings_30d} sub={`${s.booking_growth_pct > 0 ? "+" : ""}${s.booking_growth_pct}% vs prev · ${s.total_bookings_7d} last 7d`} icon={BarChart3} trend={s.booking_growth_pct > 0 ? "up" : s.booking_growth_pct < 0 ? "down" : "neutral"} />
               <KPICard label="Completion Rate" value={`${s.completion_rate}%`} sub={`${s.total_completed_30d} completed`} icon={CheckCircle2} />
               <KPICard label="Quote Approval" value={`${s.quote_approval_rate}%`} sub={`${s.total_quotes} quotes total`} icon={Target} />
               <KPICard label="Partners Online" value={s.partners_online} sub={`of ${s.total_verified_partners} verified`} icon={Users} />
@@ -272,16 +389,73 @@ export default function MarketplaceIntelligencePage() {
               <KPICard label="Active Zones" value={s.total_zones_active} icon={MapPin} />
             </div>
 
-            {/* Top Alerts */}
-            {data.alerts.length > 0 && (
+            {/* Executive summary cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {risingCats.length > 0 && (
+                <Card className="border-success/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-4 h-4 text-success" />
+                      <span className="text-sm font-bold text-foreground">Rising Categories</span>
+                    </div>
+                    {risingCats.slice(0, 4).map(c => (
+                      <div key={c.category_code} className="flex items-center justify-between py-1">
+                        <span className="text-xs text-foreground">{c.category_name}</span>
+                        <span className="text-xs font-medium text-success">+{c.growth_pct}%</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {shortageCats.length > 0 && (
+                <Card className="border-destructive/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="w-4 h-4 text-destructive" />
+                      <span className="text-sm font-bold text-foreground">Supply Shortages</span>
+                    </div>
+                    {shortageCats.slice(0, 4).map(c => (
+                      <div key={c.category_code} className="flex items-center justify-between py-1">
+                        <span className="text-xs text-foreground">{c.category_name}</span>
+                        <Badge variant="outline" className={`text-[8px] ${supplyBadge(c.supply_status)}`}>{c.supply_status}</Badge>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {data.service_gaps.length > 0 && (
+                <Card className="border-primary/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-bold text-foreground">Top Opportunities</span>
+                    </div>
+                    {data.service_gaps.slice(0, 4).map(sg => (
+                      <div key={sg.category_code} className="flex items-center justify-between py-1">
+                        <span className="text-xs text-foreground">{sg.category_name}</span>
+                        <span className="text-[10px] font-medium text-primary">Score: {sg.gap_score}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Top alerts */}
+            {filteredAlerts.length > 0 && (
               <Card className="border-destructive/20">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <ShieldAlert className="w-4 h-4 text-destructive" /> Priority Alerts
+                    <Button variant="ghost" size="sm" className="ml-auto h-6 text-[10px] gap-1" onClick={() => setTab("alerts")}>
+                      View all <ChevronRight className="w-3 h-3" />
+                    </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {data.alerts.slice(0, 5).map((a, i) => (
+                  {filteredAlerts.slice(0, 4).map((a, i) => (
                     <div key={i} className={`p-3 rounded-lg border ${severityStyles[a.severity]}`}>
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-sm font-medium">{a.title}</p>
@@ -289,45 +463,13 @@ export default function MarketplaceIntelligencePage() {
                       </div>
                       <p className="text-[11px] opacity-80 mt-0.5">{a.description}</p>
                       <div className="flex items-center gap-1.5 mt-2 text-[10px] font-medium">
-                        <Lightbulb className="w-3 h-3" /> {a.recommended_action}
+                        <Target className="w-3 h-3 shrink-0" /> {a.recommended_action}
                       </div>
                     </div>
                   ))}
                 </CardContent>
               </Card>
             )}
-
-            {/* Rising Categories */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Category Demand (30 days)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {data.demand_by_category.slice(0, 8).map(c => (
-                  <div key={c.category_code} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground truncate">{c.category_name}</span>
-                        <div className="flex items-center gap-1.5">
-                          {trendIcon(c.trending)}
-                          <span className={`text-xs font-medium ${c.growth_pct > 0 ? "text-success" : c.growth_pct < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                            {c.growth_pct > 0 ? "+" : ""}{c.growth_pct}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 mt-1 text-[10px] text-muted-foreground">
-                        <span>{c.current_period} bookings</span>
-                        <span>{c.completion_rate}% completed</span>
-                        {c.emergency_count > 0 && <span className="text-destructive">{c.emergency_count} emergency</span>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {data.demand_by_category.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No booking data yet</p>
-                )}
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* ═══ DEMAND ═══ */}
@@ -335,11 +477,45 @@ export default function MarketplaceIntelligencePage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-primary" /> Category Demand (30d)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {filteredDemand.map(c => (
+                  <div key={c.category_code} className="p-3 rounded-lg bg-muted/30 border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{c.category_name}</span>
+                        {momentumBadge(c.momentum)}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {trendIcon(c.trending)}
+                        <span className={`text-xs font-medium ${c.growth_pct > 0 ? "text-success" : c.growth_pct < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                          {c.trending === "insufficient_data" ? "Low vol" : `${c.growth_pct > 0 ? "+" : ""}${c.growth_pct}%`}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-3 mt-1.5 text-[10px] text-muted-foreground">
+                      <span>{c.current_period} bookings</span>
+                      <span className="text-foreground/70">{c.recent_7d} last 7d</span>
+                      <span>{c.completion_rate}% completed</span>
+                      {c.emergency_count > 0 && <span className="text-destructive">{c.emergency_count} emergency</span>}
+                    </div>
+                  </div>
+                ))}
+                {filteredDemand.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No booking data</p>}
+              </CardContent>
+            </Card>
+
+            {/* Zone demand */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-primary" /> Zone Demand
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {data.demand_by_zone.map(z => (
+                {filteredZones.map(z => (
                   <div key={z.zone_code} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 border">
                     <Badge variant="outline" className={`text-[9px] shrink-0 ${
                       z.demand_level === "high" ? "bg-destructive/10 text-destructive border-destructive/30" :
@@ -352,19 +528,17 @@ export default function MarketplaceIntelligencePage() {
                         <span className="text-xs text-muted-foreground">{z.booking_count} bookings</span>
                       </div>
                       <div className="flex gap-3 mt-0.5 text-[10px] text-muted-foreground">
-                        <span>Top: {z.top_category}</span>
+                        <span>Top: {z.top_category_name}</span>
                         {z.emergency_count > 0 && <span className="text-destructive">{z.emergency_count} emergency</span>}
                       </div>
                     </div>
                   </div>
                 ))}
-                {data.demand_by_zone.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No zone data yet</p>
-                )}
+                {filteredZones.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No zone data</p>}
               </CardContent>
             </Card>
 
-            {/* No-Match Hotspots */}
+            {/* No-match */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
@@ -372,7 +546,6 @@ export default function MarketplaceIntelligencePage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-[11px] text-muted-foreground">Categories where matching failed to find an eligible technician</p>
                 {data.no_match_insights.map(nm => (
                   <div key={nm.category_code} className="p-3 rounded-lg bg-warning/5 border border-warning/15">
                     <div className="flex items-center justify-between">
@@ -387,14 +560,14 @@ export default function MarketplaceIntelligencePage() {
                 ))}
                 {data.no_match_insights.length === 0 && (
                   <div className="flex items-center gap-2 text-xs text-success bg-success/10 rounded-lg p-3">
-                    <CheckCircle2 className="w-4 h-4" /> No significant no-match issues detected
+                    <CheckCircle2 className="w-4 h-4" /> No significant no-match issues
                   </div>
                 )}
 
                 {data.no_match_hotspots.length > 0 && (
                   <>
                     <Separator />
-                    <p className="text-[11px] font-medium text-foreground">Zone-Level No-Match Hotspots</p>
+                    <p className="text-[11px] font-medium text-foreground">Zone Hotspots</p>
                     {data.no_match_hotspots.slice(0, 5).map(h => (
                       <div key={h.zone_code} className="flex items-center justify-between p-2 rounded bg-muted/30 text-sm">
                         <span className="text-foreground">{h.zone_name}</span>
@@ -415,19 +588,17 @@ export default function MarketplaceIntelligencePage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" /> Supply Coverage by Category
+                  <Users className="w-4 h-4 text-primary" /> Supply Coverage
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {data.supply_analysis.map(sa => (
+                {filteredSupply.map(sa => (
                   <div key={sa.category_code} className="p-3 rounded-lg bg-muted/30 border">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-foreground">{sa.category_name}</span>
-                      <Badge variant="outline" className={`text-[9px] ${supplyStatusBadge(sa.supply_status)}`}>
-                        {sa.supply_status}
-                      </Badge>
+                      <Badge variant="outline" className={`text-[9px] ${supplyBadge(sa.supply_status)}`}>{sa.supply_status}</Badge>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 mt-2 text-center">
+                    <div className="grid grid-cols-5 gap-2 mt-2 text-center">
                       <div>
                         <p className="text-lg font-bold text-foreground">{sa.verified_partners}</p>
                         <p className="text-[9px] text-muted-foreground">Partners</p>
@@ -437,6 +608,10 @@ export default function MarketplaceIntelligencePage() {
                         <p className="text-[9px] text-muted-foreground">Online</p>
                       </div>
                       <div>
+                        <p className="text-lg font-bold text-foreground">{sa.emergency_capable}</p>
+                        <p className="text-[9px] text-muted-foreground">Emergency</p>
+                      </div>
+                      <div>
                         <p className="text-lg font-bold text-foreground">{sa.demand_30d}</p>
                         <p className="text-[9px] text-muted-foreground">Demand</p>
                       </div>
@@ -444,48 +619,61 @@ export default function MarketplaceIntelligencePage() {
                         <p className={`text-lg font-bold ${sa.demand_to_partner_ratio > 5 ? "text-destructive" : "text-foreground"}`}>
                           {sa.demand_to_partner_ratio}:1
                         </p>
-                        <p className="text-[9px] text-muted-foreground">D:P Ratio</p>
+                        <p className="text-[9px] text-muted-foreground">D:P</p>
                       </div>
                     </div>
                   </div>
                 ))}
-                {data.supply_analysis.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No partner data</p>
-                )}
+                {filteredSupply.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No partner data</p>}
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Zone Supply Gaps */}
-            {data.zone_supply_gaps.length > 0 && (
-              <Card className="border-warning/20">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Target className="w-4 h-4 text-warning" /> Partner Acquisition Priorities
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-[11px] text-muted-foreground">Zones with demand but insufficient verified partners</p>
-                  {data.zone_supply_gaps.map((g, i) => (
-                    <div key={i} className={`p-3 rounded-lg border ${g.gap_severity === "critical" ? "bg-destructive/5 border-destructive/20" : "bg-warning/5 border-warning/20"}`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[9px]">{g.zone_name}</Badge>
-                          <span className="text-sm font-medium text-foreground">{g.category_code}</span>
+          {/* ═══ ACQUISITION ═══ */}
+          <TabsContent value="acquisition" className="space-y-5 mt-4">
+            <Card className="border-warning/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Target className="w-4 h-4 text-warning" /> Partner Acquisition Priorities
+                  <Badge variant="outline" className="text-[9px] ml-auto">{filteredGaps.length} gaps</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-[11px] text-muted-foreground mb-2">Ranked by composite priority score (demand, no-match rate, quote rejection, emergency demand, partner shortage)</p>
+                {filteredGaps.map((g, i) => (
+                  <div key={i} className={`p-3 rounded-lg border ${g.gap_severity === "critical" ? "bg-destructive/5 border-destructive/20" : "bg-warning/5 border-warning/20"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[9px]">{g.zone_name}</Badge>
+                        <span className="text-sm font-medium text-foreground">{g.category_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <Gauge className="w-3 h-3 text-muted-foreground" />
+                          <span className="text-xs font-bold text-foreground">{g.acquisition_priority_score}</span>
                         </div>
                         <Badge variant={g.gap_severity === "critical" ? "destructive" : "outline"} className="text-[9px]">
                           {g.gap_severity}
                         </Badge>
                       </div>
-                      <div className="flex gap-4 mt-1.5 text-[10px] text-muted-foreground">
-                        <span>{g.demand} bookings</span>
-                        <span>{g.partners} partner{g.partners !== 1 ? "s" : ""}</span>
-                        <span className="font-medium text-foreground">Need: {Math.max(2, Math.ceil(g.demand / 3) - g.partners)} more</span>
-                      </div>
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+                    <div className="flex gap-4 text-[10px] text-muted-foreground">
+                      <span>{g.demand} bookings</span>
+                      <span>{g.partners} partner{g.partners !== 1 ? "s" : ""}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2 p-2 rounded bg-background/50 text-[10px] font-medium text-foreground">
+                      <Target className="w-3 h-3 text-primary shrink-0" />
+                      {g.recommended_action}
+                    </div>
+                  </div>
+                ))}
+                {filteredGaps.length === 0 && (
+                  <div className="flex items-center gap-2 text-xs text-success bg-success/10 rounded-lg p-3">
+                    <CheckCircle2 className="w-4 h-4" /> No acquisition gaps detected
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ═══ QUOTES ═══ */}
@@ -495,11 +683,8 @@ export default function MarketplaceIntelligencePage() {
               <KPICard label="Approval Rate" value={`${s.quote_approval_rate}%`} icon={CheckCircle2} />
               <KPICard label="Rejection Rate" value={`${s.quote_rejection_rate}%`} icon={XCircle} />
             </div>
-
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Quote Rejection by Category</CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Quote Rejection by Category</CardTitle></CardHeader>
               <CardContent className="space-y-2">
                 {data.quote_insights.map(qi => (
                   <div key={qi.category_code} className="p-3 rounded-lg bg-muted/30 border">
@@ -509,9 +694,7 @@ export default function MarketplaceIntelligencePage() {
                         {qi.rejection_rate}% rejected
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <Progress value={100 - qi.rejection_rate} className="h-1.5 flex-1" />
-                    </div>
+                    <Progress value={100 - qi.rejection_rate} className="h-1.5 mt-1.5" />
                     <div className="flex gap-4 mt-1 text-[10px] text-muted-foreground">
                       <span>{qi.total_quotes} quotes</span>
                       <span>{qi.rejected_count} rejected</span>
@@ -519,9 +702,7 @@ export default function MarketplaceIntelligencePage() {
                     </div>
                   </div>
                 ))}
-                {data.quote_insights.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">No quote data yet</p>
-                )}
+                {data.quote_insights.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No quote data</p>}
               </CardContent>
             </Card>
           </TabsContent>
@@ -536,7 +717,7 @@ export default function MarketplaceIntelligencePage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-[11px] text-muted-foreground">
-                  Services with high search volume but low booking conversion — potential new opportunities
+                  Multi-signal analysis: search volume, booking conversion, no-match rate, quote rejection, partner coverage
                 </p>
                 {data.service_gaps.map(sg => (
                   <div key={sg.category_code} className="p-3 rounded-lg bg-primary/5 border border-primary/15">
@@ -544,18 +725,25 @@ export default function MarketplaceIntelligencePage() {
                       <span className="text-sm font-medium text-foreground">{sg.category_name}</span>
                       <div className="flex items-center gap-1.5">
                         <Activity className="w-3 h-3 text-primary" />
-                        <span className="text-xs font-medium text-primary">{sg.unconverted_searches} missed</span>
+                        <span className="text-xs font-bold text-primary">{sg.gap_score}/100</span>
                       </div>
                     </div>
-                    <div className="mt-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] text-muted-foreground">Gap Score</span>
-                        <Progress value={sg.gap_score} className="h-1.5 flex-1" />
-                        <span className="text-[10px] font-medium text-foreground">{sg.gap_score}/100</span>
+                    <div className="grid grid-cols-3 gap-2 mt-2 text-center text-[10px]">
+                      <div className="p-1.5 rounded bg-muted/50">
+                        <p className="font-bold text-foreground">{sg.search_conversion_gap}%</p>
+                        <p className="text-muted-foreground">Unconverted</p>
+                      </div>
+                      <div className="p-1.5 rounded bg-muted/50">
+                        <p className="font-bold text-foreground">{sg.no_match_rate}%</p>
+                        <p className="text-muted-foreground">No-match</p>
+                      </div>
+                      <div className="p-1.5 rounded bg-muted/50">
+                        <p className="font-bold text-foreground">{sg.quote_rejection_rate}%</p>
+                        <p className="text-muted-foreground">Quotes rejected</p>
                       </div>
                     </div>
                     {sg.sample_queries.length > 0 && (
-                      <div className="mt-2 space-y-1">
+                      <div className="mt-2 space-y-0.5">
                         <p className="text-[10px] text-muted-foreground font-medium">Sample searches:</p>
                         {sg.sample_queries.slice(0, 3).map((q, i) => (
                           <p key={i} className="text-[10px] text-muted-foreground pl-2 italic">"{q}"</p>
@@ -579,11 +767,11 @@ export default function MarketplaceIntelligencePage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-primary" /> All Alerts & Recommendations
-                  <Badge variant="outline" className="text-[9px] ml-auto">{data.alerts.length} total</Badge>
+                  <Badge variant="outline" className="text-[9px] ml-auto">{filteredAlerts.length} shown</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {data.alerts.map((a, i) => (
+                {filteredAlerts.map((a, i) => (
                   <div key={i} className={`p-3 rounded-lg border ${severityStyles[a.severity]}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2">
@@ -603,12 +791,12 @@ export default function MarketplaceIntelligencePage() {
                     </div>
                   </div>
                 ))}
-                {data.alerts.length === 0 && (
+                {filteredAlerts.length === 0 && (
                   <div className="flex items-center gap-2 text-xs text-success bg-success/10 rounded-lg p-4">
                     <CheckCircle2 className="w-5 h-5" />
                     <div>
                       <p className="font-medium">All Clear</p>
-                      <p className="text-[10px] opacity-80">No alerts — marketplace operating normally.</p>
+                      <p className="text-[10px] opacity-80">No alerts match current filters.</p>
                     </div>
                   </div>
                 )}
