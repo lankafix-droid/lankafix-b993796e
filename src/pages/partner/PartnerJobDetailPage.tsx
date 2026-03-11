@@ -100,6 +100,10 @@ export default function PartnerJobDetailPage() {
 
   const [showQuoteForm, setShowQuoteForm] = useState(false);
 
+  // Auto-push GPS location when partner is en-route or working on-site
+  const isEnRouteOrOnSite = booking?.status === "tech_en_route" || booking?.status === "arrived" || booking?.status === "inspection_started" || booking?.status === "repair_started";
+  usePartnerLocationPush(partner?.id, jobId, isEnRouteOrOnSite);
+
   useEffect(() => { if (jobId) track("partner_job_detail_view", { jobId }); }, [jobId]);
 
   const refreshAll = () => {
