@@ -28,6 +28,8 @@ const PartnerJobDetailPage = lazy(() => import("./pages/partner/PartnerJobDetail
 const TechniciansPage = lazy(() => import("./pages/partner/TechniciansPage"));
 const PartnerProfilePage = lazy(() => import("./pages/partner/PartnerProfilePage"));
 const PartnerWalletPage = lazy(() => import("./pages/partner/PartnerWalletPage"));
+const PartnerQuoteHistoryPage = lazy(() => import("./pages/partner/PartnerQuoteHistoryPage"));
+const PartnerPerformancePage = lazy(() => import("./pages/partner/PartnerPerformancePage"));
 const TechnicianDashboardPage = lazy(() => import("./pages/technician/TechnicianDashboardPage"));
 const TechnicianJobsPage = lazy(() => import("./pages/technician/TechnicianJobsPage"));
 const TechnicianJobDetailPage = lazy(() => import("./pages/technician/TechnicianJobDetailPage"));

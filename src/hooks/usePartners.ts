@@ -29,6 +29,11 @@ export interface PartnerRow {
   strike_count: number;
   average_response_time_minutes: number;
   vehicle_type: string;
+  acceptance_rate: number | null;
+  cancellation_rate: number | null;
+  on_time_rate: number | null;
+  quote_approval_rate: number | null;
+  performance_score: number | null;
 }
 
 /** Fetch all verified, online/busy partners */
