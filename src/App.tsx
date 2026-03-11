@@ -149,6 +149,8 @@ const App = () => (
             <Route path="/partner/technicians" element={<TechniciansPage />} />
             <Route path="/partner/profile" element={<PartnerProfilePage />} />
             <Route path="/partner/wallet" element={<PartnerWalletPage />} />
+            <Route path="/partner/quotes" element={<PartnerQuoteHistoryPage />} />
+            <Route path="/partner/performance" element={<PartnerPerformancePage />} />
             <Route path="/partner/premium" element={<PartnerPremiumPage />} />
 
             {/* ─── Technician routes ─── */}
