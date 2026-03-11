@@ -62,6 +62,40 @@ const FinanceBoardPage = () => {
     },
     staleTime: 30_000,
   });
+
+  // Real DB: most recent submitted quotes for benchmark card
+  const { data: recentQuotesDB = [] } = useQuery({
+    queryKey: ["ops-recent-quotes-benchmark"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("quotes")
+        .select("id, booking_id, total_lkr, status, created_at, partner_id")
+        .in("status", ["submitted", "approved", "rejected"])
+        .order("created_at", { ascending: false })
+        .limit(5);
+      // Fetch category_code for each quote's booking
+      if (!data || data.length === 0) return [];
+      const bookingIds = [...new Set(data.map((q) => q.booking_id))];
+      const { data: bookingsData } = await supabase
+        .from("bookings")
+        .select("id, category_code, service_type")
+        .in("id", bookingIds);
+      const bookingMap = Object.fromEntries((bookingsData || []).map((b) => [b.id, b]));
+      return data.map((q) => ({ ...q, booking: bookingMap[q.booking_id] || null }));
+    },
+    staleTime: 30_000,
+  });
+
+  const latestBenchmarkInput = useMemo(() => {
+    const q = recentQuotesDB[0];
+    if (!q || !q.booking || !q.total_lkr) return null;
+    return {
+      categoryCode: q.booking.category_code,
+      serviceType: q.booking.service_type || undefined,
+      quoteTotal: q.total_lkr,
+    };
+  }, [recentQuotesDB]);
+
   const analytics = computePlatformAnalytics(bookings);
 
   // Compute aggregates
