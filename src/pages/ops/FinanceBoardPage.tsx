@@ -31,7 +31,36 @@ const FinanceBoardPage = () => {
 
   const formatLKR = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
 
-  // Platform analytics
+  const { data: metrics } = useOpsMetrics();
+
+  // Real DB: pending settlements
+  const { data: pendingSettlementsDB = [] } = useQuery({
+    queryKey: ["ops-pending-settlements"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("partner_settlements")
+        .select("id, booking_id, partner_id, gross_amount_lkr, platform_commission_lkr, net_payout_lkr, settlement_status, created_at")
+        .eq("settlement_status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    staleTime: 30_000,
+  });
+
+  // Real DB: recent payments
+  const { data: recentPaymentsDB = [] } = useQuery({
+    queryKey: ["ops-recent-payments"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payments")
+        .select("id, booking_id, amount_lkr, payment_status, payment_type, paid_at, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      return data || [];
+    },
+    staleTime: 30_000,
+  });
   const analytics = computePlatformAnalytics(bookings);
 
   // Compute aggregates
