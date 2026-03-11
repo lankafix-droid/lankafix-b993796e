@@ -25,6 +25,24 @@ export default function PartnerJobsPage() {
   const { data: partner, isLoading } = useCurrentPartner();
   const { data: bookings = [] } = usePartnerBookings(partner?.id);
 
+  // Pending job offers (dispatch_log with pending_acceptance)
+  const { data: pendingOffers = [] } = useQuery({
+    queryKey: ["partner-pending-offers", partner?.id],
+    queryFn: async () => {
+      if (!partner?.id) return [];
+      const { data, error } = await supabase
+        .from("dispatch_log")
+        .select("*, bookings(id, category_code, service_type, zone_code, is_emergency, estimated_price_lkr, created_at)")
+        .eq("partner_id", partner.id)
+        .eq("status", "pending_acceptance")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!partner?.id,
+    refetchInterval: 10_000, // Poll for new offers
+  });
+
   useEffect(() => { track("partner_jobs_view"); }, []);
 
   if (isLoading) {
