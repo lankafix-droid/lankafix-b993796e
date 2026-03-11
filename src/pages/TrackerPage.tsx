@@ -444,6 +444,9 @@ const TrackerPage = () => {
               )}
             </div>
 
+            {/* Live Technician Tracking — Uber-style */}
+            <DBBookingLiveTracking bookingId={dbBooking.id} partnerId={dbBooking.partner_id} bookingStatus={dbBooking.status} />
+
             {/* Quote Approval Card - shown when quote is submitted */}
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
