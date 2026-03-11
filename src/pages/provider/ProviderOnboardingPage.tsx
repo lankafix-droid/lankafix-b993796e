@@ -59,25 +59,23 @@ export default function ProviderOnboardingPage() {
           .maybeSingle();
         if (data) {
           setExistingPartnerId(data.id);
-          // Full prefill from existing record
-          if (!store.profile.fullName && data.full_name) {
-            store.updateProfile({
-              fullName: data.full_name,
-              businessName: data.business_name || "",
-              mobileNumber: data.phone_number || "",
-              email: data.email || "",
-              nicNumber: data.nic_number || "",
-              providerType: (data.provider_type as any) || "individual",
-              serviceCategories: (data.categories_supported || []) as any,
-              specializations: (data.specializations || []) as string[],
-              serviceZones: data.service_zones || [],
-              yearsOfExperience: data.experience_years || 0,
-              previousCompany: data.previous_company || "",
-              emergencyAvailable: data.emergency_available || false,
-              profilePhotoUrl: data.profile_photo_url || "",
-              tools: (data.tools_declared || []) as string[],
-            });
-          }
+          // Full prefill — always prefer DB data over stale local state
+          store.updateProfile({
+            fullName: data.full_name || "",
+            businessName: data.business_name || "",
+            mobileNumber: data.phone_number || "",
+            email: data.email || "",
+            nicNumber: data.nic_number || "",
+            providerType: (data.provider_type as any) || "individual",
+            serviceCategories: (data.categories_supported || []) as any,
+            specializations: (data.specializations || []) as string[],
+            serviceZones: data.service_zones || [],
+            yearsOfExperience: data.experience_years || 0,
+            previousCompany: data.previous_company || "",
+            emergencyAvailable: data.emergency_available || false,
+            profilePhotoUrl: data.profile_photo_url || "",
+            tools: (data.tools_declared || []) as string[],
+          });
 
           // Prefill schedule
           const { data: sched } = await supabase
