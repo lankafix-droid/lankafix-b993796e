@@ -40,6 +40,9 @@ const CATEGORY_LAUNCH_MAP: Record<string, CategoryLaunchState> = {
   SOLAR_UPGRADE: "consultation",
   EV_CHARGING: "consultation",
 
+  // ─── Print Supplies — consultation only ───
+  PRINT_SUPPLIES: "consultation",
+
   // ─── Coming Soon — booking disabled ───
   ELECTRICAL: "coming_soon",
   PLUMBING: "coming_soon",

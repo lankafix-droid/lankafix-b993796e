@@ -162,10 +162,7 @@ const MOBILE_FLOW: V2CategoryFlow = {
     { label: "Battery Replacement", priceLabel: "From LKR 3,500", serviceTypeId: "battery", pricingArchetype: "diagnostic_first" },
     { label: "Charging Port Fix", priceLabel: "From LKR 2,500", serviceTypeId: "charging", pricingArchetype: "diagnostic_first" },
   ],
-  partnerShops: [
-    { name: "TechFix Colombo 7", location: "Colombo 7, near Majestic City", rating: 4.8, repairTimeEstimate: "1-2 hours", openHours: "9 AM – 7 PM", verified: true },
-    { name: "PhoneDoc Bambalapitiya", location: "Bambalapitiya, Galle Road", rating: 4.6, repairTimeEstimate: "2-3 hours", openHours: "10 AM – 8 PM", verified: true },
-  ],
+  partnerShops: [],
   requiresCommitmentFee: false,
   commitmentFeeAmount: 0,
   commitmentFeeNote: "",
