@@ -1044,6 +1044,47 @@ export type Database = {
           },
         ]
       }
+      partner_schedules: {
+        Row: {
+          created_at: string
+          emergency_available: boolean
+          end_time: string
+          id: string
+          partner_id: string
+          start_time: string
+          updated_at: string
+          working_days: string[]
+        }
+        Insert: {
+          created_at?: string
+          emergency_available?: boolean
+          end_time?: string
+          id?: string
+          partner_id: string
+          start_time?: string
+          updated_at?: string
+          working_days?: string[]
+        }
+        Update: {
+          created_at?: string
+          emergency_available?: boolean
+          end_time?: string
+          id?: string
+          partner_id?: string
+          start_time?: string
+          updated_at?: string
+          working_days?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_schedules_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_settlements: {
         Row: {
           booking_id: string
@@ -1153,6 +1194,7 @@ export type Database = {
           current_job_count: number | null
           current_latitude: number | null
           current_longitude: number | null
+          email: string | null
           emergency_available: boolean | null
           experience_years: number | null
           express_capable: boolean | null
@@ -1163,16 +1205,20 @@ export type Database = {
           late_arrival_count: number | null
           max_concurrent_jobs: number | null
           max_jobs_per_day: number | null
+          nic_number: string | null
           on_time_rate: number | null
           performance_score: number | null
           phone_number: string
+          previous_company: string | null
           profile_photo_url: string | null
+          provider_type: string | null
           quote_approval_rate: number | null
           rating_average: number | null
           service_types_supported: string[] | null
           service_zones: string[] | null
           specializations: string[] | null
           strike_count: number | null
+          tools_declared: string[] | null
           updated_at: string
           user_id: string | null
           vehicle_type: string | null
@@ -1194,6 +1240,7 @@ export type Database = {
           current_job_count?: number | null
           current_latitude?: number | null
           current_longitude?: number | null
+          email?: string | null
           emergency_available?: boolean | null
           experience_years?: number | null
           express_capable?: boolean | null
@@ -1204,16 +1251,20 @@ export type Database = {
           late_arrival_count?: number | null
           max_concurrent_jobs?: number | null
           max_jobs_per_day?: number | null
+          nic_number?: string | null
           on_time_rate?: number | null
           performance_score?: number | null
           phone_number: string
+          previous_company?: string | null
           profile_photo_url?: string | null
+          provider_type?: string | null
           quote_approval_rate?: number | null
           rating_average?: number | null
           service_types_supported?: string[] | null
           service_zones?: string[] | null
           specializations?: string[] | null
           strike_count?: number | null
+          tools_declared?: string[] | null
           updated_at?: string
           user_id?: string | null
           vehicle_type?: string | null
@@ -1235,6 +1286,7 @@ export type Database = {
           current_job_count?: number | null
           current_latitude?: number | null
           current_longitude?: number | null
+          email?: string | null
           emergency_available?: boolean | null
           experience_years?: number | null
           express_capable?: boolean | null
@@ -1245,16 +1297,20 @@ export type Database = {
           late_arrival_count?: number | null
           max_concurrent_jobs?: number | null
           max_jobs_per_day?: number | null
+          nic_number?: string | null
           on_time_rate?: number | null
           performance_score?: number | null
           phone_number?: string
+          previous_company?: string | null
           profile_photo_url?: string | null
+          provider_type?: string | null
           quote_approval_rate?: number | null
           rating_average?: number | null
           service_types_supported?: string[] | null
           service_zones?: string[] | null
           specializations?: string[] | null
           strike_count?: number | null
+          tools_declared?: string[] | null
           updated_at?: string
           user_id?: string | null
           vehicle_type?: string | null
@@ -1365,6 +1421,41 @@ export type Database = {
           value?: Json
         }
         Relationships: []
+      }
+      policy_acceptances: {
+        Row: {
+          accepted_at: string
+          id: string
+          ip_address: string | null
+          partner_id: string
+          policy_type: string
+          policy_version: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          ip_address?: string | null
+          partner_id: string
+          policy_type: string
+          policy_version?: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          ip_address?: string | null
+          partner_id?: string
+          policy_type?: string
+          policy_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_acceptances_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pricing_rules: {
         Row: {
