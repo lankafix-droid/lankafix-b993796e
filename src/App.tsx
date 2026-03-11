@@ -109,6 +109,7 @@ const App = () => (
       <OfflineBanner />
       <ChatWidget />
       <BrowserRouter>
+        <TermsGuard>
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* ─── V3 Customer Marketplace ─── */}
