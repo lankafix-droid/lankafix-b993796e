@@ -83,7 +83,7 @@ export default function ProviderOnboardingPage() {
             .select("working_days, start_time, end_time, emergency_available")
             .eq("partner_id", data.id)
             .maybeSingle();
-          if (sched && !store.profile.fullName) {
+          if (sched) {
             store.updateProfile({
               availabilityDays: (sched.working_days as string[]) || [],
               availabilityStart: sched.start_time || "08:00",
