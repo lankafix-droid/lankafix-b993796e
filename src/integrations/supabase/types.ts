@@ -1851,6 +1851,39 @@ export type Database = {
           },
         ]
       }
+      terms_acceptances: {
+        Row: {
+          accepted_at: string
+          id: string
+          platform_source: string | null
+          policy_group: string
+          role: string
+          session_info: Json | null
+          terms_version: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          platform_source?: string | null
+          policy_group: string
+          role?: string
+          session_info?: Json | null
+          terms_version?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          platform_source?: string | null
+          policy_group?: string
+          role?: string
+          session_info?: Json | null
+          terms_version?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
