@@ -12,6 +12,7 @@ import { track } from "@/lib/analytics";
 import { Plus, X, Send, Clock } from "lucide-react";
 import { validateQuoteAgainstGuardrails } from "@/engines/deterministicPricingEngine";
 import QuoteGuardrailBanner from "@/components/v2/booking/QuoteGuardrailBanner";
+import AIQuoteAssistantPanel from "@/components/ai/AIQuoteAssistantPanel";
 
 interface QuoteBuilderProps {
   jobId: string;
