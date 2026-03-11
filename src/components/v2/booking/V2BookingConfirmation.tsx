@@ -8,13 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone,
   MessageCircle, Shield, ArrowRight, Circle, MapPin, Award, Sparkles,
+  Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { SUPPORT_PHONE, SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { motion } from "framer-motion";
-import { useBookingStore } from "@/store/bookingStore";
-import type { CategoryCode, ServiceMode, PricingBreakdown } from "@/types/booking";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useLocationStore } from "@/store/locationStore";
+import { createBooking } from "@/services/bookingService";
+import BookingAuthGate from "@/components/auth/BookingAuthGate";
+import { isCategoryOperational, isCategoryConsultation, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
 
 interface Props {
   flow: V2CategoryFlow;
@@ -22,18 +27,16 @@ interface Props {
 }
 
 const TRACKING_STAGES = [
-  { label: "Booking Confirmed", key: "confirmed", icon: "✓" },
-  { label: "Technician Assigned", key: "assigned", icon: "👤" },
+  { label: "Booking Submitted", key: "submitted", icon: "✓" },
+  { label: "Provider Matching", key: "matching", icon: "🔍" },
+  { label: "Provider Assigned", key: "assigned", icon: "👤" },
   { label: "On the Way", key: "en_route", icon: "🚗" },
   { label: "Diagnosis / Inspection", key: "diagnosis", icon: "🔍" },
-  { label: "Quote Awaiting Approval", key: "quote", icon: "📋" },
-  { label: "Repair in Progress", key: "repair", icon: "🔧" },
-  { label: "Quality Check", key: "quality", icon: "✅" },
-  { label: "Invoice Ready", key: "invoice", icon: "🧾" },
+  { label: "Quote Approval", key: "quote", icon: "📋" },
+  { label: "Work in Progress", key: "repair", icon: "🔧" },
   { label: "Completed", key: "completed", icon: "🎉" },
 ];
 
-/* Summary row helper */
 function SummaryRow({ label, value, bold }: { label: string; value: React.ReactNode; bold?: boolean }) {
   return (
     <div className="flex justify-between items-start py-2 border-b border-border/20 last:border-0">
@@ -45,9 +48,13 @@ function SummaryRow({ label, value, bold }: { label: string; value: React.ReactN
 
 const V2BookingConfirmation = ({ flow, booking }: Props) => {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuth();
+  const { getActiveAddress } = useLocationStore();
+
   const [confirmed, setConfirmed] = useState(false);
   const [createdJobId, setCreatedJobId] = useState<string | null>(null);
-  const { setDraftCategory, setDraftService, setDraftMode, setDraftEmergency, setDraftLocation, confirmBooking } = useBookingStore();
+  const [submitting, setSubmitting] = useState(false);
+  const [showAuthGate, setShowAuthGate] = useState(false);
 
   const selectedService = flow.serviceTypes.find((s) => s.id === booking.serviceTypeId);
   const selectedPackage = flow.packages.find((p) => p.id === booking.packageId);
@@ -56,38 +63,104 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
   const warranty = getServiceWarranty(flow.code, booking.serviceTypeId);
   const travelZone = TRAVEL_ZONES[0];
 
-  const handleConfirm = () => {
-    // Set up draft in store
-    setDraftCategory(flow.code as CategoryCode, flow.name);
-    setDraftService(booking.serviceTypeId || flow.code, selectedService?.label || flow.name);
-    const modeMap: Record<string, ServiceMode> = { on_site: "on_site", drop_off: "drop_off", pickup_return: "pickup_return", remote: "remote" };
-    setDraftMode(modeMap[booking.serviceModeId] || "on_site");
-    setDraftEmergency(booking.isEmergency || false);
-    setDraftLocation("Colombo 7", "Greater Colombo Area");
+  const submitBooking = async (userId: string) => {
+    if (submitting) return;
+    setSubmitting(true);
 
-    // Build pricing breakdown
-    const basePrice = selectedPackage?.price || 2500;
-    const isQuoteRequired = flow.pricingArchetype === "diagnostic_first" || flow.pricingArchetype === "quote_required";
-    const pricing: PricingBreakdown = {
-      visitFee: travelZone.fee,
-      diagnosticFee: isQuoteRequired ? 500 : 0,
-      emergencySurcharge: booking.isEmergency ? 500 : 0,
-      estimatedMin: basePrice,
-      estimatedMax: selectedPackage?.priceMax || basePrice * 1.5,
-      depositRequired: flow.requiresCommitmentFee || false,
-      depositAmount: flow.commitmentFeeAmount || 0,
-      partsSeparate: true,
-      quoteRequired: isQuoteRequired,
-      cancelPolicy: { freeCancelMinutes: 30, refundBeforeDispatchPercent: 100, refundAfterDispatchPercent: 50 },
+    const activeAddress = getActiveAddress();
+    const locationData = {
+      lat: activeAddress?.lat,
+      lng: activeAddress?.lng,
+      address: activeAddress?.displayName || activeAddress?.area || "Greater Colombo",
+      zoneCode: activeAddress?.zoneId || null,
     };
 
-    const jobId = confirmBooking(pricing, isQuoteRequired);
-    setCreatedJobId(jobId);
-    setConfirmed(true);
+    const result = await createBooking({
+      flow,
+      booking,
+      userId,
+      locationData,
+    });
+
+    if (result.success && result.bookingId) {
+      setCreatedJobId(result.bookingId);
+      setConfirmed(true);
+      toast.success("Booking confirmed!");
+    } else {
+      toast.error(result.error || "Failed to create booking. Please try again.");
+    }
+    setSubmitting(false);
   };
+
+  const handleConfirm = async () => {
+    // Category gating
+    if (isCategoryComingSoon(flow.code)) {
+      toast.info("This category is coming soon! Join the waitlist.");
+      navigate("/waitlist");
+      return;
+    }
+    if (isCategoryConsultation(flow.code)) {
+      toast.info("This category requires a consultation. Our team will contact you.");
+      // Still create a booking but mark it appropriately
+    }
+
+    // Auth gate — require login before submitting
+    if (!isAuthenticated || !user) {
+      setShowAuthGate(true);
+      return;
+    }
+
+    await submitBooking(user.id);
+  };
+
+  const handleAuthSuccess = async (userId: string) => {
+    setShowAuthGate(false);
+    await submitBooking(userId);
+  };
+
+  /* ─── COMING SOON STATE ─── */
+  if (isCategoryComingSoon(flow.code)) {
+    return (
+      <div className="space-y-5 text-center py-6 pb-28">
+        <div className="w-20 h-20 rounded-full bg-muted/60 flex items-center justify-center mx-auto">
+          <Clock className="w-10 h-10 text-muted-foreground" />
+        </div>
+        <h2 className="text-2xl font-extrabold text-foreground">Coming Soon</h2>
+        <p className="text-muted-foreground text-sm">This service category is launching soon in your area.</p>
+        <Button onClick={() => navigate("/waitlist")} className="w-full rounded-xl h-12">
+          Join the Waitlist
+        </Button>
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
+          Back to Home
+        </Button>
+      </div>
+    );
+  }
+
+  /* ─── CONSULTATION STATE ─── */
+  if (isCategoryConsultation(flow.code)) {
+    return (
+      <div className="space-y-5 text-center py-6 pb-28">
+        <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+          <Phone className="w-10 h-10 text-primary" />
+        </div>
+        <h2 className="text-2xl font-extrabold text-foreground">Request Consultation</h2>
+        <p className="text-muted-foreground text-sm">This service requires a site assessment. Our team will match you with the right specialist.</p>
+        <Button onClick={handleConfirm} disabled={submitting} className="w-full rounded-xl h-12 gap-2">
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          Submit Consultation Request
+        </Button>
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
+          Back to Home
+        </Button>
+        <BookingAuthGate open={showAuthGate} onClose={() => setShowAuthGate(false)} onAuthenticated={handleAuthSuccess} />
+      </div>
+    );
+  }
 
   /* ─── SUCCESS STATE ─── */
   if (confirmed) {
+    const shortId = createdJobId ? createdJobId.slice(0, 8).toUpperCase() : "";
     return (
       <motion.div
         className="space-y-5 text-center py-6 pb-28"
@@ -95,7 +168,6 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Success hero */}
         <motion.div
           className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto"
           initial={{ scale: 0 }}
@@ -107,21 +179,21 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <h2 className="text-2xl font-extrabold text-foreground">Booking Confirmed!</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Your service request has been placed</p>
+          <p className="text-muted-foreground mt-1 text-sm">Your service request has been submitted</p>
         </motion.div>
 
-        {/* Job card */}
         <motion.div
           className="bg-card rounded-2xl border border-border/60 p-5 text-left space-y-0 shadow-[var(--shadow-card)]"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <SummaryRow label="Job ID" value={<span className="font-mono font-bold">{createdJobId}</span>} />
+          <SummaryRow label="Job ID" value={<span className="font-mono font-bold text-xs">{shortId}</span>} />
           <SummaryRow label="Status" value={
-            <Badge className="bg-primary/10 text-primary border-0 font-semibold text-xs">Technician Assigned</Badge>
+            <Badge className="bg-primary/10 text-primary border-0 font-semibold text-xs">Finding Provider</Badge>
           } />
-          <SummaryRow label="ETA" value="Within 2 hours" bold />
+          <SummaryRow label="Category" value={flow.name} />
+          {selectedService && <SummaryRow label="Service" value={selectedService.label} />}
         </motion.div>
 
         {/* Timeline */}
@@ -131,23 +203,24 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <h3 className="font-bold text-foreground text-sm mb-4">Job Timeline</h3>
+          <h3 className="font-bold text-foreground text-sm mb-4">What happens next</h3>
           <div className="space-y-0">
             {TRACKING_STAGES.map((stage, i) => {
-              const isDone = i <= 1;
+              const isDone = i <= 0;
               const isCurrent = i === 1;
               return (
                 <div key={stage.key} className="flex items-start gap-3 relative">
-                  {/* Connector line */}
                   {i < TRACKING_STAGES.length - 1 && (
                     <div className={`absolute left-[11px] top-6 w-0.5 h-full ${isDone ? "bg-success/40" : "bg-muted"}`} />
                   )}
                   <div className="relative z-10 mt-0.5">
                     {isDone ? (
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                        isCurrent ? "bg-primary" : "bg-success"
-                      }`}>
+                      <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
                         <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />
+                      </div>
+                    ) : isCurrent ? (
+                      <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                        <Circle className="w-2.5 h-2.5 text-primary-foreground" />
                       </div>
                     ) : (
                       <div className="w-6 h-6 rounded-full border-2 border-muted-foreground/15 flex items-center justify-center bg-card">
@@ -155,8 +228,8 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
                       </div>
                     )}
                   </div>
-                  <div className={`pb-4 ${isDone ? "" : "opacity-50"}`}>
-                    <span className={`text-sm ${isDone ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+                  <div className={`pb-4 ${isDone || isCurrent ? "" : "opacity-50"}`}>
+                    <span className={`text-sm ${isDone || isCurrent ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
                       {stage.label}
                     </span>
                     {isCurrent && (
@@ -169,20 +242,18 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </div>
         </motion.div>
 
-        {/* Trust */}
         <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
           <ShieldCheck className="w-3.5 h-3.5 text-primary" />
           <span>Protected by LankaFix Service Guarantee</span>
         </div>
 
-        {/* Contact */}
         <div className="flex gap-3">
           <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex-1">
             <Button variant="outline" className="w-full gap-2 rounded-xl h-11">
               <Phone className="w-4 h-4" /> Call
             </Button>
           </a>
-          <a href={whatsappLink(SUPPORT_WHATSAPP, `Job ${createdJobId} - Need help`)} target="_blank" rel="noopener noreferrer" className="flex-1">
+          <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Need help`)} target="_blank" rel="noopener noreferrer" className="flex-1">
             <Button variant="outline" className="w-full gap-2 rounded-xl h-11">
               <MessageCircle className="w-4 h-4" /> WhatsApp
             </Button>
@@ -190,7 +261,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         </div>
 
         {createdJobId && (
-          <Button onClick={() => navigate(`/tracker/${createdJobId}`)} variant="hero" className="w-full rounded-xl h-12 gap-2">
+          <Button onClick={() => navigate(`/track/${createdJobId}`)} variant="hero" className="w-full rounded-xl h-12 gap-2">
             Track My Booking <ArrowRight className="w-4 h-4" />
           </Button>
         )}
@@ -389,12 +460,22 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
       <div className="sticky-cta">
         <Button
           onClick={handleConfirm}
+          disabled={submitting}
           size="lg"
           className="w-full gap-2 h-12 rounded-xl text-base font-bold bg-gradient-to-r from-primary to-primary/85 text-primary-foreground shadow-sm active:scale-[0.97] transition-transform"
         >
-          Confirm Booking <ArrowRight className="w-4 h-4" />
+          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+          {submitting ? "Submitting..." : "Confirm Booking"}
+          {!submitting && <ArrowRight className="w-4 h-4" />}
         </Button>
       </div>
+
+      {/* Auth Gate Modal */}
+      <BookingAuthGate
+        open={showAuthGate}
+        onClose={() => setShowAuthGate(false)}
+        onAuthenticated={handleAuthSuccess}
+      />
     </div>
   );
 };
