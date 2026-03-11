@@ -6,6 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Canonical category normalization (shared with marketplace-intelligence) ───
+const CATEGORY_NORMALIZE: Record<string, string> = {
+  ELECTRONICS: "CONSUMER_ELEC", CONSUMER_ELECTRONICS: "CONSUMER_ELEC",
+  SMARTHOME: "SMART_HOME_OFFICE", SMART_HOME: "SMART_HOME_OFFICE",
+  SECURITY: "HOME_SECURITY", HOME_SEC: "HOME_SECURITY",
+  SUPPLIES: "PRINT_SUPPLIES", PRINTER_SUPPLIES: "PRINT_SUPPLIES",
+  APPLIANCE: "APPLIANCE_INSTALL", APPLIANCE_INSTALLATION: "APPLIANCE_INSTALL",
+  POWER: "POWER_BACKUP", BACKUP: "POWER_BACKUP",
+  PRINTER: "COPIER", COPIER_PRINTER: "COPIER",
+};
+function normalizeCategory(code: string | null | undefined): string {
+  if (!code) return "UNKNOWN";
+  const upper = code.trim().toUpperCase();
+  return CATEGORY_NORMALIZE[upper] || upper;
+}
+
 // ─── Category-specific maintenance intervals (months) ───
 const MAINTENANCE_INTERVALS: Record<string, { intervalMonths: number; label: string; reminderMsg: string }[]> = {
   AC: [
@@ -61,6 +77,15 @@ const NEXT_BEST_SERVICE: Record<string, { nextCategory: string; nextService: str
   ],
 };
 
+// ─── Frequency cap constants ───
+const MAX_ACTIVE_REMINDERS_PER_CATEGORY = 2;
+const MAX_QUOTE_FOLLOWUPS_PER_QUOTE = 1;
+const REJECTED_QUOTE_FOLLOWUP_MIN_DAYS = 3;
+const REJECTED_QUOTE_FOLLOWUP_MAX_DAYS = 14;
+const MAINTENANCE_WINDOW_FUTURE_DAYS = 90;
+const MAINTENANCE_WINDOW_OVERDUE_DAYS = 60;
+const NEXT_BEST_COOLDOWN_DAYS = 30;
+
 // ─── Churn risk scoring ───
 function computeChurnRisk(params: {
   daysSinceLastBooking: number;
@@ -73,13 +98,10 @@ function computeChurnRisk(params: {
   if (params.daysSinceLastBooking > 180) score += 35;
   else if (params.daysSinceLastBooking > 90) score += 20;
   else if (params.daysSinceLastBooking > 60) score += 10;
-
   if (params.totalBookings <= 1) score += 20;
   if (params.hadCancellation) score += 15;
   if (params.hadRejectedQuote) score += 15;
   if (!params.hasActiveReminder) score += 5;
-
-  // Cap at 100
   score = Math.min(100, score);
   const level = score >= 60 ? "high" : score >= 30 ? "medium" : "low";
   return { score, level };
@@ -92,13 +114,21 @@ function computeRebookLikelihood(params: {
   hasCompletedService: boolean;
   categoryHasMaintenance: boolean;
 }): number {
-  let score = 30; // base
+  let score = 30;
   if (params.totalBookings >= 3) score += 25;
   else if (params.totalBookings >= 2) score += 15;
   if (params.daysSinceLastBooking < 90) score += 15;
   if (params.hasCompletedService) score += 10;
   if (params.categoryHasMaintenance) score += 10;
   return Math.min(100, score);
+}
+
+// ─── Dedup key helpers ───
+function maintenanceKey(categoryCode: string, label: string): string {
+  return `maint:${categoryCode}:${label}`;
+}
+function quoteKey(type: string, quoteId: string): string {
+  return `${type}:${quoteId}`;
 }
 
 serve(async (req) => {
@@ -111,48 +141,102 @@ serve(async (req) => {
     );
 
     const body = await req.json().catch(() => ({}));
-    const mode = body.mode || "generate"; // "generate" | "dashboard" | "customer"
+    const mode = body.mode || "generate";
     const customerId = body.customer_id;
-
     const now = new Date();
 
     if (mode === "customer" && customerId) {
       // ─── Customer-specific reminders ───
-      const [bookingsRes, quotesRes, remindersRes, warrantiesRes] = await Promise.all([
-        supabase.from("bookings").select("id, category_code, service_type, status, completed_at, created_at, is_emergency, cancellation_reason").eq("customer_id", customerId).order("created_at", { ascending: false }).limit(50),
-        supabase.from("quotes").select("id, booking_id, status, total_lkr, expires_at, warranty_days, warranty_terms, created_at").order("created_at", { ascending: false }).limit(20),
-        supabase.from("customer_reminders").select("*").eq("customer_id", customerId).in("status", ["pending", "sent"]).order("due_date", { ascending: true }).limit(20),
-        supabase.from("device_warranties").select("id, device_passport_id, warranty_end_date, warranty_provider, status").limit(20),
+      const [bookingsRes, quotesRes, remindersRes, warrantiesRes, devicesRes] = await Promise.all([
+        supabase.from("bookings").select("id, category_code, service_type, status, completed_at, created_at, is_emergency, cancellation_reason, customer_id")
+          .eq("customer_id", customerId).order("created_at", { ascending: false }).limit(50),
+        supabase.from("quotes").select("id, booking_id, status, total_lkr, expires_at, warranty_days, warranty_terms, created_at")
+          .order("created_at", { ascending: false }).limit(30),
+        supabase.from("customer_reminders").select("*")
+          .eq("customer_id", customerId).in("status", ["pending", "sent"]).order("due_date", { ascending: true }).limit(30),
+        supabase.from("device_warranties").select("id, device_passport_id, warranty_end_date, warranty_provider, status")
+          .limit(30),
+        supabase.from("device_passports").select("id, user_id, device_category")
+          .eq("user_id", customerId).limit(30),
       ]);
 
-      const bookings = bookingsRes.data ?? [];
-      const quotes = quotesRes.data ?? [];
+      const bookings = (bookingsRes.data ?? []).map(b => ({ ...b, category_code: normalizeCategory(b.category_code) }));
+      const allQuotes = quotesRes.data ?? [];
       const existingReminders = remindersRes.data ?? [];
-      const warranties = warrantiesRes.data ?? [];
+      const allWarranties = warrantiesRes.data ?? [];
+      const customerDevices = devicesRes.data ?? [];
 
-      // Generate maintenance reminders from completed bookings
+      // Only keep quotes linked to this customer's bookings
+      const bookingIds = new Set(bookings.map(b => b.id));
+      const quotes = allQuotes.filter(q => bookingIds.has(q.booking_id));
+
+      // Customer-owned device IDs for warranty linkage safety
+      const customerDeviceIds = new Set(customerDevices.map(d => d.id));
+      const warranties = allWarranties.filter(w => customerDeviceIds.has(w.device_passport_id));
+
+      // Build existing reminder dedup set
+      const existingDedupKeys = new Set<string>();
+      for (const r of existingReminders) {
+        if (r.reminder_type === "maintenance") {
+          existingDedupKeys.add(maintenanceKey(normalizeCategory(r.category_code), r.title));
+        }
+        if ((r.reminder_type === "quote_expiry" || r.reminder_type === "quote_followup") && r.linked_quote_id) {
+          existingDedupKeys.add(quoteKey(r.reminder_type, r.linked_quote_id));
+        }
+        if (r.reminder_type === "warranty_expiry" && r.metadata && typeof r.metadata === "object") {
+          const wId = (r.metadata as Record<string, unknown>)?.warranty_id;
+          if (wId) existingDedupKeys.add(`warranty:${wId}`);
+        }
+      }
+
+      // Count active reminders per category for frequency caps
+      const activePerCategory: Record<string, number> = {};
+      for (const r of existingReminders) {
+        const nc = normalizeCategory(r.category_code);
+        activePerCategory[nc] = (activePerCategory[nc] || 0) + 1;
+      }
+
       const completedBookings = bookings.filter(b => b.status === "completed" && b.completed_at);
+
+      // Find latest completed booking per category (to prevent stale reminders)
+      const latestCompletedByCategory: Record<string, Date> = {};
+      for (const b of completedBookings) {
+        const cat = b.category_code;
+        const d = new Date(b.completed_at!);
+        if (!latestCompletedByCategory[cat] || d > latestCompletedByCategory[cat]) {
+          latestCompletedByCategory[cat] = d;
+        }
+      }
+
+      // ─── Maintenance reminders ───
       const maintenanceReminders: any[] = [];
+      const seenMaintenanceKeys = new Set<string>();
 
       for (const b of completedBookings) {
         const intervals = MAINTENANCE_INTERVALS[b.category_code];
         if (!intervals) continue;
+
+        // Skip if this isn't the latest completed booking for this category
+        const latestForCat = latestCompletedByCategory[b.category_code];
+        if (latestForCat && new Date(b.completed_at!) < latestForCat) continue;
+
         for (const sched of intervals) {
+          const key = maintenanceKey(b.category_code, sched.label);
+
+          // Dedup: skip if already exists in DB or already generated in this batch
+          if (existingDedupKeys.has(key) || seenMaintenanceKeys.has(key)) continue;
+
+          // Frequency cap
+          if ((activePerCategory[b.category_code] || 0) >= MAX_ACTIVE_REMINDERS_PER_CATEGORY) continue;
+
           const completedDate = new Date(b.completed_at!);
           const dueDate = new Date(completedDate);
           dueDate.setMonth(dueDate.getMonth() + sched.intervalMonths);
           const daysUntilDue = Math.round((dueDate.getTime() - now.getTime()) / 864e5);
 
-          // Only show relevant reminders (not more than 90 days away, not more than 60 days overdue)
-          if (daysUntilDue > 90 || daysUntilDue < -60) continue;
+          if (daysUntilDue > MAINTENANCE_WINDOW_FUTURE_DAYS || daysUntilDue < -MAINTENANCE_WINDOW_OVERDUE_DAYS) continue;
 
-          // Check if already exists
-          const exists = existingReminders.some(r =>
-            r.category_code === b.category_code &&
-            r.reminder_type === "maintenance" &&
-            r.title === sched.label
-          );
-          if (exists) continue;
+          seenMaintenanceKeys.add(key);
 
           maintenanceReminders.push({
             type: "maintenance",
@@ -168,27 +252,25 @@ serve(async (req) => {
         }
       }
 
-      // Quote follow-ups
-      const bookingIds = new Set(bookings.map(b => b.id));
-      const pendingQuotes = quotes.filter(q =>
-        bookingIds.has(q.booking_id) &&
-        (q.status === "submitted" || q.status === "awaiting_approval")
-      );
-      const rejectedQuotes = quotes.filter(q =>
-        bookingIds.has(q.booking_id) && q.status === "rejected"
-      );
-      const expiringQuotes = pendingQuotes.filter(q => {
-        if (!q.expires_at) return false;
-        const d = Math.round((new Date(q.expires_at).getTime() - now.getTime()) / 864e5);
-        return d >= 0 && d <= 3;
-      });
-
+      // ─── Quote follow-ups (with dedup and status checks) ───
       const quoteReminders: any[] = [];
-      for (const q of expiringQuotes) {
-        const daysLeft = Math.round((new Date(q.expires_at!).getTime() - now.getTime()) / 864e5);
+
+      // Expiring quotes — only pending/awaiting_approval
+      const pendingQuotes = quotes.filter(q =>
+        q.status === "submitted" || q.status === "awaiting_approval"
+      );
+      for (const q of pendingQuotes) {
+        if (!q.expires_at) continue;
+        const daysLeft = Math.round((new Date(q.expires_at).getTime() - now.getTime()) / 864e5);
+        if (daysLeft < 0 || daysLeft > 3) continue;
+
+        const key = quoteKey("quote_expiry", q.id);
+        if (existingDedupKeys.has(key)) continue;
+
+        const booking = bookings.find(b => b.id === q.booking_id);
         quoteReminders.push({
           type: "quote_expiry",
-          category_code: bookings.find(b => b.id === q.booking_id)?.category_code || "UNKNOWN",
+          category_code: booking?.category_code || "UNKNOWN",
           title: "Quote Expiring Soon",
           message: `Your quote of LKR ${(q.total_lkr || 0).toLocaleString()} expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}. Review and approve to lock in this price.`,
           due_date: q.expires_at,
@@ -199,64 +281,97 @@ serve(async (req) => {
         });
       }
 
-      // Rejected quote follow-up (gentle, 3 days after rejection)
-      for (const q of rejectedQuotes.slice(0, 3)) {
+      // Rejected quote follow-up — max 1 per quote, only if no new booking for same category
+      const rejectedQuotes = quotes.filter(q => q.status === "rejected");
+      for (const q of rejectedQuotes.slice(0, 5)) {
+        const key = quoteKey("quote_followup", q.id);
+        if (existingDedupKeys.has(key)) continue;
+
         const rejectedDaysAgo = Math.round((now.getTime() - new Date(q.created_at).getTime()) / 864e5);
-        if (rejectedDaysAgo >= 3 && rejectedDaysAgo <= 14) {
-          quoteReminders.push({
-            type: "quote_followup",
-            category_code: bookings.find(b => b.id === q.booking_id)?.category_code || "UNKNOWN",
-            title: "Need a Revised Quote?",
-            message: "We noticed you didn't approve a recent quote. Would you like us to arrange a revised offer or connect you with a different technician?",
-            due_date: now.toISOString(),
-            days_until_due: 0,
-            priority: "normal",
-            linked_quote_id: q.id,
-            linked_booking_id: q.booking_id,
-          });
+        if (rejectedDaysAgo < REJECTED_QUOTE_FOLLOWUP_MIN_DAYS || rejectedDaysAgo > REJECTED_QUOTE_FOLLOWUP_MAX_DAYS) continue;
+
+        // Check if customer already rebooked for the same category after rejection
+        const booking = bookings.find(b => b.id === q.booking_id);
+        if (booking) {
+          const rebookedAfter = bookings.some(b =>
+            b.category_code === booking.category_code &&
+            new Date(b.created_at) > new Date(q.created_at) &&
+            b.id !== booking.id
+          );
+          if (rebookedAfter) continue;
         }
+
+        quoteReminders.push({
+          type: "quote_followup",
+          category_code: booking?.category_code || "UNKNOWN",
+          title: "Need a Revised Quote?",
+          message: "We noticed you didn't approve a recent quote. Would you like us to arrange a revised offer or connect you with a different technician?",
+          due_date: now.toISOString(),
+          days_until_due: 0,
+          priority: "normal",
+          linked_quote_id: q.id,
+          linked_booking_id: q.booking_id,
+        });
       }
 
-      // Warranty reminders
+      // ─── Warranty reminders (customer-linked only) ───
       const warrantyReminders: any[] = [];
       for (const w of warranties) {
         if (w.status !== "active") continue;
+        const key = `warranty:${w.id}`;
+        if (existingDedupKeys.has(key)) continue;
+
         const daysLeft = Math.round((new Date(w.warranty_end_date).getTime() - now.getTime()) / 864e5);
-        if (daysLeft >= 0 && daysLeft <= 30) {
-          warrantyReminders.push({
-            type: "warranty_expiry",
-            category_code: "DEVICE",
-            title: "Warranty Expiring",
-            message: `Your ${w.warranty_provider} warranty expires in ${daysLeft} days. Consider extending or booking a checkup before it ends.`,
-            due_date: w.warranty_end_date,
-            days_until_due: daysLeft,
-            priority: daysLeft <= 7 ? "urgent" : "high",
-          });
-        }
+        if (daysLeft < 0 || daysLeft > 30) continue;
+
+        // Find device category for proper labeling
+        const device = customerDevices.find(d => d.id === w.device_passport_id);
+        const cat = normalizeCategory(device?.device_category);
+
+        warrantyReminders.push({
+          type: "warranty_expiry",
+          category_code: cat,
+          title: "Warranty Expiring",
+          message: `Your ${w.warranty_provider} warranty expires in ${daysLeft} days. Consider booking a checkup before it ends.`,
+          due_date: w.warranty_end_date,
+          days_until_due: daysLeft,
+          priority: daysLeft <= 7 ? "urgent" : "high",
+          metadata: { warranty_id: w.id },
+        });
       }
 
-      // Next-best-service suggestions (from most recent completed booking)
+      // ─── Next-best-service (with cooldown) ───
       const nextBestSuggestions: any[] = [];
       if (completedBookings.length > 0) {
         const mostRecent = completedBookings[0];
         const daysSince = Math.round((now.getTime() - new Date(mostRecent.completed_at!).getTime()) / 864e5);
         const rules = NEXT_BEST_SERVICE[mostRecent.category_code] || [];
-        for (const rule of rules) {
-          if (daysSince >= rule.delayDays) {
-            nextBestSuggestions.push({
-              type: "next_best_service",
-              category_code: rule.nextCategory,
-              title: rule.nextService,
-              message: rule.reason,
-              action: rule.action,
-              source_category: mostRecent.category_code,
-              source_booking_id: mostRecent.id,
-            });
+
+        // Check if a next-best was already shown recently
+        const recentNextBest = existingReminders.some(r =>
+          r.reminder_type === "next_best_service" &&
+          r.category_code === mostRecent.category_code &&
+          Math.round((now.getTime() - new Date(r.created_at).getTime()) / 864e5) < NEXT_BEST_COOLDOWN_DAYS
+        );
+
+        if (!recentNextBest) {
+          for (const rule of rules) {
+            if (daysSince >= rule.delayDays) {
+              nextBestSuggestions.push({
+                type: "next_best_service",
+                category_code: normalizeCategory(rule.nextCategory),
+                title: rule.nextService,
+                message: rule.reason,
+                action: rule.action,
+                source_category: mostRecent.category_code,
+                source_booking_id: mostRecent.id,
+              });
+            }
           }
         }
       }
 
-      // Quick rebook candidates
+      // ─── Quick rebook candidates ───
       const quickRebookCandidates = completedBookings
         .slice(0, 5)
         .map(b => ({
@@ -267,7 +382,7 @@ serve(async (req) => {
           days_ago: Math.round((now.getTime() - new Date(b.completed_at!).getTime()) / 864e5),
         }));
 
-      // Churn & rebook scores
+      // ─── Churn & rebook scores ───
       const daysSinceLast = completedBookings.length > 0
         ? Math.round((now.getTime() - new Date(completedBookings[0].completed_at!).getTime()) / 864e5)
         : 999;
@@ -314,17 +429,20 @@ serve(async (req) => {
     if (mode === "dashboard") {
       // ─── Internal ops dashboard ───
       const [remindersRes, bookingsRes, quotesRes, partnersRes] = await Promise.all([
-        supabase.from("customer_reminders").select("id, customer_id, reminder_type, category_code, status, priority, due_date, viewed_at, clicked_at, completed_at, created_at").order("due_date", { ascending: true }).limit(500),
-        supabase.from("bookings").select("id, customer_id, category_code, status, completed_at, created_at, is_emergency").order("created_at", { ascending: false }).limit(1000),
-        supabase.from("quotes").select("id, booking_id, status, total_lkr, expires_at, created_at").order("created_at", { ascending: false }).limit(500),
+        supabase.from("customer_reminders").select("id, customer_id, reminder_type, category_code, status, priority, due_date, viewed_at, clicked_at, completed_at, created_at, linked_quote_id, linked_booking_id")
+          .order("due_date", { ascending: true }).limit(500),
+        supabase.from("bookings").select("id, customer_id, category_code, status, completed_at, created_at, is_emergency, cancellation_reason")
+          .order("created_at", { ascending: false }).limit(1000),
+        supabase.from("quotes").select("id, booking_id, status, total_lkr, expires_at, created_at")
+          .order("created_at", { ascending: false }).limit(500),
         supabase.from("partners").select("id, categories_supported, verification_status").limit(200),
       ]);
 
-      const reminders = remindersRes.data ?? [];
-      const bookings = bookingsRes.data ?? [];
+      const reminders = (remindersRes.data ?? []).map(r => ({ ...r, category_code: normalizeCategory(r.category_code) }));
+      const bookings = (bookingsRes.data ?? []).map(b => ({ ...b, category_code: normalizeCategory(b.category_code) }));
       const quotes = quotesRes.data ?? [];
 
-      // Compute retention segments
+      // Customer segments
       const customerBookings: Record<string, { count: number; lastAt: string; categories: Set<string>; cancelled: boolean; hasRejectedQuote: boolean }> = {};
       const bookingIdToCategory: Record<string, string> = {};
       for (const b of bookings) {
@@ -342,9 +460,6 @@ serve(async (req) => {
       }
 
       for (const q of quotes) {
-        const cat = bookingIdToCategory[q.booking_id];
-        if (!cat) continue;
-        // Find customer from booking
         const booking = bookings.find(b => b.id === q.booking_id);
         if (booking?.customer_id && q.status === "rejected") {
           if (customerBookings[booking.customer_id]) {
@@ -374,7 +489,7 @@ serve(async (req) => {
 
       // Quotes expiring soon
       const quotesExpiringSoon = quotes.filter(q => {
-        if (!q.expires_at || q.status === "approved" || q.status === "rejected") return false;
+        if (!q.expires_at || q.status === "approved" || q.status === "rejected" || q.status === "expired") return false;
         const d = Math.round((new Date(q.expires_at).getTime() - now.getTime()) / 864e5);
         return d >= 0 && d <= 3;
       }).length;
@@ -391,6 +506,17 @@ serve(async (req) => {
       const viewRate = reminders.length > 0 ? Math.round((remindersViewed / reminders.length) * 100) : 0;
       const clickRate = reminders.length > 0 ? Math.round((remindersClicked / reminders.length) * 100) : 0;
       const conversionRate = reminders.length > 0 ? Math.round((remindersCompleted / reminders.length) * 100) : 0;
+
+      // Reminder breakdown by type
+      const remindersByType: Record<string, { total: number; viewed: number; clicked: number; completed: number }> = {};
+      for (const r of reminders) {
+        const t = r.reminder_type || "unknown";
+        if (!remindersByType[t]) remindersByType[t] = { total: 0, viewed: 0, clicked: 0, completed: 0 };
+        remindersByType[t].total++;
+        if (r.viewed_at) remindersByType[t].viewed++;
+        if (r.clicked_at) remindersByType[t].clicked++;
+        if (r.completed_at) remindersByType[t].completed++;
+      }
 
       // Category retention opportunities
       const categoryRetention: Record<string, { total: number; repeat: number; churning: number }> = {};
@@ -409,6 +535,7 @@ serve(async (req) => {
         SOLAR: "Solar Solutions", CONSUMER_ELEC: "Electronics", SMART_HOME_OFFICE: "Smart Home",
         COPIER: "Copier/Printer", ELECTRICAL: "Electrical", PLUMBING: "Plumbing",
         NETWORK: "Network", HOME_SECURITY: "Home Security", POWER_BACKUP: "Power Backup",
+        APPLIANCE_INSTALL: "Appliance Install", PRINT_SUPPLIES: "Print Supplies",
       };
 
       const categoryInsights = Object.entries(categoryRetention)
@@ -422,6 +549,19 @@ serve(async (req) => {
           has_maintenance_schedule: !!MAINTENANCE_INTERVALS[code],
         }))
         .sort((a, b) => b.total_customers - a.total_customers);
+
+      // Renewal opportunities: categories with maintenance schedules and active customers
+      const renewalOpportunities = categoryInsights
+        .filter(ci => ci.has_maintenance_schedule && ci.total_customers > 0)
+        .map(ci => ({
+          category_code: ci.category_code,
+          category_name: ci.category_name,
+          eligible_customers: ci.total_customers,
+          churning: ci.churning_customers,
+          recommended_action: ci.churning_customers > 0
+            ? `Send re-engagement reminders to ${ci.churning_customers} inactive ${ci.category_name} customers`
+            : `Promote ${ci.category_name} maintenance plans to ${ci.total_customers} customers`,
+        }));
 
       return new Response(JSON.stringify({
         summary: {
@@ -443,20 +583,18 @@ serve(async (req) => {
           view_rate: viewRate,
           click_rate: clickRate,
           conversion_rate: conversionRate,
+          by_type: remindersByType,
         },
         category_insights: categoryInsights,
-        churn_segments: {
-          high: highChurnCount,
-          medium: mediumChurnCount,
-          low: lowChurnCount,
-        },
+        renewal_opportunities: renewalOpportunities,
+        churn_segments: { high: highChurnCount, medium: mediumChurnCount, low: lowChurnCount },
         generated_at: now.toISOString(),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Default: return config info
+    // Default
     return new Response(JSON.stringify({
-      available_modes: ["customer", "dashboard", "generate"],
+      available_modes: ["customer", "dashboard"],
       maintenance_categories: Object.keys(MAINTENANCE_INTERVALS),
       next_best_categories: Object.keys(NEXT_BEST_SERVICE),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
