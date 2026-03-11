@@ -12,11 +12,12 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { track } from "@/lib/analytics";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useOpsMetrics } from "@/services/opsMetricsService";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import QuoteBenchmarkCard from "@/components/ops/QuoteBenchmarkCard";
 
 const FinanceBoardPage = () => {
   const bookings = useBookingStore((s) => s.bookings);
