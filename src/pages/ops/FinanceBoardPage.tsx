@@ -331,6 +331,14 @@ const FinanceBoardPage = () => {
             </div>
           )}
         </div>
+
+        {/* Quote Benchmark — ops only */}
+        {latestBenchmarkInput && (
+          <div className="mt-6">
+            <h2 className="text-sm font-semibold text-foreground mb-2">Latest Quote Benchmark</h2>
+            <QuoteBenchmarkCard input={latestBenchmarkInput} />
+          </div>
+        )}
       </main>
       <Footer />
     </div>
