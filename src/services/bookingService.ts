@@ -323,6 +323,15 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
       customerId: userId,
       metadata: { category: flow.code },
     });
+
+    // 14. Trigger dispatch engine (fire-and-forget, non-blocking)
+    triggerDispatch(bookingId).then((result) => {
+      if (!result.success) {
+        console.warn("[BookingService] Dispatch trigger failed:", result.error);
+      }
+    }).catch((e) => {
+      console.warn("[BookingService] Dispatch trigger error:", e);
+    });
   }
 
   return { success: true, bookingId };
