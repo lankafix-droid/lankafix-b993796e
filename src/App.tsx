@@ -65,6 +65,7 @@ const ExpansionRoadmapPage = lazy(() => import("./pages/ops/ExpansionRoadmapPage
 const PartnerPremiumPage = lazy(() => import("./pages/partner/PartnerPremiumPage"));
 const ConsumablesPage = lazy(() => import("./pages/ConsumablesPage"));
 const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
+const MarketplaceIntelligencePage = lazy(() => import("./pages/ops/MarketplaceIntelligencePage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
 const AccountDeletionPage = lazy(() => import("./pages/AccountDeletionPage"));
 const AccountDeletionPublicPage = lazy(() => import("./pages/AccountDeletionPublicPage"));
