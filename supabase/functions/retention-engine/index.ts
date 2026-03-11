@@ -410,6 +410,79 @@ serve(async (req) => {
         return (pOrder[a.priority] ?? 2) - (pOrder[b.priority] ?? 2);
       });
 
+      // ─── Persist generated reminders to customer_reminders table (idempotent) ───
+      if (allReminders.length > 0) {
+        const toInsert = allReminders.map(r => ({
+          customer_id: customerId,
+          reminder_type: r.type,
+          category_code: r.category_code,
+          title: r.title,
+          message: r.message,
+          due_date: r.due_date || now.toISOString(),
+          priority: r.priority,
+          status: "pending",
+          linked_booking_id: r.linked_booking_id || null,
+          linked_quote_id: r.linked_quote_id || null,
+          metadata: r.metadata || {},
+        }));
+
+        // Upsert using dedup: only insert reminders that don't already exist
+        for (const rem of toInsert) {
+          try {
+            // Check for existing active reminder with same type, category, and title
+            const { data: existing } = await supabase
+              .from("customer_reminders")
+              .select("id")
+              .eq("customer_id", rem.customer_id)
+              .eq("reminder_type", rem.reminder_type)
+              .eq("category_code", rem.category_code)
+              .eq("title", rem.title)
+              .in("status", ["pending", "sent"])
+              .limit(1);
+
+            if (!existing || existing.length === 0) {
+              await supabase.from("customer_reminders").insert(rem);
+            }
+          } catch (insertErr) {
+            console.error("Failed to persist reminder:", insertErr);
+          }
+        }
+      }
+
+      // Persist next-best suggestions too
+      for (const nbs of nextBestSuggestions) {
+        try {
+          const { data: existing } = await supabase
+            .from("customer_reminders")
+            .select("id")
+            .eq("customer_id", customerId)
+            .eq("reminder_type", "next_best_service")
+            .eq("category_code", nbs.category_code)
+            .in("status", ["pending", "sent"])
+            .limit(1);
+
+          if (!existing || existing.length === 0) {
+            await supabase.from("customer_reminders").insert({
+              customer_id: customerId,
+              reminder_type: "next_best_service",
+              category_code: nbs.category_code,
+              title: nbs.title,
+              message: nbs.message,
+              due_date: now.toISOString(),
+              priority: "normal",
+              status: "pending",
+              linked_booking_id: nbs.source_booking_id || null,
+              next_best_action: nbs.action,
+              next_best_category: nbs.category_code,
+              next_best_service: nbs.title,
+              metadata: { source_category: nbs.source_category },
+            });
+          }
+        } catch (insertErr) {
+          console.error("Failed to persist next-best:", insertErr);
+        }
+      }
+
       return new Response(JSON.stringify({
         reminders: allReminders,
         next_best_suggestions: nextBestSuggestions,

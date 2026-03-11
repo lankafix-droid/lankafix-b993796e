@@ -170,7 +170,7 @@ export default function RemindersPage() {
       action: s.action,
       source_screen: "reminders_center",
     });
-    navigate(`/book/${s.category_code}`);
+    navigate(getCategoryBookingRoute(s.category_code));
   }, [navigate]);
 
   if (loading) {
