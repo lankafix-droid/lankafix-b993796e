@@ -145,9 +145,18 @@ serve(async (req) => {
     const configMap: Record<string, any> = {};
     (settingsRes.data || []).forEach((s: any) => { configMap[s.key] = s.value; });
 
-    const weights = configMap.dispatch_weights || {
-      proximity: 0.30, specialization: 0.20, rating: 0.15,
-      response_speed: 0.10, workload: 0.10, completion_rate: 0.10, emergency_priority: 0.05,
+    const rawWeights = configMap.dispatch_weights || {};
+    const weights = {
+      proximity: rawWeights.proximity ?? 0.30,
+      specialization: rawWeights.specialization ?? 0.20,
+      rating: rawWeights.rating ?? 0.15,
+      response_speed: rawWeights.response_speed ?? 0.10,
+      workload: rawWeights.workload ?? 0.10,
+      completion_rate: rawWeights.completion_rate ?? 0.10,
+      emergency_priority: rawWeights.emergency_priority ?? 0.05,
+      // Phase 5 — configurable via platform_settings.dispatch_weights
+      performance_signal: rawWeights.performance_signal ?? 0.03,
+      tier_signal: rawWeights.tier_signal ?? 0.02,
     };
     const modes = configMap.dispatch_modes || {};
     const limits = configMap.dispatch_limits || {
@@ -309,9 +318,9 @@ serve(async (req) => {
         new_partner_boost: Math.round(newPartnerBoostRaw * 0.04),
         vehicle_bonus: Math.round(vehicleBonusRaw * 0.02),
         zone_preference: Math.round(zonePreferenceRaw * 0.04),
-        // Phase 5: additive performance signals (small weights — max ~5 pts each)
-        performance_signal: Math.round(performanceSignalRaw * 0.05),  // max +5 pts
-        tier_signal: Math.round(tierValue * 0.04),                     // max +4 pts
+        // Phase 5: configurable additive signals (modest — max ~3pts + ~2pts)
+        performance_signal: Math.round(performanceSignalRaw * weights.performance_signal),
+        tier_signal: Math.round(tierValue * weights.tier_signal),
         total: 0,
       };
 
@@ -442,27 +451,46 @@ serve(async (req) => {
       accept_window_seconds: acceptWindowSec,
       candidates: resultCandidates.map((c) => ({
         partner_id: c.partner_id,
-        partner: c.partner,
+        partner: {
+          id: c.partner.id,
+          full_name: c.partner.full_name,
+          business_name: c.partner.business_name,
+          rating_average: c.partner.rating_average,
+          completed_jobs_count: c.partner.completed_jobs_count,
+          experience_years: c.partner.experience_years,
+          vehicle_type: c.partner.vehicle_type,
+          brand_specializations: c.partner.brand_specializations,
+          specializations: c.partner.specializations,
+          availability_status: c.partner.availability_status,
+          emergency_available: c.partner.emergency_available,
+          profile_photo_url: c.partner.profile_photo_url,
+        },
         distance_km: c.distance_km,
         eta_minutes: c.eta_minutes,
         eta_min: c.eta_min,
         eta_max: c.eta_max,
         traffic: c.traffic,
         traffic_label: c.traffic_label,
-        location_source: c.location_source,
-        score: c.score,
+        // score breakdown intentionally omitted from public response — ops-only via dispatch_log
       })),
       best_match: bestMatch ? {
         partner_id: bestMatch.partner_id,
-        partner: bestMatch.partner,
+        partner: {
+          id: bestMatch.partner.id,
+          full_name: bestMatch.partner.full_name,
+          business_name: bestMatch.partner.business_name,
+          rating_average: bestMatch.partner.rating_average,
+          completed_jobs_count: bestMatch.partner.completed_jobs_count,
+          experience_years: bestMatch.partner.experience_years,
+          vehicle_type: bestMatch.partner.vehicle_type,
+          profile_photo_url: bestMatch.partner.profile_photo_url,
+        },
         distance_km: bestMatch.distance_km,
         eta_minutes: bestMatch.eta_minutes,
         eta_min: bestMatch.eta_min,
         eta_max: bestMatch.eta_max,
         traffic: bestMatch.traffic,
         traffic_label: bestMatch.traffic_label,
-        location_source: bestMatch.location_source,
-        score: bestMatch.score,
       } : null,
       total_eligible: scored.length,
       dispatch_round,
