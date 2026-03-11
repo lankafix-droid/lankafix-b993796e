@@ -124,7 +124,7 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
       let q = supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
-        .eq("status", "in_progress");
+        .eq("status", "started" as any);
       if (filters.zone) q = q.eq("zone_code", filters.zone);
       if (filters.category) q = q.eq("category_code", filters.category);
       return q;
