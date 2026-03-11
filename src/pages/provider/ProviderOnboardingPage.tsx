@@ -110,15 +110,16 @@ export default function ProviderOnboardingPage() {
           // Prefill documents from DB
           const { data: docs } = await supabase
             .from("partner_documents")
-            .select("document_type, file_url, verification_status")
+            .select("document_type, file_url, verification_status, rejection_reason")
             .eq("partner_id", data.id);
-          if (docs && docs.length > 0 && store.profile.documents.length === 0) {
+          if (docs && docs.length > 0) {
             const mappedDocs = docs.map((d: any) => ({
               type: d.document_type as any,
-              fileName: `${d.document_type} (uploaded)`,
+              fileName: `${d.document_type.replace(/_/g, " ")} (uploaded)`,
               uploadedAt: new Date().toISOString(),
               fileUrl: d.file_url,
               verificationStatus: d.verification_status,
+              rejectionReason: d.rejection_reason,
             }));
             store.updateProfile({ documents: mappedDocs });
           }
