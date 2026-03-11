@@ -3,9 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
-import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase } from "lucide-react";
+import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-muted text-muted-foreground",
