@@ -39,7 +39,7 @@ import TechnicianLocationCard from "@/components/tracking/TechnicianLocationCard
 import { toast } from "sonner";
 import { statusToMascotState, TRUST_ICONS, getRefundEligibility, type MascotMessageKey } from "@/brand/trustSystem";
 import { generateDemoQuote } from "@/engines/quoteEngine";
-import { getZoneIntelligence } from "@/engines/matchingEngine";
+// Zone intelligence now returns conservative defaults — real data comes from useOnlinePartners
 import { track } from "@/lib/analytics";
 import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
