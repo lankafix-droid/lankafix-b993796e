@@ -54,7 +54,8 @@ export interface UploadedDocument {
   fileName: string;
   uploadedAt: string;
   fileUrl?: string; // Storage path (private bucket)
-  verificationStatus?: string; // From DB when resuming
+  verificationStatus?: string; // pending | verified | rejected
+  rejectionReason?: string; // Reason if rejected
 }
 
 export interface ProviderApplication {
