@@ -83,7 +83,42 @@ export default function PartnerJobsPage() {
       </div>
 
       <div className="p-4 space-y-3 max-w-2xl mx-auto">
-        {bookings.length === 0 && (
+        {/* Pending Offers */}
+        {pendingOffers.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-1">
+              <Bell className="w-4 h-4 text-primary" />
+              <h2 className="text-sm font-bold text-foreground">New Job Offers</h2>
+              <Badge className="bg-primary text-primary-foreground text-[10px]">{pendingOffers.length}</Badge>
+            </div>
+            {pendingOffers.map((offer: any) => {
+              const b = offer.bookings;
+              if (!b) return null;
+              return (
+                <div
+                  key={offer.id}
+                  className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/40 transition-colors"
+                  onClick={() => { track("partner_offer_open", { bookingId: b.id }); navigate(`/partner/job/${b.id}`); }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-primary" />
+                      <p className="text-sm font-semibold text-foreground">{b.category_code} — {b.service_type || "General"}</p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{b.zone_code || "No zone"}{b.is_emergency ? " · 🔴 Emergency" : ""}</span>
+                    {b.estimated_price_lkr && <span className="font-medium text-foreground">LKR {b.estimated_price_lkr.toLocaleString()}</span>}
+                  </div>
+                  <p className="text-[10px] text-primary font-medium">Tap to accept or decline</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {bookings.length === 0 && pendingOffers.length === 0 && (
           <div className="text-center py-16 space-y-3">
             <Briefcase className="w-10 h-10 text-muted-foreground mx-auto" />
             <p className="text-sm text-muted-foreground">No jobs yet</p>
