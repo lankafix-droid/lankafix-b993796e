@@ -235,11 +235,11 @@ export default function DispatchBoardPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
-          {(["escalated", "active", "partners"] as const).map((tab) => (
+          {(["escalated", "active", "partners", "availability"] as const).map((tab) => (
             <Button key={tab} size="sm" className="flex-1 text-xs h-8"
               variant={activeTab === tab ? "default" : "ghost"}
               onClick={() => setActiveTab(tab)}>
-              {tab === "escalated" ? `Escalated (${escalatedBookings.length})` : tab === "active" ? "Active" : "Partners"}
+              {tab === "escalated" ? `Escalated (${escalatedBookings.length})` : tab === "active" ? "Active" : tab === "availability" ? "📍 Map" : "Partners"}
             </Button>
           ))}
         </div>
