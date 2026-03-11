@@ -1299,6 +1299,7 @@ export type Database = {
           provider_type: string | null
           quote_approval_rate: number | null
           rating_average: number | null
+          reliability_tier: string
           service_types_supported: string[] | null
           service_zones: string[] | null
           specializations: string[] | null
@@ -1345,6 +1346,7 @@ export type Database = {
           provider_type?: string | null
           quote_approval_rate?: number | null
           rating_average?: number | null
+          reliability_tier?: string
           service_types_supported?: string[] | null
           service_zones?: string[] | null
           specializations?: string[] | null
@@ -1391,6 +1393,7 @@ export type Database = {
           provider_type?: string | null
           quote_approval_rate?: number | null
           rating_average?: number | null
+          reliability_tier?: string
           service_types_supported?: string[] | null
           service_zones?: string[] | null
           specializations?: string[] | null
