@@ -50,6 +50,7 @@ export default function ControlTowerPage() {
   const [forecastHorizon, setForecastHorizon] = useState<ForecastHorizon>("30d");
   const scenarios = generateMockScenarios("AC");
   const filteredForecasts = forecasts.filter((f) => f.horizon === forecastHorizon);
+  const { data: metrics } = useOpsMetrics();
 
   return (
     <div className="min-h-screen bg-background">
