@@ -214,6 +214,7 @@ const AccountPage = () => {
               <div className="bg-card rounded-2xl border border-border/60 divide-y divide-border/40 overflow-hidden shadow-[var(--shadow-card)]">
                 <MenuRow icon={Heart} label="My Devices" desc="Device passports & health scores" to="/devices" />
                 <MenuRow icon={ShieldCheck} label="Care Plans" desc="Active protection & maintenance" to="/care" />
+                <MenuRow icon={Clock} label="Reminders" desc="Service care & upcoming actions" to="/reminders" />
               </div>
             </div>
           </StaggerItem>
