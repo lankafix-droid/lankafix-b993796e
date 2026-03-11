@@ -21,6 +21,7 @@ export interface PartnerRow {
   base_longitude: number | null;
   current_latitude: number | null;
   current_longitude: number | null;
+  current_job_count: number | null;
   service_zones: string[];
   availability_status: "online" | "offline" | "busy";
   emergency_available: boolean;

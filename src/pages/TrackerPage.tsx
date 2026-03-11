@@ -39,7 +39,7 @@ import TechnicianLocationCard from "@/components/tracking/TechnicianLocationCard
 import { toast } from "sonner";
 import { statusToMascotState, TRUST_ICONS, getRefundEligibility, type MascotMessageKey } from "@/brand/trustSystem";
 import { generateDemoQuote } from "@/engines/quoteEngine";
-import { getZoneIntelligence } from "@/engines/matchingEngine";
+// Zone intelligence now returns conservative defaults — real data comes from useOnlinePartners
 import { track } from "@/lib/analytics";
 import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
@@ -322,7 +322,7 @@ const TrackerPage = () => {
   const mascotKey = getMascotKey(booking.status, !!booking.sos?.active);
   const isMatching = booking.status === "matching" || booking.status === "awaiting_partner_confirmation";
   const isAssigned = booking.technician && !isMatching;
-  const zoneIntel = getZoneIntelligence(booking.zone);
+  const zoneIntel = { techsNearby: 0, avgResponseMinutes: 30 }; // Real counts come from DB-backed components
 
   // Handlers
   const handleCancel = () => { if (!cancelReason) return; cancelBooking(booking.jobId, cancelReason); setShowCancel(false); toast.success("Booking cancelled"); };
