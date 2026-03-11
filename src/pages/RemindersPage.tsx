@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
+import { track } from "@/lib/analytics";
 import {
   Bell, CalendarClock, ArrowLeft, Loader2, RefreshCw, Wrench, FileText,
   Shield, Sparkles, RotateCcw, ChevronRight, Clock, AlertTriangle,
@@ -33,6 +33,7 @@ interface NextBest {
   message: string;
   action: string;
   source_category: string;
+  source_booking_id?: string;
 }
 
 interface QuickRebook {
@@ -57,18 +58,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   SOLAR: "Solar Solutions", CONSUMER_ELEC: "Electronics", SMART_HOME_OFFICE: "Smart Home",
   COPIER: "Copier/Printer", ELECTRICAL: "Electrical", PLUMBING: "Plumbing",
   NETWORK: "Network", HOME_SECURITY: "Home Security", POWER_BACKUP: "Power Backup",
+  APPLIANCE_INSTALL: "Appliance Install", PRINT_SUPPLIES: "Print Supplies",
   DEVICE: "Device", UNKNOWN: "Service",
 };
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   maintenance: Wrench, quote_expiry: FileText, quote_followup: FileText,
   warranty_expiry: Shield, next_best_service: Sparkles,
-};
-
-const priorityStyles: Record<string, string> = {
-  urgent: "bg-destructive/10 border-destructive/20 text-destructive",
-  high: "bg-warning/10 border-warning/20 text-warning",
-  normal: "bg-primary/10 border-primary/20 text-primary",
 };
 
 export default function RemindersPage() {
@@ -85,13 +81,9 @@ export default function RemindersPage() {
       const userId = session?.session?.user?.id;
 
       if (!userId) {
-        // Show empty state for unauthenticated users
         setData({
-          reminders: [],
-          next_best_suggestions: [],
-          quick_rebook: [],
-          churn_risk: { score: 0, level: "low" },
-          rebook_likelihood: 0,
+          reminders: [], next_best_suggestions: [], quick_rebook: [],
+          churn_risk: { score: 0, level: "low" }, rebook_likelihood: 0,
           stats: { total_bookings: 0, completed_bookings: 0, pending_quotes: 0, active_warranties: 0 },
         });
         return;
@@ -101,7 +93,16 @@ export default function RemindersPage() {
         body: { mode: "customer", customer_id: userId },
       });
       if (err) throw new Error(err.message);
-      setData(res as RetentionData);
+      const result = res as RetentionData;
+      setData(result);
+
+      // Track page view with reminder count
+      track("reminder_viewed", {
+        source_screen: "reminders_center",
+        reminder_count: result.reminders.length,
+        quick_rebook_count: result.quick_rebook.length,
+        next_best_count: result.next_best_suggestions.length,
+      });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load reminders");
     } finally {
@@ -110,6 +111,50 @@ export default function RemindersPage() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const handleReminderClick = useCallback((r: Reminder) => {
+    track("reminder_clicked", {
+      reminder_type: r.type,
+      category_code: r.category_code,
+      linked_booking_id: r.linked_booking_id,
+      linked_quote_id: r.linked_quote_id,
+      source_screen: "reminders_center",
+    });
+
+    if (r.type === "quote_expiry" || r.type === "quote_followup") {
+      track(r.type === "quote_expiry" ? "quote_followup_sent" : "quote_recovered", {
+        category_code: r.category_code,
+        linked_quote_id: r.linked_quote_id,
+      });
+    }
+    if (r.type === "warranty_expiry") {
+      track("renewal_reminder_sent", { category_code: r.category_code });
+    }
+
+    if (r.linked_quote_id) navigate(`/quote/${r.linked_booking_id}`);
+    else if (r.category_code && r.category_code !== "DEVICE" && r.category_code !== "UNKNOWN")
+      navigate(`/book/${r.category_code}`);
+  }, [navigate]);
+
+  const handleQuickRebook = useCallback((rb: QuickRebook) => {
+    track("quick_rebook_used", {
+      category_code: rb.category_code,
+      linked_booking_id: rb.booking_id,
+      source_screen: "reminders_center",
+      days_since_last: rb.days_ago,
+    });
+    navigate(`/book/${rb.category_code}`);
+  }, [navigate]);
+
+  const handleNextBestClick = useCallback((s: NextBest) => {
+    track("next_best_service_clicked", {
+      category_code: s.category_code,
+      source_category: s.source_category,
+      action: s.action,
+      source_screen: "reminders_center",
+    });
+    navigate(`/book/${s.category_code}`);
+  }, [navigate]);
 
   if (loading) {
     return (
@@ -160,7 +205,6 @@ export default function RemindersPage() {
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
         {!hasContent ? (
-          /* ─── Empty state ─── */
           <Card>
             <CardContent className="py-12 text-center">
               <div className="w-16 h-16 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mx-auto mb-5">
@@ -188,7 +232,7 @@ export default function RemindersPage() {
                 {urgentReminders.map((r, i) => {
                   const Icon = CATEGORY_ICONS[r.type] || Bell;
                   return (
-                    <Card key={i} className="border-destructive/20 bg-destructive/5">
+                    <Card key={`urgent-${r.type}-${r.category_code}-${i}`} className="border-destructive/20 bg-destructive/5">
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
                           <div className="p-2 rounded-lg bg-destructive/10">
@@ -216,11 +260,7 @@ export default function RemindersPage() {
                             <Button
                               size="sm"
                               className="mt-3 h-8 text-xs bg-primary text-primary-foreground"
-                              onClick={() => {
-                                if (r.linked_quote_id) navigate(`/quote/${r.linked_booking_id}`);
-                                else if (r.category_code && r.category_code !== "DEVICE" && r.category_code !== "UNKNOWN")
-                                  navigate(`/book/${r.category_code}`);
-                              }}
+                              onClick={() => handleReminderClick(r)}
                             >
                               {r.type === "quote_expiry" ? "Review Quote" : r.type === "warranty_expiry" ? "Book Checkup" : "Book Now"}
                               <ChevronRight className="w-3 h-3" />
@@ -244,7 +284,7 @@ export default function RemindersPage() {
                 {upcomingReminders.map((r, i) => {
                   const Icon = CATEGORY_ICONS[r.type] || Bell;
                   return (
-                    <Card key={i}>
+                    <Card key={`upcoming-${r.type}-${r.category_code}-${i}`}>
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
                           <div className="p-2 rounded-lg bg-primary/10">
@@ -270,11 +310,7 @@ export default function RemindersPage() {
                               variant="outline"
                               size="sm"
                               className="mt-2.5 h-7 text-[10px]"
-                              onClick={() => {
-                                if (r.linked_quote_id) navigate(`/quote/${r.linked_booking_id}`);
-                                else if (r.category_code && r.category_code !== "DEVICE" && r.category_code !== "UNKNOWN")
-                                  navigate(`/book/${r.category_code}`);
-                              }}
+                              onClick={() => handleReminderClick(r)}
                             >
                               {r.type === "quote_followup" ? "Request Revision" : "Schedule Service"}
                               <ChevronRight className="w-3 h-3" />
@@ -298,7 +334,7 @@ export default function RemindersPage() {
                 <Card>
                   <CardContent className="p-3 space-y-2">
                     {d.quick_rebook.slice(0, 3).map((rb, i) => (
-                      <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30">
+                      <div key={`rebook-${rb.booking_id}-${i}`} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30">
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium text-foreground">
                             {CATEGORY_LABELS[rb.category_code] || rb.category_code}
@@ -311,7 +347,7 @@ export default function RemindersPage() {
                           variant="outline"
                           size="sm"
                           className="h-7 text-[10px] gap-1"
-                          onClick={() => navigate(`/book/${rb.category_code}`)}
+                          onClick={() => handleQuickRebook(rb)}
                         >
                           Rebook <ChevronRight className="w-2.5 h-2.5" />
                         </Button>
@@ -330,7 +366,7 @@ export default function RemindersPage() {
                   <span className="text-sm font-bold text-foreground">Recommended for You</span>
                 </div>
                 {d.next_best_suggestions.map((s, i) => (
-                  <Card key={i} className="border-primary/15 bg-primary/[0.02]">
+                  <Card key={`nbs-${s.category_code}-${i}`} className="border-primary/15 bg-primary/[0.02]">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className="p-2 rounded-lg bg-primary/10">
@@ -342,7 +378,7 @@ export default function RemindersPage() {
                           <Button
                             size="sm"
                             className="mt-2.5 h-7 text-[10px] bg-primary text-primary-foreground gap-1"
-                            onClick={() => navigate(`/book/${s.category_code}`)}
+                            onClick={() => handleNextBestClick(s)}
                           >
                             Learn More <ChevronRight className="w-2.5 h-2.5" />
                           </Button>
