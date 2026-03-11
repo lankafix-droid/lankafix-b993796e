@@ -68,6 +68,34 @@ serve(async (req) => {
       }
     }
 
+    // Benchmark from real approved quotes (ops context only)
+    let benchmark = null;
+    if (category_code) {
+      const { data: approvedQuotes } = await supabase
+        .from("quotes")
+        .select("total_lkr, booking_id")
+        .eq("status", "approved")
+        .not("total_lkr", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (approvedQuotes && approvedQuotes.length > 0) {
+        const bookingIds = [...new Set(approvedQuotes.map((q: any) => q.booking_id))];
+        const { data: bookings } = await supabase
+          .from("bookings")
+          .select("id, category_code")
+          .in("id", bookingIds.slice(0, 200));
+
+        const catBookings = new Set((bookings || []).filter((b: any) => b.category_code === category_code).map((b: any) => b.id));
+        const totals = approvedQuotes.filter((q: any) => catBookings.has(q.booking_id)).map((q: any) => q.total_lkr as number);
+
+        if (totals.length >= 5) {
+          const avg = Math.round(totals.reduce((a: number, b: number) => a + b, 0) / totals.length);
+          benchmark = { average_lkr: avg, sample_size: totals.length };
+        }
+      }
+    }
+
     // Log price intelligence data for learning
     if (quote_id) {
       await supabase.from("job_timeline").insert({
@@ -76,24 +104,20 @@ serve(async (req) => {
         actor: "system",
         note: `${level}: ${message}`,
         metadata: {
-          quote_id,
-          total_lkr,
-          service_key,
-          category_code,
-          market_min: range?.min,
-          market_max: range?.max,
-          validation_level: level,
-          explanation: explanation || null,
+          quote_id, total_lkr, service_key, category_code,
+          market_min: range?.min, market_max: range?.max,
+          validation_level: level, explanation: explanation || null,
+          benchmark,
         },
       });
     }
 
     return new Response(
       JSON.stringify({
-        level,
-        message,
+        level, message,
         market_range: range || null,
         accepted: level !== "requires_explanation" && level !== "rejected",
+        benchmark,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
