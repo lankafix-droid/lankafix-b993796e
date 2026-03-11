@@ -796,6 +796,75 @@ export type Database = {
           },
         ]
       }
+      match_logs: {
+        Row: {
+          auto_assigned: boolean | null
+          booking_id: string | null
+          category_code: string
+          created_at: string
+          customer_zone: string | null
+          id: string
+          is_emergency: boolean | null
+          match_duration_ms: number | null
+          no_match_found: boolean | null
+          ranked_technicians: Json | null
+          selected_technician_id: string | null
+          service_type: string | null
+          top_match_reason: string | null
+          top_match_score: number | null
+          total_candidates: number | null
+        }
+        Insert: {
+          auto_assigned?: boolean | null
+          booking_id?: string | null
+          category_code: string
+          created_at?: string
+          customer_zone?: string | null
+          id?: string
+          is_emergency?: boolean | null
+          match_duration_ms?: number | null
+          no_match_found?: boolean | null
+          ranked_technicians?: Json | null
+          selected_technician_id?: string | null
+          service_type?: string | null
+          top_match_reason?: string | null
+          top_match_score?: number | null
+          total_candidates?: number | null
+        }
+        Update: {
+          auto_assigned?: boolean | null
+          booking_id?: string | null
+          category_code?: string
+          created_at?: string
+          customer_zone?: string | null
+          id?: string
+          is_emergency?: boolean | null
+          match_duration_ms?: number | null
+          no_match_found?: boolean | null
+          ranked_technicians?: Json | null
+          selected_technician_id?: string | null
+          service_type?: string | null
+          top_match_reason?: string | null
+          top_match_score?: number | null
+          total_candidates?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_logs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_logs_selected_technician_id_fkey"
+            columns: ["selected_technician_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_documents: {
         Row: {
           created_at: string
@@ -1011,16 +1080,21 @@ export type Database = {
           current_longitude: number | null
           emergency_available: boolean | null
           experience_years: number | null
+          express_capable: boolean | null
           full_name: string
           id: string
+          inspection_capable: boolean | null
           last_location_ping_at: string | null
           late_arrival_count: number | null
           max_concurrent_jobs: number | null
           max_jobs_per_day: number | null
+          on_time_rate: number | null
           performance_score: number | null
           phone_number: string
           profile_photo_url: string | null
+          quote_approval_rate: number | null
           rating_average: number | null
+          service_types_supported: string[] | null
           service_zones: string[] | null
           specializations: string[] | null
           strike_count: number | null
@@ -1047,16 +1121,21 @@ export type Database = {
           current_longitude?: number | null
           emergency_available?: boolean | null
           experience_years?: number | null
+          express_capable?: boolean | null
           full_name: string
           id?: string
+          inspection_capable?: boolean | null
           last_location_ping_at?: string | null
           late_arrival_count?: number | null
           max_concurrent_jobs?: number | null
           max_jobs_per_day?: number | null
+          on_time_rate?: number | null
           performance_score?: number | null
           phone_number: string
           profile_photo_url?: string | null
+          quote_approval_rate?: number | null
           rating_average?: number | null
+          service_types_supported?: string[] | null
           service_zones?: string[] | null
           specializations?: string[] | null
           strike_count?: number | null
@@ -1083,16 +1162,21 @@ export type Database = {
           current_longitude?: number | null
           emergency_available?: boolean | null
           experience_years?: number | null
+          express_capable?: boolean | null
           full_name?: string
           id?: string
+          inspection_capable?: boolean | null
           last_location_ping_at?: string | null
           late_arrival_count?: number | null
           max_concurrent_jobs?: number | null
           max_jobs_per_day?: number | null
+          on_time_rate?: number | null
           performance_score?: number | null
           phone_number?: string
           profile_photo_url?: string | null
+          quote_approval_rate?: number | null
           rating_average?: number | null
+          service_types_supported?: string[] | null
           service_zones?: string[] | null
           specializations?: string[] | null
           strike_count?: number | null
