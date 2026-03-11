@@ -29,7 +29,6 @@ export interface PartnerRow {
   strike_count: number;
   average_response_time_minutes: number;
   vehicle_type: string;
-  profile_photo_url: string | null;
 }
 
 /** Fetch all verified, online/busy partners */
