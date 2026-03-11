@@ -787,8 +787,9 @@ export default function ProviderReadinessPage() {
 
         {/* ═══ Tabs ═══ */}
         <Tabs defaultValue="modules" className="space-y-4">
-          <TabsList className="w-full grid grid-cols-5 h-auto">
+          <TabsList className="w-full grid grid-cols-6 h-auto">
             <TabsTrigger value="modules" className="text-[10px] py-2">Modules</TabsTrigger>
+            <TabsTrigger value="tiers" className="text-[10px] py-2">Tiers</TabsTrigger>
             <TabsTrigger value="sections" className="text-[10px] py-2">Audit</TabsTrigger>
             <TabsTrigger value="zones" className="text-[10px] py-2">Zones</TabsTrigger>
             <TabsTrigger value="categories" className="text-[10px] py-2">Categories</TabsTrigger>
