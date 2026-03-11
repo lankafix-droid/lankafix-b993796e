@@ -207,6 +207,7 @@ const App = () => (
         </Suspense>
         {/* Mobile bottom navigation */}
         <MobileBottomNav />
+        </TermsGuard>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
