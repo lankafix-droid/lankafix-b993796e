@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, Router, ArrowRight, Sparkles, Plus, AlertTriangle, Zap, Droplets, BatteryCharging } from "lucide-react";
+import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, ArrowRight, Sparkles, Plus, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
