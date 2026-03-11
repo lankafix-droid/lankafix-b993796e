@@ -1,0 +1,1 @@
+ALTER TABLE public.partners ADD COLUMN IF NOT EXISTS reliability_tier text NOT NULL DEFAULT 'verified';

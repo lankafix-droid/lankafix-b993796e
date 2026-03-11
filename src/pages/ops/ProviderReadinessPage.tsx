@@ -787,8 +787,9 @@ export default function ProviderReadinessPage() {
 
         {/* ═══ Tabs ═══ */}
         <Tabs defaultValue="modules" className="space-y-4">
-          <TabsList className="w-full grid grid-cols-5 h-auto">
+          <TabsList className="w-full grid grid-cols-6 h-auto">
             <TabsTrigger value="modules" className="text-[10px] py-2">Modules</TabsTrigger>
+            <TabsTrigger value="tiers" className="text-[10px] py-2">Tiers</TabsTrigger>
             <TabsTrigger value="sections" className="text-[10px] py-2">Audit</TabsTrigger>
             <TabsTrigger value="zones" className="text-[10px] py-2">Zones</TabsTrigger>
             <TabsTrigger value="categories" className="text-[10px] py-2">Categories</TabsTrigger>
@@ -837,6 +838,121 @@ export default function ProviderReadinessPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ═══ Partner Tiers Tab ═══ */}
+          <TabsContent value="tiers" className="space-y-4">
+            {(() => {
+              const tierGroups: Record<string, typeof partners> = { elite: [], pro: [], verified: [], under_review: [] };
+              partners.forEach(p => {
+                const t = p.reliability_tier || "verified";
+                if (tierGroups[t]) tierGroups[t].push(p);
+                else tierGroups.verified.push(p);
+              });
+              const tierMeta: Record<string, { label: string; color: string; bg: string; desc: string }> = {
+                elite: { label: "Elite", color: "text-amber-700", bg: "bg-amber-50 border-amber-200", desc: "Top performer — high ratings, reliability, and volume" },
+                pro: { label: "Pro", color: "text-sky-700", bg: "bg-sky-50 border-sky-200", desc: "Reliable partner with strong track record" },
+                verified: { label: "Verified", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", desc: "Standard verified partner" },
+                under_review: { label: "Under Review", color: "text-red-700", bg: "bg-red-50 border-red-200", desc: "Flagged for quality concerns" },
+              };
+
+              return (
+                <>
+                  {/* Tier distribution summary */}
+                  <div className="grid grid-cols-4 gap-3">
+                    {(["elite", "pro", "verified", "under_review"] as const).map(t => (
+                      <Card key={t} className={tierMeta[t].bg}>
+                        <CardContent className="p-4 text-center">
+                          <p className={`text-2xl font-bold ${tierMeta[t].color}`}>{tierGroups[t].length}</p>
+                          <p className={`text-xs ${tierMeta[t].color}`}>{tierMeta[t].label}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  {/* Partner tier table */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Award className="w-4 h-4" /> Partner Reliability Tiers
+                      </CardTitle>
+                      <CardDescription className="text-xs">Internal tiers computed from performance score, rating, jobs, cancellation rate, and strikes</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="text-[10px]">Partner</TableHead>
+                              <TableHead className="text-[10px]">Tier</TableHead>
+                              <TableHead className="text-[10px] text-center">Score</TableHead>
+                              <TableHead className="text-[10px] text-center">Rating</TableHead>
+                              <TableHead className="text-[10px] text-center">Jobs</TableHead>
+                              <TableHead className="text-[10px] text-center">Cancel %</TableHead>
+                              <TableHead className="text-[10px] text-center">On-Time %</TableHead>
+                              <TableHead className="text-[10px] text-center">Strikes</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {[...partners]
+                              .filter(p => p.verification_status === "verified")
+                              .sort((a, b) => (b.performance_score || 0) - (a.performance_score || 0))
+                              .map(p => {
+                                const tier = p.reliability_tier || "verified";
+                                const meta = tierMeta[tier] || tierMeta.verified;
+                                return (
+                                  <TableRow key={p.id} className={tier === "under_review" ? "bg-red-50/50" : tier === "elite" ? "bg-amber-50/30" : ""}>
+                                    <TableCell className="text-xs font-medium">{p.full_name}{p.business_name ? ` (${p.business_name})` : ""}</TableCell>
+                                    <TableCell>
+                                      <Badge className={`border text-[10px] ${
+                                        tier === "elite" ? "bg-amber-500/15 text-amber-700 border-amber-500/30" :
+                                        tier === "pro" ? "bg-sky-500/15 text-sky-700 border-sky-500/30" :
+                                        tier === "under_review" ? "bg-red-500/15 text-red-700 border-red-500/30" :
+                                        "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+                                      }`}>
+                                        {meta.label}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-center font-mono">{p.performance_score ?? "—"}</TableCell>
+                                    <TableCell className="text-xs text-center">{p.rating_average ? Number(p.rating_average).toFixed(1) : "—"}</TableCell>
+                                    <TableCell className="text-xs text-center">{p.completed_jobs_count ?? 0}</TableCell>
+                                    <TableCell className="text-xs text-center">{p.cancellation_rate ?? 0}%</TableCell>
+                                    <TableCell className="text-xs text-center">{p.on_time_rate ?? "—"}%</TableCell>
+                                    <TableCell className="text-xs text-center">{p.strike_count ?? 0}</TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      {verified.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-6">No verified partners found</p>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Tier criteria reference */}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2"><Info className="w-4 h-4" /> Tier Criteria (Internal)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {([
+                        { tier: "Elite", criteria: "Score ≥ 80, Rating ≥ 4.5, Jobs ≥ 20, Cancel ≤ 5%, On-time ≥ 90%, 0 strikes" },
+                        { tier: "Pro", criteria: "Score ≥ 60, Rating ≥ 3.8, Jobs ≥ 8, Cancel ≤ 15%, ≤ 1 strike" },
+                        { tier: "Verified", criteria: "Default tier for all verified partners" },
+                        { tier: "Under Review", criteria: "Score ≤ 35 (10+ jobs), Rating ≤ 3.0 (10+ jobs), Cancel ≥ 25% (5+ jobs), or 3+ strikes" },
+                      ]).map((t, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs p-2 bg-muted/50 rounded-lg">
+                          <span className="font-semibold w-24 shrink-0">{t.tier}</span>
+                          <span className="text-muted-foreground">{t.criteria}</span>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
           </TabsContent>
 
           {/* ═══ Audit Sections Tab ═══ */}

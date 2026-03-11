@@ -8,15 +8,36 @@ const corsHeaders = {
 };
 
 /**
- * compute-performance-scores: Batch computes partner performance scores.
- * Score = weighted combination of:
- *   - Rating (25%)
- *   - Completion rate (20%)
- *   - Response time (15%)
- *   - Quote approval rate (15%)
- *   - On-time rate (15%)
- *   - Repeat customer rate (10%)
- * 
+ * Tier thresholds — mirrors src/engines/partnerTieringEngine.ts
+ * Kept in sync manually; single source of truth is the engine file.
+ */
+function computeTier(p: {
+  performance_score: number;
+  rating_average: number;
+  completed_jobs_count: number;
+  cancellation_rate: number;
+  strike_count: number;
+  on_time_rate: number;
+}): string {
+  const { performance_score: score, rating_average: rating, completed_jobs_count: jobs, cancellation_rate: cancelRate, strike_count: strikes, on_time_rate: onTime } = p;
+
+  // Under Review
+  if (strikes >= 3) return "under_review";
+  if (cancelRate >= 25 && jobs >= 5) return "under_review";
+  if (score > 0 && score <= 35 && jobs >= 10) return "under_review";
+  if (rating > 0 && rating <= 3.0 && jobs >= 10) return "under_review";
+
+  // Elite
+  if (score >= 80 && rating >= 4.5 && jobs >= 20 && cancelRate <= 5 && strikes <= 0 && onTime >= 90) return "elite";
+
+  // Pro
+  if (score >= 60 && rating >= 3.8 && jobs >= 8 && cancelRate <= 15 && strikes <= 1) return "pro";
+
+  return "verified";
+}
+
+/**
+ * compute-performance-scores: Batch computes partner performance scores AND reliability tiers.
  * Run daily via pg_cron or on-demand.
  */
 serve(async (req) => {
@@ -28,7 +49,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Fetch all verified partners
     const { data: partners, error: partnerErr } = await supabase
       .from("partners")
       .select("id, rating_average, completed_jobs_count, cancellation_rate, acceptance_rate, on_time_rate, quote_approval_rate, average_response_time_minutes, strike_count")
@@ -41,7 +61,6 @@ serve(async (req) => {
       });
     }
 
-    // Get repeat customer counts per partner (from service_relationships)
     const { data: repeatData } = await supabase
       .from("service_relationships")
       .select("partner_id, total_bookings")
@@ -53,12 +72,13 @@ serve(async (req) => {
     });
 
     let updated = 0;
+    const tierCounts: Record<string, number> = { elite: 0, pro: 0, verified: 0, under_review: 0 };
 
     for (const p of partners) {
-      // Rating score (0-100): normalized from 0-5 scale
+      // Rating score (0-100)
       const ratingScore = Math.min(((p.rating_average || 0) / 5) * 100, 100);
 
-      // Completion rate score: inverse of cancellation
+      // Completion rate score
       const cancelRate = p.cancellation_rate || 0;
       const completionScore = Math.max(0, 100 - cancelRate * 2.5);
 
@@ -90,13 +110,23 @@ serve(async (req) => {
       // Penalties
       const strikes = p.strike_count || 0;
       if (strikes > 0) score = Math.max(0, score - strikes * 5);
-
-      // Clamp 0-100
       score = Math.max(0, Math.min(100, score));
+
+      // Compute tier
+      const tier = computeTier({
+        performance_score: score,
+        rating_average: p.rating_average || 0,
+        completed_jobs_count: totalJobs,
+        cancellation_rate: cancelRate,
+        strike_count: strikes,
+        on_time_rate: p.on_time_rate || 95,
+      });
+
+      tierCounts[tier] = (tierCounts[tier] || 0) + 1;
 
       const { error: updateErr } = await supabase
         .from("partners")
-        .update({ performance_score: score })
+        .update({ performance_score: score, reliability_tier: tier })
         .eq("id", p.id);
 
       if (!updateErr) updated++;
@@ -106,6 +136,7 @@ serve(async (req) => {
       success: true,
       updated,
       total_partners: partners.length,
+      tier_distribution: tierCounts,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
