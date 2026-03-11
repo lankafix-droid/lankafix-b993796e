@@ -42,14 +42,58 @@ function isQuestionVisible(
   return true;
 }
 
+const CATEGORY_DEVICE_MAP: Record<string, string[]> = {
+  AC: ["AC"],
+  MOBILE: ["MOBILE"],
+  IT: ["IT"],
+  CCTV: ["CCTV"],
+  SOLAR: ["SOLAR"],
+  CONSUMER_ELEC: ["CONSUMER_ELEC"],
+  SMART_HOME_OFFICE: ["SMART_HOME_OFFICE"],
+  COPIER: ["COPIER"],
+  NETWORK: ["NETWORK", "ROUTER"],
+  HOME_SECURITY: ["HOME_SECURITY"],
+  POWER_BACKUP: ["POWER_BACKUP"],
+  APPLIANCE_INSTALL: ["APPLIANCE_INSTALL"],
+  ELECTRICAL: ["ELECTRICAL"],
+  PLUMBING: ["PLUMBING"],
+};
+
 const V2DeviceDetails = ({
   questions, answers, onUpdate, onContinue,
   photoHint, dataDisclaimer, dataRiskAccepted, onDataRiskAccept,
-  activeServiceTypeId,
+  activeServiceTypeId, categoryCode,
 }: Props) => {
+  const { user } = useAuth();
+  const passports = useDevicePassportStore((s) => s.passports);
+
+  const relevantDevices = useMemo(() => {
+    if (!user || !categoryCode) return [];
+    const cats = CATEGORY_DEVICE_MAP[categoryCode] || [categoryCode];
+    return passports.filter((p) => cats.includes(p.deviceCategory));
+  }, [user, categoryCode, passports]);
+
   const setAnswer = (key: string, value: string | boolean) => {
     onUpdate({ ...answers, [key]: value });
   };
+
+  const handleDeviceSelect = (deviceId: string) => {
+    const device = passports.find((p) => p.devicePassportId === deviceId);
+    if (!device) return;
+    const prefill: Record<string, string | boolean> = { ...answers };
+    // Map common device fields to question keys
+    if (device.brand) prefill["brand"] = device.brand;
+    if (device.model) prefill["model"] = device.model;
+    if (device.serialNumber) prefill["serial_number"] = device.serialNumber;
+    if (device.deviceNickname) prefill["device_nickname"] = device.deviceNickname;
+    // Also try common alternate key names
+    if (device.brand) prefill["device_brand"] = device.brand;
+    if (device.model) prefill["device_model"] = device.model;
+    prefill["__selected_device_id"] = deviceId;
+    onUpdate(prefill);
+  };
+
+  const selectedDeviceId = answers["__selected_device_id"] as string | undefined;
 
   const visibleQuestions = useMemo(() =>
     questions.filter(q => isQuestionVisible(q, activeServiceTypeId, answers)),
@@ -70,6 +114,39 @@ const V2DeviceDetails = ({
     <div className="space-y-5">
       <h2 className="text-xl font-bold text-foreground">Device / System Details</h2>
       <p className="text-sm text-muted-foreground">Help us prepare the right tools and parts</p>
+
+      {/* Saved device picker */}
+      {relevantDevices.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Your saved devices</p>
+          <div className="flex flex-col gap-2">
+            {relevantDevices.map((d) => {
+              const isSelected = selectedDeviceId === d.devicePassportId;
+              return (
+                <button
+                  key={d.devicePassportId}
+                  onClick={() => handleDeviceSelect(d.devicePassportId)}
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all active:scale-[0.98] ${
+                    isSelected
+                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                      : "border-border/60 bg-card hover:border-primary/30"
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? "bg-primary/10" : "bg-muted/50"}`}>
+                    <Smartphone className={`w-4 h-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{d.deviceNickname}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{d.brand} {d.model}</p>
+                  </div>
+                  {isSelected && <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground">Or enter details manually below</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         {visibleQuestions.map((q) => (
