@@ -155,7 +155,7 @@ export default function DispatchBoardPage() {
   const { data: partners = [] } = useVerifiedPartners();
   const { data: escalations = [] } = useDispatchEscalations();
 
-  const [activeTab, setActiveTab] = useState<"escalated" | "active" | "partners">("escalated");
+  const [activeTab, setActiveTab] = useState<"escalated" | "active" | "partners" | "availability">("escalated");
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>("");
 
