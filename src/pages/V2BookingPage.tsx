@@ -303,6 +303,8 @@ const V2BookingPage = () => {
                   archetype={activePricingArchetype}
                   explanation={flow.pricingExplanation}
                   onContinue={goNext}
+                  categoryCode={flow.code}
+                  serviceType={booking.serviceTypeId || undefined}
                 />
               )}
               {currentStepName === "part_grade" && (
