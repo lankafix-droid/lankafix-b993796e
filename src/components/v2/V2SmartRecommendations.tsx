@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, Router, ArrowRight, Sparkles, Plus, AlertTriangle, Zap, Droplets, BatteryCharging } from "lucide-react";
+import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, ArrowRight, Sparkles, Plus, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
@@ -131,50 +131,39 @@ const V2SmartRecommendations = () => {
     });
   }
 
-  // 6. Non-device category recommendations (helpful fallbacks)
+  // Non-device category recommendations — only operational categories
   const nonDeviceRecs: Recommendation[] = [
     {
-      id: "electrical-check",
-      icon: <Zap className="w-5 h-5" />,
-      title: "Power trips during heavy usage?",
-      description: "An electrical inspection can prevent bigger failures. Common in older Sri Lankan homes during peak appliance use.",
-      action: "Book Inspection",
-      link: "/book/ELECTRICAL",
+      id: "cctv-inspect-general",
+      icon: <Camera className="w-5 h-5" />,
+      title: "Secure your home or office with CCTV",
+      description: "Professional CCTV installation with verified technicians. Site inspection included.",
+      action: "Book CCTV",
+      link: "/book/CCTV",
       gradient: "from-warning/15 to-warning/5",
       iconColor: "text-warning",
       priority: "helpful",
     },
     {
-      id: "plumbing-check",
-      icon: <Droplets className="w-5 h-5" />,
-      title: "Low water pressure or leaking taps?",
-      description: "A plumbing check can prevent bigger issues. Small leaks waste water and increase bills over time.",
-      action: "Book Inspection",
-      link: "/book/PLUMBING",
+      id: "mobile-repair",
+      icon: <Wrench className="w-5 h-5" />,
+      title: "Phone issues? Get same-day repair",
+      description: "Screen replacement, battery swap, or software fix. Verified mobile repair technicians.",
+      action: "Book Repair",
+      link: "/book/MOBILE",
       gradient: "from-primary/15 to-primary/5",
       iconColor: "text-primary",
       priority: "helpful",
     },
     {
-      id: "wifi-audit",
-      icon: <Router className="w-5 h-5" />,
-      title: "WiFi weak in some rooms?",
-      description: "A quick network audit can improve coverage across your home or office. Common in multi-story buildings.",
+      id: "it-support-general",
+      icon: <Laptop className="w-5 h-5" />,
+      title: "Computer running slow?",
+      description: "Virus removal, OS reinstall, or hardware upgrade. On-site or remote IT support.",
       action: "Get Help",
-      link: "/book/NETWORK",
+      link: "/book/IT",
       gradient: "from-accent/15 to-accent/5",
       iconColor: "text-accent",
-      priority: "helpful",
-    },
-    {
-      id: "ups-check",
-      icon: <BatteryCharging className="w-5 h-5" />,
-      title: "UPS or inverter not tested recently?",
-      description: "Power backup systems need periodic testing. Schedule a quick inspection to make sure yours is ready when you need it.",
-      action: "Book Inspection",
-      link: "/book/POWER_BACKUP",
-      gradient: "from-warning/15 to-warning/5",
-      iconColor: "text-warning",
       priority: "helpful",
     },
   ];

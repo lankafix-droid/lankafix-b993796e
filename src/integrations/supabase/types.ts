@@ -940,6 +940,44 @@ export type Database = {
           },
         ]
       }
+      notification_events: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          customer_id: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          partner_id: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_bank_accounts: {
         Row: {
           account_holder_name: string
