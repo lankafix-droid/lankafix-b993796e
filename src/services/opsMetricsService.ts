@@ -119,12 +119,12 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
       return q;
     })(),
 
-    // 7. Jobs in progress
+    // 7. Jobs in progress (active work states)
     (() => {
       let q = supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
-        .eq("status", "started" as any);
+        .in("status", ["repair_started", "inspection_started", "tech_en_route", "arrived"]);
       if (filters.zone) q = q.eq("zone_code", filters.zone);
       if (filters.category) q = q.eq("category_code", filters.category);
       return q;
