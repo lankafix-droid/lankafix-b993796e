@@ -343,9 +343,45 @@ export default function PartnerJobDetailPage() {
                   )}
                   Start Work
                 </Button>
+         )}
+           </CardContent>
+          </Card>
+        )}
+
+        {/* Repair / Complete / Payment Actions */}
+        {(canStartRepair || canCompleteRepair || canRecordPayment) && (
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-4 space-y-3">
+              {canStartRepair && (
+                <Button className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90" onClick={handleStartRepair} disabled={!!actionLoading}>
+                  {actionLoading === "start_repair" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wrench className="w-4 h-4 mr-2" />}
+                  Start Repair
+                </Button>
+              )}
+              {canCompleteRepair && (
+                <Button className="w-full h-11 rounded-xl bg-success hover:bg-success/90 text-success-foreground" onClick={handleCompleteRepair} disabled={!!actionLoading}>
+                  {actionLoading === "complete_repair" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CircleCheck className="w-4 h-4 mr-2" />}
+                  Mark Job Complete
+                </Button>
+              )}
+              {canRecordPayment && (
+                <Button className="w-full h-11 rounded-xl" variant="outline" onClick={handleRecordPayment} disabled={!!actionLoading}>
+                  {actionLoading === "record_payment" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Banknote className="w-4 h-4 mr-2" />}
+                  Record Payment (Cash)
+                </Button>
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Quote Form */}
+        {canCreateQuote && !showQuoteForm && (
+          <Button className="w-full h-11 rounded-xl" variant="outline" onClick={() => setShowQuoteForm(true)}>
+            <FileText className="w-4 h-4 mr-2" /> Create Quote
+          </Button>
+        )}
+        {showQuoteForm && jobId && partner?.id && (
+          <QuoteForm bookingId={jobId} partnerId={partner.id} onSubmitted={() => { setShowQuoteForm(false); refreshAll(); }} />
         )}
 
         {/* Booking Summary */}
