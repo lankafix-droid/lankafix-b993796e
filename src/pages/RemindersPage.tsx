@@ -62,6 +62,23 @@ const CATEGORY_LABELS: Record<string, string> = {
   DEVICE: "Device", UNKNOWN: "Service",
 };
 
+// Category code → booking route slug mapping
+const CATEGORY_ROUTE_SLUGS: Record<string, string> = {
+  AC: "ac-solutions", MOBILE: "mobile-phone-repairs", IT: "it-repairs-support",
+  CCTV: "cctv-solutions", SOLAR: "solar-solutions", ELECTRICAL: "electrical-services",
+  PLUMBING: "plumbing-services", CONSUMER_ELEC: "consumer-electronics",
+  NETWORK: "network-support", SMART_HOME_OFFICE: "smart-home-office",
+  HOME_SECURITY: "security-solutions", POWER_BACKUP: "power-backup",
+  COPIER: "copier-printer-repair", PRINT_SUPPLIES: "print-supplies",
+  APPLIANCE_INSTALL: "appliance-installation",
+  // Raw AI codes (pre-normalization)
+  ELECTRONICS: "consumer-electronics", SMARTHOME: "smart-home-office",
+  SECURITY: "security-solutions", SUPPLIES: "print-supplies",
+};
+
+const getCategoryBookingRoute = (code: string): string =>
+  `/book/${CATEGORY_ROUTE_SLUGS[code] || code.toLowerCase().replace(/_/g, "-")}`;
+
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   maintenance: Wrench, quote_expiry: FileText, quote_followup: FileText,
   warranty_expiry: Shield, next_best_service: Sparkles,
