@@ -111,8 +111,9 @@ export default function ControlTowerPage() {
           </Card>
         )}
 
-        <Tabs defaultValue="demand" className="w-full">
+        <Tabs defaultValue="zone_health" className="w-full">
           <TabsList className="w-full flex flex-wrap h-auto gap-1">
+            <TabsTrigger value="zone_health" className="text-xs gap-1"><MapPin className="w-3 h-3" />Zone Health</TabsTrigger>
             <TabsTrigger value="demand" className="text-xs gap-1"><MapPin className="w-3 h-3" />Heatmap</TabsTrigger>
             <TabsTrigger value="supply" className="text-xs gap-1"><Users className="w-3 h-3" />Supply</TabsTrigger>
             <TabsTrigger value="funnel" className="text-xs gap-1"><BarChart3 className="w-3 h-3" />Funnel</TabsTrigger>
@@ -122,7 +123,61 @@ export default function ControlTowerPage() {
             <TabsTrigger value="marketing" className="text-xs gap-1"><Megaphone className="w-3 h-3" />Marketing</TabsTrigger>
           </TabsList>
 
-          {/* ─── Demand Heatmap ─────────────────────── */}
+          {/* ─── Zone Health (Real DB) ──────────────── */}
+          <TabsContent value="zone_health" className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-foreground">Zone Health — Last 30 Days</h2>
+              <div className="flex gap-1 text-[10px]">
+                <Badge className="bg-destructive/15 text-destructive border-0">{zoneHealth.filter(z => z.health === "risk").length} risk</Badge>
+                <Badge className="bg-warning/15 text-warning border-0">{zoneHealth.filter(z => z.health === "watch").length} watch</Badge>
+                <Badge className="bg-success/15 text-success border-0">{zoneHealth.filter(z => z.health === "healthy").length} healthy</Badge>
+              </div>
+            </div>
+
+            {/* Compact table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-left py-2 px-1 font-medium">Zone</th>
+                    <th className="text-center py-2 px-1 font-medium">Bookings</th>
+                    <th className="text-center py-2 px-1 font-medium">Partners</th>
+                    <th className="text-center py-2 px-1 font-medium">Fails</th>
+                    <th className="text-center py-2 px-1 font-medium">Cancel</th>
+                    <th className="text-center py-2 px-1 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {zoneHealth.map((z) => (
+                    <tr key={z.zone_code} className="border-b border-border/50 hover:bg-muted/30">
+                      <td className="py-2 px-1">
+                        <span className="font-medium text-foreground">{z.zone_label}</span>
+                        {z.flags.length > 0 && (
+                          <div className="flex flex-wrap gap-0.5 mt-0.5">
+                            {z.flags.map((f) => (
+                              <span key={f} className="text-[9px] text-destructive">{f}</span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td className="text-center py-2 px-1 text-foreground">{z.bookings_count}</td>
+                      <td className={`text-center py-2 px-1 font-medium ${z.verified_partner_count < 2 ? "text-destructive" : "text-foreground"}`}>{z.verified_partner_count}</td>
+                      <td className={`text-center py-2 px-1 ${z.failed_dispatch_count > 0 ? "text-destructive font-medium" : "text-muted-foreground"}`}>{z.failed_dispatch_count}</td>
+                      <td className={`text-center py-2 px-1 ${z.cancellation_count > 0 ? "text-warning" : "text-muted-foreground"}`}>{z.cancellation_count}</td>
+                      <td className="text-center py-2 px-1">
+                        <Badge className={`border-0 text-[9px] ${healthColor(z.health)}`}>{z.health}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                  {zoneHealth.length === 0 && (
+                    <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No zone data available</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </TabsContent>
+
+          {/* ─── Demand Heatmap (mock — retained) ──── */}
           <TabsContent value="demand" className="space-y-3">
             <h2 className="font-semibold text-foreground">Zone Demand Heatmap</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
