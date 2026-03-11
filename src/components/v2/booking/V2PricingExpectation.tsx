@@ -112,6 +112,11 @@ const V2PricingExpectation = ({ archetype, explanation, onContinue, categoryCode
         </div>
       </motion.div>
 
+      {/* Smart Price Estimator — real historical data */}
+      {categoryCode && (
+        <SmartPriceEstimator categoryCode={categoryCode} serviceType={serviceType} />
+      )}
+
       {/* LankaFix guarantee */}
       <motion.div
         className="bg-success/5 border border-success/20 rounded-2xl p-4 flex items-start gap-3"
