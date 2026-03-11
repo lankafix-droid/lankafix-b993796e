@@ -1453,6 +1453,7 @@ export type Database = {
           paid_by: string | null
           payment_status: string
           payment_type: string
+          quote_id: string | null
           transaction_ref: string | null
         }
         Insert: {
@@ -1465,6 +1466,7 @@ export type Database = {
           paid_by?: string | null
           payment_status?: string
           payment_type?: string
+          quote_id?: string | null
           transaction_ref?: string | null
         }
         Update: {
@@ -1477,6 +1479,7 @@ export type Database = {
           paid_by?: string | null
           payment_status?: string
           payment_type?: string
+          quote_id?: string | null
           transaction_ref?: string | null
         }
         Relationships: [
@@ -1485,6 +1488,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
@@ -1663,11 +1673,13 @@ export type Database = {
       }
       quotes: {
         Row: {
+          additional_cost_lkr: number | null
           additional_items: Json | null
           approved_at: string | null
           booking_id: string
           created_at: string
           customer_note: string | null
+          discount_lkr: number | null
           estimated_completion: string | null
           expires_at: string | null
           id: string
@@ -1676,19 +1688,25 @@ export type Database = {
           part_grade: string | null
           partner_id: string
           parts: Json | null
+          parts_cost_lkr: number | null
+          rejected_at: string | null
           service_charge_lkr: number | null
           status: Database["public"]["Enums"]["quote_status"]
+          submitted_at: string | null
+          technician_note: string | null
           total_lkr: number | null
           updated_at: string
           warranty_days: number | null
           warranty_terms: string | null
         }
         Insert: {
+          additional_cost_lkr?: number | null
           additional_items?: Json | null
           approved_at?: string | null
           booking_id: string
           created_at?: string
           customer_note?: string | null
+          discount_lkr?: number | null
           estimated_completion?: string | null
           expires_at?: string | null
           id?: string
@@ -1697,19 +1715,25 @@ export type Database = {
           part_grade?: string | null
           partner_id: string
           parts?: Json | null
+          parts_cost_lkr?: number | null
+          rejected_at?: string | null
           service_charge_lkr?: number | null
           status?: Database["public"]["Enums"]["quote_status"]
+          submitted_at?: string | null
+          technician_note?: string | null
           total_lkr?: number | null
           updated_at?: string
           warranty_days?: number | null
           warranty_terms?: string | null
         }
         Update: {
+          additional_cost_lkr?: number | null
           additional_items?: Json | null
           approved_at?: string | null
           booking_id?: string
           created_at?: string
           customer_note?: string | null
+          discount_lkr?: number | null
           estimated_completion?: string | null
           expires_at?: string | null
           id?: string
@@ -1718,8 +1742,12 @@ export type Database = {
           part_grade?: string | null
           partner_id?: string
           parts?: Json | null
+          parts_cost_lkr?: number | null
+          rejected_at?: string | null
           service_charge_lkr?: number | null
           status?: Database["public"]["Enums"]["quote_status"]
+          submitted_at?: string | null
+          technician_note?: string | null
           total_lkr?: number | null
           updated_at?: string
           warranty_days?: number | null
@@ -1981,6 +2009,8 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "no_show"
+        | "quote_rejected"
+        | "quote_revised"
       partner_availability: "online" | "offline" | "busy"
       partner_verification_status: "pending" | "verified" | "suspended"
       payment_status:
@@ -2152,6 +2182,8 @@ export const Constants = {
         "completed",
         "cancelled",
         "no_show",
+        "quote_rejected",
+        "quote_revised",
       ],
       partner_availability: ["online", "offline", "busy"],
       partner_verification_status: ["pending", "verified", "suspended"],

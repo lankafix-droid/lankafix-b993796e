@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentPartner } from "@/hooks/useCurrentPartner";
-import { acceptJob, declineJob, updateJobStatus } from "@/services/dispatchService";
+import { acceptJob, declineJob, updateJobStatus, startRepair, completeRepair, recordPayment } from "@/services/dispatchService";
 import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,8 +13,9 @@ import {
   ArrowLeft, MapPin, Wrench, CheckCircle2,
   ShieldCheck, Clock, AlertTriangle, Loader2,
   FileText, XCircle, Info, Navigation, Play,
-  ThumbsDown, ThumbsUp,
+  ThumbsDown, ThumbsUp, Banknote, CircleCheck,
 } from "lucide-react";
+import QuoteForm from "@/components/quotes/QuoteForm";
 
 const DECLINE_REASONS = [
   "Too far away",
@@ -96,12 +97,15 @@ export default function PartnerJobDetailPage() {
     enabled: !!jobId,
   });
 
+  const [showQuoteForm, setShowQuoteForm] = useState(false);
+
   useEffect(() => { if (jobId) track("partner_job_detail_view", { jobId }); }, [jobId]);
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ["partner-booking-detail", jobId] });
     queryClient.invalidateQueries({ queryKey: ["partner-dispatch-offer", jobId] });
     queryClient.invalidateQueries({ queryKey: ["partner-job-timeline", jobId] });
+    queryClient.invalidateQueries({ queryKey: ["partner-job-quotes", jobId] });
     queryClient.invalidateQueries({ queryKey: ["partner-bookings"] });
   };
 
@@ -179,7 +183,40 @@ export default function PartnerJobDetailPage() {
   const canStartTravel = isMyJob && booking.status === "assigned";
   const canMarkArrived = isMyJob && booking.status === "tech_en_route";
   const canStartWork = isMyJob && booking.status === "arrived";
+  const canCreateQuote = isMyJob && (booking.status === "arrived" || booking.status === "inspection_started" || booking.status === "quote_rejected");
+  const latestQuote = quotes[0];
+  const canStartRepair = isMyJob && booking.status === "quote_approved";
+  const canCompleteRepair = isMyJob && booking.status === "repair_started";
+  const canRecordPayment = isMyJob && booking.status === "completed" && latestQuote?.status === "approved";
 
+  const handleStartRepair = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("start_repair");
+    track("repair_started", { jobId });
+    const result = await startRepair(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) { toast.success("Repair started!"); refreshAll(); }
+    else toast.error(result.error || "Failed");
+  };
+
+  const handleCompleteRepair = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("complete_repair");
+    track("repair_completed", { jobId });
+    const result = await completeRepair(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) { toast.success("Job completed!"); refreshAll(); }
+    else toast.error(result.error || "Failed");
+  };
+
+  const handleRecordPayment = async () => {
+    if (!jobId || !latestQuote) return;
+    setActionLoading("record_payment");
+    const result = await recordPayment(jobId, latestQuote.id, latestQuote.total_lkr || 0, "cash");
+    setActionLoading(null);
+    if (result.success) { toast.success("Payment recorded!"); track("payment_recorded", { jobId }); refreshAll(); }
+    else toast.error(result.error || "Failed");
+  };
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card border-b px-4 py-4 flex items-center gap-3">
@@ -306,9 +343,45 @@ export default function PartnerJobDetailPage() {
                   )}
                   Start Work
                 </Button>
+         )}
+           </CardContent>
+          </Card>
+        )}
+
+        {/* Repair / Complete / Payment Actions */}
+        {(canStartRepair || canCompleteRepair || canRecordPayment) && (
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-4 space-y-3">
+              {canStartRepair && (
+                <Button className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90" onClick={handleStartRepair} disabled={!!actionLoading}>
+                  {actionLoading === "start_repair" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wrench className="w-4 h-4 mr-2" />}
+                  Start Repair
+                </Button>
+              )}
+              {canCompleteRepair && (
+                <Button className="w-full h-11 rounded-xl bg-success hover:bg-success/90 text-success-foreground" onClick={handleCompleteRepair} disabled={!!actionLoading}>
+                  {actionLoading === "complete_repair" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CircleCheck className="w-4 h-4 mr-2" />}
+                  Mark Job Complete
+                </Button>
+              )}
+              {canRecordPayment && (
+                <Button className="w-full h-11 rounded-xl" variant="outline" onClick={handleRecordPayment} disabled={!!actionLoading}>
+                  {actionLoading === "record_payment" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Banknote className="w-4 h-4 mr-2" />}
+                  Record Payment (Cash)
+                </Button>
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Quote Form */}
+        {canCreateQuote && !showQuoteForm && (
+          <Button className="w-full h-11 rounded-xl" variant="outline" onClick={() => setShowQuoteForm(true)}>
+            <FileText className="w-4 h-4 mr-2" /> Create Quote
+          </Button>
+        )}
+        {showQuoteForm && jobId && partner?.id && (
+          <QuoteForm bookingId={jobId} partnerId={partner.id} onSubmitted={() => { setShowQuoteForm(false); refreshAll(); }} />
         )}
 
         {/* Booking Summary */}

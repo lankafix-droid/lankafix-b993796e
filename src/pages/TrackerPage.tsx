@@ -44,6 +44,7 @@ import { generateDemoQuote } from "@/engines/quoteEngine";
 import { track } from "@/lib/analytics";
 import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
+import QuoteApprovalCard from "@/components/quotes/QuoteApprovalCard";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
 import type { TrackingSimulation } from "@/lib/trackingEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -52,6 +53,43 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+/** Sub-component: fetches and shows quote approval for DB-backed bookings */
+function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; bookingStatus: string }) {
+  const queryClient = useQueryClient();
+  const { data: quote } = useQuery({
+    queryKey: ["tracker-quote", bookingId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("*")
+        .eq("booking_id", bookingId)
+        .eq("status", "submitted" as any)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: bookingStatus === "quote_submitted",
+    refetchInterval: 10_000,
+  });
+
+  if (!quote || bookingStatus !== "quote_submitted") return null;
+
+  return (
+    <QuoteApprovalCard
+      quote={quote}
+      onAction={() => {
+        queryClient.invalidateQueries({ queryKey: ["tracker-quote", bookingId] });
+        queryClient.invalidateQueries({ queryKey: ["booking-db", bookingId] });
+        queryClient.invalidateQueries({ queryKey: ["booking-timeline", bookingId] });
+      }}
+    />
+  );
+}
 
 const CANCEL_REASONS = [
   "Found another provider",
@@ -321,7 +359,8 @@ const TrackerPage = () => {
       arrived: "Provider Arrived",
       inspection_started: "Inspecting",
       quote_submitted: "Quote Ready",
-      quote_approved: "Approved",
+      quote_approved: "Quote Approved",
+      quote_rejected: "Quote Rejected",
       in_progress: "In Progress",
       repair_started: "Repair Started",
       completed: "Completed",
@@ -343,6 +382,10 @@ const TrackerPage = () => {
     const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (STATUS_LABELS[dbBooking.status] || dispatchInfo.label);
     const statusDesc = dbBooking.status === "assigned"
       ? "Your provider has been assigned and is preparing for the job."
+      : dbBooking.status === "quote_submitted" ? "Your technician has submitted a quote for review."
+      : dbBooking.status === "quote_approved" ? "Quote approved — repair will begin shortly."
+      : dbBooking.status === "repair_started" ? "Your technician is performing the repair."
+      : dbBooking.status === "completed" ? "Your service has been completed!"
       : dispatchInfo.description;
 
     return (
@@ -398,6 +441,9 @@ const TrackerPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Quote Approval Card - shown when quote is submitted */}
+            <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
             {/* Timeline events from DB */}
             {dbTimeline && dbTimeline.length > 0 && (
