@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentPartner } from "@/hooks/useCurrentPartner";
-import { acceptJob, declineJob, updateJobStatus } from "@/services/dispatchService";
+import { acceptJob, declineJob, updateJobStatus, startRepair, completeRepair, recordPayment } from "@/services/dispatchService";
 import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,8 +13,9 @@ import {
   ArrowLeft, MapPin, Wrench, CheckCircle2,
   ShieldCheck, Clock, AlertTriangle, Loader2,
   FileText, XCircle, Info, Navigation, Play,
-  ThumbsDown, ThumbsUp,
+  ThumbsDown, ThumbsUp, Banknote, CircleCheck,
 } from "lucide-react";
+import QuoteForm from "@/components/quotes/QuoteForm";
 
 const DECLINE_REASONS = [
   "Too far away",
