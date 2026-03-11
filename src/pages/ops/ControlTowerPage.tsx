@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle, Rocket, Target, Megaphone, Layers } from "lucide-react";
+import { ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle, Rocket, Target, Megaphone, Layers, Zap, CheckCircle2, Clock, FileText, Shield } from "lucide-react";
+import { useOpsMetrics } from "@/services/opsMetricsService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export default function ControlTowerPage() {
   const [forecastHorizon, setForecastHorizon] = useState<ForecastHorizon>("30d");
   const scenarios = generateMockScenarios("AC");
   const filteredForecasts = forecasts.filter((f) => f.horizon === forecastHorizon);
+  const { data: metrics } = useOpsMetrics();
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,6 +63,31 @@ export default function ControlTowerPage() {
       </header>
 
       <div className="p-4 space-y-4 max-w-6xl mx-auto">
+        {/* Core KPIs — real DB metrics */}
+        {metrics && (
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            {[
+              { label: "Active", value: metrics.active_bookings, icon: Zap, color: "text-primary" },
+              { label: "Today", value: metrics.bookings_today, icon: Activity, color: "text-foreground" },
+              { label: "In Progress", value: metrics.jobs_in_progress, icon: Clock, color: "text-warning" },
+              { label: "Completed", value: metrics.completed_today, icon: CheckCircle2, color: "text-success" },
+              { label: "Escalations", value: metrics.dispatch_escalations, icon: AlertTriangle, color: "text-destructive" },
+              { label: "Quotes Pending", value: metrics.quotes_pending_approval, icon: FileText, color: "text-warning" },
+              { label: "Dispatch Fails", value: metrics.dispatch_failures, icon: AlertTriangle, color: "text-destructive" },
+              { label: "Avg Dispatch", value: metrics.avg_dispatch_time_min != null ? `${metrics.avg_dispatch_time_min}m` : "—", icon: Clock, color: "text-muted-foreground" },
+              { label: "Payments", value: metrics.payments_today_count, icon: TrendingUp, color: "text-success" },
+              { label: "Fraud Alerts", value: metrics.fraud_alerts_today, icon: Shield, color: metrics.fraud_alerts_today > 0 ? "text-destructive" : "text-muted-foreground" },
+            ].map((s) => (
+              <Card key={s.label}>
+                <CardContent className="p-2 text-center">
+                  <s.icon className={`w-3.5 h-3.5 ${s.color} mx-auto mb-0.5`} />
+                  <p className="text-lg font-bold text-foreground">{s.value}</p>
+                  <p className="text-[9px] text-muted-foreground">{s.label}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
         {/* Shortage Alerts */}
         {alerts.length > 0 && (
           <Card className="border-destructive/30 bg-destructive/5">

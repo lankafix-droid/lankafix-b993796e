@@ -14,6 +14,9 @@ import { Link } from "react-router-dom";
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { useOpsMetrics } from "@/services/opsMetricsService";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const FinanceBoardPage = () => {
   const bookings = useBookingStore((s) => s.bookings);
@@ -28,7 +31,36 @@ const FinanceBoardPage = () => {
 
   const formatLKR = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
 
-  // Platform analytics
+  const { data: metrics } = useOpsMetrics();
+
+  // Real DB: pending settlements
+  const { data: pendingSettlementsDB = [] } = useQuery({
+    queryKey: ["ops-pending-settlements"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("partner_settlements")
+        .select("id, booking_id, partner_id, gross_amount_lkr, platform_commission_lkr, net_payout_lkr, settlement_status, created_at")
+        .eq("settlement_status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return data || [];
+    },
+    staleTime: 30_000,
+  });
+
+  // Real DB: recent payments
+  const { data: recentPaymentsDB = [] } = useQuery({
+    queryKey: ["ops-recent-payments"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("payments")
+        .select("id, booking_id, amount_lkr, payment_status, payment_type, paid_at, created_at")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      return data || [];
+    },
+    staleTime: 30_000,
+  });
   const analytics = computePlatformAnalytics(bookings);
 
   // Compute aggregates
@@ -141,23 +173,25 @@ const FinanceBoardPage = () => {
             </div>
           )}
 
-          {/* Standard Summary */}
+          {/* Standard Summary — real DB metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Total Collected</p>
-              <p className="text-lg font-bold text-foreground">{formatLKR(totalCollected)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Payments Today</p>
+              <p className="text-lg font-bold text-foreground">{formatLKR(metrics?.payments_today_lkr ?? 0)}</p>
+              <p className="text-[10px] text-muted-foreground">{metrics?.payments_today_count ?? 0} transactions</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Pending</p>
-              <p className="text-lg font-bold text-warning">{formatLKR(pendingSettlements)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Pending Settlements</p>
+              <p className="text-lg font-bold text-warning">{pendingSettlementsDB.length}</p>
+              <p className="text-[10px] text-muted-foreground">{formatLKR(pendingSettlementsDB.reduce((s, r) => s + (r.net_payout_lkr || 0), 0))}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Held</p>
-              <p className="text-lg font-bold text-destructive">{formatLKR(heldSettlements)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Completed Today</p>
+              <p className="text-lg font-bold text-success">{metrics?.completed_today ?? 0}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Released</p>
-              <p className="text-lg font-bold text-success">{formatLKR(releasedSettlements)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Fraud Alerts</p>
+              <p className="text-lg font-bold text-destructive">{metrics?.fraud_alerts_today ?? 0}</p>
             </div>
           </div>
 

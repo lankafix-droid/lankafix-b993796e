@@ -6,9 +6,10 @@ import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useOpsMetrics } from "@/services/opsMetricsService";
 import {
   Zap, AlertTriangle, CheckCircle2, Users, ArrowRight,
-  RefreshCw, MapPin, Radio, Flag, Clock, UserCheck,
+  RefreshCw, MapPin, Radio, Flag, Clock, UserCheck, FileText,
 } from "lucide-react";
 
 interface EscalatedBooking {
@@ -161,6 +162,8 @@ export default function DispatchBoardPage() {
 
   useEffect(() => { track("ops_dispatch_board_view"); }, []);
 
+  const { data: metrics } = useOpsMetrics();
+
   const assigned = activeBookings.filter((b) => b.status === "assigned");
   const pending = activeBookings.filter((b) => b.dispatch_status === "pending_acceptance");
   const dispatching = activeBookings.filter((b) => b.dispatch_status === "dispatching");
@@ -170,6 +173,8 @@ export default function DispatchBoardPage() {
     { label: "Escalated", value: escalatedBookings.length, icon: AlertTriangle, color: "text-destructive" },
     { label: "Pending", value: pending.length, icon: Clock, color: "text-warning" },
     { label: "Assigned", value: assigned.length, icon: CheckCircle2, color: "text-success" },
+    { label: "Quotes", value: metrics?.quotes_pending_approval ?? 0, icon: FileText, color: "text-warning" },
+    { label: "Avg Dispatch", value: metrics?.avg_dispatch_time_min != null ? `${metrics.avg_dispatch_time_min}m` : "—", icon: Clock, color: "text-muted-foreground" },
   ];
 
   const handleOpsAssign = async (bookingId: string) => {
@@ -221,7 +226,7 @@ export default function DispatchBoardPage() {
 
       <div className="p-4 space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {stats.map((s) => (
             <Card key={s.label}>
               <CardContent className="p-3 text-center">
