@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -30,7 +29,7 @@ import {
   ArrowLeft, ArrowRight, Building2, User, Wrench, MapPin, Award,
   FileCheck, Hammer, Clock, Landmark, CheckCircle, Camera, Phone,
   Shield, Star, Send, BookOpen, Scale, Loader2, Sparkles, TrendingUp,
-  Zap, Heart, BarChart3,
+  Zap, Heart, BarChart3, LogIn, Upload, X, AlertTriangle,
 } from "lucide-react";
 
 export default function ProviderOnboardingPage() {
@@ -38,12 +37,59 @@ export default function ProviderOnboardingPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [existingPartnerId, setExistingPartnerId] = useState<string | null>(null);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const step = ONBOARDING_STEPS[store.currentStep];
   const progress = ((store.currentStep + 1) / ONBOARDING_STEPS.length) * 100;
 
+  // Check auth state and existing partner on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      setUser(u);
+      setAuthChecked(true);
+      if (u) {
+        // Check if partner already exists for this user
+        const { data } = await supabase
+          .from("partners")
+          .select("id, full_name, phone_number, categories_supported, service_zones, verification_status")
+          .eq("user_id", u.id)
+          .maybeSingle();
+        if (data) {
+          setExistingPartnerId(data.id);
+          // Pre-fill store from existing record if onboarding is fresh
+          if (!store.profile.fullName && data.full_name) {
+            store.updateProfile({
+              fullName: data.full_name,
+              mobileNumber: data.phone_number || "",
+              serviceCategories: data.categories_supported || [],
+              serviceZones: data.service_zones || [],
+            });
+          }
+        }
+      }
+    };
+    checkAuth();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+      if (session?.user) setShowAuthPrompt(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const handleSubmit = async () => {
-    const { profile } = store;
-    
+    const { profile, conductAccepted, trainingCompleted } = store;
+
+    // Require authentication
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+      setShowAuthPrompt(true);
+      toast({ title: "Authentication Required", description: "Please sign in or create an account to submit your application.", variant: "destructive" });
+      return;
+    }
+
     // Validation
     if (!profile.fullName.trim()) {
       toast({ title: "Missing required field", description: "Please enter your full name.", variant: "destructive" });
@@ -61,54 +107,145 @@ export default function ProviderOnboardingPage() {
       toast({ title: "Missing required field", description: "Please select at least one service zone.", variant: "destructive" });
       return;
     }
+    if (!conductAccepted) {
+      toast({ title: "Code of Conduct", description: "Please accept the Code of Conduct to proceed.", variant: "destructive" });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      // Get current user if logged in
-      const { data: { user } } = await supabase.auth.getUser();
+      // Build business name properly
+      let businessName: string | null = null;
+      if (profile.providerType !== "individual") {
+        businessName = profile.businessName?.trim() || (profile.fullName.trim() + " Services");
+      }
 
-      const partnerRecord = {
+      const partnerRecord: Record<string, any> = {
         full_name: profile.fullName.trim(),
-        business_name: profile.providerType === "individual" ? null : (profile.fullName.trim() + " Services"),
+        business_name: businessName,
         phone_number: profile.mobileNumber.trim(),
+        email: profile.email.trim() || null,
+        nic_number: profile.nicNumber.trim() || null,
         categories_supported: profile.serviceCategories,
         specializations: profile.specializations,
-        brand_specializations: [] as string[],
+        brand_specializations: [],
         service_zones: profile.serviceZones,
         experience_years: profile.yearsOfExperience,
+        previous_company: profile.previousCompany.trim() || null,
         emergency_available: profile.emergencyAvailable,
         verification_status: "pending" as const,
         availability_status: "offline" as const,
         profile_photo_url: profile.profilePhotoUrl || null,
-        user_id: user?.id || null,
+        user_id: currentUser.id,
+        provider_type: profile.providerType || "individual",
+        tools_declared: profile.tools,
         vehicle_type: "motorcycle",
         max_jobs_per_day: 5,
         max_concurrent_jobs: 1,
       };
 
-      const { data, error } = await supabase
-        .from("partners")
-        .insert(partnerRecord)
-        .select()
-        .single();
+      let partnerId: string;
 
-      if (error) throw error;
+      if (existingPartnerId) {
+        // UPDATE existing record (upsert behavior)
+        const { data, error } = await supabase
+          .from("partners")
+          .update(partnerRecord)
+          .eq("id", existingPartnerId)
+          .select("id")
+          .single();
+        if (error) throw error;
+        partnerId = data.id;
+      } else {
+        // INSERT new record
+        const { data, error } = await supabase
+          .from("partners")
+          .insert(partnerRecord)
+          .select("id")
+          .single();
+        if (error) throw error;
+        partnerId = data.id;
+      }
 
-      // Also store in Zustand for local state
+      // Save availability schedule
+      const scheduleRecord = {
+        partner_id: partnerId,
+        working_days: profile.availabilityDays,
+        start_time: profile.availabilityStart,
+        end_time: profile.availabilityEnd,
+        emergency_available: profile.emergencyAvailable,
+      };
+      await supabase
+        .from("partner_schedules")
+        .upsert(scheduleRecord, { onConflict: "partner_id" });
+
+      // Save bank details if provided
+      if (profile.bankName && profile.accountNumber && profile.accountHolderName) {
+        const bankRecord = {
+          partner_id: partnerId,
+          bank_name: profile.bankName,
+          account_holder_name: profile.accountHolderName,
+          account_number: profile.accountNumber,
+          branch: profile.branch || null,
+        };
+        await supabase
+          .from("partner_bank_accounts")
+          .upsert(bankRecord, { onConflict: "partner_id" });
+      }
+
+      // Save conduct acceptance
+      if (conductAccepted) {
+        await supabase.from("policy_acceptances").upsert({
+          partner_id: partnerId,
+          policy_type: "code_of_conduct",
+          policy_version: "1.0",
+          accepted_at: new Date().toISOString(),
+        }, { onConflict: "partner_id,policy_type" });
+      }
+
+      // Save training acceptance
+      if (trainingCompleted) {
+        await supabase.from("policy_acceptances").upsert({
+          partner_id: partnerId,
+          policy_type: "provider_training",
+          policy_version: "1.0",
+          accepted_at: new Date().toISOString(),
+        }, { onConflict: "partner_id,policy_type" });
+      }
+
+      // Save document references to partner_documents
+      for (const doc of profile.documents) {
+        if (doc.fileUrl) {
+          await supabase.from("partner_documents").upsert({
+            partner_id: partnerId,
+            document_type: doc.type,
+            file_url: doc.fileUrl,
+            verification_status: "pending",
+          }, { onConflict: "partner_id" }).select();
+        }
+      }
+
       store.submitApplication();
 
       toast({
         title: "Application Submitted! 🎉",
-        description: "Your partner record has been created. We'll review your profile within 24–48 hours.",
+        description: existingPartnerId
+          ? "Your partner profile has been updated. We'll review changes within 24–48 hours."
+          : "Your partner record has been created. We'll review your profile within 24–48 hours.",
       });
       navigate("/partner");
     } catch (err: any) {
       console.error("Onboarding submission error:", err);
-      toast({
-        title: "Submission Failed",
-        description: err?.message || "Could not save your application. Please try again.",
-        variant: "destructive",
-      });
+      const msg = err?.message?.includes("partners_user_id_unique")
+        ? "You already have a partner profile. Redirecting to your dashboard..."
+        : err?.message || "Could not save your application. Please try again.";
+      
+      if (err?.message?.includes("partners_user_id_unique")) {
+        navigate("/partner");
+        return;
+      }
+      
+      toast({ title: "Submission Failed", description: msg, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -120,9 +257,44 @@ export default function ProviderOnboardingPage() {
       <div className="bg-primary text-primary-foreground px-4 py-6">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl font-bold">Join LankaFix</h1>
-          <p className="text-primary-foreground/80 text-sm mt-1">Become a verified service provider</p>
+          <p className="text-primary-foreground/80 text-sm mt-1">
+            {existingPartnerId ? "Update your provider application" : "Become a verified service provider"}
+          </p>
         </div>
       </div>
+
+      {/* Auth Warning */}
+      {authChecked && !user && (
+        <div className="max-w-2xl mx-auto px-4 pt-3">
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="p-3 flex items-center gap-3">
+              <LogIn className="w-5 h-5 text-warning shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Sign in required</p>
+                <p className="text-xs text-muted-foreground">You'll need an account to submit your application</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => navigate("/account")}>
+                Sign In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Existing partner resume banner */}
+      {existingPartnerId && (
+        <div className="max-w-2xl mx-auto px-4 pt-3">
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-3 flex items-center gap-3">
+              <CheckCircle className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Existing application found</p>
+                <p className="text-xs text-muted-foreground">Your changes will update your existing partner profile</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="max-w-2xl mx-auto px-4 py-4">
@@ -133,8 +305,6 @@ export default function ProviderOnboardingPage() {
           <span className="text-sm font-semibold text-primary">{step.label}</span>
         </div>
         <Progress value={progress} className="h-2" />
-
-        {/* Step indicators */}
         <div className="flex justify-between mt-3">
           {ONBOARDING_STEPS.map((s, i) => (
             <button
@@ -168,6 +338,30 @@ export default function ProviderOnboardingPage() {
         {step.key === "review" && <StepReview />}
       </div>
 
+      {/* Auth prompt modal */}
+      {showAuthPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <Card className="max-w-sm mx-4 w-full">
+            <CardContent className="p-6 text-center space-y-4">
+              <LogIn className="w-12 h-12 text-primary mx-auto" />
+              <h2 className="text-lg font-bold text-foreground">Sign In Required</h2>
+              <p className="text-sm text-muted-foreground">
+                To submit your provider application, please sign in or create an account first.
+                Your progress will be saved.
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowAuthPrompt(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={() => navigate("/account")}>
+                  <LogIn className="w-4 h-4 mr-1" /> Sign In
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4">
         <div className="max-w-2xl mx-auto flex gap-3">
@@ -185,7 +379,7 @@ export default function ProviderOnboardingPage() {
               {isSubmitting ? (
                 <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Submitting...</>
               ) : (
-                <><Send className="w-4 h-4 mr-1" /> Submit Application</>
+                <><Send className="w-4 h-4 mr-1" /> {existingPartnerId ? "Update Application" : "Submit Application"}</>
               )}
             </Button>
           ) : (
@@ -199,7 +393,7 @@ export default function ProviderOnboardingPage() {
   );
 }
 
-// ─── Provider Benefits Pitch (shown on first step) ─────────────────
+// ─── Provider Benefits Pitch ──────────────────────────────────────────
 
 function ProviderBenefitsPitch() {
   const benefits = [
@@ -217,8 +411,7 @@ function ProviderBenefitsPitch() {
     <Card className="bg-primary/5 border-primary/20 mb-4">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          Why Join LankaFix?
+          <Sparkles className="w-4 h-4 text-primary" /> Why Join LankaFix?
         </CardTitle>
         <CardDescription className="text-xs">
           Stop relying only on WhatsApp, Facebook & referrals. Build a professional service business.
@@ -271,9 +464,38 @@ function StepProviderType() {
 }
 
 function StepBasicProfile() {
-  const { profile, updateProfile, otpSent, sendOtp, verifyOtp } = useProviderOnboardingStore();
+  const { profile, updateProfile } = useProviderOnboardingStore();
   const { toast } = useToast();
-  const [otp, setOtp] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const showBusinessName = profile.providerType && profile.providerType !== "individual";
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 5MB for profile photo", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || "anon";
+      const ext = file.name.split(".").pop();
+      const path = `${userId}/profile-photo.${ext}`;
+      
+      const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
+      if (error) throw error;
+      
+      const { data: urlData } = supabase.storage.from("partner-uploads").getPublicUrl(path);
+      updateProfile({ profilePhotoUrl: urlData.publicUrl });
+      toast({ title: "Photo uploaded!" });
+    } catch (err: any) {
+      console.error("Photo upload error:", err);
+      toast({ title: "Upload failed", description: "Please sign in first to upload photos, or try again.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -283,6 +505,19 @@ function StepBasicProfile() {
           <Label>Full Name *</Label>
           <Input placeholder="e.g. Kasun Perera" value={profile.fullName} onChange={(e) => updateProfile({ fullName: e.target.value })} />
         </div>
+
+        {showBusinessName && (
+          <div>
+            <Label>Business Name *</Label>
+            <Input
+              placeholder="e.g. CoolTech AC Solutions"
+              value={profile.businessName}
+              onChange={(e) => updateProfile({ businessName: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Your business name as it appears to customers</p>
+          </div>
+        )}
+
         <div>
           <Label>Mobile Number *</Label>
           <div className="flex gap-2">
@@ -292,37 +527,13 @@ function StepBasicProfile() {
               onChange={(e) => updateProfile({ mobileNumber: e.target.value })}
               className="flex-1"
             />
-            {!profile.mobileVerified && (
-              <Button variant="outline" size="sm" onClick={sendOtp} disabled={profile.mobileNumber.length < 10}>
-                <Phone className="w-4 h-4 mr-1" /> {otpSent ? "Resend" : "Verify"}
-              </Button>
-            )}
-            {profile.mobileVerified && <Badge className="bg-success/10 text-success self-center">✓ Verified</Badge>}
           </div>
-          {otpSent && !profile.mobileVerified && (
-            <div className="mt-3 p-3 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground mb-2">Enter OTP (use 123456 for demo)</p>
-              <div className="flex items-center gap-3">
-                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-                  <InputOTPGroup>
-                    {[0, 1, 2, 3, 4, 5].map((i) => (
-                      <InputOTPSlot key={i} index={i} />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (verifyOtp(otp)) toast({ title: "Verified!", description: "Mobile number verified." });
-                    else toast({ title: "Invalid OTP", variant: "destructive" });
-                  }}
-                >
-                  Confirm
-                </Button>
-              </div>
-            </div>
-          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            <Phone className="w-3 h-3 inline mr-1" />
+            Phone will be verified during onboarding review
+          </p>
         </div>
+
         <div>
           <Label>Email (Optional)</Label>
           <Input type="email" placeholder="email@example.com" value={profile.email} onChange={(e) => updateProfile({ email: e.target.value })} />
@@ -334,16 +545,29 @@ function StepBasicProfile() {
         <div>
           <Label>Profile Photo</Label>
           <div className="flex items-center gap-3 mt-1">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center overflow-hidden">
               {profile.profilePhotoUrl ? (
                 <img src={profile.profilePhotoUrl} alt="Profile" className="w-full h-full rounded-full object-cover" />
               ) : (
                 <Camera className="w-6 h-6 text-muted-foreground" />
               )}
             </div>
-            <Button variant="outline" size="sm" onClick={() => updateProfile({ profilePhotoUrl: "/placeholder.svg" })}>
-              Upload Photo
-            </Button>
+            <div>
+              <label className="cursor-pointer">
+                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
+                <Button variant="outline" size="sm" asChild disabled={uploading}>
+                  <span>
+                    {uploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                    {uploading ? "Uploading..." : "Upload Photo"}
+                  </span>
+                </Button>
+              </label>
+              {profile.profilePhotoUrl && (
+                <Button variant="ghost" size="sm" className="text-destructive ml-1" onClick={() => updateProfile({ profilePhotoUrl: "" })}>
+                  <X className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -465,12 +689,49 @@ function StepExperience() {
 
 function StepDocuments() {
   const { profile, addDocument, removeDocument } = useProviderOnboardingStore();
+  const { toast } = useToast();
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+
+  const handleDocUpload = async (docType: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 10MB per document", variant: "destructive" });
+      return;
+    }
+    setUploadingType(docType);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || "anon";
+      const ext = file.name.split(".").pop();
+      const path = `${userId}/docs/${docType}.${ext}`;
+
+      const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
+      if (error) throw error;
+
+      const { data: urlData } = supabase.storage.from("partner-uploads").getPublicUrl(path);
+      addDocument({
+        type: docType as any,
+        fileName: file.name,
+        uploadedAt: new Date().toISOString(),
+        fileUrl: urlData.publicUrl,
+      });
+      toast({ title: "Document uploaded!" });
+    } catch (err: any) {
+      console.error("Doc upload error:", err);
+      toast({ title: "Upload failed", description: "Please sign in first, or try again.", variant: "destructive" });
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-foreground">Verification Documents</h2>
       <p className="text-sm text-muted-foreground">Upload documents to get verified. NIC is mandatory.</p>
       {DOCUMENT_TYPES.map((doc) => {
         const uploaded = profile.documents.find((d) => d.type === doc.value);
+        const isUploading = uploadingType === doc.value;
         return (
           <Card key={doc.value}>
             <CardContent className="p-4 flex items-center justify-between">
@@ -480,21 +741,23 @@ function StepDocuments() {
                   <p className="text-sm font-medium text-foreground">
                     {doc.label} {doc.required && <span className="text-destructive">*</span>}
                   </p>
-                  {uploaded && <p className="text-xs text-success">✓ {uploaded.fileName}</p>}
+                  {uploaded && (
+                    <p className="text-xs text-success">✓ {uploaded.fileName}</p>
+                  )}
                 </div>
               </div>
               {uploaded ? (
                 <Button variant="ghost" size="sm" onClick={() => removeDocument(doc.value)} className="text-destructive">Remove</Button>
               ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    addDocument({ type: doc.value, fileName: `${doc.value}_scan.jpg`, uploadedAt: new Date().toISOString() })
-                  }
-                >
-                  <Camera className="w-4 h-4 mr-1" /> Upload
-                </Button>
+                <label className="cursor-pointer">
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocUpload(doc.value, e)} className="hidden" />
+                  <Button variant="outline" size="sm" asChild disabled={isUploading}>
+                    <span>
+                      {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                      {isUploading ? "..." : "Upload"}
+                    </span>
+                  </Button>
+                </label>
               )}
             </CardContent>
           </Card>
@@ -595,6 +858,14 @@ function StepBankAccount() {
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-foreground">Bank Account Details</h2>
       <p className="text-sm text-muted-foreground">Earnings will be transferred to this account</p>
+      <Card className="border-warning/20 bg-warning/5">
+        <CardContent className="p-3 flex items-start gap-2">
+          <Shield className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            Bank details are stored securely and will be verified by our team before any payouts are processed.
+          </p>
+        </CardContent>
+      </Card>
       <div>
         <Label>Bank Name *</Label>
         <Select value={profile.bankName} onValueChange={(v) => updateProfile({ bankName: v })}>
@@ -630,13 +901,16 @@ function StepReview() {
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-foreground">Review Your Application</h2>
 
-      {/* Summary cards */}
       <Card>
         <CardContent className="p-4 space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span className="font-medium text-foreground">{providerLabel}</span></div>
           <Separator />
           <div className="flex justify-between"><span className="text-muted-foreground">Name</span><span className="font-medium text-foreground">{profile.fullName || "—"}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Mobile</span><span className="font-medium text-foreground">{profile.mobileNumber || "—"} {profile.mobileVerified && "✓"}</span></div>
+          {profile.businessName && (
+            <div className="flex justify-between"><span className="text-muted-foreground">Business</span><span className="font-medium text-foreground">{profile.businessName}</span></div>
+          )}
+          <div className="flex justify-between"><span className="text-muted-foreground">Mobile</span><span className="font-medium text-foreground">{profile.mobileNumber || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span className="font-medium text-foreground">{profile.email || "—"}</span></div>
           <div className="flex justify-between"><span className="text-muted-foreground">NIC</span><span className="font-medium text-foreground">{profile.nicNumber || "—"}</span></div>
           <Separator />
           <div className="flex justify-between"><span className="text-muted-foreground">Categories</span><span className="font-medium text-foreground">{profile.serviceCategories.join(", ") || "—"}</span></div>
@@ -646,7 +920,8 @@ function StepReview() {
           <div className="flex justify-between"><span className="text-muted-foreground">Tools</span><span className="font-medium text-foreground">{profile.tools.length} declared</span></div>
           <Separator />
           <div className="flex justify-between"><span className="text-muted-foreground">Schedule</span><span className="font-medium text-foreground">{profile.availabilityDays.length} days, {profile.availabilityStart}–{profile.availabilityEnd}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Bank</span><span className="font-medium text-foreground">{profile.bankName || "—"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Emergency</span><span className="font-medium text-foreground">{profile.emergencyAvailable ? "Yes" : "No"}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Bank</span><span className="font-medium text-foreground">{profile.bankName || "Not provided"}</span></div>
         </CardContent>
       </Card>
 
@@ -656,15 +931,15 @@ function StepReview() {
           <div className="flex items-center gap-3 mb-2">
             <BookOpen className={`w-5 h-5 ${trainingCompleted ? "text-success" : "text-muted-foreground"}`} />
             <div>
-              <p className="font-semibold text-foreground">Provider Training</p>
-              <p className="text-xs text-muted-foreground">Customer service, safety & platform rules</p>
+              <p className="font-semibold text-foreground">Provider Guidelines</p>
+              <p className="text-xs text-muted-foreground">Review customer service, safety & platform rules</p>
             </div>
           </div>
           {trainingCompleted ? (
-            <Badge className="bg-success/10 text-success">✓ Training Complete</Badge>
+            <Badge className="bg-success/10 text-success">✓ Guidelines Acknowledged</Badge>
           ) : (
             <Button variant="outline" size="sm" onClick={completeTraining}>
-              <BookOpen className="w-4 h-4 mr-1" /> Complete Training (Demo)
+              <BookOpen className="w-4 h-4 mr-1" /> Acknowledge Guidelines
             </Button>
           )}
         </CardContent>

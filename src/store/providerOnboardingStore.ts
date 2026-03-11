@@ -1,5 +1,5 @@
 /**
- * LankaFix Stage 19 — Provider Recruitment, Verification & Certification
+ * LankaFix — Provider Onboarding Store (Production-safe)
  */
 import { create } from "zustand";
 import type { CategoryCode } from "@/types/booking";
@@ -27,8 +27,8 @@ export type ProviderTierLevel = "verified" | "pro" | "elite" | "enterprise";
 export interface OnboardingProfile {
   providerType: ProviderType | null;
   fullName: string;
+  businessName: string;
   mobileNumber: string;
-  mobileVerified: boolean;
   email: string;
   nicNumber: string;
   profilePhotoUrl: string;
@@ -53,6 +53,7 @@ export interface UploadedDocument {
   type: "nic" | "business_registration" | "professional_cert" | "police_clearance";
   fileName: string;
   uploadedAt: string;
+  fileUrl?: string; // Real storage URL
 }
 
 export interface ProviderApplication {
@@ -136,8 +137,8 @@ export const BANKS = [
 const emptyProfile: OnboardingProfile = {
   providerType: null,
   fullName: "",
+  businessName: "",
   mobileNumber: "",
-  mobileVerified: false,
   email: "",
   nicNumber: "",
   profilePhotoUrl: "",
@@ -162,8 +163,6 @@ interface ProviderOnboardingState {
   currentStep: number;
   profile: OnboardingProfile;
   applications: ProviderApplication[];
-  otpSent: boolean;
-  otpCode: string;
   trainingCompleted: boolean;
   conductAccepted: boolean;
   setStep: (step: number) => void;
@@ -177,8 +176,6 @@ interface ProviderOnboardingState {
   toggleSpecialization: (spec: string) => void;
   addDocument: (doc: UploadedDocument) => void;
   removeDocument: (type: UploadedDocument["type"]) => void;
-  sendOtp: () => void;
-  verifyOtp: (code: string) => boolean;
   submitApplication: () => void;
   acceptConduct: () => void;
   completeTraining: () => void;
@@ -189,8 +186,6 @@ export const useProviderOnboardingStore = create<ProviderOnboardingState>((set, 
   currentStep: 0,
   profile: { ...emptyProfile },
   applications: [],
-  otpSent: false,
-  otpCode: "",
   trainingCompleted: false,
   conductAccepted: false,
 
@@ -253,18 +248,6 @@ export const useProviderOnboardingStore = create<ProviderOnboardingState>((set, 
       profile: { ...s.profile, documents: s.profile.documents.filter((d) => d.type !== type) },
     })),
 
-  sendOtp: () => {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    set({ otpSent: true, otpCode: code });
-    console.log(`[LankaFix] OTP sent: ${code}`);
-  },
-
-  verifyOtp: (code) => {
-    const valid = code === get().otpCode || code === "123456";
-    if (valid) set((s) => ({ profile: { ...s.profile, mobileVerified: true } }));
-    return valid;
-  },
-
   submitApplication: () => {
     const { profile } = get();
     const app: ProviderApplication = {
@@ -279,5 +262,5 @@ export const useProviderOnboardingStore = create<ProviderOnboardingState>((set, 
 
   acceptConduct: () => set({ conductAccepted: true }),
   completeTraining: () => set({ trainingCompleted: true }),
-  reset: () => set({ currentStep: 0, profile: { ...emptyProfile }, otpSent: false, otpCode: "", trainingCompleted: false, conductAccepted: false }),
+  reset: () => set({ currentStep: 0, profile: { ...emptyProfile }, trainingCompleted: false, conductAccepted: false }),
 }));

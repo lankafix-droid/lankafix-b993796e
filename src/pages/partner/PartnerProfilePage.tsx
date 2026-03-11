@@ -4,16 +4,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useCurrentPartner } from "@/hooks/useCurrentPartner";
-import { ArrowLeft, Building2, ShieldCheck, MapPin, Users, Phone, Camera, Wrench, Star, CheckCircle2, XCircle, Loader2, UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import {
+  ArrowLeft, Building2, ShieldCheck, MapPin, Phone, Wrench, Star,
+  CheckCircle2, XCircle, Loader2, UserPlus, Clock, Landmark, FileCheck,
+  Mail, CreditCard, Calendar,
+} from "lucide-react";
 
-function ProfileCompletenessCard({ partner }: { partner: any }) {
+function ProfileCompletenessCard({ partner, bankData, scheduleData, docsCount }: {
+  partner: any;
+  bankData: any;
+  scheduleData: any;
+  docsCount: number;
+}) {
   const checks = [
-    { label: "Identity complete", done: !!partner.full_name && !!partner.phone_number },
+    { label: "Full name", done: !!partner.full_name },
+    { label: "Business name", done: !!partner.business_name, optional: partner.provider_type === "individual" },
+    { label: "Phone number", done: !!partner.phone_number },
+    { label: "Email added", done: !!partner.email },
+    { label: "Profile photo", done: !!partner.profile_photo_url },
     { label: "Categories selected", done: partner.categories_supported?.length > 0 },
     { label: "Zones selected", done: partner.service_zones?.length > 0 },
-    { label: "Profile photo added", done: !!partner.profile_photo_url },
-    { label: "Verification status", done: partner.verification_status === "verified" },
-  ];
+    { label: "Documents uploaded", done: docsCount > 0 },
+    { label: "Bank details", done: !!bankData },
+    { label: "Verification", done: partner.verification_status === "verified" },
+  ].filter(c => !c.optional || c.done); // Only show optional items if done
+
   const completed = checks.filter((c) => c.done).length;
   const percent = Math.round((completed / checks.length) * 100);
 
@@ -51,6 +68,48 @@ export default function PartnerProfilePage() {
   const navigate = useNavigate();
   const { data: partner, isLoading } = useCurrentPartner();
 
+  // Fetch related data
+  const { data: bankData } = useQuery({
+    queryKey: ["partner_bank", partner?.id],
+    queryFn: async () => {
+      if (!partner?.id) return null;
+      const { data } = await supabase
+        .from("partner_bank_accounts")
+        .select("bank_name, branch, verification_status")
+        .eq("partner_id", partner.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!partner?.id,
+  });
+
+  const { data: scheduleData } = useQuery({
+    queryKey: ["partner_schedule", partner?.id],
+    queryFn: async () => {
+      if (!partner?.id) return null;
+      const { data } = await supabase
+        .from("partner_schedules")
+        .select("working_days, start_time, end_time, emergency_available")
+        .eq("partner_id", partner.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!partner?.id,
+  });
+
+  const { data: docsData } = useQuery({
+    queryKey: ["partner_docs", partner?.id],
+    queryFn: async () => {
+      if (!partner?.id) return [];
+      const { data } = await supabase
+        .from("partner_documents")
+        .select("document_type, verification_status, created_at")
+        .eq("partner_id", partner.id);
+      return data || [];
+    },
+    enabled: !!partner?.id,
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -84,6 +143,7 @@ export default function PartnerProfilePage() {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Identity Card */}
         <Card>
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center gap-3">
@@ -127,8 +187,30 @@ export default function PartnerProfilePage() {
           </CardContent>
         </Card>
 
-        <ProfileCompletenessCard partner={partner} />
+        {/* Profile Completeness */}
+        <ProfileCompletenessCard
+          partner={partner}
+          bankData={bankData}
+          scheduleData={scheduleData}
+          docsCount={docsData?.length || 0}
+        />
 
+        {/* Contact */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Phone className="w-4 h-4 text-primary" /> Contact</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-sm">
+            <p className="text-muted-foreground">{partner.phone_number}</p>
+            {partner.email && (
+              <p className="text-muted-foreground flex items-center gap-1">
+                <Mail className="w-3 h-3" /> {partner.email}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Zones */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><MapPin className="w-4 h-4 text-primary" /> Service Zones</CardTitle>
@@ -146,6 +228,7 @@ export default function PartnerProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Categories */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><Wrench className="w-4 h-4 text-primary" /> Categories</CardTitle>
@@ -163,6 +246,7 @@ export default function PartnerProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Specializations */}
         {partner.specializations?.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
@@ -178,12 +262,61 @@ export default function PartnerProfilePage() {
           </Card>
         )}
 
+        {/* Schedule */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2"><Phone className="w-4 h-4 text-primary" /> Contact</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" /> Schedule</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            <p>{partner.phone_number}</p>
+            {scheduleData ? (
+              <div className="space-y-1">
+                <p>{(scheduleData.working_days as string[])?.join(", ") || "Not set"}</p>
+                <p>{scheduleData.start_time} – {scheduleData.end_time}</p>
+                {scheduleData.emergency_available && (
+                  <Badge variant="outline" className="text-[10px] text-warning border-warning/30">Emergency Available</Badge>
+                )}
+              </div>
+            ) : (
+              <p>Schedule not configured yet</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Bank */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Bank Details</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            {bankData ? (
+              <div className="space-y-1">
+                <p>{bankData.bank_name} — {bankData.branch || "Branch not set"}</p>
+                <Badge variant="outline" className="text-[10px]">{bankData.verification_status}</Badge>
+              </div>
+            ) : (
+              <p>Bank details not provided yet</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Documents */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><FileCheck className="w-4 h-4 text-primary" /> Documents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {docsData && docsData.length > 0 ? (
+              <div className="space-y-1">
+                {docsData.map((d: any) => (
+                  <div key={d.document_type} className="flex items-center justify-between text-sm">
+                    <span className="text-foreground capitalize">{d.document_type.replace(/_/g, " ")}</span>
+                    <Badge variant="outline" className="text-[10px]">{d.verification_status}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
+            )}
           </CardContent>
         </Card>
       </div>
