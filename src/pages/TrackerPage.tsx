@@ -60,8 +60,8 @@ import { getTrafficLabel } from "@/lib/etaEngine";
 
 /** Sub-component: Live technician tracking for DB-backed bookings */
 function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookingId: string; partnerId: string | null; bookingStatus: string }) {
-  const isTrackable = ["tech_en_route", "arrived", "assigned"].includes(bookingStatus);
-  const { data: tracking } = useTechnicianTracking(isTrackable ? bookingId : undefined, partnerId);
+  // Only show live tracking during active travel — tech_en_route only
+  const { data: tracking } = useTechnicianTracking(bookingId, partnerId, bookingStatus);
 
   if (!isTrackable || !tracking || !tracking.technicianLat) return null;
 
