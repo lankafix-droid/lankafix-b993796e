@@ -233,6 +233,12 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
               return computeTotals({ ...opt, laborItems });
             }));
           }}
+          onApplyWarranty={(text) => {
+            setOptions(prev => prev.map((opt, i) => {
+              if (i !== 0) return opt;
+              return { ...opt, warranty: { ...opt.warranty, labor: text, parts: text } };
+            }));
+          }}
         />
 
         <Button className="w-full" onClick={handleSubmit}>
