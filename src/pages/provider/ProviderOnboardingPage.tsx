@@ -553,20 +553,20 @@ function StepBasicProfile() {
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || "anon";
+      if (!user) throw new Error("Please sign in first");
       const ext = file.name.split(".").pop();
-      const path = `${userId}/profile-photo.${ext}`;
+      const path = `${user.id}/profile-photo.${ext}`;
       
-      const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
+      // Upload to PUBLIC profile-photos bucket (separate from private docs)
+      const { error } = await supabase.storage.from("partner-profile-photos").upload(path, file, { upsert: true });
       if (error) throw error;
       
-      // Private bucket: use signed URL for preview; store the path for later signed-URL generation
-      const { data: signedData } = await supabase.storage.from("partner-uploads").createSignedUrl(path, 3600);
-      updateProfile({ profilePhotoUrl: signedData?.signedUrl || path });
+      const { data: urlData } = supabase.storage.from("partner-profile-photos").getPublicUrl(path);
+      updateProfile({ profilePhotoUrl: urlData.publicUrl });
       toast({ title: "Photo uploaded!" });
     } catch (err: any) {
       console.error("Photo upload error:", err);
-      toast({ title: "Upload failed", description: "Please sign in first to upload photos, or try again.", variant: "destructive" });
+      toast({ title: "Upload failed", description: err?.message || "Please sign in first to upload photos, or try again.", variant: "destructive" });
     } finally {
       setUploading(false);
     }
