@@ -1,159 +1,141 @@
-import Header from "@/components/layout/Header";
-import Footer from "@/components/landing/Footer";
-import { useBookingStore } from "@/store/bookingStore";
-import { computeSettlementForBooking, computePartnerWallet } from "@/lib/settlementEngine";
-import { calculateCommission, CATEGORY_TIER_MAP, TIER_LABELS, TIER_COMMISSION_RATES } from "@/engines/commissionEngine";
+import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, TrendingUp, AlertTriangle, ArrowLeft, CheckCircle2, Clock, ShieldAlert, Percent, BarChart3 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { useCurrentPartner, usePartnerSettlements } from "@/hooks/useCurrentPartner";
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
-import type { SettlementStatus } from "@/types/booking";
+import { ArrowLeft, Wallet, BarChart3, Loader2, UserPlus, Info, Receipt } from "lucide-react";
 
-const PARTNER_ID = "partner-001";
+export default function PartnerWalletPage() {
+  const navigate = useNavigate();
+  const { data: partner, isLoading } = useCurrentPartner();
+  const { data: settlements = [] } = usePartnerSettlements(partner?.id);
 
-const STATUS_STYLES: Record<SettlementStatus, { label: string; className: string }> = {
-  not_ready: { label: "Not Ready", className: "bg-muted text-muted-foreground" },
-  pending: { label: "Pending", className: "bg-warning/10 text-warning" },
-  processing: { label: "Processing", className: "bg-primary/10 text-primary" },
-  settled: { label: "Settled", className: "bg-success/10 text-success" },
-  held: { label: "Held", className: "bg-destructive/10 text-destructive" },
-};
-
-const PartnerWalletPage = () => {
-  const bookings = useBookingStore((s) => s.bookings);
-
-  useEffect(() => {
-    track("wallet_viewed", { actor: "partner" });
-  }, []);
-
-  const wallet = computePartnerWallet(bookings, PARTNER_ID);
-  const relevantBookings = bookings.filter(
-    (b) => b.technician?.partnerId === PARTNER_ID && b.finance &&
-      (b.status === "completed" || b.status === "rated" || b.finance.collectedAmount > 0)
-  );
+  useEffect(() => { track("wallet_viewed", { actor: "partner" }); }, []);
 
   const formatLKR = (n: number) => `LKR ${n.toLocaleString("en-LK")}`;
 
-  // Compute commission breakdown per booking
-  const commissionDetails = relevantBookings.map((b) => {
-    const jobValue = b.finance?.totalApprovedAmount || b.pricing.estimatedMin || 0;
-    const commission = calculateCommission(b.categoryCode, jobValue);
-    return { booking: b, commission };
-  });
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const totalCommissionDeducted = commissionDetails.reduce((s, d) => s + d.commission.commissionAmount, 0);
+  if (!partner) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-6 text-center space-y-4">
+            <UserPlus className="w-12 h-12 text-muted-foreground mx-auto" />
+            <h2 className="text-lg font-bold text-foreground">No Partner Profile</h2>
+            <Button onClick={() => navigate("/join")}>Join as Provider</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const totalGross = settlements.reduce((s: number, r: any) => s + (r.gross_amount_lkr || 0), 0);
+  const totalCommission = settlements.reduce((s: number, r: any) => s + (r.platform_commission_lkr || 0), 0);
+  const totalPayout = settlements.reduce((s: number, r: any) => s + (r.net_payout_lkr || 0), 0);
+  const pendingSettlements = settlements.filter((s: any) => s.settlement_status === "pending");
+  const settledSettlements = settlements.filter((s: any) => s.settlement_status === "settled");
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-1 bg-background">
-        <div className="container py-8 max-w-2xl">
-          <Link to="/partner" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-            <ArrowLeft className="w-4 h-4" /> Dashboard
-          </Link>
-          <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
-            <Wallet className="w-6 h-6 text-primary" /> Partner Wallet
-          </h1>
+    <div className="min-h-screen bg-background">
+      <div className="bg-card border-b px-4 py-4 flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/partner")} aria-label="Back">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <Wallet className="w-5 h-5 text-primary" /> Partner Wallet
+        </h1>
+      </div>
 
-          {/* Commission Tier Info */}
-          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Percent className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">LankaFix Commission Rates</span>
+      <div className="p-4 space-y-4 max-w-2xl mx-auto">
+        {/* Trust Notice */}
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-start gap-2">
+          <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <p className="text-xs text-muted-foreground">
+            Payout transparency is important for provider trust. All settlements are tracked in real-time through the platform.
+          </p>
+        </div>
+
+        {settlements.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center space-y-3">
+              <Receipt className="w-10 h-10 text-muted-foreground mx-auto" />
+              <h3 className="font-semibold text-foreground">No Settlements Yet</h3>
+              <p className="text-sm text-muted-foreground">
+                Settlement tracking will appear here once you complete jobs through LankaFix. Each completed booking generates a transparent settlement record.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Total Gross</p>
+                  <p className="text-lg font-bold text-foreground">{formatLKR(totalGross)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Net Payout</p>
+                  <p className="text-lg font-bold text-success">{formatLKR(totalPayout)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Commission Paid</p>
+                  <p className="text-lg font-bold text-primary">{formatLKR(totalCommission)}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground mb-1">Pending</p>
+                  <p className="text-lg font-bold text-warning">{pendingSettlements.length} jobs</p>
+                </CardContent>
+              </Card>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.entries(TIER_COMMISSION_RATES) as [string, number][]).map(([tier, rate]) => (
-                <div key={tier} className="bg-background rounded-lg p-2 text-center border">
-                  <p className="text-xs text-muted-foreground">{TIER_LABELS[tier as keyof typeof TIER_LABELS]}</p>
-                  <p className="text-lg font-bold text-primary">{rate}%</p>
-                </div>
+
+            {/* Settlement History */}
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-primary" /> Settlement History
+            </h2>
+            <div className="space-y-2">
+              {settlements.map((s: any) => (
+                <Card key={s.id}>
+                  <CardContent className="p-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-foreground">
+                        Booking {s.booking_id.slice(0, 8)}...
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {new Date(s.created_at).toLocaleDateString()} • Gross: {formatLKR(s.gross_amount_lkr)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-success">{formatLKR(s.net_payout_lkr)}</p>
+                      <Badge variant="outline" className={`text-[9px] ${
+                        s.settlement_status === "settled" ? "text-success" :
+                        s.settlement_status === "pending" ? "text-warning" : "text-muted-foreground"
+                      }`}>
+                        {s.settlement_status}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-card rounded-xl border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Pending Settlement</p>
-              <p className="text-lg font-bold text-warning">{formatLKR(wallet.pendingSettlement)}</p>
-            </div>
-            <div className="bg-card rounded-xl border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Released</p>
-              <p className="text-lg font-bold text-success">{formatLKR(wallet.releasedSettlement)}</p>
-            </div>
-            <div className="bg-card rounded-xl border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Commission Deducted</p>
-              <p className="text-lg font-bold text-primary">{formatLKR(totalCommissionDeducted)}</p>
-            </div>
-            <div className="bg-card rounded-xl border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Held / Refunds</p>
-              <p className="text-lg font-bold text-destructive">{formatLKR(wallet.heldAmount + wallet.refundAdjustments)}</p>
-            </div>
-          </div>
-
-          {/* Booking Settlements with Commission */}
-          <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" /> Settlement & Commission Breakdown
-          </h2>
-          {commissionDetails.length === 0 ? (
-            <div className="bg-card rounded-xl border p-6 text-center text-sm text-muted-foreground">
-              No settled bookings yet
-            </div>
-          ) : (
-            <div className="space-y-3 mb-6">
-              {commissionDetails.map(({ booking: b, commission: c }) => {
-                const s = computeSettlementForBooking(b);
-                const style = STATUS_STYLES[s.settlementStatus];
-                return (
-                  <div key={b.jobId} className="bg-card rounded-xl border p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-foreground">{b.jobId}</span>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px]">{c.tierLabel} • {c.commissionPercent}%</Badge>
-                        <Badge className={style.className}>{style.label}</Badge>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mb-2">{b.categoryName} • {b.serviceName}</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div><span className="text-muted-foreground">Job Value:</span> <span className="font-medium text-foreground">{formatLKR(c.jobValue)}</span></div>
-                      <div><span className="text-muted-foreground">Commission ({c.commissionPercent}%):</span> <span className="font-medium text-primary">{formatLKR(c.commissionAmount)}</span></div>
-                      <div><span className="text-muted-foreground">Partner Payout:</span> <span className="font-medium text-success">{formatLKR(c.partnerPayout)}</span></div>
-                      <div><span className="text-muted-foreground">Tech Share:</span> <span className="font-medium text-foreground">{formatLKR(s.technicianShare)}</span></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Ledger */}
-          <h2 className="text-sm font-semibold text-foreground mb-3">Wallet Ledger</h2>
-          <div className="space-y-2 mb-6">
-            {relevantBookings.flatMap((b) =>
-              (b.finance?.ledgerEntries || [])
-                .filter((e) => e.type === "provider_settlement" || e.type === "commission" || e.type === "refund" || e.type === "manual_adjustment")
-                .map((e) => (
-                  <div key={e.id} className="bg-card rounded-xl border p-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-xs font-medium text-foreground capitalize">{e.type.replace(/_/g, " ")}</p>
-                      <p className="text-[10px] text-muted-foreground">{b.jobId} • {new Date(e.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    <span className={`text-sm font-bold ${e.direction === "in" ? "text-success" : "text-destructive"}`}>
-                      {e.direction === "in" ? "+" : "−"}{formatLKR(e.amount)}
-                    </span>
-                  </div>
-                ))
-            )}
-            {relevantBookings.every((b) => !b.finance?.ledgerEntries?.length) && (
-              <div className="bg-card rounded-xl border p-4 text-center text-xs text-muted-foreground">No ledger entries yet</div>
-            )}
-          </div>
-        </div>
-      </main>
-      <Footer />
+          </>
+        )}
+      </div>
     </div>
   );
-};
-
-export default PartnerWalletPage;
+}

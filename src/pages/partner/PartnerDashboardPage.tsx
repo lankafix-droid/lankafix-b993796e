@@ -2,46 +2,60 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useBookingStore } from "@/store/bookingStore";
-import { useProviderERPStore } from "@/store/providerERPStore";
-import { MOCK_PARTNERS, getTechniciansByPartner } from "@/data/mockPartnerData";
-import { getTechPerformanceMetrics } from "@/lib/dispatchEngine";
+import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner";
 import { track } from "@/lib/analytics";
-import { VERIFICATION_STATUS_STYLES } from "@/types/provider";
 import { useEffect } from "react";
 import {
   Briefcase, Clock, CheckCircle2, AlertTriangle, Users,
   MapPin, ArrowRight, Wrench, BarChart3, Wallet,
-  TrendingUp, Shield, Settings,
+  TrendingUp, Shield, Settings, Loader2, UserPlus,
 } from "lucide-react";
 
-const CURRENT_PARTNER = MOCK_PARTNERS[0];
+const VERIFICATION_COLORS: Record<string, string> = {
+  pending: "bg-warning/10 text-warning",
+  verified: "bg-success/10 text-success",
+  suspended: "bg-destructive/10 text-destructive",
+};
 
 export default function PartnerDashboardPage() {
   const navigate = useNavigate();
-  const bookings = useBookingStore((s) => s.bookings);
-  const techs = getTechniciansByPartner(CURRENT_PARTNER.id);
-  const { getFleetSummary, getProviderPerformance, getProvider } = useProviderERPStore();
+  const { data: partner, isLoading } = useCurrentPartner();
+  const { data: bookings = [] } = usePartnerBookings(partner?.id);
 
   useEffect(() => { track("partner_dashboard_view"); }, []);
 
-  const provider = getProvider(CURRENT_PARTNER.id);
-  const fleet = getFleetSummary(CURRENT_PARTNER.id);
-  const performance = getProviderPerformance(CURRENT_PARTNER.id);
-  const verificationStyle = provider ? VERIFICATION_STATUS_STYLES[provider.verificationStatus] : VERIFICATION_STATUS_STYLES.verified;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  const activeJobs = bookings.filter((b) => !["completed", "rated", "cancelled"].includes(b.status));
-  const awaitingConfirmation = bookings.filter((b) => b.status === "awaiting_partner_confirmation");
-  const inProgress = bookings.filter((b) => ["repair_started", "inspection_started", "in_progress"].includes(b.status));
-  const completedToday = bookings.filter((b) => {
-    if (b.status !== "completed" && b.status !== "rated") return false;
-    const today = new Date().toDateString();
-    return b.timelineEvents.some((e) => e.title.includes("Completed") && new Date(e.timestamp).toDateString() === today);
-  });
+  if (!partner) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-6 text-center space-y-4">
+            <UserPlus className="w-12 h-12 text-muted-foreground mx-auto" />
+            <h2 className="text-lg font-bold text-foreground">No Partner Profile Found</h2>
+            <p className="text-sm text-muted-foreground">
+              You need to sign in with a partner account or complete provider onboarding first.
+            </p>
+            <div className="flex gap-2 justify-center">
+              <Button onClick={() => navigate("/join")}>Join as Provider</Button>
+              <Button variant="outline" onClick={() => navigate("/")}>Home</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-  const topCategories = Object.entries(performance.jobsByCategory)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 4);
+  const activeJobs = bookings.filter((b: any) => !["completed", "cancelled", "no_show"].includes(b.status));
+  const awaitingConfirmation = bookings.filter((b: any) => b.status === "awaiting_partner_confirmation");
+  const inProgress = bookings.filter((b: any) => ["repair_started", "inspection_started"].includes(b.status));
+  const completedJobs = bookings.filter((b: any) => b.status === "completed");
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,9 +63,11 @@ export default function PartnerDashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-foreground">Partner Dashboard</h1>
-            <p className="text-xs text-muted-foreground">{CURRENT_PARTNER.companyName}</p>
+            <p className="text-xs text-muted-foreground">{partner.business_name || partner.full_name}</p>
           </div>
-          <Badge className={verificationStyle.color + " text-xs"}>{verificationStyle.label}</Badge>
+          <Badge className={`text-xs ${VERIFICATION_COLORS[partner.verification_status] || "bg-muted text-muted-foreground"}`}>
+            {partner.verification_status}
+          </Badge>
         </div>
       </div>
 
@@ -62,7 +78,7 @@ export default function PartnerDashboardPage() {
             { label: "Active Jobs", value: activeJobs.length, icon: Briefcase, color: "text-primary" },
             { label: "Awaiting Confirm", value: awaitingConfirmation.length, icon: AlertTriangle, color: "text-warning" },
             { label: "In Progress", value: inProgress.length, icon: Wrench, color: "text-primary" },
-            { label: "Completed Today", value: completedToday.length, icon: CheckCircle2, color: "text-success" },
+            { label: "Completed", value: partner.completed_jobs_count || completedJobs.length, icon: CheckCircle2, color: "text-success" },
           ].map((card) => (
             <Card key={card.label}>
               <CardContent className="p-4">
@@ -76,49 +92,7 @@ export default function PartnerDashboardPage() {
           ))}
         </div>
 
-        {/* Fleet Management */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" /> Fleet Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-2 text-center mb-3">
-              <div>
-                <p className="text-xl font-bold text-foreground">{fleet.totalTechnicians}</p>
-                <p className="text-[10px] text-muted-foreground">Total</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold text-success">{fleet.online}</p>
-                <p className="text-[10px] text-muted-foreground">Online</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold text-warning">{fleet.busy}</p>
-                <p className="text-[10px] text-muted-foreground">Busy</p>
-              </div>
-              <div>
-                <p className="text-xl font-bold text-muted-foreground">{fleet.offline}</p>
-                <p className="text-[10px] text-muted-foreground">Offline</p>
-              </div>
-            </div>
-            {/* Capacity bar */}
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Daily Capacity</span>
-                <span>{fleet.usedCapacityToday}/{fleet.totalCapacityToday} jobs</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all"
-                  style={{ width: `${Math.min((fleet.usedCapacityToday / Math.max(fleet.totalCapacityToday, 1)) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Performance Overview */}
+        {/* Performance Overview — Real Data */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -126,54 +100,51 @@ export default function PartnerDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-foreground">⭐ {performance.customerRating}</p>
+                <p className="text-lg font-bold text-foreground">
+                  {partner.rating_average ? `⭐ ${Number(partner.rating_average).toFixed(1)}` : "—"}
+                </p>
                 <p className="text-[10px] text-muted-foreground">Avg Rating</p>
               </div>
               <div className="bg-muted/30 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-foreground">{performance.completionRate}%</p>
-                <p className="text-[10px] text-muted-foreground">Completion Rate</p>
+                <p className="text-lg font-bold text-foreground">
+                  {partner.completed_jobs_count || 0}
+                </p>
+                <p className="text-[10px] text-muted-foreground">Jobs Completed</p>
               </div>
             </div>
-            {/* Category breakdown */}
-            {topCategories.length > 0 && (
-              <div className="space-y-1.5 border-t pt-2">
-                <p className="text-xs text-muted-foreground font-medium">Jobs by Category</p>
-                {topCategories.map(([cat, count]) => (
-                  <div key={cat} className="flex items-center justify-between text-xs">
-                    <span className="text-foreground">{cat}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 bg-muted rounded-full w-20 overflow-hidden">
-                        <div className="h-full bg-primary rounded-full" style={{ width: `${Math.min((count / topCategories[0][1]) * 100, 100)}%` }} />
-                      </div>
-                      <span className="text-muted-foreground w-8 text-right">{count}</span>
-                    </div>
-                  </div>
-                ))}
+            {/* Categories */}
+            {partner.categories_supported.length > 0 && (
+              <div className="border-t pt-2 mt-3">
+                <p className="text-xs text-muted-foreground font-medium mb-1">Categories</p>
+                <div className="flex flex-wrap gap-1">
+                  {partner.categories_supported.map((c: string) => (
+                    <Badge key={c} variant="secondary" className="text-[10px]">{c}</Badge>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Revenue */}
+        {/* Service Zones */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-success" /> Revenue
+              <MapPin className="w-4 h-4 text-primary" /> Service Zones
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-success/5 border border-success/20 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-foreground">LKR {performance.weeklyRevenue.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">This Week</p>
+            {partner.service_zones && partner.service_zones.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {partner.service_zones.map((z: string) => (
+                  <Badge key={z} variant="outline" className="text-[10px]">{z}</Badge>
+                ))}
               </div>
-              <div className="bg-success/5 border border-success/20 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-foreground">LKR {performance.monthlyRevenue.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">This Month</p>
-              </div>
-            </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No zones configured</p>
+            )}
           </CardContent>
         </Card>
 
@@ -185,12 +156,14 @@ export default function PartnerDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {activeJobs.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No active jobs</p>}
-            {activeJobs.slice(0, 5).map((b) => (
-              <div key={b.jobId} className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/partner/job/${b.jobId}`)}>
+            {activeJobs.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No active jobs yet</p>
+            )}
+            {activeJobs.slice(0, 5).map((b: any) => (
+              <div key={b.id} className="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/partner/job/${b.id}`)}>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{b.jobId}</p>
-                  <p className="text-xs text-muted-foreground">{b.categoryName} • {b.serviceName}</p>
+                  <p className="text-sm font-medium text-foreground">{b.id.slice(0, 8)}...</p>
+                  <p className="text-xs text-muted-foreground">{b.category_code} • {b.service_type || "General"}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-[10px]">{b.status.replace(/_/g, " ")}</Badge>
@@ -206,14 +179,14 @@ export default function PartnerDashboardPage() {
           <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/jobs")}>
             <Briefcase className="w-4 h-4 mr-2" /> All Jobs
           </Button>
-          <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/technicians")}>
-            <Users className="w-4 h-4 mr-2" /> Technicians
-          </Button>
           <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/wallet")}>
             <Wallet className="w-4 h-4 mr-2" /> Wallet
           </Button>
           <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/profile")}>
             <Settings className="w-4 h-4 mr-2" /> Profile
+          </Button>
+          <Button variant="outline" className="h-auto py-3" onClick={() => navigate("/partner/premium")}>
+            <TrendingUp className="w-4 h-4 mr-2" /> Premium
           </Button>
         </div>
       </div>

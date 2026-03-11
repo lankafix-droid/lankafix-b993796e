@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   useProviderOnboardingStore,
   ONBOARDING_STEPS,
@@ -28,15 +29,90 @@ import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import {
   ArrowLeft, ArrowRight, Building2, User, Wrench, MapPin, Award,
   FileCheck, Hammer, Clock, Landmark, CheckCircle, Camera, Phone,
-  Shield, Star, Send, BookOpen, Scale,
+  Shield, Star, Send, BookOpen, Scale, Loader2, Sparkles, TrendingUp,
+  Zap, Heart, BarChart3,
 } from "lucide-react";
 
 export default function ProviderOnboardingPage() {
   const store = useProviderOnboardingStore();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const step = ONBOARDING_STEPS[store.currentStep];
   const progress = ((store.currentStep + 1) / ONBOARDING_STEPS.length) * 100;
+
+  const handleSubmit = async () => {
+    const { profile } = store;
+    
+    // Validation
+    if (!profile.fullName.trim()) {
+      toast({ title: "Missing required field", description: "Please enter your full name.", variant: "destructive" });
+      return;
+    }
+    if (!profile.mobileNumber.trim() || profile.mobileNumber.length < 10) {
+      toast({ title: "Missing required field", description: "Please enter a valid mobile number.", variant: "destructive" });
+      return;
+    }
+    if (profile.serviceCategories.length === 0) {
+      toast({ title: "Missing required field", description: "Please select at least one service category.", variant: "destructive" });
+      return;
+    }
+    if (profile.serviceZones.length === 0) {
+      toast({ title: "Missing required field", description: "Please select at least one service zone.", variant: "destructive" });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Get current user if logged in
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const partnerRecord = {
+        full_name: profile.fullName.trim(),
+        business_name: profile.providerType === "individual" ? null : (profile.fullName.trim() + " Services"),
+        phone_number: profile.mobileNumber.trim(),
+        categories_supported: profile.serviceCategories,
+        specializations: profile.specializations,
+        brand_specializations: [] as string[],
+        service_zones: profile.serviceZones,
+        experience_years: profile.yearsOfExperience,
+        emergency_available: profile.emergencyAvailable,
+        verification_status: "pending" as const,
+        availability_status: "offline" as const,
+        profile_photo_url: profile.profilePhotoUrl || null,
+        user_id: user?.id || null,
+        vehicle_type: "motorcycle",
+        max_jobs_per_day: 5,
+        max_concurrent_jobs: 1,
+      };
+
+      const { data, error } = await supabase
+        .from("partners")
+        .insert(partnerRecord)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Also store in Zustand for local state
+      store.submitApplication();
+
+      toast({
+        title: "Application Submitted! 🎉",
+        description: "Your partner record has been created. We'll review your profile within 24–48 hours.",
+      });
+      navigate("/partner");
+    } catch (err: any) {
+      console.error("Onboarding submission error:", err);
+      toast({
+        title: "Submission Failed",
+        description: err?.message || "Could not save your application. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -96,21 +172,21 @@ export default function ProviderOnboardingPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4">
         <div className="max-w-2xl mx-auto flex gap-3">
           {store.currentStep > 0 && (
-            <Button variant="outline" onClick={store.prevStep} className="flex-1">
+            <Button variant="outline" onClick={store.prevStep} className="flex-1" disabled={isSubmitting}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back
             </Button>
           )}
           {step.key === "review" ? (
             <Button
               className="flex-1"
-              disabled={!store.conductAccepted}
-              onClick={() => {
-                store.submitApplication();
-                toast({ title: "Application Submitted!", description: "We'll review your profile within 24–48 hours." });
-                navigate("/partner");
-              }}
+              disabled={!store.conductAccepted || isSubmitting}
+              onClick={handleSubmit}
             >
-              <Send className="w-4 h-4 mr-1" /> Submit Application
+              {isSubmitting ? (
+                <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Submitting...</>
+              ) : (
+                <><Send className="w-4 h-4 mr-1" /> Submit Application</>
+              )}
             </Button>
           ) : (
             <Button onClick={store.nextStep} className="flex-1">
@@ -123,12 +199,55 @@ export default function ProviderOnboardingPage() {
   );
 }
 
+// ─── Provider Benefits Pitch (shown on first step) ─────────────────
+
+function ProviderBenefitsPitch() {
+  const benefits = [
+    { icon: Zap, label: "Structured Job Pipeline", desc: "No more chasing leads on WhatsApp — get real bookings sent to you" },
+    { icon: Shield, label: "Verified Identity", desc: "Build a trusted marketplace profile customers can rely on" },
+    { icon: BarChart3, label: "Digital Quote Support", desc: "Professional quoting tools that reduce disputes" },
+    { icon: Heart, label: "Repeat Booking Potential", desc: "Customers can rebook you directly through the platform" },
+    { icon: MapPin, label: "Zone-Based Growth", desc: "Grow your reputation in your local service areas" },
+    { icon: TrendingUp, label: "Merit-Based Ranking", desc: "Better work = more visibility = more jobs" },
+    { icon: Star, label: "Customer Trust", desc: "LankaFix guarantee gives customers confidence to book you" },
+    { icon: Sparkles, label: "Operational Visibility", desc: "Track jobs, earnings, and performance in one place" },
+  ];
+
+  return (
+    <Card className="bg-primary/5 border-primary/20 mb-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          Why Join LankaFix?
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Stop relying only on WhatsApp, Facebook & referrals. Build a professional service business.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-2">
+          {benefits.map((b) => (
+            <div key={b.label} className="flex items-start gap-2 text-xs">
+              <b.icon className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <span className="font-medium text-foreground">{b.label}</span>
+                <span className="text-muted-foreground"> — {b.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Step Components ────────────────────────────────────────────────
 
 function StepProviderType() {
   const { profile, updateProfile } = useProviderOnboardingStore();
   return (
     <div className="space-y-3">
+      <ProviderBenefitsPitch />
       <h2 className="text-lg font-bold text-foreground">What type of provider are you?</h2>
       {PROVIDER_TYPE_OPTIONS.map((opt) => (
         <Card
