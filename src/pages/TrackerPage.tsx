@@ -322,7 +322,7 @@ const TrackerPage = () => {
   const mascotKey = getMascotKey(booking.status, !!booking.sos?.active);
   const isMatching = booking.status === "matching" || booking.status === "awaiting_partner_confirmation";
   const isAssigned = booking.technician && !isMatching;
-  const zoneIntel = getZoneIntelligence(booking.zone);
+  const zoneIntel = { techsNearby: 0, avgResponseMinutes: 30 }; // Real counts come from DB-backed components
 
   // Handlers
   const handleCancel = () => { if (!cancelReason) return; cancelBooking(booking.jobId, cancelReason); setShowCancel(false); toast.success("Booking cancelled"); };
