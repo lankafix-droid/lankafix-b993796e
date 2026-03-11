@@ -145,9 +145,18 @@ serve(async (req) => {
     const configMap: Record<string, any> = {};
     (settingsRes.data || []).forEach((s: any) => { configMap[s.key] = s.value; });
 
-    const weights = configMap.dispatch_weights || {
-      proximity: 0.30, specialization: 0.20, rating: 0.15,
-      response_speed: 0.10, workload: 0.10, completion_rate: 0.10, emergency_priority: 0.05,
+    const rawWeights = configMap.dispatch_weights || {};
+    const weights = {
+      proximity: rawWeights.proximity ?? 0.30,
+      specialization: rawWeights.specialization ?? 0.20,
+      rating: rawWeights.rating ?? 0.15,
+      response_speed: rawWeights.response_speed ?? 0.10,
+      workload: rawWeights.workload ?? 0.10,
+      completion_rate: rawWeights.completion_rate ?? 0.10,
+      emergency_priority: rawWeights.emergency_priority ?? 0.05,
+      // Phase 5 — configurable via platform_settings.dispatch_weights
+      performance_signal: rawWeights.performance_signal ?? 0.03,
+      tier_signal: rawWeights.tier_signal ?? 0.02,
     };
     const modes = configMap.dispatch_modes || {};
     const limits = configMap.dispatch_limits || {
