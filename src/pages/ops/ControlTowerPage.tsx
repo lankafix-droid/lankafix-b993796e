@@ -52,6 +52,10 @@ export default function ControlTowerPage() {
   const scenarios = generateMockScenarios("AC");
   const filteredForecasts = forecasts.filter((f) => f.horizon === forecastHorizon);
   const { data: metrics } = useOpsMetrics();
+  const { data: zoneHealth = [] } = useZoneIntelligence();
+
+  const healthColor = (h: ZoneHealthStatus) =>
+    h === "risk" ? "bg-destructive/15 text-destructive" : h === "watch" ? "bg-warning/15 text-warning" : "bg-success/15 text-success";
 
   return (
     <div className="min-h-screen bg-background">
