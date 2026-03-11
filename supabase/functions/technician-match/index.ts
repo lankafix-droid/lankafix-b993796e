@@ -20,30 +20,58 @@ interface MatchRequest {
   booking_id?: string;
 }
 
-// Category-specific matching rules
+// ── CATEGORY RULES ──
 const CATEGORY_RULES: Record<string, {
   prefer_inspection?: boolean;
   prefer_quote?: boolean;
   prefer_specialization?: string[];
-  prefer_express?: boolean;
+  brand_weight_boost?: boolean;
 }> = {
-  AC: { prefer_specialization: ["AC_REPAIR", "AC_GAS", "AC_INSTALL"] },
-  MOBILE: { prefer_specialization: ["MOBILE_SCREEN", "MOBILE_BOARD", "MOBILE_WATER"] },
+  AC: { prefer_specialization: ["AC_REPAIR", "AC_GAS", "AC_INSTALL"], brand_weight_boost: true },
+  MOBILE: { prefer_specialization: ["MOBILE_SCREEN", "MOBILE_BOARD", "MOBILE_WATER"], brand_weight_boost: true },
   IT: { prefer_specialization: ["REMOTE_SUPPORT", "NETWORK_SETUP"] },
-  CCTV: { prefer_specialization: ["CCTV_INSTALL", "CCTV_REPAIR"] },
+  CCTV: { prefer_specialization: ["CCTV_INSTALL", "CCTV_REPAIR"], brand_weight_boost: true },
   SOLAR: { prefer_inspection: true, prefer_quote: true },
   ELECTRICAL: { prefer_inspection: true },
   PLUMBING: { prefer_specialization: ["PLUMBING_LEAK", "PLUMBING_INSTALL"] },
-  ELECTRONICS: { prefer_specialization: ["TV_REPAIR", "APPLIANCE_REPAIR"] },
+  ELECTRONICS: { prefer_specialization: ["TV_REPAIR", "APPLIANCE_REPAIR"], brand_weight_boost: true },
   NETWORK: { prefer_specialization: ["WIFI_SETUP", "NETWORK_CABLING"] },
 };
 
-// Safety keywords that force inspection-capable preference
+// ── SAFETY KEYWORDS → force inspection ──
 const SAFETY_KEYWORDS = [
   /\b(gas|refrigerant|freon)\b/i,
   /\b(water\s*damage)\b/i,
   /\b(sparking|shock|short\s*circuit|fire)\b/i,
 ];
+
+// ── QUALITY EXCLUSION GATES ──
+const QUALITY_GATES = {
+  min_rating: 3.0,
+  max_cancellation_rate: 30,
+  max_strike_count: 3,
+  min_on_time_rate: 60,
+};
+
+// ── SERVICE TYPE ALIASES for stricter matching ──
+const SERVICE_TYPE_ALIASES: Record<string, string[]> = {
+  AC_REPAIR: ["ac_repair", "ac_service", "ac_not_cooling", "ac_noisy"],
+  AC_GAS: ["ac_gas", "gas_refill", "refrigerant", "ac_gas_topup"],
+  AC_INSTALL: ["ac_install", "ac_installation", "split_ac_install"],
+  MOBILE_SCREEN: ["screen_repair", "screen_replacement", "cracked_screen", "broken_screen"],
+  MOBILE_BOARD: ["board_repair", "motherboard", "chip_level"],
+  MOBILE_WATER: ["water_damage", "liquid_damage", "water_repair"],
+  REMOTE_SUPPORT: ["remote_support", "remote_fix", "online_support"],
+  NETWORK_SETUP: ["wifi_setup", "network_setup", "router_setup", "wifi_slow"],
+  CCTV_INSTALL: ["cctv_install", "cctv_installation", "camera_install"],
+  CCTV_REPAIR: ["cctv_repair", "camera_repair", "dvr_repair"],
+  PLUMBING_LEAK: ["leak_repair", "pipe_leak", "water_leak"],
+  PLUMBING_INSTALL: ["plumbing_install", "tap_install", "fixture_install"],
+  TV_REPAIR: ["tv_repair", "television_repair"],
+  APPLIANCE_REPAIR: ["appliance_repair", "washing_machine", "refrigerator_repair"],
+  WIFI_SETUP: ["wifi_setup", "wifi_config", "wifi_slow"],
+  NETWORK_CABLING: ["network_cabling", "cat6", "structured_cabling"],
+};
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -58,12 +86,47 @@ function normalizeZone(z: string): string {
   return z.toLowerCase().replace(/[\s_-]+/g, "");
 }
 
+function normalizeServiceType(s: string): string {
+  return s.toLowerCase().replace(/[\s_-]+/g, "_").trim();
+}
+
 function calculateEtaMinutes(distanceKm: number): number {
   const hour = new Date().getHours();
   const isPeak = (hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19);
   const multiplier = isPeak ? 1.6 : 1.3;
-  let base = distanceKm < 3 ? 10 : distanceKm < 8 ? 20 : 40 + Math.round((distanceKm - 8) * 3);
+  const base = distanceKm < 3 ? 10 : distanceKm < 8 ? 20 : 40 + Math.round((distanceKm - 8) * 3);
   return Math.round(base * multiplier);
+}
+
+// ── Strict service type matching ──
+function scoreServiceTypeMatch(partnerSpecs: string[], serviceType: string): number {
+  const norm = normalizeServiceType(serviceType);
+
+  // 1. Exact match
+  if (partnerSpecs.some(s => normalizeServiceType(s) === norm)) return 100;
+
+  // 2. Alias match
+  for (const [canonical, aliases] of Object.entries(SERVICE_TYPE_ALIASES)) {
+    const isServiceInAlias = aliases.includes(norm) || normalizeServiceType(canonical) === norm;
+    if (isServiceInAlias) {
+      const partnerMatchesCanonical = partnerSpecs.some(s => {
+        const ns = normalizeServiceType(s);
+        return ns === normalizeServiceType(canonical) || aliases.includes(ns);
+      });
+      if (partnerMatchesCanonical) return 85;
+    }
+  }
+
+  // 3. Weak partial match — only if substring is 5+ chars to prevent false positives
+  if (norm.length >= 5) {
+    const hasPartial = partnerSpecs.some(s => {
+      const ns = normalizeServiceType(s);
+      return ns.includes(norm) || norm.includes(ns);
+    });
+    if (hasPartial) return 50;
+  }
+
+  return 0;
 }
 
 interface ScoredCandidate {
@@ -86,11 +149,8 @@ interface ScoredCandidate {
   score_breakdown: Record<string, number>;
 }
 
-function generateMatchReason(
-  p: any, categoryCode: string, distKm: number, topFactor: string
-): string {
+function generateMatchReason(p: any, categoryCode: string, distKm: number): string {
   const reasons: string[] = [];
-
   if (distKm < 2) reasons.push("closest verified technician");
   else if (distKm < 5) reasons.push("nearby in your zone");
 
@@ -114,7 +174,6 @@ function generateMatchReason(
 
   if (reasons.length === 0) reasons.push("available technician in your area");
 
-  // Capitalize first letter
   const combined = reasons.slice(0, 3).join(", ");
   return combined.charAt(0).toUpperCase() + combined.slice(1);
 }
@@ -157,8 +216,8 @@ serve(async (req) => {
     const needsInspection = booking_path === "inspection" || categoryRules.prefer_inspection;
     const needsQuote = booking_path === "quote_required" || categoryRules.prefer_quote;
     const normalizedZone = customer_zone ? normalizeZone(customer_zone) : null;
+    const hasBrandWeight = categoryRules.brand_weight_boost && brand;
 
-    // Check if service_type triggers safety keyword preferences
     let preferSafetyInspection = false;
     if (service_type) {
       for (const kw of SAFETY_KEYWORDS) {
@@ -166,28 +225,62 @@ serve(async (req) => {
       }
     }
 
-    // Score each partner
     const scored: ScoredCandidate[] = [];
 
     for (const p of (partners || [])) {
+      // ── QUALITY GATES: hard exclusion ──
+      if ((p.rating_average || 0) > 0 && p.rating_average < QUALITY_GATES.min_rating) continue;
+      if ((p.cancellation_rate || 0) > QUALITY_GATES.max_cancellation_rate) continue;
+      if ((p.strike_count || 0) > QUALITY_GATES.max_strike_count) continue;
+      if ((p.on_time_rate || 95) < QUALITY_GATES.min_on_time_rate) continue;
+
       // Capacity check
       if (p.availability_status === "busy" && (p.current_job_count || 0) >= (p.max_concurrent_jobs || 1)) continue;
       if ((p.current_job_count || 0) >= (p.max_jobs_per_day || 5)) continue;
 
-      // Distance calculation
-      let distKm = 8; // default if no coords
+      // ── ZONE ELIGIBILITY ──
+      const partnerZones = ((p.service_zones || []) as string[]).map(normalizeZone);
+      const hasZoneData = normalizedZone && partnerZones.length > 0;
+      const zoneMatch = hasZoneData ? partnerZones.includes(normalizedZone!) : null;
+
+      // If partner has zones defined and customer zone is known, but partner doesn't cover it → exclude
+      if (hasZoneData && !zoneMatch) continue;
+
+      // ── DISTANCE CALCULATION ──
+      let distKm: number | null = null;
+      let distanceSource = "none";
+
       if (customer_lat && customer_lng) {
         const pLat = p.current_latitude || p.base_latitude;
         const pLng = p.current_longitude || p.base_longitude;
         if (pLat && pLng) {
           distKm = haversineKm(customer_lat, customer_lng, pLat, pLng);
+          distanceSource = p.current_latitude ? "gps" : "base";
         }
       }
-      if (distKm > 20) continue; // too far
+
+      // No-coordinate fallback: use zone match or service area coverage
+      if (distKm === null) {
+        if (zoneMatch) {
+          // In-zone partner without coordinates → assume moderate distance
+          distKm = 4;
+          distanceSource = "zone_match";
+        } else if (partnerZones.length > 0 && normalizedZone) {
+          // Partner has zones but doesn't match (already filtered out above, but safety)
+          distKm = 15;
+          distanceSource = "zone_mismatch";
+        } else {
+          // No zone data at all → assume default
+          distKm = 8;
+          distanceSource = "default";
+        }
+      }
+
+      if (distKm > 20) continue;
 
       // ── SCORING (100-point scale) ──
 
-      // Proximity (30%)
+      // Proximity (30%) — zone match boosts significantly
       let proximityScore: number;
       if (distKm < 2) proximityScore = 100;
       else if (distKm < 5) proximityScore = 85;
@@ -195,30 +288,39 @@ serve(async (req) => {
       else if (distKm < 12) proximityScore = 45;
       else proximityScore = 25;
 
-      // Zone bonus
-      if (normalizedZone && p.service_zones) {
-        const pZones = (p.service_zones as string[]).map(normalizeZone);
-        if (pZones.includes(normalizedZone)) proximityScore = Math.min(100, proximityScore + 10);
+      // Zone bonus: in-zone outranks out-of-zone even if farther
+      if (zoneMatch) proximityScore = Math.min(100, proximityScore + 15);
+
+      // Specialization (20%) — strict matching
+      let specScore = 40; // base for category match
+      if (service_type && p.specializations) {
+        const stMatch = scoreServiceTypeMatch(p.specializations as string[], service_type);
+        if (stMatch > 0) specScore = Math.max(specScore, stMatch);
+      }
+      if (service_type && p.service_types_supported) {
+        const stMatch = scoreServiceTypeMatch(p.service_types_supported as string[], service_type);
+        if (stMatch > 0) specScore = Math.max(specScore, stMatch);
       }
 
-      // Specialization (20%)
-      let specScore = 40; // base for category match (already filtered)
-      if (service_type && p.specializations) {
-        if ((p.specializations as string[]).some((s: string) => s.includes(service_type) || service_type.includes(s))) specScore = 100;
-        else if ((p.specializations as string[]).length > 0) specScore = 60;
-      }
+      // Brand specialization — boosted for relevant categories
+      let brandBonus = 0;
       if (brand && p.brand_specializations) {
-        if ((p.brand_specializations as string[]).some((b: string) => b.toLowerCase() === brand.toLowerCase())) specScore = Math.min(specScore + 25, 100);
-      }
-      // Service type specific match
-      if (service_type && p.service_types_supported) {
-        if ((p.service_types_supported as string[]).includes(service_type)) specScore = Math.min(specScore + 20, 100);
+        const brandMatch = (p.brand_specializations as string[]).some(
+          (b: string) => b.toLowerCase() === brand.toLowerCase()
+        );
+        if (brandMatch) {
+          brandBonus = hasBrandWeight ? 15 : 8;
+          specScore = Math.min(100, specScore + brandBonus);
+        } else if (hasBrandWeight) {
+          // Brand matters for this category but partner doesn't have it → moderate penalty
+          specScore = Math.max(20, specScore - 10);
+        }
       }
 
       // Rating (15%)
       const ratingScore = Math.min(100, ((p.rating_average || 0) / 5) * 100);
 
-      // Reliability (10%) — on_time_rate + low cancellation
+      // Reliability (10%)
       const onTimeRate = p.on_time_rate || 90;
       const cancelRate = p.cancellation_rate || 0;
       const reliabilityScore = Math.min(100, onTimeRate - (cancelRate * 2));
@@ -250,6 +352,7 @@ serve(async (req) => {
       let penalty = 0;
       if ((p.strike_count || 0) > 0) penalty += (p.strike_count || 0) * 3;
       if ((p.late_arrival_count || 0) > 3) penalty += 5;
+      if (distanceSource === "default") penalty += 3; // less confidence in ranking
 
       const breakdown: Record<string, number> = {
         proximity: Math.round(proximityScore * 0.30),
@@ -269,12 +372,6 @@ serve(async (req) => {
         breakdown.emergency + categoryBonus - penalty
       ));
 
-      const topFactor = Object.entries(breakdown)
-        .filter(([k]) => k !== "penalty" && k !== "category_bonus")
-        .sort(([, a], [, b]) => b - a)[0]?.[0] || "proximity";
-
-      const eta = calculateEtaMinutes(distKm);
-
       scored.push({
         partner_id: p.id,
         technician_name: p.full_name,
@@ -284,9 +381,9 @@ serve(async (req) => {
         rating: p.rating_average || 0,
         completed_jobs: p.completed_jobs_count || 0,
         distance_km: Math.round(distKm * 10) / 10,
-        eta_minutes: eta,
+        eta_minutes: calculateEtaMinutes(distKm),
         match_score: totalScore,
-        match_reason: generateMatchReason(p, category_code, distKm, topFactor),
+        match_reason: generateMatchReason(p, category_code, distKm),
         verified: true,
         availability_status: p.availability_status,
         inspection_capable: p.inspection_capable || false,
@@ -296,7 +393,6 @@ serve(async (req) => {
       });
     }
 
-    // Sort by match score, return top 3
     scored.sort((a, b) => b.match_score - a.match_score);
     const top3 = scored.slice(0, 3);
     const noMatchFound = top3.length === 0;
