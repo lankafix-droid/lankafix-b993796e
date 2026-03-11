@@ -150,7 +150,7 @@ export default function RemindersPage() {
 
     if (r.linked_quote_id) navigate(`/quote/${r.linked_booking_id}`);
     else if (r.category_code && r.category_code !== "DEVICE" && r.category_code !== "UNKNOWN")
-      navigate(`/book/${r.category_code}`);
+      navigate(getCategoryBookingRoute(r.category_code));
   }, [navigate]);
 
   const handleQuickRebook = useCallback((rb: QuickRebook) => {
