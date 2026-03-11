@@ -160,7 +160,7 @@ export default function RemindersPage() {
       source_screen: "reminders_center",
       days_since_last: rb.days_ago,
     });
-    navigate(`/book/${rb.category_code}`);
+    navigate(getCategoryBookingRoute(rb.category_code));
   }, [navigate]);
 
   const handleNextBestClick = useCallback((s: NextBest) => {
