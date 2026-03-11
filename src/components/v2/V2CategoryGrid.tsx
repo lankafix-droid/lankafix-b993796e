@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
 import { v2CategoryFlows, type V2PricingArchetype } from "@/data/v2CategoryFlows";
+import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
 import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
@@ -73,19 +74,21 @@ const QUICK_BOOKS = [
   { label: "Phone Screen", price: "From Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
   { label: "AC Not Cooling", price: "Rs 2,500", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
   { label: "Laptop Fix", price: "From Rs 8,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "Electrical", price: "From Rs 1,500", link: "/book/ELECTRICAL", icon: <Zap className="w-5 h-5" /> },
-  { label: "Plumbing", price: "From Rs 1,500", link: "/book/PLUMBING", icon: <Droplets className="w-5 h-5" /> },
-  { label: "WiFi Issue", price: "From Rs 2,000", link: "/book/NETWORK", icon: <Wifi className="w-5 h-5" /> },
 ];
 
 const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof categories[0]; featured?: boolean; index?: number }) => {
   const thumb = categoryThumbs[cat.code];
   const flow = v2CategoryFlows[cat.code];
+  const launchState = getCategoryLaunchState(cat.code);
   const hasEmergency = cat.tags.includes("Emergency");
   const hasSameDay = cat.tags.includes("Same Day");
   const pricingChip = flow ? PRICING_CHIPS[flow.pricingArchetype] : null;
   const estTime = ESTIMATED_TIMES[cat.code];
   const pricingMicrocopy = PRICING_MICROCOPY[cat.code];
+  const isComingSoon = launchState === "coming_soon";
+  const isConsultation = launchState === "consultation";
+
+  const linkTarget = isComingSoon ? "/waitlist" : `/book/${cat.code}`;
 
   return (
     <motion.div
@@ -95,13 +98,13 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
       transition={{ delay: index * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
       <Link
-        to={`/book/${cat.code}`}
-        onClick={() => track("v2_category_click", { category: cat.code })}
-        className="group block bg-card rounded-2xl border border-border/40 overflow-hidden transition-smooth hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97]"
+        to={linkTarget}
+        onClick={() => track("v2_category_click", { category: cat.code, launchState })}
+        className={`group block bg-card rounded-2xl border border-border/40 overflow-hidden transition-smooth hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97] ${isComingSoon ? "opacity-70" : ""}`}
       >
         <div className={`relative ${featured ? "h-32 sm:h-36" : "h-24 sm:h-28"} overflow-hidden`}>
           {thumb ? (
-            <img src={thumb} alt={cat.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out-expo" loading="lazy" />
+            <img src={thumb} alt={cat.name} className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out-expo ${isComingSoon ? "grayscale" : ""}`} loading="lazy" />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
               {iconMap[cat.icon] || <Monitor className="w-8 h-8 text-muted-foreground" />}
@@ -110,18 +113,28 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, hsl(213 75% 8% / 0.8) 0%, hsl(213 75% 8% / 0.15) 55%, transparent 100%)" }} />
 
           <div className="absolute top-2.5 left-2.5 flex gap-1.5">
-            {hasEmergency && (
+            {isComingSoon && (
+              <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-none font-bold shadow-sm px-2 py-0.5">
+                Coming Soon
+              </Badge>
+            )}
+            {isConsultation && (
+              <Badge variant="outline" className="text-[9px] bg-accent text-accent-foreground border-none font-bold shadow-sm px-2 py-0.5">
+                Consultation
+              </Badge>
+            )}
+            {!isComingSoon && !isConsultation && hasEmergency && (
               <Badge variant="outline" className="text-[9px] bg-destructive text-destructive-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 ⚡ Emergency
               </Badge>
             )}
-            {hasSameDay && !hasEmergency && (
+            {!isComingSoon && !isConsultation && hasSameDay && !hasEmergency && (
               <Badge variant="outline" className="text-[9px] bg-success text-success-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 Same Day
               </Badge>
             )}
           </div>
-          {pricingChip && (
+          {!isComingSoon && pricingChip && (
             <div className="absolute top-2.5 right-2.5">
               <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${pricingChip.className}`}>
                 {pricingChip.label}
@@ -136,10 +149,10 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
 
         <div className="p-3.5">
           <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
-            {pricingMicrocopy || cat.description}
+            {isComingSoon ? "Launching soon — join the waitlist" : isConsultation ? "Submit your requirement for a custom quote" : (pricingMicrocopy || cat.description)}
           </p>
           <div className="flex items-center justify-between">
-            {estTime && (
+            {!isComingSoon && estTime && (
               <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
                 <Clock className="w-3 h-3" />
                 {estTime}
