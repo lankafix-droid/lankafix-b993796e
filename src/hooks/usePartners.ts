@@ -21,6 +21,7 @@ export interface PartnerRow {
   base_longitude: number | null;
   current_latitude: number | null;
   current_longitude: number | null;
+  current_job_count: number | null;
   service_zones: string[];
   availability_status: "online" | "offline" | "busy";
   emergency_available: boolean;
@@ -28,6 +29,7 @@ export interface PartnerRow {
   strike_count: number;
   average_response_time_minutes: number;
   vehicle_type: string;
+  profile_photo_url: string | null;
 }
 
 /** Fetch all verified, online/busy partners */
