@@ -6,9 +6,10 @@ import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useOpsMetrics } from "@/services/opsMetricsService";
 import {
   Zap, AlertTriangle, CheckCircle2, Users, ArrowRight,
-  RefreshCw, MapPin, Radio, Flag, Clock, UserCheck,
+  RefreshCw, MapPin, Radio, Flag, Clock, UserCheck, FileText,
 } from "lucide-react";
 
 interface EscalatedBooking {
