@@ -444,6 +444,81 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_reminders: {
+        Row: {
+          category_code: string
+          clicked_at: string | null
+          completed_at: string | null
+          created_at: string
+          customer_id: string
+          dismissed_at: string | null
+          due_date: string
+          id: string
+          linked_booking_id: string | null
+          linked_quote_id: string | null
+          message: string
+          metadata: Json | null
+          next_best_action: string | null
+          next_best_category: string | null
+          next_best_service: string | null
+          priority: string
+          reminder_type: string
+          sent_at: string | null
+          service_type: string | null
+          status: string
+          title: string
+          viewed_at: string | null
+        }
+        Insert: {
+          category_code: string
+          clicked_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_id: string
+          dismissed_at?: string | null
+          due_date: string
+          id?: string
+          linked_booking_id?: string | null
+          linked_quote_id?: string | null
+          message: string
+          metadata?: Json | null
+          next_best_action?: string | null
+          next_best_category?: string | null
+          next_best_service?: string | null
+          priority?: string
+          reminder_type?: string
+          sent_at?: string | null
+          service_type?: string | null
+          status?: string
+          title: string
+          viewed_at?: string | null
+        }
+        Update: {
+          category_code?: string
+          clicked_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          dismissed_at?: string | null
+          due_date?: string
+          id?: string
+          linked_booking_id?: string | null
+          linked_quote_id?: string | null
+          message?: string
+          metadata?: Json | null
+          next_best_action?: string | null
+          next_best_category?: string | null
+          next_best_service?: string | null
+          priority?: string
+          reminder_type?: string
+          sent_at?: string | null
+          service_type?: string | null
+          status?: string
+          title?: string
+          viewed_at?: string | null
+        }
+        Relationships: []
+      }
       device_passports: {
         Row: {
           brand: string

@@ -66,6 +66,8 @@ const PartnerPremiumPage = lazy(() => import("./pages/partner/PartnerPremiumPage
 const ConsumablesPage = lazy(() => import("./pages/ConsumablesPage"));
 const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
 const MarketplaceIntelligencePage = lazy(() => import("./pages/ops/MarketplaceIntelligencePage"));
+const RetentionDashboardPage = lazy(() => import("./pages/ops/RetentionDashboardPage"));
+const RemindersPage = lazy(() => import("./pages/RemindersPage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
 const AccountDeletionPage = lazy(() => import("./pages/AccountDeletionPage"));
 const AccountDeletionPublicPage = lazy(() => import("./pages/AccountDeletionPublicPage"));
@@ -122,6 +124,7 @@ const App = () => (
             <Route path="/corporate" element={<CorporateServicesPage />} />
             <Route path="/supplies" element={<ConsumablesPage />} />
             <Route path="/home-health" element={<HomeHealthPage />} />
+            <Route path="/reminders" element={<RemindersPage />} />
 
             {/* ─── Legacy V2 redirects ─── */}
             <Route path="/v2" element={<Navigate to="/" replace />} />
@@ -177,6 +180,7 @@ const App = () => (
             <Route path="/ops/expansion" element={<ExpansionRoadmapPage />} />
             <Route path="/ops/revenue" element={<RevenueEnginePage />} />
             <Route path="/ops/intelligence" element={<MarketplaceIntelligencePage />} />
+            <Route path="/ops/retention" element={<RetentionDashboardPage />} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />
