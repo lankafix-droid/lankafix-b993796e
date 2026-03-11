@@ -111,28 +111,30 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
   }
 
   // 8. Insert booking
+  const bookingInsert: Record<string, unknown> = {
+    customer_id: userId,
+    category_code: flow.code,
+    service_type: booking.serviceTypeId || null,
+    pricing_archetype: pricingArchetype,
+    service_mode: serviceMode,
+    is_emergency: booking.isEmergency || false,
+    status: "requested" as const,
+    device_details: deviceDetails,
+    customer_latitude: locationData.lat || null,
+    customer_longitude: locationData.lng || null,
+    customer_address: locationData.address ? { displayName: locationData.address } : {},
+    zone_code: locationData.zoneCode || null,
+    estimated_price_lkr: estimatedPrice,
+    notes: notesParts.length > 0 ? notesParts.join(" | ") : null,
+    booking_source: "app",
+    dispatch_status: "pending",
+    diagnostic_answers: booking.diagnosticAnswers || {},
+    diagnostic_summary: {},
+  };
+
   const { data: bookingData, error: bookingError } = await supabase
     .from("bookings")
-    .insert({
-      customer_id: userId,
-      category_code: flow.code,
-      service_type: booking.serviceTypeId || null,
-      pricing_archetype: pricingArchetype,
-      service_mode: serviceMode,
-      is_emergency: booking.isEmergency || false,
-      status: "requested",
-      device_details: deviceDetails,
-      customer_latitude: locationData.lat || null,
-      customer_longitude: locationData.lng || null,
-      customer_address: locationData.address ? { displayName: locationData.address } : {},
-      zone_code: locationData.zoneCode || null,
-      estimated_price_lkr: estimatedPrice,
-      notes: notesParts.length > 0 ? notesParts.join(" | ") : null,
-      booking_source: "app",
-      dispatch_status: "pending",
-      diagnostic_answers: booking.diagnosticAnswers || {},
-      diagnostic_summary: {},
-    })
+    .insert(bookingInsert as any)
     .select("id")
     .single();
 
