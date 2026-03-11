@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { Zap, Snowflake, Droplets, ArrowRight, Clock } from "lucide-react";
+import { Zap, Snowflake, ArrowRight, Clock, Smartphone, Laptop } from "lucide-react";
 import { motion } from "framer-motion";
 import { track } from "@/lib/analytics";
 
+// Only show emergency services for operational categories
 const EMERGENCY_SERVICES = [
   {
     icon: <Snowflake className="w-5 h-5" />,
@@ -13,20 +14,20 @@ const EMERGENCY_SERVICES = [
     category: "AC",
   },
   {
-    icon: <Zap className="w-5 h-5" />,
-    label: "Emergency Electrical",
-    desc: "Power trip, sparking, or electrical failure? Don't wait.",
-    eta: "Under 60 min",
-    link: "/book/ELECTRICAL",
-    category: "ELECTRICAL",
+    icon: <Smartphone className="w-5 h-5" />,
+    label: "Urgent Phone Repair",
+    desc: "Cracked screen or water damage? Get same-day repair.",
+    eta: "Same day",
+    link: "/book/MOBILE",
+    category: "MOBILE",
   },
   {
-    icon: <Droplets className="w-5 h-5" />,
-    label: "Emergency Plumbing",
-    desc: "Water leak or burst pipe? Urgent plumber allocation available.",
-    eta: "Under 60 min",
-    link: "/book/PLUMBING",
-    category: "PLUMBING",
+    icon: <Laptop className="w-5 h-5" />,
+    label: "Urgent IT Support",
+    desc: "System down or data at risk? Quick remote or on-site help.",
+    eta: "Under 2 hours",
+    link: "/book/IT",
+    category: "IT",
   },
 ];
 
@@ -64,7 +65,6 @@ const V2EmergencyBlock = () => {
                 onClick={() => track("v2_emergency_service_click", { category: service.category })}
                 className="group block bg-card rounded-2xl border border-destructive/12 overflow-hidden hover:border-destructive/25 hover:shadow-card-hover transition-all duration-300 active:scale-[0.98]"
               >
-                {/* Red accent top bar — thicker for impact */}
                 <div className="h-1.5 bg-gradient-to-r from-destructive via-destructive/80 to-destructive/40" />
 
                 <div className="p-5">
