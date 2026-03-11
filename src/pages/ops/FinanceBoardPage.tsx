@@ -90,9 +90,9 @@ const FinanceBoardPage = () => {
     const q = recentQuotesDB[0];
     if (!q || !q.booking || !q.total_lkr) return null;
     return {
-      categoryCode: q.booking.category_code,
-      serviceType: q.booking.service_type || undefined,
-      quoteTotal: q.total_lkr,
+      category_code: q.booking.category_code,
+      service_type: q.booking.service_type || undefined,
+      total_lkr: q.total_lkr,
     };
   }, [recentQuotesDB]);
 
