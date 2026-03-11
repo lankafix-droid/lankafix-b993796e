@@ -23,3 +23,12 @@ verify_jwt = false
 
 [functions.ai-photo-diagnose]
 verify_jwt = false
+
+[functions.partner-location-push]
+verify_jwt = false
+
+[functions.fraud-detection]
+verify_jwt = false
+
+[functions.compute-performance-scores]
+verify_jwt = false
