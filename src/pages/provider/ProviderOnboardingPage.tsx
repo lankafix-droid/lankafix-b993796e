@@ -64,7 +64,7 @@ export default function ProviderOnboardingPage() {
             store.updateProfile({
               fullName: data.full_name,
               mobileNumber: data.phone_number || "",
-              serviceCategories: (data.categories_supported || []) as string[],
+              serviceCategories: (data.categories_supported || []) as any,
               serviceZones: data.service_zones || [],
             });
           }
