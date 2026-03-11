@@ -34,6 +34,11 @@ export interface PartnerRow {
   on_time_rate: number | null;
   quote_approval_rate: number | null;
   performance_score: number | null;
+  email: string | null;
+  nic_number: string | null;
+  provider_type: string | null;
+  previous_company: string | null;
+  tools_declared: string[] | null;
 }
 
 /** Fetch all verified, online/busy partners */
