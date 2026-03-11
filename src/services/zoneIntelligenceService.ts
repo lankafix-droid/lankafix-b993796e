@@ -70,7 +70,7 @@ async function fetchZoneIntelligence(filters: ZoneIntelligenceFilters = {}): Pro
     (() => {
       let q = supabase
         .from("bookings")
-        .select("zone_code, status, dispatch_status")
+        .select("id, zone_code, status, dispatch_status")
         .gte("created_at", since)
         .not("zone_code", "is", null);
       if (filters.category) q = q.eq("category_code", filters.category);
