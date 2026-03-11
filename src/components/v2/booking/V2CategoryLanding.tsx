@@ -137,6 +137,9 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
         </Badge>
       </motion.div>
 
+      {/* Smart Price Estimator — historical data */}
+      <SmartPriceEstimator categoryCode={flow.code} />
+
       {/* Booking model card */}
       {bookingModel && (
         <motion.div
