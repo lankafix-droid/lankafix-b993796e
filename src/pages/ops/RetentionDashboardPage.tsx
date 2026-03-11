@@ -7,9 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Brain, ArrowLeft, Loader2, RefreshCw, Users, Heart, AlertTriangle,
-  BarChart3, Bell, Target, CheckCircle2, TrendingUp, TrendingDown,
-  Clock, Zap, UserX, UserCheck, Repeat, FileText,
+  ArrowLeft, Loader2, RefreshCw, Users, Heart, AlertTriangle,
+  BarChart3, Bell, Target, CheckCircle2, TrendingUp,
+  Clock, Zap, UserX, Repeat, FileText, ShieldCheck, Lightbulb,
 } from "lucide-react";
 
 interface DashboardSummary {
@@ -32,6 +32,7 @@ interface ReminderPerformance {
   view_rate: number;
   click_rate: number;
   conversion_rate: number;
+  by_type?: Record<string, { total: number; viewed: number; clicked: number; completed: number }>;
 }
 
 interface CategoryInsight {
@@ -44,10 +45,19 @@ interface CategoryInsight {
   has_maintenance_schedule: boolean;
 }
 
+interface RenewalOpportunity {
+  category_code: string;
+  category_name: string;
+  eligible_customers: number;
+  churning: number;
+  recommended_action: string;
+}
+
 interface RetentionDashboardData {
   summary: DashboardSummary;
   reminder_performance: ReminderPerformance;
   category_insights: CategoryInsight[];
+  renewal_opportunities?: RenewalOpportunity[];
   churn_segments: { high: number; medium: number; low: number };
   generated_at: string;
 }
@@ -72,6 +82,15 @@ function KPICard({ label, value, sub, icon: Icon, variant }: {
     </Card>
   );
 }
+
+const TYPE_LABELS: Record<string, string> = {
+  maintenance: "Maintenance",
+  quote_expiry: "Quote Expiry",
+  quote_followup: "Quote Follow-up",
+  warranty_expiry: "Warranty",
+  next_best_service: "Next Best",
+  unknown: "Other",
+};
 
 export default function RetentionDashboardPage() {
   const [data, setData] = useState<RetentionDashboardData | null>(null);
@@ -145,10 +164,11 @@ export default function RetentionDashboardPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-5 space-y-5">
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="grid grid-cols-3 w-full">
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="overview" className="text-[11px]">Overview</TabsTrigger>
             <TabsTrigger value="categories" className="text-[11px]">Categories</TabsTrigger>
             <TabsTrigger value="reminders" className="text-[11px]">Reminders</TabsTrigger>
+            <TabsTrigger value="renewals" className="text-[11px]">Renewals</TabsTrigger>
           </TabsList>
 
           {/* ═══ OVERVIEW ═══ */}
@@ -268,6 +288,7 @@ export default function RetentionDashboardPage() {
               <KPICard label="Conversion" value={`${perf.conversion_rate}%`} sub={`${perf.completed} converted`} icon={CheckCircle2} variant="success" />
             </div>
 
+            {/* Funnel */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm">Reminder Funnel</CardTitle>
@@ -289,6 +310,62 @@ export default function RetentionDashboardPage() {
                     </div>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+
+            {/* Breakdown by type */}
+            {perf.by_type && Object.keys(perf.by_type).length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-primary" /> By Reminder Type
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {Object.entries(perf.by_type).map(([type, stats]) => (
+                    <div key={type} className="p-3 rounded-lg bg-muted/30 border flex items-center justify-between">
+                      <div>
+                        <span className="text-sm font-medium text-foreground">{TYPE_LABELS[type] || type}</span>
+                        <p className="text-[10px] text-muted-foreground">{stats.total} sent · {stats.clicked} clicked · {stats.completed} converted</p>
+                      </div>
+                      <span className="text-sm font-bold text-primary">
+                        {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%
+                      </span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ═══ RENEWALS ═══ */}
+          <TabsContent value="renewals" className="space-y-5 mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-primary" /> Renewal Opportunities
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {(data.renewal_opportunities ?? []).length > 0 ? (
+                  (data.renewal_opportunities ?? []).map((ro, i) => (
+                    <div key={i} className="p-3 rounded-lg bg-muted/30 border">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-foreground">{ro.category_name}</span>
+                        <Badge variant="outline" className="text-[8px]">{ro.eligible_customers} eligible</Badge>
+                      </div>
+                      {ro.churning > 0 && (
+                        <p className="text-[10px] text-destructive mt-1">{ro.churning} customers at risk of churning</p>
+                      )}
+                      <div className="flex items-start gap-1.5 mt-2">
+                        <Lightbulb className="w-3 h-3 text-primary mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-muted-foreground">{ro.recommended_action}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-4">No renewal opportunities yet — need completed bookings in maintenance categories</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
