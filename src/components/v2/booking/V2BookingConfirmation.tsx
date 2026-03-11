@@ -123,6 +123,25 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
     await submitBooking(userId);
   };
 
+  /* ─── ZONE BLOCKED STATE ─── */
+  if (zoneBlocked) {
+    return (
+      <div className="space-y-5 text-center py-6 pb-28">
+        <div className="w-20 h-20 rounded-full bg-warning/10 flex items-center justify-center mx-auto">
+          <MapPin className="w-10 h-10 text-warning" />
+        </div>
+        <h2 className="text-2xl font-extrabold text-foreground">Launching Soon in Your Area</h2>
+        <p className="text-muted-foreground text-sm">We currently serve Greater Colombo. Join the waitlist to be notified when we expand to your area.</p>
+        <Button onClick={() => navigate("/waitlist")} className="w-full rounded-xl h-12">
+          Join the Waitlist
+        </Button>
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
+          Back to Home
+        </Button>
+      </div>
+    );
+  }
+
   /* ─── COMING SOON STATE ─── */
   if (isCategoryComingSoon(flow.code)) {
     return (
