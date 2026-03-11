@@ -125,11 +125,21 @@ async function fetchZoneIntelligence(filters: ZoneIntelligenceFilters = {}): Pro
     if (b.status === "completed") z.completed++;
     if (b.status === "cancelled") z.cancelled++;
     if (b.dispatch_status === "escalated" || b.dispatch_status === "no_provider_found") z.failed++;
+    bookingZoneMap.set(b.id, b.zone_code);
   }
 
-  // We need booking zone for escalations — use bookings we already have
-  for (const b of bookingRows) {
-    if (b.zone_code) bookingZoneMap.set((b as any).id || "", b.zone_code);
+  // Map escalations to zones via booking_id
+  for (const e of (escalationsRes.data || [])) {
+    const zc = bookingZoneMap.get(e.booking_id);
+    if (zc) ensureZone(zc).escalations++;
+  }
+
+  // Map dispatch response times to zones via booking_id
+  for (const d of (dispatchRes.data || [])) {
+    const zc = bookingZoneMap.get(d.booking_id);
+    if (zc && d.response_time_seconds != null) {
+      ensureZone(zc).dispatchTimes.push(d.response_time_seconds);
+    }
   }
 
   // Partners: count per zone from service_zones array
