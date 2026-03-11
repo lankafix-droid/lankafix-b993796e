@@ -74,9 +74,6 @@ const QUICK_BOOKS = [
   { label: "Phone Screen", price: "From Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
   { label: "AC Not Cooling", price: "Rs 2,500", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
   { label: "Laptop Fix", price: "From Rs 8,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-  { label: "Electrical", price: "From Rs 1,500", link: "/book/ELECTRICAL", icon: <Zap className="w-5 h-5" /> },
-  { label: "Plumbing", price: "From Rs 1,500", link: "/book/PLUMBING", icon: <Droplets className="w-5 h-5" /> },
-  { label: "WiFi Issue", price: "From Rs 2,000", link: "/book/NETWORK", icon: <Wifi className="w-5 h-5" /> },
 ];
 
 const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof categories[0]; featured?: boolean; index?: number }) => {
