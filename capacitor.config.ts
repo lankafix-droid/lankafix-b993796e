@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
       launchAutoHide: true,
       backgroundColor: '#0E4C92',
       showSpinner: false,
-      androidScaleType: 'CENTER_CROP',
+      androidScaleType: 'CENTER_INSIDE',
       splashFullScreen: true,
       splashImmersive: true,
     },
@@ -30,6 +30,8 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
+    versionCode: 3,
+    versionName: '1.2.0',
   },
   ios: {
     contentInset: 'automatic',
