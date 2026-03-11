@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.compute-performance-scores]
 verify_jwt = false
+
+[functions.retention-engine]
+verify_jwt = false
