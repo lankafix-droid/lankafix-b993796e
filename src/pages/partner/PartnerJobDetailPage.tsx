@@ -2,19 +2,35 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrentPartner } from "@/hooks/useCurrentPartner";
+import { acceptJob, declineJob, updateJobStatus } from "@/services/dispatchService";
 import { track } from "@/lib/analytics";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
-  ArrowLeft, MapPin, User, Wrench, CheckCircle2,
-  ShieldCheck, Clock, CreditCard, AlertTriangle, Loader2,
-  FileText, XCircle, Info,
+  ArrowLeft, MapPin, Wrench, CheckCircle2,
+  ShieldCheck, Clock, AlertTriangle, Loader2,
+  FileText, XCircle, Info, Navigation, Play,
+  ThumbsDown, ThumbsUp,
 } from "lucide-react";
+
+const DECLINE_REASONS = [
+  "Too far away",
+  "Currently busy",
+  "Outside my expertise",
+  "Schedule conflict",
+  "Other",
+];
 
 export default function PartnerJobDetailPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { data: partner } = useCurrentPartner();
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showDeclineReasons, setShowDeclineReasons] = useState(false);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["partner-booking-detail", jobId],
@@ -29,6 +45,25 @@ export default function PartnerJobDetailPage() {
       return data;
     },
     enabled: !!jobId,
+    refetchInterval: 10_000,
+  });
+
+  const { data: dispatchOffer } = useQuery({
+    queryKey: ["partner-dispatch-offer", jobId, partner?.id],
+    queryFn: async () => {
+      if (!jobId || !partner?.id) return null;
+      const { data, error } = await supabase
+        .from("dispatch_log")
+        .select("*")
+        .eq("booking_id", jobId)
+        .eq("partner_id", partner.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!jobId && !!partner?.id,
   });
 
   const { data: quotes = [] } = useQuery({
@@ -63,6 +98,61 @@ export default function PartnerJobDetailPage() {
 
   useEffect(() => { if (jobId) track("partner_job_detail_view", { jobId }); }, [jobId]);
 
+  const refreshAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["partner-booking-detail", jobId] });
+    queryClient.invalidateQueries({ queryKey: ["partner-dispatch-offer", jobId] });
+    queryClient.invalidateQueries({ queryKey: ["partner-job-timeline", jobId] });
+    queryClient.invalidateQueries({ queryKey: ["partner-bookings"] });
+  };
+
+  const handleAccept = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("accept");
+    track("partner_job_accept", { jobId });
+    const result = await acceptJob(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) {
+      toast.success("Job accepted! Prepare to head out.");
+      refreshAll();
+    } else {
+      toast.error(result.error || "Failed to accept job");
+    }
+  };
+
+  const handleDecline = async (reason: string) => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("decline");
+    track("partner_job_decline", { jobId, reason });
+    const result = await declineJob(jobId, partner.id, reason);
+    setActionLoading(null);
+    setShowDeclineReasons(false);
+    if (result.success) {
+      toast.info("Job declined. It will be offered to another provider.");
+      refreshAll();
+    } else {
+      toast.error(result.error || "Failed to decline job");
+    }
+  };
+
+  const handleStatusUpdate = async (action: "start_travel" | "arrived" | "start_work") => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading(action);
+    track(`partner_job_${action}`, { jobId });
+    const result = await updateJobStatus(jobId, partner.id, action);
+    setActionLoading(null);
+    if (result.success) {
+      const messages = {
+        start_travel: "Travel started! Drive safely.",
+        arrived: "Arrival confirmed. You can begin inspection.",
+        start_work: "Work started. Good luck!",
+      };
+      toast.success(messages[action]);
+      refreshAll();
+    } else {
+      toast.error(result.error || "Failed to update status");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -82,6 +172,14 @@ export default function PartnerJobDetailPage() {
     );
   }
 
+  // Determine what actions are available
+  const isMyJob = booking.partner_id === partner?.id;
+  const isPendingOffer = dispatchOffer?.status === "pending_acceptance" && !isMyJob;
+  const canAccept = isPendingOffer || (booking.selected_partner_id === partner?.id && booking.dispatch_status === "pending_acceptance");
+  const canStartTravel = isMyJob && booking.status === "assigned";
+  const canMarkArrived = isMyJob && booking.status === "tech_en_route";
+  const canStartWork = isMyJob && booking.status === "arrived";
+
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card border-b px-4 py-4 flex items-center gap-3">
@@ -95,6 +193,124 @@ export default function PartnerJobDetailPage() {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Accept / Decline Actions */}
+        {canAccept && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-bold text-sm text-foreground">New Job Offer</p>
+                  <p className="text-xs text-muted-foreground">Accept or decline within 5 minutes</p>
+                </div>
+              </div>
+
+              {!showDeclineReasons ? (
+                <div className="flex gap-3">
+                  <Button
+                    className="flex-1 h-11 rounded-xl"
+                    onClick={handleAccept}
+                    disabled={!!actionLoading}
+                  >
+                    {actionLoading === "accept" ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <ThumbsUp className="w-4 h-4 mr-2" />
+                    )}
+                    Accept Job
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 h-11 rounded-xl"
+                    onClick={() => setShowDeclineReasons(true)}
+                    disabled={!!actionLoading}
+                  >
+                    <ThumbsDown className="w-4 h-4 mr-2" />
+                    Decline
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">Why are you declining?</p>
+                  {DECLINE_REASONS.map((reason) => (
+                    <Button
+                      key={reason}
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start text-xs h-9"
+                      onClick={() => handleDecline(reason)}
+                      disabled={!!actionLoading}
+                    >
+                      {actionLoading === "decline" ? (
+                        <Loader2 className="w-3 h-3 animate-spin mr-2" />
+                      ) : null}
+                      {reason}
+                    </Button>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs"
+                    onClick={() => setShowDeclineReasons(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Status Update Actions */}
+        {(canStartTravel || canMarkArrived || canStartWork) && (
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-4 space-y-3">
+              {canStartTravel && (
+                <Button
+                  className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90"
+                  onClick={() => handleStatusUpdate("start_travel")}
+                  disabled={!!actionLoading}
+                >
+                  {actionLoading === "start_travel" ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Navigation className="w-4 h-4 mr-2" />
+                  )}
+                  Start Travel
+                </Button>
+              )}
+              {canMarkArrived && (
+                <Button
+                  className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90"
+                  onClick={() => handleStatusUpdate("arrived")}
+                  disabled={!!actionLoading}
+                >
+                  {actionLoading === "arrived" ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <MapPin className="w-4 h-4 mr-2" />
+                  )}
+                  Mark Arrived
+                </Button>
+              )}
+              {canStartWork && (
+                <Button
+                  className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90"
+                  onClick={() => handleStatusUpdate("start_work")}
+                  disabled={!!actionLoading}
+                >
+                  {actionLoading === "start_work" ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-2" />
+                  )}
+                  Start Work
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Booking Summary */}
         <Card>
           <CardHeader className="pb-2">
@@ -109,10 +325,15 @@ export default function PartnerJobDetailPage() {
             {booking.estimated_price_lkr && (
               <div className="flex justify-between"><span className="text-muted-foreground">Estimated</span><span className="font-medium text-foreground">LKR {booking.estimated_price_lkr.toLocaleString()}</span></div>
             )}
+            {booking.notes && (
+              <div className="border-t border-border/20 pt-2">
+                <p className="text-xs text-muted-foreground">{booking.notes}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Cancellation / Outcome Visibility */}
+        {/* Cancellation */}
         {booking.status === "cancelled" && (
           <Card className="border-destructive/30">
             <CardContent className="p-4 flex items-start gap-3">
@@ -122,17 +343,12 @@ export default function PartnerJobDetailPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {booking.cancellation_reason || "No cancellation reason provided"}
                 </p>
-                {booking.cancelled_at && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Cancelled at: {new Date(booking.cancelled_at).toLocaleString()}
-                  </p>
-                )}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Quote Info */}
+        {/* Quotes */}
         {quotes.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
@@ -159,9 +375,6 @@ export default function PartnerJobDetailPage() {
                       Customer note: {q.customer_note}
                     </p>
                   )}
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Created: {new Date(q.created_at).toLocaleDateString()}
-                  </p>
                 </div>
               ))}
             </CardContent>
