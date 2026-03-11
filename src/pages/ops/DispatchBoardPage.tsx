@@ -65,7 +65,7 @@ function useVerifiedPartners() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("partners")
-        .select("id, full_name, business_name, availability_status, categories_supported, service_zones, rating_average, completed_jobs_count, verification_status")
+        .select("id, full_name, business_name, availability_status, categories_supported, service_zones, rating_average, completed_jobs_count, verification_status, performance_score, reliability_tier")
         .eq("verification_status", "verified")
         .order("rating_average", { ascending: false });
       if (error) throw error;
