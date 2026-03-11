@@ -318,9 +318,9 @@ serve(async (req) => {
         new_partner_boost: Math.round(newPartnerBoostRaw * 0.04),
         vehicle_bonus: Math.round(vehicleBonusRaw * 0.02),
         zone_preference: Math.round(zonePreferenceRaw * 0.04),
-        // Phase 5: additive performance signals (small weights — max ~5 pts each)
-        performance_signal: Math.round(performanceSignalRaw * 0.05),  // max +5 pts
-        tier_signal: Math.round(tierValue * 0.04),                     // max +4 pts
+        // Phase 5: configurable additive signals (modest — max ~3pts + ~2pts)
+        performance_signal: Math.round(performanceSignalRaw * weights.performance_signal),
+        tier_signal: Math.round(tierValue * weights.tier_signal),
         total: 0,
       };
 
