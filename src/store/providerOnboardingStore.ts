@@ -53,7 +53,8 @@ export interface UploadedDocument {
   type: "nic" | "business_registration" | "professional_cert" | "police_clearance";
   fileName: string;
   uploadedAt: string;
-  fileUrl?: string; // Real storage URL
+  fileUrl?: string; // Storage path (private bucket)
+  verificationStatus?: string; // From DB when resuming
 }
 
 export interface ProviderApplication {
