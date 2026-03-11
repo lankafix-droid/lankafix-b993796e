@@ -97,12 +97,15 @@ export default function PartnerJobDetailPage() {
     enabled: !!jobId,
   });
 
+  const [showQuoteForm, setShowQuoteForm] = useState(false);
+
   useEffect(() => { if (jobId) track("partner_job_detail_view", { jobId }); }, [jobId]);
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ["partner-booking-detail", jobId] });
     queryClient.invalidateQueries({ queryKey: ["partner-dispatch-offer", jobId] });
     queryClient.invalidateQueries({ queryKey: ["partner-job-timeline", jobId] });
+    queryClient.invalidateQueries({ queryKey: ["partner-job-quotes", jobId] });
     queryClient.invalidateQueries({ queryKey: ["partner-bookings"] });
   };
 
