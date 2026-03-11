@@ -12,6 +12,7 @@ import { track } from "@/lib/analytics";
 import { Plus, X, Send, Clock } from "lucide-react";
 import { validateQuoteAgainstGuardrails } from "@/engines/deterministicPricingEngine";
 import QuoteGuardrailBanner from "@/components/v2/booking/QuoteGuardrailBanner";
+import AIQuoteAssistantPanel from "@/components/ai/AIQuoteAssistantPanel";
 
 interface QuoteBuilderProps {
   jobId: string;
@@ -214,6 +215,25 @@ export default function QuoteBuilder({ jobId, categoryCode, onClose }: QuoteBuil
           <label className="text-xs font-medium">Notes</label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="text-sm mt-1" placeholder="Additional notes for customer" />
         </div>
+
+        {/* AI Quote Assistant */}
+        <AIQuoteAssistantPanel
+          bookingId={jobId}
+          categoryCode={categoryCode}
+          laborAmount={options[0]?.totals?.labor || 0}
+          parts={options[0]?.partsItems?.map(p => ({ description: p.description, amount: p.amount })) || []}
+          warrantyText={options[0]?.warranty?.labor}
+          technicianNote={notes}
+          issueSummary={findings}
+          onApplyLaborSuggestion={(amount) => {
+            setOptions(prev => prev.map((opt, i) => {
+              if (i !== 0) return opt;
+              const laborItems = [...opt.laborItems];
+              if (laborItems.length > 0) laborItems[0] = { ...laborItems[0], amount };
+              return computeTotals({ ...opt, laborItems });
+            }));
+          }}
+        />
 
         <Button className="w-full" onClick={handleSubmit}>
           <Send className="w-4 h-4 mr-2" /> Submit Quote
