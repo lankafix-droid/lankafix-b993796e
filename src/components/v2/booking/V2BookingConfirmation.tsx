@@ -63,6 +63,8 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
   const warranty = getServiceWarranty(flow.code, booking.serviceTypeId);
   const travelZone = TRAVEL_ZONES[0];
 
+  const [zoneBlocked, setZoneBlocked] = useState(false);
+
   const submitBooking = async (userId: string) => {
     if (submitting) return;
     setSubmitting(true);
@@ -86,6 +88,9 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
       setCreatedJobId(result.bookingId);
       setConfirmed(true);
       toast.success("Booking confirmed!");
+    } else if (result.errorCode === "zone_not_supported") {
+      setZoneBlocked(true);
+      toast.error(result.error || "Service not yet available in your area.");
     } else {
       toast.error(result.error || "Failed to create booking. Please try again.");
     }
