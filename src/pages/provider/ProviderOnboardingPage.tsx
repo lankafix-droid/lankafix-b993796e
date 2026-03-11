@@ -560,8 +560,9 @@ function StepBasicProfile() {
       const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
       if (error) throw error;
       
-      const { data: urlData } = supabase.storage.from("partner-uploads").getPublicUrl(path);
-      updateProfile({ profilePhotoUrl: urlData.publicUrl });
+      // Private bucket: use signed URL for preview; store the path for later signed-URL generation
+      const { data: signedData } = await supabase.storage.from("partner-uploads").createSignedUrl(path, 3600);
+      updateProfile({ profilePhotoUrl: signedData?.signedUrl || path });
       toast({ title: "Photo uploaded!" });
     } catch (err: any) {
       console.error("Photo upload error:", err);
