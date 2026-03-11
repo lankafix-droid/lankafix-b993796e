@@ -31,6 +31,10 @@ interface ScoreBreakdown {
   new_partner_boost: number;
   vehicle_bonus: number;
   zone_preference: number;
+  /** Phase 5: additive performance signal */
+  performance_signal: number;
+  /** Phase 5: additive reliability tier signal */
+  tier_signal: number;
   total: number;
 }
 
@@ -44,8 +48,6 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ── §4: ETA Range System ──────────────────────────────
-// Sri Lankan traffic is unpredictable — return ranges instead of single values
 function calculateETA(distanceKm: number, vehicleType: string = "motorcycle"): {
   minutes: number; etaMin: number; etaMax: number; traffic: string; trafficLabel: string;
 } {
@@ -60,15 +62,12 @@ function calculateETA(distanceKm: number, vehicleType: string = "motorcycle"): {
   if (distanceKm >= 8) base = 40;
   if (distanceKm >= 15) base = 60 + Math.round((distanceKm - 15) * 3);
 
-  // §7: Vehicle type affects ETA — motorbikes are faster in Colombo traffic
   if (vehicleType === "motorcycle") base = Math.round(base * 0.8);
   else if (vehicleType === "van") base = Math.round(base * 1.15);
 
   const minutes = Math.round(base * multiplier);
-  // ±30% range
   const etaMin = Math.max(5, Math.round(minutes * 0.7));
   const etaMax = Math.round(minutes * 1.3);
-
   const trafficLabel = traffic === "peak" ? "Heavy traffic" : traffic === "light" ? "Light traffic" : "Normal traffic";
 
   return { minutes, etaMin, etaMax, traffic, trafficLabel };
@@ -78,41 +77,50 @@ function normalizeZone(z: string): string {
   return z.toLowerCase().replace(/[\s_-]+/g, "");
 }
 
-// ── §6: Graduated staleness penalty ──────────────────
 function getStalenessFactor(lastPingAt: string | null): { factor: number; label: string } {
   if (!lastPingAt) return { factor: 0.5, label: "no_gps" };
   const diffMin = (Date.now() - new Date(lastPingAt).getTime()) / 60000;
   if (diffMin <= 5) return { factor: 1.0, label: "live" };
-  if (diffMin <= 15) return { factor: 0.85, label: "recent" };    // §6: -15% after 5 min
-  if (diffMin <= 30) return { factor: 0.70, label: "stale" };     // §6: -30% after 15 min
+  if (diffMin <= 15) return { factor: 0.85, label: "recent" };
+  if (diffMin <= 30) return { factor: 0.70, label: "stale" };
   return { factor: 0.50, label: "very_stale" };
 }
 
-// ── §2: GPS Reliability Fallback — resolve best available location ──
 function resolvePartnerLocation(
   p: any,
   zoneCentroids: Map<string, { lat: number; lng: number }>,
 ): { lat: number; lng: number; source: string } | null {
-  // Priority 1: current GPS
   if (p.current_latitude && p.current_longitude) {
     return { lat: p.current_latitude, lng: p.current_longitude, source: "current_gps" };
   }
-  // Priority 2: base location
   if (p.base_latitude && p.base_longitude) {
     return { lat: p.base_latitude, lng: p.base_longitude, source: "base_location" };
   }
-  // Priority 3: service zone centroid
   if (p.service_zones && p.service_zones.length > 0) {
     for (const zone of p.service_zones) {
       const centroid = zoneCentroids.get(normalizeZone(zone));
       if (centroid) return { lat: centroid.lat, lng: centroid.lng, source: "zone_centroid" };
     }
   }
-  return null; // No location at all — skip
+  return null;
 }
 
-// Categories that benefit from van transport
 const VAN_PREFERRED_CATEGORIES = ["AC", "APPLIANCE", "CCTV", "SOLAR", "SMARTHOME"];
+
+/**
+ * Phase 5 — Performance & Tier Scoring
+ * 
+ * Additive signals, not hard blockers:
+ * - performance_score: 0-100 → normalized to small weight contribution
+ * - reliability_tier: bonus for elite/pro, neutral for verified, slight penalty for under_review
+ * - Missing data defaults to neutral (50) — never excludes a partner
+ */
+const TIER_SCORE_MAP: Record<string, number> = {
+  elite: 100,
+  pro: 75,
+  verified: 50,  // neutral default
+  under_review: 20,
+};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -144,10 +152,9 @@ serve(async (req) => {
     const modes = configMap.dispatch_modes || {};
     const limits = configMap.dispatch_limits || {
       max_distance_km: 20, emergency_max_distance_km: 15,
-      low_density_fallback_km: 20, // §13
+      low_density_fallback_km: 20,
     };
 
-    // Build zone centroid map for GPS fallback (§2)
     const zoneCentroids = new Map<string, { lat: number; lng: number }>();
     (zonesRes.data || []).forEach((z: any) => {
       if (z.center_latitude && z.center_longitude) {
@@ -161,17 +168,13 @@ serve(async (req) => {
       : (limits.max_distance_km || 20);
     const normalizedCustomerZone = customer_zone ? normalizeZone(customer_zone) : null;
 
-    // 2. Query eligible partners
-    // §5: For emergency, do NOT hard-filter by emergency_available — score it instead
-    // §11: Allow busy partners if under concurrent job limit
+    // 2. Query eligible partners — now includes performance_score and reliability_tier
     let query = supabase
       .from("partners")
       .select("*")
       .eq("verification_status", "verified")
       .contains("categories_supported", [category_code]);
 
-    // Only exclude fully offline partners
-    // §11: busy partners are allowed if current_job_count < max_concurrent_jobs (checked in scoring)
     query = query.neq("availability_status", "offline");
 
     const { data: partners, error: partnerError } = await query;
@@ -193,7 +196,7 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 3. Score each partner — distance-first with flexible zone matching
+    // 3. Score each partner
     const scored: Array<{
       partner_id: string; partner: any; distance_km: number;
       eta_minutes: number; eta_min: number; eta_max: number;
@@ -204,25 +207,18 @@ serve(async (req) => {
     for (const p of partners) {
       if (exclude_partner_ids.includes(p.id)) continue;
 
-      // §11: busy partners must have capacity
       if (p.availability_status === "busy" && (p.current_job_count || 0) >= (p.max_concurrent_jobs || 1)) continue;
-      // Daily limit
       if ((p.current_job_count || 0) >= (p.max_jobs_per_day || 5)) continue;
 
-      // §2: GPS reliability fallback
       const loc = resolvePartnerLocation(p, zoneCentroids);
       if (!loc) continue;
 
       const dist = haversineKm(customer_lat, customer_lng, loc.lat, loc.lng);
-
-      // §13: Low-density fallback — use wider radius first pass, narrow later
       const effectiveMaxDist = initialMaxDist;
       if (dist > effectiveMaxDist) continue;
 
-      // §6: Graduated staleness
       const staleness = getStalenessFactor(p.last_location_ping_at);
 
-      // §1: Flexible zone matching — zones influence scoring, NOT hard exclusion
       let zoneMatch = false;
       if (normalizedCustomerZone && p.service_zones && p.service_zones.length > 0) {
         const partnerZonesNorm = (p.service_zones as string[]).map(normalizeZone);
@@ -231,7 +227,6 @@ serve(async (req) => {
 
       // ── SCORING ──
 
-      // §1: Distance-first proximity with zone preference
       let proximityRaw: number;
       if (dist < 2) proximityRaw = 100;
       else if (dist < 5) proximityRaw = 85;
@@ -240,17 +235,13 @@ serve(async (req) => {
       else if (dist < 18) proximityRaw = 25;
       else proximityRaw = 10;
 
-      // §6: Apply staleness factor to proximity
       proximityRaw = Math.round(proximityRaw * staleness.factor);
 
-      // §2: Slight reduction for non-GPS location sources
       if (loc.source === "base_location") proximityRaw = Math.round(proximityRaw * 0.9);
       else if (loc.source === "zone_centroid") proximityRaw = Math.round(proximityRaw * 0.7);
 
-      // §1: Zone preference bonus (scoring, not exclusion)
       const zonePreferenceRaw = zoneMatch ? 100 : (dist < 5 ? 60 : dist < 10 ? 30 : 0);
 
-      // Specialization
       let specRaw = 40;
       if (service_type && p.specializations) {
         if (p.specializations.includes(service_type)) specRaw = 100;
@@ -276,25 +267,30 @@ serve(async (req) => {
         ? Math.max(0, 100 - cancelRate * 5)
         : completedJobs > 10 ? Math.max(0, 80 - cancelRate * 4) : 50;
 
-      // §5: Emergency dispatch flexibility — don't require flag, use distance tiers
       let emergencyRaw = 50;
       if (is_emergency) {
         if (p.emergency_available && dist < 3) emergencyRaw = 100;
         else if (p.emergency_available) emergencyRaw = 90;
-        else if (dist < 3) emergencyRaw = 75;   // §5: nearby non-flagged partner
-        else if (dist < 6) emergencyRaw = 50;   // §5: medium distance fallback
+        else if (dist < 3) emergencyRaw = 75;
+        else if (dist < 6) emergencyRaw = 50;
         else emergencyRaw = 20;
       }
 
-      // §3: New partner fairness boost
       let newPartnerBoostRaw = 0;
       if (completedJobs < 10) newPartnerBoostRaw = completedJobs < 3 ? 80 : 50;
 
-      // §7: Vehicle type bonus
       let vehicleBonusRaw = 50;
       const vehicleType = p.vehicle_type || "motorcycle";
-      if (vehicleType === "motorcycle") vehicleBonusRaw = 70; // faster in Colombo
+      if (vehicleType === "motorcycle") vehicleBonusRaw = 70;
       if (vehicleType === "van" && VAN_PREFERRED_CATEGORIES.includes(category_code)) vehicleBonusRaw = 80;
+
+      // ── Phase 5: Performance & Tier signals (additive, not blockers) ──
+      // performance_score: null/0 → neutral 50
+      const perfScore = p.performance_score ?? 0;
+      const performanceSignalRaw = perfScore > 0 ? perfScore : 50; // neutral default
+
+      // reliability_tier: missing → "verified" → neutral 50
+      const tierValue = TIER_SCORE_MAP[p.reliability_tier || "verified"] ?? 50;
 
       // Penalties
       let penalty = 0;
@@ -302,7 +298,6 @@ serve(async (req) => {
       if ((p.late_arrival_count || 0) > 3) penalty += 10;
       if (cancelRate > 20) penalty += 15;
 
-      // Build breakdown with new factors
       const breakdown: ScoreBreakdown = {
         proximity: Math.round(proximityRaw * weights.proximity),
         specialization: Math.round(specRaw * weights.specialization),
@@ -311,10 +306,12 @@ serve(async (req) => {
         workload: Math.round(workloadRaw * weights.workload),
         completion_rate: Math.round(completionRaw * weights.completion_rate),
         emergency_priority: Math.round(emergencyRaw * weights.emergency_priority),
-        // New additive factors (small weights)
-        new_partner_boost: Math.round(newPartnerBoostRaw * 0.04), // max +3.2 pts
-        vehicle_bonus: Math.round(vehicleBonusRaw * 0.02),        // max +1.6 pts
-        zone_preference: Math.round(zonePreferenceRaw * 0.04),    // max +4 pts
+        new_partner_boost: Math.round(newPartnerBoostRaw * 0.04),
+        vehicle_bonus: Math.round(vehicleBonusRaw * 0.02),
+        zone_preference: Math.round(zonePreferenceRaw * 0.04),
+        // Phase 5: additive performance signals (small weights — max ~5 pts each)
+        performance_signal: Math.round(performanceSignalRaw * 0.05),  // max +5 pts
+        tier_signal: Math.round(tierValue * 0.04),                     // max +4 pts
         total: 0,
       };
 
@@ -322,7 +319,8 @@ serve(async (req) => {
         breakdown.proximity + breakdown.specialization + breakdown.rating +
         breakdown.response_speed + breakdown.workload + breakdown.completion_rate +
         breakdown.emergency_priority + breakdown.new_partner_boost +
-        breakdown.vehicle_bonus + breakdown.zone_preference - penalty
+        breakdown.vehicle_bonus + breakdown.zone_preference +
+        breakdown.performance_signal + breakdown.tier_signal - penalty
       ));
 
       const eta = calculateETA(dist, vehicleType);
@@ -346,6 +344,9 @@ serve(async (req) => {
           profile_photo_url: p.profile_photo_url,
           acceptance_rate: p.acceptance_rate,
           cancellation_rate: p.cancellation_rate,
+          // Phase 5: include for ops visibility
+          performance_score: p.performance_score,
+          reliability_tier: p.reliability_tier,
         },
         distance_km: Math.round(dist * 10) / 10,
         eta_minutes: eta.minutes,
@@ -358,10 +359,8 @@ serve(async (req) => {
       });
     }
 
-    // §13: If no candidates found within initial radius, try fallback radius
     if (scored.length === 0 && initialMaxDist < (limits.low_density_fallback_km || 20)) {
-      // Re-run would be triggered on next dispatch round with wider radius
-      // For now, escalate
+      // Re-run triggered on next dispatch round
     }
 
     scored.sort((a, b) => b.score.total - a.score.total);
@@ -371,13 +370,12 @@ serve(async (req) => {
     else if (dispatchMode === "top_3") resultCandidates = scored.slice(0, 3);
 
     const bestMatch = resultCandidates[0] || null;
-    const acceptWindowSec = is_emergency ? 30 : 60; // §12: Emergency = 30s
+    const acceptWindowSec = is_emergency ? 30 : 60;
 
     // 4. Persist dispatch logs + booking state + notifications
     if (booking_id) {
       const persistOps: Promise<any>[] = [];
 
-      // §10: Analytics-ready dispatch log
       if (resultCandidates.length > 0) {
         const logEntries = scored.slice(0, 10).map((c, i) => ({
           booking_id,
@@ -389,16 +387,17 @@ serve(async (req) => {
           dispatch_round,
           score_breakdown: {
             ...c.score,
-            // §10: Extra analytics fields
             location_source: c.location_source,
             traffic: c.traffic,
             eta_range: `${c.eta_min}-${c.eta_max}`,
+            // Phase 5: persist tier/perf for ops analytics
+            partner_tier: c.partner.reliability_tier,
+            partner_perf_score: c.partner.performance_score,
           },
         }));
         persistOps.push(supabase.from("dispatch_log").insert(logEntries));
       }
 
-      // Update booking dispatch state
       const bookingUpdate: Record<string, any> = {
         dispatch_mode: dispatchMode,
         dispatch_round,
@@ -406,11 +405,10 @@ serve(async (req) => {
       };
       if (bestMatch) {
         bookingUpdate.selected_partner_id = bestMatch.partner_id;
-        bookingUpdate.promised_eta_minutes = bestMatch.eta_minutes; // §9: SLA tracking
+        bookingUpdate.promised_eta_minutes = bestMatch.eta_minutes;
       }
       persistOps.push(supabase.from("bookings").update(bookingUpdate).eq("id", booking_id));
 
-      // Send notification to best match partner
       if (bestMatch) {
         persistOps.push(supabase.from("partner_notifications").insert({
           partner_id: bestMatch.partner_id,
@@ -428,7 +426,6 @@ serve(async (req) => {
         }));
       }
 
-      // Escalate if no matches
       if (!bestMatch) {
         persistOps.push(supabase.from("dispatch_escalations").insert({
           booking_id,
