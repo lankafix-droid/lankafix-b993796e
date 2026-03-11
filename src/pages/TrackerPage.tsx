@@ -321,7 +321,8 @@ const TrackerPage = () => {
       arrived: "Provider Arrived",
       inspection_started: "Inspecting",
       quote_submitted: "Quote Ready",
-      quote_approved: "Approved",
+      quote_approved: "Quote Approved",
+      quote_rejected: "Quote Rejected",
       in_progress: "In Progress",
       repair_started: "Repair Started",
       completed: "Completed",
@@ -343,6 +344,10 @@ const TrackerPage = () => {
     const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (STATUS_LABELS[dbBooking.status] || dispatchInfo.label);
     const statusDesc = dbBooking.status === "assigned"
       ? "Your provider has been assigned and is preparing for the job."
+      : dbBooking.status === "quote_submitted" ? "Your technician has submitted a quote for review."
+      : dbBooking.status === "quote_approved" ? "Quote approved — repair will begin shortly."
+      : dbBooking.status === "repair_started" ? "Your technician is performing the repair."
+      : dbBooking.status === "completed" ? "Your service has been completed!"
       : dispatchInfo.description;
 
     return (
@@ -398,6 +403,9 @@ const TrackerPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Quote Approval Card - shown when quote is submitted */}
+            <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
             {/* Timeline events from DB */}
             {dbTimeline && dbTimeline.length > 0 && (

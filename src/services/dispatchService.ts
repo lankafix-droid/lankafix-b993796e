@@ -148,3 +148,97 @@ export async function updateJobStatus(
     return { success: false, error: e.message || "Failed to update status" };
   }
 }
+
+/**
+ * Start repair after quote approval.
+ */
+export async function startRepair(bookingId: string, partnerId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const [bookingRes] = await Promise.all([
+      supabase.from("bookings").update({ status: "repair_started" as any }).eq("id", bookingId),
+      supabase.from("job_timeline").insert({
+        booking_id: bookingId,
+        status: "repair_started",
+        actor: "partner",
+        note: "Repair work has started",
+        metadata: { partner_id: partnerId },
+      }),
+    ]);
+    if (bookingRes.error) throw bookingRes.error;
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || "Failed to start repair" };
+  }
+}
+
+/**
+ * Complete repair.
+ */
+export async function completeRepair(bookingId: string, partnerId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const now = new Date().toISOString();
+    const [bookingRes] = await Promise.all([
+      supabase.from("bookings").update({ status: "completed" as any, completed_at: now }).eq("id", bookingId),
+      supabase.from("job_timeline").insert({
+        booking_id: bookingId,
+        status: "completed",
+        actor: "partner",
+        note: "Repair completed successfully",
+        metadata: { partner_id: partnerId },
+      }),
+      supabase.from("notification_events").insert({
+        event_type: "repair_completed",
+        booking_id: bookingId,
+        partner_id: partnerId,
+      }),
+    ]);
+    if (bookingRes.error) throw bookingRes.error;
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || "Failed to complete repair" };
+  }
+}
+
+/**
+ * Record payment for a completed job.
+ */
+export async function recordPayment(
+  bookingId: string,
+  quoteId: string,
+  amountLkr: number,
+  method: "cash" | "bank_transfer" | "online"
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const session = await supabase.auth.getSession();
+    const userId = session.data.session?.user?.id;
+
+    const { error } = await supabase.from("payments").insert({
+      booking_id: bookingId,
+      quote_id: quoteId,
+      amount_lkr: amountLkr,
+      customer_id: userId || bookingId, // fallback
+      payment_type: "service",
+      payment_status: "paid",
+      paid_at: new Date().toISOString(),
+      paid_by: method,
+    });
+    if (error) throw error;
+
+    await supabase.from("bookings").update({
+      payment_status: "paid" as any,
+      payment_method: method,
+      final_price_lkr: amountLkr,
+    }).eq("id", bookingId);
+
+    await supabase.from("job_timeline").insert({
+      booking_id: bookingId,
+      status: "payment_recorded",
+      actor: "partner",
+      note: `Payment of LKR ${amountLkr.toLocaleString()} recorded (${method})`,
+    });
+
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message || "Failed to record payment" };
+  }
+}
