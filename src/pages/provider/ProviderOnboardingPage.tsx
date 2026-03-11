@@ -818,7 +818,14 @@ function StepDocuments() {
                     {doc.label} {doc.required && <span className="text-destructive">*</span>}
                   </p>
                   {uploaded && (
-                    <p className="text-xs text-success">✓ {uploaded.fileName}</p>
+                    <div>
+                      <p className="text-xs text-success">✓ {uploaded.fileName}</p>
+                      {uploaded.verificationStatus && (
+                        <Badge variant="outline" className="text-[10px] mt-0.5">
+                          {uploaded.verificationStatus}
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
