@@ -64,7 +64,7 @@ export default function ProviderOnboardingPage() {
             store.updateProfile({
               fullName: data.full_name,
               mobileNumber: data.phone_number || "",
-              serviceCategories: data.categories_supported || [],
+              serviceCategories: (data.categories_supported || []) as any,
               serviceZones: data.service_zones || [],
             });
           }
@@ -120,7 +120,7 @@ export default function ProviderOnboardingPage() {
         businessName = profile.businessName?.trim() || (profile.fullName.trim() + " Services");
       }
 
-      const partnerRecord: Record<string, any> = {
+      const partnerRecord = {
         full_name: profile.fullName.trim(),
         business_name: businessName,
         phone_number: profile.mobileNumber.trim(),
