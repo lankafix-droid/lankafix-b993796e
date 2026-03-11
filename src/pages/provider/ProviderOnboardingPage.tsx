@@ -98,7 +98,7 @@ export default function ProviderOnboardingPage() {
             .select("bank_name, account_holder_name, account_number, branch")
             .eq("partner_id", data.id)
             .maybeSingle();
-          if (bank && !store.profile.fullName) {
+          if (bank) {
             store.updateProfile({
               bankName: bank.bank_name || "",
               accountHolderName: bank.account_holder_name || "",
