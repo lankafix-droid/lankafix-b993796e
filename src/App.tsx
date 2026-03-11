@@ -65,6 +65,7 @@ const ExpansionRoadmapPage = lazy(() => import("./pages/ops/ExpansionRoadmapPage
 const PartnerPremiumPage = lazy(() => import("./pages/partner/PartnerPremiumPage"));
 const ConsumablesPage = lazy(() => import("./pages/ConsumablesPage"));
 const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
+const MarketplaceIntelligencePage = lazy(() => import("./pages/ops/MarketplaceIntelligencePage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
 const AccountDeletionPage = lazy(() => import("./pages/AccountDeletionPage"));
 const AccountDeletionPublicPage = lazy(() => import("./pages/AccountDeletionPublicPage"));
@@ -175,6 +176,7 @@ const App = () => (
             <Route path="/ops/ai-growth" element={<AIGrowthEnginePage />} />
             <Route path="/ops/expansion" element={<ExpansionRoadmapPage />} />
             <Route path="/ops/revenue" element={<RevenueEnginePage />} />
+            <Route path="/ops/intelligence" element={<MarketplaceIntelligencePage />} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />
