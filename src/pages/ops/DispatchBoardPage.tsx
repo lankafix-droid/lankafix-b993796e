@@ -65,7 +65,7 @@ function useVerifiedPartners() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("partners")
-        .select("id, full_name, business_name, availability_status, categories_supported, service_zones, rating_average, completed_jobs_count, verification_status")
+        .select("id, full_name, business_name, availability_status, categories_supported, service_zones, rating_average, completed_jobs_count, verification_status, performance_score, reliability_tier")
         .eq("verification_status", "verified")
         .order("rating_average", { ascending: false });
       if (error) throw error;
@@ -335,26 +335,41 @@ export default function DispatchBoardPage() {
               <CardTitle className="text-sm"><Users className="w-4 h-4 text-primary inline mr-1" />Verified Partners ({partners.length})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {partners.map((p: any) => (
-                <div key={p.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium">{p.full_name}</p>
-                    <Badge variant="outline" className={`text-[10px] ${p.availability_status === "available" ? "bg-success/10 text-success" : p.availability_status === "busy" ? "bg-warning/10 text-warning" : "bg-muted"}`}>
-                      {p.availability_status}
-                    </Badge>
+              {partners.map((p: any) => {
+                const tierColors: Record<string, string> = {
+                  elite: "bg-amber-500/15 text-amber-700",
+                  pro: "bg-sky-500/15 text-sky-700",
+                  verified: "bg-emerald-500/15 text-emerald-700",
+                  under_review: "bg-red-500/15 text-red-700",
+                };
+                const tier = p.reliability_tier || "verified";
+                return (
+                  <div key={p.id} className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">{p.full_name}</p>
+                        <Badge className={`border-0 text-[9px] ${tierColors[tier] || tierColors.verified}`}>
+                          {tier === "under_review" ? "Review" : tier.charAt(0).toUpperCase() + tier.slice(1)}
+                        </Badge>
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] ${p.availability_status === "available" ? "bg-success/10 text-success" : p.availability_status === "busy" ? "bg-warning/10 text-warning" : "bg-muted"}`}>
+                        {p.availability_status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                      <span>⭐ {p.rating_average}</span>
+                      <span>{p.completed_jobs_count} jobs</span>
+                      <span>Score: {p.performance_score ?? "—"}</span>
+                      <span>{(p.service_zones || []).length} zones</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(p.categories_supported || []).slice(0, 4).map((cat: string) => (
+                        <Badge key={cat} variant="secondary" className="text-[9px]">{cat}</Badge>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                    <span>⭐ {p.rating_average}</span>
-                    <span>{p.completed_jobs_count} jobs</span>
-                    <span>{(p.service_zones || []).length} zones</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {(p.categories_supported || []).slice(0, 4).map((cat: string) => (
-                      <Badge key={cat} variant="secondary" className="text-[9px]">{cat}</Badge>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}

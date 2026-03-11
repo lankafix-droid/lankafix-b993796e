@@ -9,6 +9,11 @@
  *   pro          — Reliable and experienced
  *   verified     — Default tier for newly verified partners
  *   under_review — Flagged due to poor metrics or warnings
+ * 
+ * HARDENING:
+ *   - under_review requires minimum evidence (jobs ≥ 5 for cancel, ≥ 10 for score/rating)
+ *   - Low-data partners stay "verified" — never downgraded without evidence
+ *   - tier_reason provides ops-visible explanation
  */
 
 export type ReliabilityTier = "elite" | "pro" | "verified" | "under_review";
@@ -27,6 +32,8 @@ export interface TierInput {
 export interface TierResult {
   tier: ReliabilityTier;
   reason: string;
+  /** Whether enough data exists to make a confident tier assessment */
+  has_sufficient_data: boolean;
 }
 
 // ── Thresholds (tunable by ops later via platform_settings) ──
@@ -47,6 +54,10 @@ const THRESHOLDS = {
     maxStrikes: 1,
   },
   under_review: {
+    // Minimum evidence thresholds — never downgrade without enough jobs
+    minJobsForCancelDowngrade: 5,
+    minJobsForScoreDowngrade: 10,
+    minJobsForRatingDowngrade: 10,
     maxPerformanceScore: 35,
     maxRating: 3.0,
     minCancellationRate: 25,
@@ -54,9 +65,17 @@ const THRESHOLDS = {
   },
 } as const;
 
+/** Minimum jobs required before any tier promotion above verified */
+const MIN_JOBS_FOR_PROMOTION = 5;
+
 /**
  * Compute reliability tier from partner signals.
- * Safe with missing data — defaults to "verified" when signals are sparse.
+ * 
+ * HARDENING RULES:
+ * 1. Partners with < MIN_JOBS_FOR_PROMOTION jobs always stay "verified"
+ * 2. under_review requires specific minimum evidence thresholds per signal
+ * 3. Strikes are the only signal that can downgrade without job-count guard (≥3 = ops issue)
+ * 4. Missing/null data defaults to neutral — never penalizes
  */
 export function computeReliabilityTier(input: TierInput): TierResult {
   const score = input.performance_score ?? 0;
@@ -66,18 +85,32 @@ export function computeReliabilityTier(input: TierInput): TierResult {
   const strikes = input.strike_count ?? 0;
   const onTime = input.on_time_rate ?? 95;
 
-  // ── Under Review: any hard-fail signal triggers this ──
+  const hasSufficientData = jobs >= MIN_JOBS_FOR_PROMOTION;
+
+  // ── Under Review: requires minimum evidence per signal ──
+  // Strikes are the only exception — 3+ strikes always flags regardless of job count
   if (strikes >= THRESHOLDS.under_review.minStrikes) {
-    return { tier: "under_review", reason: `${strikes} strikes — requires ops review` };
+    return { tier: "under_review", reason: `${strikes} performance strikes — requires ops review`, has_sufficient_data: true };
   }
-  if (cancelRate >= THRESHOLDS.under_review.minCancellationRate && jobs >= 5) {
-    return { tier: "under_review", reason: `High cancellation rate (${cancelRate}%)` };
+
+  // Cancel-based downgrade: requires minJobsForCancelDowngrade
+  if (cancelRate >= THRESHOLDS.under_review.minCancellationRate && jobs >= THRESHOLDS.under_review.minJobsForCancelDowngrade) {
+    return { tier: "under_review", reason: `Cancellation rate ${cancelRate}% across ${jobs} jobs`, has_sufficient_data: true };
   }
-  if (score > 0 && score <= THRESHOLDS.under_review.maxPerformanceScore && jobs >= 10) {
-    return { tier: "under_review", reason: `Low performance score (${score})` };
+
+  // Score-based downgrade: requires minJobsForScoreDowngrade
+  if (score > 0 && score <= THRESHOLDS.under_review.maxPerformanceScore && jobs >= THRESHOLDS.under_review.minJobsForScoreDowngrade) {
+    return { tier: "under_review", reason: `Performance score ${score}/100 across ${jobs} jobs`, has_sufficient_data: true };
   }
-  if (rating > 0 && rating <= THRESHOLDS.under_review.maxRating && jobs >= 10) {
-    return { tier: "under_review", reason: `Low rating (${rating})` };
+
+  // Rating-based downgrade: requires minJobsForRatingDowngrade
+  if (rating > 0 && rating <= THRESHOLDS.under_review.maxRating && jobs >= THRESHOLDS.under_review.minJobsForRatingDowngrade) {
+    return { tier: "under_review", reason: `Rating ${rating}/5.0 across ${jobs} jobs`, has_sufficient_data: true };
+  }
+
+  // ── Low-data partners: stay verified (never promoted or demoted without evidence) ──
+  if (!hasSufficientData) {
+    return { tier: "verified", reason: `New partner (${jobs} jobs) — insufficient data for tier assessment`, has_sufficient_data: false };
   }
 
   // ── Elite: all signals must be strong ──
@@ -90,7 +123,7 @@ export function computeReliabilityTier(input: TierInput): TierResult {
     strikes <= t.maxStrikes &&
     onTime >= t.minOnTimeRate
   ) {
-    return { tier: "elite", reason: `Score ${score}, Rating ${rating}, ${jobs} jobs, ${onTime}% on-time` };
+    return { tier: "elite", reason: `Score ${score}, Rating ${rating}, ${jobs} jobs, ${onTime}% on-time`, has_sufficient_data: true };
   }
 
   // ── Pro: solid metrics ──
@@ -102,11 +135,11 @@ export function computeReliabilityTier(input: TierInput): TierResult {
     cancelRate <= p.maxCancellationRate &&
     strikes <= p.maxStrikes
   ) {
-    return { tier: "pro", reason: `Score ${score}, Rating ${rating}, ${jobs} jobs completed` };
+    return { tier: "pro", reason: `Score ${score}, Rating ${rating}, ${jobs} jobs completed`, has_sufficient_data: true };
   }
 
   // ── Default: Verified ──
-  return { tier: "verified", reason: "Standard verified partner" };
+  return { tier: "verified", reason: "Standard verified partner", has_sufficient_data: true };
 }
 
 // ── Display helpers ──

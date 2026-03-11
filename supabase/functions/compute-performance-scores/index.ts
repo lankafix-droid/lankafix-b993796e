@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 /**
- * Tier thresholds — mirrors src/engines/partnerTieringEngine.ts
- * Kept in sync manually; single source of truth is the engine file.
+ * Tier computation — mirrors src/engines/partnerTieringEngine.ts
+ * HARDENED: under_review requires minimum evidence thresholds
  */
 function computeTier(p: {
   performance_score: number;
@@ -18,28 +18,34 @@ function computeTier(p: {
   cancellation_rate: number;
   strike_count: number;
   on_time_rate: number;
-}): string {
+}): { tier: string; reason: string } {
   const { performance_score: score, rating_average: rating, completed_jobs_count: jobs, cancellation_rate: cancelRate, strike_count: strikes, on_time_rate: onTime } = p;
 
-  // Under Review
-  if (strikes >= 3) return "under_review";
-  if (cancelRate >= 25 && jobs >= 5) return "under_review";
-  if (score > 0 && score <= 35 && jobs >= 10) return "under_review";
-  if (rating > 0 && rating <= 3.0 && jobs >= 10) return "under_review";
+  // Under Review — strikes always count (ops issue, not data sparsity)
+  if (strikes >= 3) return { tier: "under_review", reason: `${strikes} strikes` };
+  // Cancel-based: need ≥5 jobs evidence
+  if (cancelRate >= 25 && jobs >= 5) return { tier: "under_review", reason: `Cancel rate ${cancelRate}% (${jobs} jobs)` };
+  // Score-based: need ≥10 jobs evidence
+  if (score > 0 && score <= 35 && jobs >= 10) return { tier: "under_review", reason: `Score ${score} (${jobs} jobs)` };
+  // Rating-based: need ≥10 jobs evidence
+  if (rating > 0 && rating <= 3.0 && jobs >= 10) return { tier: "under_review", reason: `Rating ${rating} (${jobs} jobs)` };
+
+  // Low-data partners: stay verified
+  if (jobs < 5) return { tier: "verified", reason: `New partner (${jobs} jobs)` };
 
   // Elite
-  if (score >= 80 && rating >= 4.5 && jobs >= 20 && cancelRate <= 5 && strikes <= 0 && onTime >= 90) return "elite";
+  if (score >= 80 && rating >= 4.5 && jobs >= 20 && cancelRate <= 5 && strikes <= 0 && onTime >= 90) {
+    return { tier: "elite", reason: `Score ${score}, Rating ${rating}, ${jobs} jobs, ${onTime}% on-time` };
+  }
 
   // Pro
-  if (score >= 60 && rating >= 3.8 && jobs >= 8 && cancelRate <= 15 && strikes <= 1) return "pro";
+  if (score >= 60 && rating >= 3.8 && jobs >= 8 && cancelRate <= 15 && strikes <= 1) {
+    return { tier: "pro", reason: `Score ${score}, Rating ${rating}, ${jobs} jobs` };
+  }
 
-  return "verified";
+  return { tier: "verified", reason: "Standard verified" };
 }
 
-/**
- * compute-performance-scores: Batch computes partner performance scores AND reliability tiers.
- * Run daily via pg_cron or on-demand.
- */
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -75,45 +81,27 @@ serve(async (req) => {
     const tierCounts: Record<string, number> = { elite: 0, pro: 0, verified: 0, under_review: 0 };
 
     for (const p of partners) {
-      // Rating score (0-100)
       const ratingScore = Math.min(((p.rating_average || 0) / 5) * 100, 100);
-
-      // Completion rate score
       const cancelRate = p.cancellation_rate || 0;
       const completionScore = Math.max(0, 100 - cancelRate * 2.5);
-
-      // Response time score
       const avgResp = p.average_response_time_minutes || 30;
       const responseScore = avgResp <= 3 ? 100 : avgResp <= 5 ? 90 : avgResp <= 10 ? 75 : avgResp <= 20 ? 55 : avgResp <= 30 ? 35 : 15;
-
-      // Quote approval rate score
       const quoteApprovalScore = Math.min(p.quote_approval_rate || 80, 100);
-
-      // On-time rate score
       const onTimeScore = Math.min(p.on_time_rate || 90, 100);
-
-      // Repeat customer score
       const repeatCustomers = repeatMap.get(p.id) || 0;
       const totalJobs = p.completed_jobs_count || 0;
       const repeatScore = totalJobs > 5 ? Math.min((repeatCustomers / totalJobs) * 200, 100) : 50;
 
-      // Weighted score
       let score = Math.round(
-        ratingScore * 0.25 +
-        completionScore * 0.20 +
-        responseScore * 0.15 +
-        quoteApprovalScore * 0.15 +
-        onTimeScore * 0.15 +
-        repeatScore * 0.10
+        ratingScore * 0.25 + completionScore * 0.20 + responseScore * 0.15 +
+        quoteApprovalScore * 0.15 + onTimeScore * 0.15 + repeatScore * 0.10
       );
 
-      // Penalties
       const strikes = p.strike_count || 0;
       if (strikes > 0) score = Math.max(0, score - strikes * 5);
       score = Math.max(0, Math.min(100, score));
 
-      // Compute tier
-      const tier = computeTier({
+      const { tier, reason } = computeTier({
         performance_score: score,
         rating_average: p.rating_average || 0,
         completed_jobs_count: totalJobs,
