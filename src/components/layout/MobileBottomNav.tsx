@@ -14,8 +14,8 @@ const tabs = [
 export default function MobileBottomNav() {
   const { pathname } = useLocation();
 
-  // Hide on partner/ops/technician pages
-  if (pathname.startsWith("/partner") || pathname.startsWith("/ops") || pathname.startsWith("/technician")) {
+  // Hide on partner/ops/technician/booking pages
+  if (pathname.startsWith("/partner") || pathname.startsWith("/ops") || pathname.startsWith("/technician") || pathname.startsWith("/book/")) {
     return null;
   }
 
