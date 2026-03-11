@@ -259,27 +259,14 @@ export default function DispatchBoardPage() {
           </div>
         )}
 
-        {/* Active Bookings */}
+        {/* Active Bookings with Quote Info */}
         {activeTab === "active" && (
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm">Active Bookings ({activeBookings.length})</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {activeBookings.length === 0 && !activeLoading && <p className="text-sm text-muted-foreground text-center py-4">No active bookings</p>}
               {activeBookings.map((b: any) => (
-                <div key={b.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <p className="text-sm font-medium font-mono">{b.id.slice(0, 8)}</p>
-                      <p className="text-xs text-muted-foreground">{b.category_code} • {b.service_type || "general"}</p>
-                    </div>
-                    <Badge variant="outline" className="text-[10px]">{b.status?.replace(/_/g, " ")}</Badge>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <MapPin className="w-3 h-3" /> {b.zone_code || "—"}
-                    {b.is_emergency && <Badge className="bg-destructive/10 text-destructive text-[9px] h-4">SOS</Badge>}
-                    <span className="ml-auto">{timeSince(b.created_at)}</span>
-                  </div>
-                </div>
+                <OpsBookingRow key={b.id} booking={b} />
               ))}
             </CardContent>
           </Card>
