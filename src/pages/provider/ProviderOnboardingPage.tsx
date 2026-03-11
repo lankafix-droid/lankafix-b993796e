@@ -44,7 +44,7 @@ export default function ProviderOnboardingPage() {
   const step = ONBOARDING_STEPS[store.currentStep];
   const progress = ((store.currentStep + 1) / ONBOARDING_STEPS.length) * 100;
 
-  // Check auth state and existing partner on mount
+  // Check auth state and existing partner on mount — full prefill
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
@@ -54,19 +54,89 @@ export default function ProviderOnboardingPage() {
         // Check if partner already exists for this user
         const { data } = await supabase
           .from("partners")
-          .select("id, full_name, phone_number, categories_supported, service_zones, verification_status")
+          .select("*")
           .eq("user_id", u.id)
           .maybeSingle();
         if (data) {
           setExistingPartnerId(data.id);
-          // Pre-fill store from existing record if onboarding is fresh
+          // Full prefill from existing record
           if (!store.profile.fullName && data.full_name) {
             store.updateProfile({
               fullName: data.full_name,
+              businessName: data.business_name || "",
               mobileNumber: data.phone_number || "",
+              email: data.email || "",
+              nicNumber: data.nic_number || "",
+              providerType: (data.provider_type as any) || "individual",
               serviceCategories: (data.categories_supported || []) as any,
+              specializations: (data.specializations || []) as string[],
               serviceZones: data.service_zones || [],
+              yearsOfExperience: data.experience_years || 0,
+              previousCompany: data.previous_company || "",
+              emergencyAvailable: data.emergency_available || false,
+              profilePhotoUrl: data.profile_photo_url || "",
+              tools: (data.tools_declared || []) as string[],
             });
+          }
+
+          // Prefill schedule
+          const { data: sched } = await supabase
+            .from("partner_schedules")
+            .select("working_days, start_time, end_time, emergency_available")
+            .eq("partner_id", data.id)
+            .maybeSingle();
+          if (sched && !store.profile.fullName) {
+            store.updateProfile({
+              availabilityDays: (sched.working_days as string[]) || [],
+              availabilityStart: sched.start_time || "08:00",
+              availabilityEnd: sched.end_time || "19:00",
+              emergencyAvailable: sched.emergency_available || false,
+            });
+          }
+
+          // Prefill bank
+          const { data: bank } = await supabase
+            .from("partner_bank_accounts")
+            .select("bank_name, account_holder_name, account_number, branch")
+            .eq("partner_id", data.id)
+            .maybeSingle();
+          if (bank && !store.profile.fullName) {
+            store.updateProfile({
+              bankName: bank.bank_name || "",
+              accountHolderName: bank.account_holder_name || "",
+              accountNumber: bank.account_number || "",
+              branch: bank.branch || "",
+            });
+          }
+
+          // Prefill documents from DB
+          const { data: docs } = await supabase
+            .from("partner_documents")
+            .select("document_type, file_url, verification_status")
+            .eq("partner_id", data.id);
+          if (docs && docs.length > 0 && store.profile.documents.length === 0) {
+            const mappedDocs = docs.map((d: any) => ({
+              type: d.document_type as any,
+              fileName: `${d.document_type} (uploaded)`,
+              uploadedAt: new Date().toISOString(),
+              fileUrl: d.file_url,
+              verificationStatus: d.verification_status,
+            }));
+            store.updateProfile({ documents: mappedDocs });
+          }
+
+          // Prefill conduct/training acceptance state
+          const { data: acceptances } = await supabase
+            .from("policy_acceptances")
+            .select("policy_type")
+            .eq("partner_id", data.id);
+          if (acceptances) {
+            if (acceptances.some((a: any) => a.policy_type === "code_of_conduct")) {
+              store.acceptConduct();
+            }
+            if (acceptances.some((a: any) => a.policy_type === "provider_training")) {
+              store.completeTraining();
+            }
           }
         }
       }
@@ -200,6 +270,8 @@ export default function ProviderOnboardingPage() {
           policy_type: "code_of_conduct",
           policy_version: "1.0",
           accepted_at: new Date().toISOString(),
+          user_id: currentUser.id,
+          source_screen: "provider_onboarding",
         }, { onConflict: "partner_id,policy_type" });
       }
 
@@ -210,10 +282,12 @@ export default function ProviderOnboardingPage() {
           policy_type: "provider_training",
           policy_version: "1.0",
           accepted_at: new Date().toISOString(),
+          user_id: currentUser.id,
+          source_screen: "provider_onboarding",
         }, { onConflict: "partner_id,policy_type" });
       }
 
-      // Save document references to partner_documents
+      // Save document references — use partner_id + document_type uniqueness
       for (const doc of profile.documents) {
         if (doc.fileUrl) {
           await supabase.from("partner_documents").upsert({
@@ -221,7 +295,7 @@ export default function ProviderOnboardingPage() {
             document_type: doc.type,
             file_url: doc.fileUrl,
             verification_status: "pending",
-          }, { onConflict: "partner_id" }).select();
+          }, { onConflict: "partner_id,document_type" }).select();
         }
       }
 
@@ -486,8 +560,9 @@ function StepBasicProfile() {
       const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
       if (error) throw error;
       
-      const { data: urlData } = supabase.storage.from("partner-uploads").getPublicUrl(path);
-      updateProfile({ profilePhotoUrl: urlData.publicUrl });
+      // Private bucket: use signed URL for preview; store the path for later signed-URL generation
+      const { data: signedData } = await supabase.storage.from("partner-uploads").createSignedUrl(path, 3600);
+      updateProfile({ profilePhotoUrl: signedData?.signedUrl || path });
       toast({ title: "Photo uploaded!" });
     } catch (err: any) {
       console.error("Photo upload error:", err);
@@ -709,14 +784,15 @@ function StepDocuments() {
       const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
       if (error) throw error;
 
-      const { data: urlData } = supabase.storage.from("partner-uploads").getPublicUrl(path);
+      // Private bucket: store the storage path; use signed URLs for viewing
+      const storagePath = path;
       addDocument({
         type: docType as any,
         fileName: file.name,
         uploadedAt: new Date().toISOString(),
-        fileUrl: urlData.publicUrl,
+        fileUrl: storagePath,
       });
-      toast({ title: "Document uploaded!" });
+      toast({ title: "Document uploaded securely!" });
     } catch (err: any) {
       console.error("Doc upload error:", err);
       toast({ title: "Upload failed", description: "Please sign in first, or try again.", variant: "destructive" });
@@ -742,7 +818,14 @@ function StepDocuments() {
                     {doc.label} {doc.required && <span className="text-destructive">*</span>}
                   </p>
                   {uploaded && (
-                    <p className="text-xs text-success">✓ {uploaded.fileName}</p>
+                    <div>
+                      <p className="text-xs text-success">✓ {uploaded.fileName}</p>
+                      {uploaded.verificationStatus && (
+                        <Badge variant="outline" className="text-[10px] mt-0.5">
+                          {uploaded.verificationStatus}
+                        </Badge>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

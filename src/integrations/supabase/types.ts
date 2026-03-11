@@ -1474,6 +1474,8 @@ export type Database = {
           partner_id: string
           policy_type: string
           policy_version: string
+          source_screen: string | null
+          user_id: string | null
         }
         Insert: {
           accepted_at?: string
@@ -1482,6 +1484,8 @@ export type Database = {
           partner_id: string
           policy_type: string
           policy_version?: string
+          source_screen?: string | null
+          user_id?: string | null
         }
         Update: {
           accepted_at?: string
@@ -1490,6 +1494,8 @@ export type Database = {
           partner_id?: string
           policy_type?: string
           policy_version?: string
+          source_screen?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {

@@ -1,39 +1,54 @@
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useBookingStore } from "@/store/bookingStore";
-import { BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS } from "@/types/booking";
-import type { SlaHealth } from "@/types/booking";
+import { Card, CardContent } from "@/components/ui/card";
+import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner";
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
-import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase } from "lucide-react";
 
-const SLA_CONFIG: Record<SlaHealth, { label: string; icon: typeof Clock; color: string }> = {
-  on_time: { label: "On Time", icon: CheckCircle2, color: "text-success" },
-  at_risk: { label: "At Risk", icon: AlertTriangle, color: "text-warning" },
-  delayed: { label: "Delayed", icon: AlertTriangle, color: "text-destructive" },
+const STATUS_COLORS: Record<string, string> = {
+  requested: "bg-muted text-muted-foreground",
+  awaiting_partner_confirmation: "bg-warning/10 text-warning",
+  assigned: "bg-primary/10 text-primary",
+  en_route: "bg-primary/10 text-primary",
+  inspection_started: "bg-primary/10 text-primary",
+  repair_started: "bg-primary/10 text-primary",
+  completed: "bg-success/10 text-success",
+  cancelled: "bg-destructive/10 text-destructive",
 };
-
-function computeSlaHealth(createdAt: string, status: string): SlaHealth {
-  const elapsed = (Date.now() - new Date(createdAt).getTime()) / 60000;
-  if (["completed", "rated", "cancelled"].includes(status)) return "on_time";
-  if (elapsed > 120) return "delayed";
-  if (elapsed > 60) return "at_risk";
-  return "on_time";
-}
 
 export default function PartnerJobsPage() {
   const navigate = useNavigate();
-  const bookings = useBookingStore((s) => s.bookings);
+  const { data: partner, isLoading } = useCurrentPartner();
+  const { data: bookings = [] } = usePartnerBookings(partner?.id);
 
   useEffect(() => { track("partner_jobs_view"); }, []);
 
-  const activeBookings = bookings.filter((b) => !["completed", "rated", "cancelled"].includes(b.status));
-  const awaitingFirst = [...activeBookings].sort((a, b) => {
-    if (a.status === "awaiting_partner_confirmation" && b.status !== "awaiting_partner_confirmation") return -1;
-    if (b.status === "awaiting_partner_confirmation" && a.status !== "awaiting_partner_confirmation") return 1;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!partner) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-6 text-center space-y-4">
+            <UserPlus className="w-12 h-12 text-muted-foreground mx-auto" />
+            <h2 className="text-lg font-bold text-foreground">No Partner Profile</h2>
+            <Button onClick={() => navigate("/join")}>Join as Provider</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const activeBookings = bookings.filter((b: any) => !["completed", "cancelled", "no_show"].includes(b.status));
+  const completedBookings = bookings.filter((b: any) => b.status === "completed");
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,45 +58,44 @@ export default function PartnerJobsPage() {
         </Button>
         <div>
           <h1 className="text-lg font-bold text-foreground">Job Inbox</h1>
-          <p className="text-xs text-muted-foreground">{activeBookings.length} active jobs</p>
+          <p className="text-xs text-muted-foreground">{activeBookings.length} active • {completedBookings.length} completed</p>
         </div>
       </div>
 
-      <div className="p-4 space-y-3">
-        {awaitingFirst.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <p className="text-sm">No active jobs</p>
+      <div className="p-4 space-y-3 max-w-2xl mx-auto">
+        {bookings.length === 0 && (
+          <div className="text-center py-16 space-y-3">
+            <Briefcase className="w-10 h-10 text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">No jobs yet</p>
+            <p className="text-xs text-muted-foreground">Jobs assigned to you will appear here once you start receiving bookings through LankaFix.</p>
           </div>
         )}
-        {awaitingFirst.map((b) => {
-          const sla = b.slaHealth || computeSlaHealth(b.createdAt, b.status);
-          const slaCfg = SLA_CONFIG[sla];
+        {bookings.map((b: any) => {
+          const statusLabel = (b.status || "").replace(/_/g, " ");
+          const colorClass = STATUS_COLORS[b.status] || "bg-muted text-muted-foreground";
           return (
             <div
-              key={b.jobId}
+              key={b.id}
               className="bg-card border rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/30 transition-colors"
-              onClick={() => { track("partner_job_open", { jobId: b.jobId }); navigate(`/partner/job/${b.jobId}`); }}
+              onClick={() => { track("partner_job_open", { jobId: b.id }); navigate(`/partner/job/${b.id}`); }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">{b.jobId}</p>
-                  <Badge className={`text-[10px] ${BOOKING_STATUS_COLORS[b.status]}`}>
-                    {BOOKING_STATUS_LABELS[b.status]}
-                  </Badge>
+                  <p className="text-sm font-semibold text-foreground">{b.id.slice(0, 8)}...</p>
+                  <Badge className={`text-[10px] capitalize ${colorClass}`}>{statusLabel}</Badge>
                 </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground" />
               </div>
               <div className="text-xs text-muted-foreground space-y-0.5">
-                <p>{b.categoryName} • {b.serviceName}</p>
-                <p>{b.zone || "No area specified"} • {b.isEmergency ? "🔴 Emergency" : b.serviceMode.replace(/_/g, " ")}</p>
+                <p>{b.category_code} • {b.service_type || "General"}</p>
+                <p>{b.zone_code || "No zone"} • {b.is_emergency ? "🔴 Emergency" : (b.service_mode || "on_site").replace(/_/g, " ")}</p>
               </div>
               <div className="flex items-center justify-between pt-1">
-                <div className="flex items-center gap-1">
-                  <slaCfg.icon className={`w-3 h-3 ${slaCfg.color}`} />
-                  <span className={`text-[10px] font-medium ${slaCfg.color}`}>{slaCfg.label}</span>
-                </div>
-                {b.technician && (
-                  <span className="text-[10px] text-muted-foreground">Tech: {b.technician.name}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {new Date(b.created_at).toLocaleDateString("en-LK", { day: "numeric", month: "short" })}
+                </span>
+                {b.estimated_price_lkr && (
+                  <span className="text-xs font-medium text-foreground">LKR {b.estimated_price_lkr.toLocaleString()}</span>
                 )}
               </div>
               {b.status === "awaiting_partner_confirmation" && (
