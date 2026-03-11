@@ -8,6 +8,7 @@ import type { V2BookingState } from "@/pages/V2BookingPage";
 import type { V2CategoryFlow } from "@/data/v2CategoryFlows";
 import { isCategoryConsultation, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
 import { validateServiceZone } from "@/store/locationStore";
+import { triggerDispatch } from "@/services/dispatchService";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
