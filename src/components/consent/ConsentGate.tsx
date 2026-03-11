@@ -177,7 +177,7 @@ export default function ConsentGate({ userId, role, onAccepted }: ConsentGatePro
     <div className="min-h-screen bg-background flex flex-col safe-area-top">
       {/* Header */}
       <div className="px-4 pt-6 pb-4 flex justify-center">
-        <LankaFixLogo variant="horizontal" size="md" />
+        <LankaFixLogo layout="horizontal" size="md" />
       </div>
 
       {/* Content */}
