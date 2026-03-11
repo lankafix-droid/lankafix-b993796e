@@ -44,7 +44,7 @@ export default function ProviderOnboardingPage() {
   const step = ONBOARDING_STEPS[store.currentStep];
   const progress = ((store.currentStep + 1) / ONBOARDING_STEPS.length) * 100;
 
-  // Check auth state and existing partner on mount
+  // Check auth state and existing partner on mount — full prefill
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user: u } } = await supabase.auth.getUser();
@@ -54,19 +54,89 @@ export default function ProviderOnboardingPage() {
         // Check if partner already exists for this user
         const { data } = await supabase
           .from("partners")
-          .select("id, full_name, phone_number, categories_supported, service_zones, verification_status")
+          .select("*")
           .eq("user_id", u.id)
           .maybeSingle();
         if (data) {
           setExistingPartnerId(data.id);
-          // Pre-fill store from existing record if onboarding is fresh
+          // Full prefill from existing record
           if (!store.profile.fullName && data.full_name) {
             store.updateProfile({
               fullName: data.full_name,
+              businessName: data.business_name || "",
               mobileNumber: data.phone_number || "",
+              email: data.email || "",
+              nicNumber: data.nic_number || "",
+              providerType: (data.provider_type as any) || "individual",
               serviceCategories: (data.categories_supported || []) as any,
+              specializations: (data.specializations || []) as string[],
               serviceZones: data.service_zones || [],
+              yearsOfExperience: data.experience_years || 0,
+              previousCompany: data.previous_company || "",
+              emergencyAvailable: data.emergency_available || false,
+              profilePhotoUrl: data.profile_photo_url || "",
+              tools: (data.tools_declared || []) as string[],
             });
+          }
+
+          // Prefill schedule
+          const { data: sched } = await supabase
+            .from("partner_schedules")
+            .select("working_days, start_time, end_time, emergency_available")
+            .eq("partner_id", data.id)
+            .maybeSingle();
+          if (sched && !store.profile.fullName) {
+            store.updateProfile({
+              availabilityDays: (sched.working_days as string[]) || [],
+              availabilityStart: sched.start_time || "08:00",
+              availabilityEnd: sched.end_time || "19:00",
+              emergencyAvailable: sched.emergency_available || false,
+            });
+          }
+
+          // Prefill bank
+          const { data: bank } = await supabase
+            .from("partner_bank_accounts")
+            .select("bank_name, account_holder_name, account_number, branch")
+            .eq("partner_id", data.id)
+            .maybeSingle();
+          if (bank && !store.profile.fullName) {
+            store.updateProfile({
+              bankName: bank.bank_name || "",
+              accountHolderName: bank.account_holder_name || "",
+              accountNumber: bank.account_number || "",
+              branch: bank.branch || "",
+            });
+          }
+
+          // Prefill documents from DB
+          const { data: docs } = await supabase
+            .from("partner_documents")
+            .select("document_type, file_url, verification_status")
+            .eq("partner_id", data.id);
+          if (docs && docs.length > 0 && store.profile.documents.length === 0) {
+            const mappedDocs = docs.map((d: any) => ({
+              type: d.document_type as any,
+              fileName: `${d.document_type} (uploaded)`,
+              uploadedAt: new Date().toISOString(),
+              fileUrl: d.file_url,
+              verificationStatus: d.verification_status,
+            }));
+            store.updateProfile({ documents: mappedDocs });
+          }
+
+          // Prefill conduct/training acceptance state
+          const { data: acceptances } = await supabase
+            .from("policy_acceptances")
+            .select("policy_type")
+            .eq("partner_id", data.id);
+          if (acceptances) {
+            if (acceptances.some((a: any) => a.policy_type === "code_of_conduct")) {
+              store.acceptConduct();
+            }
+            if (acceptances.some((a: any) => a.policy_type === "provider_training")) {
+              store.completeTraining();
+            }
           }
         }
       }
