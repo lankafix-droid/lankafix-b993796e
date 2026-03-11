@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import PageTransition from "@/components/motion/PageTransition";
 import { useBookingStore } from "@/store/bookingStore";
+import { useBookingFromDB, useBookingTimeline } from "@/hooks/useBookingFromDB";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
@@ -256,7 +257,18 @@ const TrackerPage = () => {
     setBookingQuote, lastMatchResult, updateTracking, startTravel,
   } = useBookingStore();
 
-  const booking = getBooking(jobId || "");
+  // Try Zustand first (legacy), then DB
+  const zustandBooking = getBooking(jobId || "");
+  const { data: dbBooking, isLoading: dbLoading } = useBookingFromDB(
+    !zustandBooking ? jobId : undefined
+  );
+  const { data: dbTimeline } = useBookingTimeline(
+    !zustandBooking ? jobId : undefined
+  );
+
+  // Use Zustand booking if available, otherwise show DB booking view
+  const booking = zustandBooking;
+
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [rating, setRating] = useState(0);
@@ -297,6 +309,129 @@ const TrackerPage = () => {
     }, 2000);
     return () => { if (simRef.current) clearInterval(simRef.current); };
   }, [simulation?.isRunning]);
+
+  // DB-backed booking view (real bookings from Phase 1)
+  if (!booking && dbBooking) {
+    const shortId = dbBooking.id.slice(0, 8).toUpperCase();
+    const STATUS_LABELS: Record<string, string> = {
+      requested: "Submitted",
+      matching: "Finding Provider",
+      assigned: "Provider Assigned",
+      tech_en_route: "On the Way",
+      arrived: "Provider Arrived",
+      inspection_started: "Inspecting",
+      quote_submitted: "Quote Ready",
+      quote_approved: "Approved",
+      in_progress: "In Progress",
+      repair_started: "Repair Started",
+      completed: "Completed",
+      cancelled: "Cancelled",
+    };
+    return (
+      <PageTransition className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1">
+          <div className="container max-w-2xl py-5 px-4 space-y-4">
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <Link to="/track" className="text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <div>
+                <p className="font-bold text-foreground text-sm">Job {shortId}</p>
+                <p className="text-xs text-muted-foreground">{dbBooking.category_code}</p>
+              </div>
+              <Badge className="ml-auto bg-primary/10 text-primary border-0 text-xs font-semibold">
+                {STATUS_LABELS[dbBooking.status] || dbBooking.status}
+              </Badge>
+            </div>
+
+            {/* Status card */}
+            <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-foreground">{STATUS_LABELS[dbBooking.status] || "Processing"}</p>
+                  <p className="text-xs text-muted-foreground">We're matching you with the best available provider</p>
+                </div>
+              </div>
+              {dbBooking.service_type && (
+                <div className="flex justify-between text-sm border-t border-border/20 pt-3">
+                  <span className="text-muted-foreground">Service</span>
+                  <span className="font-medium text-foreground">{dbBooking.service_type}</span>
+                </div>
+              )}
+              {dbBooking.estimated_price_lkr && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Estimated</span>
+                  <span className="font-medium text-foreground">LKR {dbBooking.estimated_price_lkr.toLocaleString()}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Submitted</span>
+                <span className="font-medium text-foreground">{new Date(dbBooking.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Timeline events from DB */}
+            {dbTimeline && dbTimeline.length > 0 && (
+              <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]">
+                <h3 className="text-sm font-bold text-foreground mb-3">Timeline</h3>
+                <div className="space-y-0">
+                  {dbTimeline.map((evt, i) => (
+                    <div key={evt.id} className="flex items-start gap-3 relative">
+                      {i < dbTimeline.length - 1 && (
+                        <div className="absolute left-[11px] top-6 w-0.5 h-full bg-success/40" />
+                      )}
+                      <div className="relative z-10 mt-0.5">
+                        <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />
+                        </div>
+                      </div>
+                      <div className="pb-4">
+                        <p className="text-sm font-semibold text-foreground">{evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
+                        {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
+                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">{new Date(evt.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Trust */}
+            <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
+              <Shield className="w-3.5 h-3.5 text-primary" />
+              <span>Protected by LankaFix Service Guarantee</span>
+            </div>
+
+            <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
+              Back to Home
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </PageTransition>
+    );
+  }
+
+  // Loading state for DB lookup
+  if (!booking && dbLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 flex items-center justify-center px-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-muted-foreground">Loading booking...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!booking) {
     return (

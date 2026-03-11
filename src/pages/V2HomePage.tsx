@@ -3,7 +3,6 @@ import PageTransition from "@/components/motion/PageTransition";
 import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2SeasonalPromos from "@/components/v2/V2SeasonalPromos";
-import V2IntentLayer from "@/components/v2/V2IntentLayer";
 import V2EmergencyBlock from "@/components/v2/V2EmergencyBlock";
 import V2SmartRecommendations from "@/components/v2/V2SmartRecommendations";
 import V2CategoryGrid from "@/components/v2/V2CategoryGrid";
@@ -12,10 +11,8 @@ import V2HowItWorks from "@/components/v2/V2HowItWorks";
 import V2DiagnoseAssistant from "@/components/v2/V2DiagnoseAssistant";
 import V2ServiceBundles from "@/components/v2/V2ServiceBundles";
 import AISmartSearch from "@/components/ai/AISmartSearch";
-import AIPhotoDiagnosis from "@/components/ai/AIPhotoDiagnosis";
 import SuperAppShortcuts from "@/components/v2/SuperAppShortcuts";
 import V2SMEBanner from "@/components/v2/V2SMEBanner";
-import V2SocialProof from "@/components/v2/V2SocialProof";
 import V2PlatformProtection from "@/components/v2/V2PlatformProtection";
 import V2TrustStrip from "@/components/v2/V2TrustStrip";
 import Footer from "@/components/landing/Footer";
@@ -56,7 +53,7 @@ const V2HomePage = () => {
         {/* 3. Emergency — high-urgency section */}
         <V2EmergencyBlock />
 
-        {/* 4. Smart recommendations — AI-powered suggestions */}
+        {/* 4. Smart recommendations — based on real user data */}
         <V2SmartRecommendations />
 
         {/* 5. Category discovery — main service grid */}
@@ -71,32 +68,26 @@ const V2HomePage = () => {
         {/* 8. Service bundles */}
         <V2ServiceBundles />
 
-        {/* 9. Nearby technicians — marketplace trust */}
+        {/* 9. Nearby technicians — only shows real verified providers */}
         <V2NearbyTechnicians />
 
-        {/* 10. Social proof — testimonials + stats */}
-        <V2SocialProof />
-
-        {/* 11. AI Photo Diagnosis */}
-        <AIPhotoDiagnosis />
-
-        {/* 12. Diagnose assistant — AI chat CTA */}
+        {/* 10. AI Diagnose assistant */}
         <section id="diagnose" className="py-10 md:py-12">
           <div className="container max-w-2xl">
             <V2DiagnoseAssistant />
           </div>
         </section>
 
-        {/* 12. SME section */}
+        {/* 11. SME section */}
         <V2SMEBanner />
 
-        {/* 13. How it works — simple explainer */}
+        {/* 12. How it works — simple explainer */}
         <V2HowItWorks />
 
-        {/* 14. Platform protection — trust grid */}
+        {/* 13. Platform protection — trust grid */}
         <V2PlatformProtection />
 
-        {/* 15. Trust strip — final confidence */}
+        {/* 14. Trust strip — final confidence */}
         <V2TrustStrip />
       </main>
       <Footer />
