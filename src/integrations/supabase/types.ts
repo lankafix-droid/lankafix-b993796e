@@ -992,6 +992,7 @@ export type Database = {
           id: string
           notes: string | null
           partner_id: string
+          rejection_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           verification_status: string
@@ -1003,6 +1004,7 @@ export type Database = {
           id?: string
           notes?: string | null
           partner_id: string
+          rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           verification_status?: string
@@ -1014,6 +1016,7 @@ export type Database = {
           id?: string
           notes?: string | null
           partner_id?: string
+          rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           verification_status?: string

@@ -59,25 +59,23 @@ export default function ProviderOnboardingPage() {
           .maybeSingle();
         if (data) {
           setExistingPartnerId(data.id);
-          // Full prefill from existing record
-          if (!store.profile.fullName && data.full_name) {
-            store.updateProfile({
-              fullName: data.full_name,
-              businessName: data.business_name || "",
-              mobileNumber: data.phone_number || "",
-              email: data.email || "",
-              nicNumber: data.nic_number || "",
-              providerType: (data.provider_type as any) || "individual",
-              serviceCategories: (data.categories_supported || []) as any,
-              specializations: (data.specializations || []) as string[],
-              serviceZones: data.service_zones || [],
-              yearsOfExperience: data.experience_years || 0,
-              previousCompany: data.previous_company || "",
-              emergencyAvailable: data.emergency_available || false,
-              profilePhotoUrl: data.profile_photo_url || "",
-              tools: (data.tools_declared || []) as string[],
-            });
-          }
+          // Full prefill — always prefer DB data over stale local state
+          store.updateProfile({
+            fullName: data.full_name || "",
+            businessName: data.business_name || "",
+            mobileNumber: data.phone_number || "",
+            email: data.email || "",
+            nicNumber: data.nic_number || "",
+            providerType: (data.provider_type as any) || "individual",
+            serviceCategories: (data.categories_supported || []) as any,
+            specializations: (data.specializations || []) as string[],
+            serviceZones: data.service_zones || [],
+            yearsOfExperience: data.experience_years || 0,
+            previousCompany: data.previous_company || "",
+            emergencyAvailable: data.emergency_available || false,
+            profilePhotoUrl: data.profile_photo_url || "",
+            tools: (data.tools_declared || []) as string[],
+          });
 
           // Prefill schedule
           const { data: sched } = await supabase
@@ -85,7 +83,7 @@ export default function ProviderOnboardingPage() {
             .select("working_days, start_time, end_time, emergency_available")
             .eq("partner_id", data.id)
             .maybeSingle();
-          if (sched && !store.profile.fullName) {
+          if (sched) {
             store.updateProfile({
               availabilityDays: (sched.working_days as string[]) || [],
               availabilityStart: sched.start_time || "08:00",
@@ -100,7 +98,7 @@ export default function ProviderOnboardingPage() {
             .select("bank_name, account_holder_name, account_number, branch")
             .eq("partner_id", data.id)
             .maybeSingle();
-          if (bank && !store.profile.fullName) {
+          if (bank) {
             store.updateProfile({
               bankName: bank.bank_name || "",
               accountHolderName: bank.account_holder_name || "",
@@ -112,15 +110,16 @@ export default function ProviderOnboardingPage() {
           // Prefill documents from DB
           const { data: docs } = await supabase
             .from("partner_documents")
-            .select("document_type, file_url, verification_status")
+            .select("document_type, file_url, verification_status, rejection_reason")
             .eq("partner_id", data.id);
-          if (docs && docs.length > 0 && store.profile.documents.length === 0) {
+          if (docs && docs.length > 0) {
             const mappedDocs = docs.map((d: any) => ({
               type: d.document_type as any,
-              fileName: `${d.document_type} (uploaded)`,
+              fileName: `${d.document_type.replace(/_/g, " ")} (uploaded)`,
               uploadedAt: new Date().toISOString(),
               fileUrl: d.file_url,
               verificationStatus: d.verification_status,
+              rejectionReason: d.rejection_reason,
             }));
             store.updateProfile({ documents: mappedDocs });
           }
@@ -553,20 +552,20 @@ function StepBasicProfile() {
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const userId = user?.id || "anon";
+      if (!user) throw new Error("Please sign in first");
       const ext = file.name.split(".").pop();
-      const path = `${userId}/profile-photo.${ext}`;
+      const path = `${user.id}/profile-photo.${ext}`;
       
-      const { error } = await supabase.storage.from("partner-uploads").upload(path, file, { upsert: true });
+      // Upload to PUBLIC profile-photos bucket (separate from private docs)
+      const { error } = await supabase.storage.from("partner-profile-photos").upload(path, file, { upsert: true });
       if (error) throw error;
       
-      // Private bucket: use signed URL for preview; store the path for later signed-URL generation
-      const { data: signedData } = await supabase.storage.from("partner-uploads").createSignedUrl(path, 3600);
-      updateProfile({ profilePhotoUrl: signedData?.signedUrl || path });
+      const { data: urlData } = supabase.storage.from("partner-profile-photos").getPublicUrl(path);
+      updateProfile({ profilePhotoUrl: urlData.publicUrl });
       toast({ title: "Photo uploaded!" });
     } catch (err: any) {
       console.error("Photo upload error:", err);
-      toast({ title: "Upload failed", description: "Please sign in first to upload photos, or try again.", variant: "destructive" });
+      toast({ title: "Upload failed", description: err?.message || "Please sign in first to upload photos, or try again.", variant: "destructive" });
     } finally {
       setUploading(false);
     }
@@ -808,39 +807,74 @@ function StepDocuments() {
       {DOCUMENT_TYPES.map((doc) => {
         const uploaded = profile.documents.find((d) => d.type === doc.value);
         const isUploading = uploadingType === doc.value;
+        const isRejected = uploaded?.verificationStatus === "rejected";
+        const isVerified = uploaded?.verificationStatus === "verified";
+        const isPending = uploaded?.verificationStatus === "pending";
+
+        const VERIFICATION_LABELS: Record<string, { text: string; className: string }> = {
+          pending: { text: "Pending Review", className: "bg-warning/10 text-warning border-warning/30" },
+          verified: { text: "Verified", className: "bg-success/10 text-success border-success/30" },
+          rejected: { text: "Action Needed — Please Re-upload", className: "bg-destructive/10 text-destructive border-destructive/30" },
+        };
+
+        const statusConfig = uploaded?.verificationStatus ? VERIFICATION_LABELS[uploaded.verificationStatus] : null;
+
         return (
-          <Card key={doc.value}>
-            <CardContent className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <FileCheck className={`w-5 h-5 ${uploaded ? "text-success" : "text-muted-foreground"}`} />
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {doc.label} {doc.required && <span className="text-destructive">*</span>}
-                  </p>
-                  {uploaded && (
-                    <div>
-                      <p className="text-xs text-success">✓ {uploaded.fileName}</p>
-                      {uploaded.verificationStatus && (
-                        <Badge variant="outline" className="text-[10px] mt-0.5">
-                          {uploaded.verificationStatus}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+          <Card key={doc.value} className={isRejected ? "border-destructive/30" : isVerified ? "border-success/30" : ""}>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileCheck className={`w-5 h-5 ${isVerified ? "text-success" : isRejected ? "text-destructive" : uploaded ? "text-primary" : "text-muted-foreground"}`} />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {doc.label} {doc.required && <span className="text-destructive">*</span>}
+                    </p>
+                    {uploaded && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {uploaded.fileName}
+                      </p>
+                    )}
+                  </div>
                 </div>
+                {uploaded && !isVerified ? (
+                  <div className="flex items-center gap-1">
+                    <label className="cursor-pointer">
+                      <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocUpload(doc.value, e)} className="hidden" />
+                      <Button variant="outline" size="sm" asChild disabled={isUploading}>
+                        <span>
+                          {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                          {isRejected ? "Re-upload" : "Replace"}
+                        </span>
+                      </Button>
+                    </label>
+                    <Button variant="ghost" size="sm" onClick={() => removeDocument(doc.value)} className="text-destructive px-2">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : uploaded && isVerified ? (
+                  <CheckCircle className="w-5 h-5 text-success" />
+                ) : (
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocUpload(doc.value, e)} className="hidden" />
+                    <Button variant="outline" size="sm" asChild disabled={isUploading}>
+                      <span>
+                        {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                        {isUploading ? "..." : "Upload"}
+                      </span>
+                    </Button>
+                  </label>
+                )}
               </div>
-              {uploaded ? (
-                <Button variant="ghost" size="sm" onClick={() => removeDocument(doc.value)} className="text-destructive">Remove</Button>
-              ) : (
-                <label className="cursor-pointer">
-                  <input type="file" accept="image/*,.pdf" onChange={(e) => handleDocUpload(doc.value, e)} className="hidden" />
-                  <Button variant="outline" size="sm" asChild disabled={isUploading}>
-                    <span>
-                      {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
-                      {isUploading ? "..." : "Upload"}
-                    </span>
-                  </Button>
-                </label>
+              {statusConfig && (
+                <Badge variant="outline" className={`text-[10px] ${statusConfig.className}`}>
+                  {statusConfig.text}
+                </Badge>
+              )}
+              {isRejected && uploaded?.rejectionReason && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-2 flex items-start gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                  <p className="text-xs text-destructive">{uploaded.rejectionReason}</p>
+                </div>
               )}
             </CardContent>
           </Card>

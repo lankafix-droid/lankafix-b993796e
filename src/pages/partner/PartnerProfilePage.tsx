@@ -9,16 +9,32 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Building2, ShieldCheck, MapPin, Phone, Wrench, Star,
   CheckCircle2, XCircle, Loader2, UserPlus, Clock, Landmark, FileCheck,
-  Mail, CreditCard, Calendar,
+  Mail, Calendar, AlertTriangle, Edit, Shield,
 } from "lucide-react";
 
-function ProfileCompletenessCard({ partner, bankData, scheduleData, docsCount }: {
+// ─── Verification status config ──────────────────────────────────
+const VERIFICATION_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
+  pending: { label: "Pending Review", className: "bg-warning/10 text-warning border-warning/30", icon: Clock },
+  verified: { label: "Verified", className: "bg-success/10 text-success border-success/30", icon: ShieldCheck },
+  suspended: { label: "Suspended", className: "bg-destructive/10 text-destructive border-destructive/30", icon: AlertTriangle },
+};
+
+const DOC_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pending: { label: "Pending Review", className: "bg-warning/10 text-warning border-warning/30" },
+  verified: { label: "Verified", className: "bg-success/10 text-success border-success/30" },
+  rejected: { label: "Action Needed", className: "bg-destructive/10 text-destructive border-destructive/30" },
+};
+
+// ─── Profile Completeness ────────────────────────────────────────
+function ProfileCompletenessCard({ partner, bankData, scheduleData, docsCount, conductAccepted }: {
   partner: any;
   bankData: any;
   scheduleData: any;
   docsCount: number;
+  conductAccepted: boolean;
 }) {
   const checks = [
+    { label: "Account linked", done: !!partner.user_id },
     { label: "Full name", done: !!partner.full_name },
     { label: "Business name", done: !!partner.business_name, optional: partner.provider_type === "individual" },
     { label: "Phone number", done: !!partner.phone_number },
@@ -26,10 +42,12 @@ function ProfileCompletenessCard({ partner, bankData, scheduleData, docsCount }:
     { label: "Profile photo", done: !!partner.profile_photo_url },
     { label: "Categories selected", done: partner.categories_supported?.length > 0 },
     { label: "Zones selected", done: partner.service_zones?.length > 0 },
+    { label: "Availability set", done: !!scheduleData },
     { label: "Documents uploaded", done: docsCount > 0 },
-    { label: "Bank details", done: !!bankData },
+    { label: "Bank details saved", done: !!bankData },
+    { label: "Conduct accepted", done: conductAccepted },
     { label: "Verification", done: partner.verification_status === "verified" },
-  ].filter(c => !c.optional || c.done); // Only show optional items if done
+  ].filter(c => !c.optional || c.done);
 
   const completed = checks.filter((c) => c.done).length;
   const percent = Math.round((completed / checks.length) * 100);
@@ -59,16 +77,21 @@ function ProfileCompletenessCard({ partner, bankData, scheduleData, docsCount }:
             </div>
           ))}
         </div>
+        {percent < 100 && (
+          <p className="text-[10px] text-muted-foreground pt-1">
+            Complete your profile to improve visibility and get verified faster.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
 }
 
+// ─── Main Page ───────────────────────────────────────────────────
 export default function PartnerProfilePage() {
   const navigate = useNavigate();
   const { data: partner, isLoading } = useCurrentPartner();
 
-  // Fetch related data
   const { data: bankData } = useQuery({
     queryKey: ["partner_bank", partner?.id],
     queryFn: async () => {
@@ -103,9 +126,24 @@ export default function PartnerProfilePage() {
       if (!partner?.id) return [];
       const { data } = await supabase
         .from("partner_documents")
-        .select("document_type, verification_status, created_at")
+        .select("document_type, verification_status, rejection_reason, created_at")
         .eq("partner_id", partner.id);
       return data || [];
+    },
+    enabled: !!partner?.id,
+  });
+
+  const { data: conductAccepted = false } = useQuery({
+    queryKey: ["partner_conduct", partner?.id],
+    queryFn: async () => {
+      if (!partner?.id) return false;
+      const { data } = await supabase
+        .from("policy_acceptances")
+        .select("id")
+        .eq("partner_id", partner.id)
+        .eq("policy_type", "code_of_conduct")
+        .maybeSingle();
+      return !!data;
     },
     enabled: !!partner?.id,
   });
@@ -133,13 +171,21 @@ export default function PartnerProfilePage() {
     );
   }
 
+  const verConfig = VERIFICATION_CONFIG[partner.verification_status] || VERIFICATION_CONFIG.pending;
+  const VerIcon = verConfig.icon;
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-card border-b px-4 py-4 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/partner")} aria-label="Back">
-          <ArrowLeft className="w-4 h-4" />
+      <div className="bg-card border-b px-4 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/partner")} aria-label="Back">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <h1 className="text-lg font-bold text-foreground">Partner Profile</h1>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/join")}>
+          <Edit className="w-3.5 h-3.5 mr-1" /> Edit
         </Button>
-        <h1 className="text-lg font-bold text-foreground">Partner Profile</h1>
       </div>
 
       <div className="p-4 space-y-4">
@@ -160,14 +206,8 @@ export default function PartnerProfilePage() {
                   <p className="text-xs text-muted-foreground">{partner.business_name}</p>
                 )}
                 <div className="flex items-center gap-1 mt-0.5">
-                  {partner.verification_status === "verified" ? (
-                    <>
-                      <ShieldCheck className="w-3 h-3 text-success" />
-                      <span className="text-xs text-success">Verified</span>
-                    </>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px]">{partner.verification_status}</Badge>
-                  )}
+                  <VerIcon className={`w-3 h-3 ${verConfig.className.includes("text-success") ? "text-success" : verConfig.className.includes("text-warning") ? "text-warning" : "text-destructive"}`} />
+                  <Badge variant="outline" className={`text-[10px] ${verConfig.className}`}>{verConfig.label}</Badge>
                 </div>
               </div>
             </div>
@@ -175,7 +215,7 @@ export default function PartnerProfilePage() {
             <div className="grid grid-cols-2 gap-3 pt-2">
               <div className="text-center p-3 rounded-lg bg-muted/50">
                 <p className="text-xl font-bold text-foreground">
-                  {partner.rating_average ? `⭐ ${Number(partner.rating_average).toFixed(1)}` : "—"}
+                  {partner.rating_average && Number(partner.rating_average) > 0 ? `⭐ ${Number(partner.rating_average).toFixed(1)}` : "—"}
                 </p>
                 <p className="text-xs text-muted-foreground">Rating</p>
               </div>
@@ -183,6 +223,18 @@ export default function PartnerProfilePage() {
                 <p className="text-xl font-bold text-foreground">{partner.completed_jobs_count || 0}</p>
                 <p className="text-xs text-muted-foreground">Jobs</p>
               </div>
+            </div>
+
+            {/* Timestamps */}
+            <div className="border-t pt-2 space-y-1">
+              <p className="text-[10px] text-muted-foreground">
+                Joined: {new Date(partner.created_at).toLocaleDateString("en-LK", { day: "numeric", month: "short", year: "numeric" })}
+              </p>
+              {partner.updated_at && partner.updated_at !== partner.created_at && (
+                <p className="text-[10px] text-muted-foreground">
+                  Last updated: {new Date(partner.updated_at).toLocaleDateString("en-LK", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -193,6 +245,7 @@ export default function PartnerProfilePage() {
           bankData={bankData}
           scheduleData={scheduleData}
           docsCount={docsData?.length || 0}
+          conductAccepted={conductAccepted}
         />
 
         {/* Contact */}
@@ -282,7 +335,7 @@ export default function PartnerProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Bank */}
+        {/* Bank — masked values */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><Landmark className="w-4 h-4 text-primary" /> Bank Details</CardTitle>
@@ -291,7 +344,15 @@ export default function PartnerProfilePage() {
             {bankData ? (
               <div className="space-y-1">
                 <p>{bankData.bank_name} — {bankData.branch || "Branch not set"}</p>
-                <Badge variant="outline" className="text-[10px]">{bankData.verification_status}</Badge>
+                <Badge variant="outline" className={`text-[10px] ${
+                  bankData.verification_status === "verified" ? "bg-success/10 text-success border-success/30" :
+                  bankData.verification_status === "pending" ? "bg-warning/10 text-warning border-warning/30" :
+                  "bg-muted text-muted-foreground"
+                }`}>
+                  {bankData.verification_status === "pending" ? "Bank details saved — Pending verification" :
+                   bankData.verification_status === "verified" ? "Bank verified" :
+                   bankData.verification_status}
+                </Badge>
               </div>
             ) : (
               <p>Bank details not provided yet</p>
@@ -299,24 +360,63 @@ export default function PartnerProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Documents */}
+        {/* Documents with verification states */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><FileCheck className="w-4 h-4 text-primary" /> Documents</CardTitle>
           </CardHeader>
           <CardContent>
             {docsData && docsData.length > 0 ? (
-              <div className="space-y-1">
-                {docsData.map((d: any) => (
-                  <div key={d.document_type} className="flex items-center justify-between text-sm">
-                    <span className="text-foreground capitalize">{d.document_type.replace(/_/g, " ")}</span>
-                    <Badge variant="outline" className="text-[10px]">{d.verification_status}</Badge>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                {docsData.map((d: any) => {
+                  const statusCfg = DOC_STATUS_CONFIG[d.verification_status] || DOC_STATUS_CONFIG.pending;
+                  return (
+                    <div key={d.document_type} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-foreground capitalize">{d.document_type.replace(/_/g, " ")}</span>
+                        <Badge variant="outline" className={`text-[10px] ${statusCfg.className}`}>
+                          {statusCfg.label}
+                        </Badge>
+                      </div>
+                      {d.rejection_reason && (
+                        <p className="text-[10px] text-destructive flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> {d.rejection_reason}
+                        </p>
+                      )}
+                      {d.created_at && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Uploaded: {new Date(d.created_at).toLocaleDateString("en-LK", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Conduct / Policy */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2"><Shield className="w-4 h-4 text-primary" /> Compliance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 text-sm">
+              {conductAccepted ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-success" />
+                  <span className="text-foreground">Code of Conduct accepted</span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-muted-foreground">Code of Conduct not yet accepted</span>
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
