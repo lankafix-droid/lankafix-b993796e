@@ -440,6 +440,7 @@ export default function DispatchBoardPage() {
               </CardContent>
             </Card>
           </div>
+        )}
 
         {/* Quick Links */}
         <div className="flex gap-2">
