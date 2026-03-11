@@ -162,6 +162,8 @@ export default function DispatchBoardPage() {
 
   useEffect(() => { track("ops_dispatch_board_view"); }, []);
 
+  const { data: metrics } = useOpsMetrics();
+
   const assigned = activeBookings.filter((b) => b.status === "assigned");
   const pending = activeBookings.filter((b) => b.dispatch_status === "pending_acceptance");
   const dispatching = activeBookings.filter((b) => b.dispatch_status === "dispatching");
@@ -171,6 +173,8 @@ export default function DispatchBoardPage() {
     { label: "Escalated", value: escalatedBookings.length, icon: AlertTriangle, color: "text-destructive" },
     { label: "Pending", value: pending.length, icon: Clock, color: "text-warning" },
     { label: "Assigned", value: assigned.length, icon: CheckCircle2, color: "text-success" },
+    { label: "Quotes", value: metrics?.quotes_pending_approval ?? 0, icon: FileText, color: "text-warning" },
+    { label: "Avg Dispatch", value: metrics?.avg_dispatch_time_min != null ? `${metrics.avg_dispatch_time_min}m` : "—", icon: Clock, color: "text-muted-foreground" },
   ];
 
   const handleOpsAssign = async (bookingId: string) => {
