@@ -2,49 +2,151 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useBookingStore } from "@/store/bookingStore";
-import { useProviderERPStore } from "@/store/providerERPStore";
-import { MOCK_TECHNICIANS } from "@/data/mockPartnerData";
-import { getTechPerformanceMetrics, TECHNICIAN_CAPABILITIES } from "@/lib/dispatchEngine";
-import { VERIFICATION_STATUS_STYLES } from "@/types/provider";
 import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import {
   Zap, AlertTriangle, CheckCircle2, Users, ArrowRight,
-  RefreshCw, MapPin, ShieldCheck, Radio, Flag, Gauge,
-  XCircle,
+  RefreshCw, MapPin, Radio, Flag, Clock, UserCheck,
 } from "lucide-react";
+
+interface EscalatedBooking {
+  id: string;
+  category_code: string;
+  service_type: string | null;
+  zone_code: string | null;
+  is_emergency: boolean | null;
+  dispatch_status: string | null;
+  dispatch_round: number | null;
+  created_at: string;
+  status: string;
+  customer_id: string | null;
+}
+
+function useEscalatedBookings() {
+  return useQuery({
+    queryKey: ["ops-escalated-bookings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_round, created_at, status, customer_id")
+        .in("dispatch_status", ["escalated", "no_provider_found", "dispatching"])
+        .not("status", "in", '("completed","cancelled")')
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data || []) as EscalatedBooking[];
+    },
+    refetchInterval: 15_000,
+  });
+}
+
+function useActiveBookings() {
+  return useQuery({
+    queryKey: ["ops-active-bookings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_round, created_at, status, partner_id")
+        .not("status", "in", '("completed","cancelled")')
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 15_000,
+  });
+}
+
+function useVerifiedPartners() {
+  return useQuery({
+    queryKey: ["ops-verified-partners"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("partners")
+        .select("id, full_name, business_name, availability_status, categories_supported, service_zones, rating_average, completed_jobs_count, verification_status")
+        .eq("verification_status", "verified")
+        .order("rating_average", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 30_000,
+  });
+}
+
+function useDispatchEscalations() {
+  return useQuery({
+    queryKey: ["ops-dispatch-escalations"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dispatch_escalations")
+        .select("*")
+        .is("resolved_at", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 15_000,
+  });
+}
 
 export default function DispatchBoardPage() {
   const navigate = useNavigate();
-  const bookings = useBookingStore((s) => s.bookings);
-  const opsAssignTechnician = useBookingStore((s) => s.opsAssignTechnician);
-  const opsEscalateJob = useBookingStore((s) => s.opsEscalateJob);
-  const opsMoveToManualQueue = useBookingStore((s) => s.opsMoveToManualQueue);
-  const { providers, technicians, disputes, updateProviderVerification, resolveDispute } = useProviderERPStore();
+  const { data: escalatedBookings = [], isLoading: escalatedLoading } = useEscalatedBookings();
+  const { data: activeBookings = [], isLoading: activeLoading } = useActiveBookings();
+  const { data: partners = [] } = useVerifiedPartners();
+  const { data: escalations = [] } = useDispatchEscalations();
+
+  const [activeTab, setActiveTab] = useState<"escalated" | "active" | "partners">("escalated");
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string>("");
 
   useEffect(() => { track("ops_dispatch_board_view"); }, []);
 
-  const [selectedTech, setSelectedTech] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"dispatch" | "providers" | "disputes">("dispatch");
-
-  const activeBookings = bookings.filter((b) => !["completed", "rated", "cancelled"].includes(b.status));
-  const matching = bookings.filter((b) => b.status === "matching");
-  const awaitingConfirm = bookings.filter((b) => b.status === "awaiting_partner_confirmation");
-  const assigned = bookings.filter((b) => b.status === "assigned");
-  const stuck = bookings.filter((b) => b.status === "matching" && b.timelineEvents.length > 3);
-  const openDisputes = disputes.filter((d) => d.status === "open" || d.status === "under_review");
+  const assigned = activeBookings.filter((b) => b.status === "assigned");
+  const pending = activeBookings.filter((b) => b.dispatch_status === "pending_acceptance");
+  const dispatching = activeBookings.filter((b) => b.dispatch_status === "dispatching");
 
   const stats = [
     { label: "Active", value: activeBookings.length, icon: Radio, color: "text-primary" },
-    { label: "Matching", value: matching.length, icon: RefreshCw, color: "text-warning" },
+    { label: "Escalated", value: escalatedBookings.length, icon: AlertTriangle, color: "text-destructive" },
+    { label: "Pending", value: pending.length, icon: Clock, color: "text-warning" },
     { label: "Assigned", value: assigned.length, icon: CheckCircle2, color: "text-success" },
-    { label: "Disputes", value: openDisputes.length, icon: Flag, color: "text-destructive" },
   ];
 
-  const handleForceAssign = (jobId: string) => {
-    if (!selectedTech) return;
-    opsAssignTechnician(jobId, selectedTech);
+  const handleOpsAssign = async (bookingId: string) => {
+    if (!selectedPartnerId) return;
+    setAssigningId(bookingId);
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const session = await supabase.auth.getSession();
+      await fetch(`https://${projectId}.supabase.co/functions/v1/dispatch-accept`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": anonKey,
+          "Authorization": `Bearer ${session.data.session?.access_token || anonKey}`,
+        },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          partner_id: selectedPartnerId,
+          action: "ops_override",
+          ops_user_id: session.data.session?.user?.id,
+        }),
+      });
+    } finally {
+      setAssigningId(null);
+      setSelectedPartnerId("");
+    }
+  };
+
+  const timeSince = (iso: string) => {
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    return `${Math.round(mins / 60)}h ago`;
   };
 
   return (
@@ -55,7 +157,7 @@ export default function DispatchBoardPage() {
             <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
               <Zap className="w-5 h-5 text-primary" /> Operations Board
             </h1>
-            <p className="text-xs text-muted-foreground">Dispatch • Providers • Disputes</p>
+            <p className="text-xs text-muted-foreground">Live dispatch • Escalations • Manual assignment</p>
           </div>
           <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-xs">OPS ONLY</Badge>
         </div>
@@ -77,180 +179,137 @@ export default function DispatchBoardPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
-          {(["dispatch", "providers", "disputes"] as const).map((tab) => (
+          {(["escalated", "active", "partners"] as const).map((tab) => (
             <Button key={tab} size="sm" className="flex-1 text-xs h-8"
               variant={activeTab === tab ? "default" : "ghost"}
               onClick={() => setActiveTab(tab)}>
-              {tab === "dispatch" ? "Dispatch" : tab === "providers" ? "Providers" : `Disputes (${openDisputes.length})`}
+              {tab === "escalated" ? `Escalated (${escalatedBookings.length})` : tab === "active" ? "Active" : "Partners"}
             </Button>
           ))}
         </div>
 
-        {activeTab === "dispatch" && (
-          <>
-            {/* Stuck Jobs */}
-            {stuck.length > 0 && (
-              <Card className="border-destructive/30">
+        {/* Escalated Queue */}
+        {activeTab === "escalated" && (
+          <div className="space-y-3">
+            {escalatedBookings.length === 0 && !escalatedLoading && (
+              <Card><CardContent className="p-6 text-center text-sm text-muted-foreground">No escalated bookings 🎉</CardContent></Card>
+            )}
+            {escalatedBookings.map((b) => (
+              <Card key={b.id} className="border-destructive/30">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium font-mono">{b.id.slice(0, 8)}</p>
+                      <p className="text-xs text-muted-foreground">{b.category_code} • {b.service_type || "general"}</p>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant="outline" className={`text-[10px] ${b.dispatch_status === "escalated" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>
+                        {b.dispatch_status?.replace(/_/g, " ")}
+                      </Badge>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{timeSince(b.created_at)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <MapPin className="w-3 h-3" /> {b.zone_code || "Unknown zone"}
+                    {b.is_emergency && <Badge className="bg-destructive/10 text-destructive text-[9px] h-4">EMERGENCY</Badge>}
+                    <span>Round {b.dispatch_round || 0}</span>
+                  </div>
+                  {/* Manual assign */}
+                  <div className="flex gap-1 items-center">
+                    <select
+                      className="flex-1 text-xs border rounded px-2 py-1 bg-background"
+                      value={selectedPartnerId}
+                      onChange={(e) => setSelectedPartnerId(e.target.value)}
+                    >
+                      <option value="">Select partner…</option>
+                      {partners
+                        .filter((p) => p.categories_supported.includes(b.category_code))
+                        .map((p) => (
+                          <option key={p.id} value={p.id}>{p.full_name} ({p.business_name || "Ind."}) ⭐{p.rating_average}</option>
+                        ))}
+                    </select>
+                    <Button size="sm" className="text-xs h-7" disabled={!selectedPartnerId || assigningId === b.id}
+                      onClick={() => handleOpsAssign(b.id)}>
+                      <UserCheck className="w-3 h-3 mr-1" /> Assign
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Unresolved escalations */}
+            {escalations.length > 0 && (
+              <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="w-4 h-4" /> Stuck Jobs
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Flag className="w-4 h-4 text-destructive" /> Escalation Log ({escalations.length})
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  {stuck.map((b) => (
-                    <div key={b.jobId} className="flex items-center justify-between p-2 border rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium">{b.jobId}</p>
-                        <p className="text-xs text-muted-foreground">{b.categoryName} • {b.zone}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => opsMoveToManualQueue(b.jobId)}>Manual</Button>
-                        <Button size="sm" variant="destructive" className="text-xs h-7" onClick={() => opsEscalateJob(b.jobId, "Stuck")}>Escalate</Button>
-                      </div>
+                <CardContent className="space-y-1">
+                  {escalations.map((e: any) => (
+                    <div key={e.id} className="flex items-center justify-between p-2 border rounded text-xs">
+                      <span className="font-mono">{e.booking_id?.slice(0, 8)}</span>
+                      <span className="text-muted-foreground">{e.reason?.replace(/_/g, " ")}</span>
+                      <span className="text-muted-foreground">R{e.dispatch_rounds_attempted}</span>
                     </div>
                   ))}
                 </CardContent>
               </Card>
             )}
-
-            {/* Technicians */}
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4 text-primary" /> Technicians</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {MOCK_TECHNICIANS.map((t) => {
-                  const perf = getTechPerformanceMetrics(t.technicianId || "");
-                  const caps = TECHNICIAN_CAPABILITIES[t.technicianId || ""];
-                  const profile = technicians.find((tp) => tp.technicianId === t.technicianId);
-                  return (
-                    <div key={t.technicianId}
-                      className={`p-3 border rounded-lg cursor-pointer transition-colors ${selectedTech === t.technicianId ? "border-primary bg-primary/5" : "hover:bg-muted/50"}`}
-                      onClick={() => setSelectedTech(t.technicianId || "")}>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{t.name}</span>
-                          <Badge variant="outline" className={`text-[10px] ${t.availabilityStatus === "available" ? "bg-success/10 text-success" : t.availabilityStatus === "busy" ? "bg-warning/10 text-warning" : "bg-muted"}`}>
-                            {t.availabilityStatus}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Gauge className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground">{profile?.performanceScore || 0}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                        <span>⭐ {t.rating}</span>
-                        <span>{t.jobsCompleted} jobs</span>
-                        <span>{perf?.acceptanceRate ?? 0}% acc</span>
-                        {profile && <span>Cap: {profile.todayJobCount}/{profile.dailyJobCapacity}</span>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-
-            {/* Active Bookings */}
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Active Bookings</CardTitle></CardHeader>
-              <CardContent className="space-y-2">
-                {activeBookings.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No active bookings</p>}
-                {activeBookings.map((b) => (
-                  <div key={b.jobId} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="text-sm font-medium">{b.jobId}</p>
-                        <p className="text-xs text-muted-foreground">{b.categoryName} • {b.serviceName}</p>
-                      </div>
-                      <Badge variant="outline" className="text-[10px]">{b.status.replace(/_/g, " ")}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground mb-2">
-                      <MapPin className="w-3 h-3" /> {b.zone}
-                      {b.isEmergency && <Badge className="bg-destructive/10 text-destructive text-[9px] h-4">EMERGENCY</Badge>}
-                    </div>
-                    <div className="flex gap-1">
-                      {["matching", "awaiting_partner_confirmation"].includes(b.status) && selectedTech && (
-                        <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => handleForceAssign(b.jobId)}>
-                          <ShieldCheck className="w-3 h-3 mr-1" /> Force Assign
-                        </Button>
-                      )}
-                      <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => navigate(`/partner/job/${b.jobId}`)}>
-                        Details <ArrowRight className="w-3 h-3 ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </>
+          </div>
         )}
 
-        {activeTab === "providers" && (
+        {/* Active Bookings */}
+        {activeTab === "active" && (
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">All Providers ({providers.length})</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Active Bookings ({activeBookings.length})</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              {providers.map((p) => {
-                const style = VERIFICATION_STATUS_STYLES[p.verificationStatus];
-                const techCount = technicians.filter((t) => t.providerId === p.providerId).length;
-                return (
-                  <div key={p.providerId} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-sm font-medium">{p.companyName}</p>
-                      <Badge className={`text-[10px] ${style.color}`}>{style.label}</Badge>
+              {activeBookings.length === 0 && !activeLoading && <p className="text-sm text-muted-foreground text-center py-4">No active bookings</p>}
+              {activeBookings.map((b: any) => (
+                <div key={b.id} className="p-3 border rounded-lg">
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <p className="text-sm font-medium font-mono">{b.id.slice(0, 8)}</p>
+                      <p className="text-xs text-muted-foreground">{b.category_code} • {b.service_type || "general"}</p>
                     </div>
-                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground mb-2">
-                      <span>⭐ {p.ratingScore}</span>
-                      <span>{p.totalCompletedJobs} jobs</span>
-                      <span>{techCount} techs</span>
-                      <span>{p.operatingZones.length} zones</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {p.serviceCategories.map((cat) => (
-                        <Badge key={cat} variant="secondary" className="text-[9px]">{cat}</Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-1">
-                      {p.verificationStatus !== "verified" && (
-                        <Button size="sm" variant="default" className="text-xs h-7" onClick={() => updateProviderVerification(p.providerId, "verified")}>
-                          <CheckCircle2 className="w-3 h-3 mr-1" /> Verify
-                        </Button>
-                      )}
-                      {p.verificationStatus !== "suspended" && (
-                        <Button size="sm" variant="destructive" className="text-xs h-7" onClick={() => updateProviderVerification(p.providerId, "suspended")}>
-                          <XCircle className="w-3 h-3 mr-1" /> Suspend
-                        </Button>
-                      )}
-                    </div>
+                    <Badge variant="outline" className="text-[10px]">{b.status?.replace(/_/g, " ")}</Badge>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <MapPin className="w-3 h-3" /> {b.zone_code || "—"}
+                    {b.is_emergency && <Badge className="bg-destructive/10 text-destructive text-[9px] h-4">SOS</Badge>}
+                    <span className="ml-auto">{timeSince(b.created_at)}</span>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
 
-        {activeTab === "disputes" && (
+        {/* Partners */}
+        {activeTab === "partners" && (
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Flag className="w-4 h-4 text-destructive" /> Open Disputes ({openDisputes.length})
-              </CardTitle>
+              <CardTitle className="text-sm"><Users className="w-4 h-4 text-primary inline mr-1" />Verified Partners ({partners.length})</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {openDisputes.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No open disputes</p>}
-              {openDisputes.map((d) => (
-                <div key={d.id} className="p-3 border rounded-lg">
+              {partners.map((p: any) => (
+                <div key={p.id} className="p-3 border rounded-lg">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium">{d.jobId}</p>
-                    <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning">{d.status}</Badge>
+                    <p className="text-sm font-medium">{p.full_name}</p>
+                    <Badge variant="outline" className={`text-[10px] ${p.availability_status === "available" ? "bg-success/10 text-success" : p.availability_status === "busy" ? "bg-warning/10 text-warning" : "bg-muted"}`}>
+                      {p.availability_status}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-1">Raised by: {d.raisedBy} • {d.reason.replace(/_/g, " ")}</p>
-                  <p className="text-xs text-foreground mb-2">{d.description}</p>
-                  <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => resolveDispute(d.id, "Resolved by ops")}>
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> Resolve
-                  </Button>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span>⭐ {p.rating_average}</span>
+                    <span>{p.completed_jobs_count} jobs</span>
+                    <span>{(p.service_zones || []).length} zones</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(p.categories_supported || []).slice(0, 4).map((cat: string) => (
+                      <Badge key={cat} variant="secondary" className="text-[9px]">{cat}</Badge>
+                    ))}
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -260,7 +319,7 @@ export default function DispatchBoardPage() {
         {/* Quick Links */}
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1 text-xs" onClick={() => navigate("/ops/finance")}>Finance Board</Button>
-          <Button variant="outline" className="flex-1 text-xs" onClick={() => navigate("/ops/subscriptions")}>Subscriptions</Button>
+          <Button variant="outline" className="flex-1 text-xs" onClick={() => navigate("/ops/control-tower")}>Control Tower</Button>
         </div>
       </div>
     </div>

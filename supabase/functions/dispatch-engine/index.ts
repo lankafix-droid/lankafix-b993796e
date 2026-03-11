@@ -65,7 +65,10 @@ serve(async (req) => {
       dispatch_round: booking.dispatch_round || 1,
     }).eq("id", booking_id);
 
+    const MAX_DISPATCH_ROUNDS = 3;
+
     // 5. Call smart-dispatch
+    const currentRound = booking.dispatch_round || 1;
     const { data: dispatchResult, error: dispatchErr } = await supabase.functions.invoke("smart-dispatch", {
       body: {
         category_code: booking.category_code,
@@ -75,8 +78,9 @@ serve(async (req) => {
         customer_zone: booking.zone_code,
         is_emergency: booking.is_emergency || false,
         booking_id: booking_id,
-        dispatch_round: booking.dispatch_round || 1,
+        dispatch_round: currentRound,
         exclude_partner_ids: [],
+        max_rounds: MAX_DISPATCH_ROUNDS,
       },
     });
 
