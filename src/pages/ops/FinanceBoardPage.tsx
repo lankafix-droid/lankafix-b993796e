@@ -173,23 +173,25 @@ const FinanceBoardPage = () => {
             </div>
           )}
 
-          {/* Standard Summary */}
+          {/* Standard Summary — real DB metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Total Collected</p>
-              <p className="text-lg font-bold text-foreground">{formatLKR(totalCollected)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Payments Today</p>
+              <p className="text-lg font-bold text-foreground">{formatLKR(metrics?.payments_today_lkr ?? 0)}</p>
+              <p className="text-[10px] text-muted-foreground">{metrics?.payments_today_count ?? 0} transactions</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Pending</p>
-              <p className="text-lg font-bold text-warning">{formatLKR(pendingSettlements)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Pending Settlements</p>
+              <p className="text-lg font-bold text-warning">{pendingSettlementsDB.length}</p>
+              <p className="text-[10px] text-muted-foreground">{formatLKR(pendingSettlementsDB.reduce((s, r) => s + (r.net_payout_lkr || 0), 0))}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Held</p>
-              <p className="text-lg font-bold text-destructive">{formatLKR(heldSettlements)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Completed Today</p>
+              <p className="text-lg font-bold text-success">{metrics?.completed_today ?? 0}</p>
             </div>
             <div className="bg-card rounded-xl border p-4">
-              <p className="text-[10px] text-muted-foreground mb-1">Released</p>
-              <p className="text-lg font-bold text-success">{formatLKR(releasedSettlements)}</p>
+              <p className="text-[10px] text-muted-foreground mb-1">Fraud Alerts</p>
+              <p className="text-lg font-bold text-destructive">{metrics?.fraud_alerts_today ?? 0}</p>
             </div>
           </div>
 
