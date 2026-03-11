@@ -3,11 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CheckCircle2, Eye, FileText, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import SmartPriceEstimator from "./SmartPriceEstimator";
 
 interface Props {
   archetype: V2PricingArchetype;
   explanation: string;
   onContinue: () => void;
+  categoryCode?: string;
+  serviceType?: string;
 }
 
 const ARCHETYPE_CONFIG: Record<V2PricingArchetype, {
@@ -58,7 +61,7 @@ const ARCHETYPE_CONFIG: Record<V2PricingArchetype, {
   },
 };
 
-const V2PricingExpectation = ({ archetype, explanation, onContinue }: Props) => {
+const V2PricingExpectation = ({ archetype, explanation, onContinue, categoryCode, serviceType }: Props) => {
   const config = ARCHETYPE_CONFIG[archetype];
 
   return (
@@ -108,6 +111,11 @@ const V2PricingExpectation = ({ archetype, explanation, onContinue }: Props) => 
           <p className="text-sm text-muted-foreground leading-relaxed">{explanation}</p>
         </div>
       </motion.div>
+
+      {/* Smart Price Estimator — real historical data */}
+      {categoryCode && (
+        <SmartPriceEstimator categoryCode={categoryCode} serviceType={serviceType} />
+      )}
 
       {/* LankaFix guarantee */}
       <motion.div
