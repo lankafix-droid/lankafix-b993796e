@@ -39,6 +39,9 @@ export interface PartnerRow {
   provider_type: string | null;
   previous_company: string | null;
   tools_declared: string[] | null;
+  user_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 /** Fetch all verified, online/busy partners */
