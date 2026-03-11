@@ -12,11 +12,12 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { track } from "@/lib/analytics";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useOpsMetrics } from "@/services/opsMetricsService";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import QuoteBenchmarkCard from "@/components/ops/QuoteBenchmarkCard";
 
 const FinanceBoardPage = () => {
   const bookings = useBookingStore((s) => s.bookings);
@@ -61,6 +62,40 @@ const FinanceBoardPage = () => {
     },
     staleTime: 30_000,
   });
+
+  // Real DB: most recent submitted quotes for benchmark card
+  const { data: recentQuotesDB = [] } = useQuery({
+    queryKey: ["ops-recent-quotes-benchmark"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("quotes")
+        .select("id, booking_id, total_lkr, status, created_at, partner_id")
+        .in("status", ["submitted", "approved", "rejected"])
+        .order("created_at", { ascending: false })
+        .limit(5);
+      // Fetch category_code for each quote's booking
+      if (!data || data.length === 0) return [];
+      const bookingIds = [...new Set(data.map((q) => q.booking_id))];
+      const { data: bookingsData } = await supabase
+        .from("bookings")
+        .select("id, category_code, service_type")
+        .in("id", bookingIds);
+      const bookingMap = Object.fromEntries((bookingsData || []).map((b) => [b.id, b]));
+      return data.map((q) => ({ ...q, booking: bookingMap[q.booking_id] || null }));
+    },
+    staleTime: 30_000,
+  });
+
+  const latestBenchmarkInput = useMemo(() => {
+    const q = recentQuotesDB[0];
+    if (!q || !q.booking || !q.total_lkr) return null;
+    return {
+      category_code: q.booking.category_code,
+      service_type: q.booking.service_type || undefined,
+      total_lkr: q.total_lkr,
+    };
+  }, [recentQuotesDB]);
+
   const analytics = computePlatformAnalytics(bookings);
 
   // Compute aggregates
@@ -296,6 +331,14 @@ const FinanceBoardPage = () => {
             </div>
           )}
         </div>
+
+        {/* Quote Benchmark — ops only */}
+        {latestBenchmarkInput && (
+          <div className="mt-6">
+            <h2 className="text-sm font-semibold text-foreground mb-2">Latest Quote Benchmark</h2>
+            <QuoteBenchmarkCard input={latestBenchmarkInput} />
+          </div>
+        )}
       </main>
       <Footer />
     </div>
