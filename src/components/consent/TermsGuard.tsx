@@ -3,8 +3,8 @@
  * authenticated user hasn't accepted the current terms version.
  * Unauthenticated users pass through freely.
  */
-import { useState, useEffect, type ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { type ReactNode } from "react";
+
 import { useUserRole, useTermsStatus } from "@/hooks/useTermsAcceptance";
 import ConsentGate from "@/components/consent/ConsentGate";
 
