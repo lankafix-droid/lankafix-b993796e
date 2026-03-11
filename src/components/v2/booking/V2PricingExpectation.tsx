@@ -3,11 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, CheckCircle2, Eye, FileText, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
+import SmartPriceEstimator from "./SmartPriceEstimator";
 
 interface Props {
   archetype: V2PricingArchetype;
   explanation: string;
   onContinue: () => void;
+  categoryCode?: string;
+  serviceType?: string;
 }
 
 const ARCHETYPE_CONFIG: Record<V2PricingArchetype, {
