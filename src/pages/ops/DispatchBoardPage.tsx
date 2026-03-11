@@ -92,6 +92,62 @@ function useDispatchEscalations() {
   });
 }
 
+/** Booking row with quote info for ops */
+function OpsBookingRow({ booking: b }: { booking: any }) {
+  const { data: quote } = useQuery({
+    queryKey: ["ops-booking-quote", b.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("quotes")
+        .select("id, status, total_lkr, notes, technician_note")
+        .eq("booking_id", b.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    staleTime: 30_000,
+  });
+
+  const timeSince = (iso: string) => {
+    const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    return mins < 60 ? `${mins}m ago` : `${Math.round(mins / 60)}h ago`;
+  };
+
+  return (
+    <div className="p-3 border rounded-lg">
+      <div className="flex items-center justify-between mb-1">
+        <div>
+          <p className="text-sm font-medium font-mono">{b.id.slice(0, 8)}</p>
+          <p className="text-xs text-muted-foreground">{b.category_code} • {b.service_type || "general"}</p>
+        </div>
+        <Badge variant="outline" className="text-[10px]">{b.status?.replace(/_/g, " ")}</Badge>
+      </div>
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+        <MapPin className="w-3 h-3" /> {b.zone_code || "—"}
+        {b.is_emergency && <Badge className="bg-destructive/10 text-destructive text-[9px] h-4">SOS</Badge>}
+        <span className="ml-auto">{timeSince(b.created_at)}</span>
+      </div>
+      {quote && (
+        <div className="mt-2 pt-2 border-t border-border/30 flex items-center gap-2 text-[10px]">
+          <Badge variant="outline" className={`text-[9px] ${
+            quote.status === "approved" ? "bg-success/10 text-success" :
+            quote.status === "rejected" ? "bg-destructive/10 text-destructive" :
+            quote.status === "submitted" ? "bg-warning/10 text-warning" :
+            "bg-muted"
+          }`}>
+            Quote: {quote.status}
+          </Badge>
+          {quote.total_lkr && <span className="text-muted-foreground">LKR {quote.total_lkr.toLocaleString()}</span>}
+          {(quote.technician_note || quote.notes) && (
+            <span className="text-muted-foreground truncate max-w-[120px]">{quote.technician_note || quote.notes}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DispatchBoardPage() {
   const navigate = useNavigate();
   const { data: escalatedBookings = [], isLoading: escalatedLoading } = useEscalatedBookings();
