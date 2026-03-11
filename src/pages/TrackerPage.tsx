@@ -55,6 +55,8 @@ import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTechnicianTracking } from "@/hooks/useTechnicianTracking";
+import { getTrafficLabel } from "@/lib/etaEngine";
 
 /** Sub-component: fetches and shows quote approval for DB-backed bookings */
 function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; bookingStatus: string }) {
