@@ -61,7 +61,7 @@ const ARCHETYPE_CONFIG: Record<V2PricingArchetype, {
   },
 };
 
-const V2PricingExpectation = ({ archetype, explanation, onContinue }: Props) => {
+const V2PricingExpectation = ({ archetype, explanation, onContinue, categoryCode, serviceType }: Props) => {
   const config = ARCHETYPE_CONFIG[archetype];
 
   return (
