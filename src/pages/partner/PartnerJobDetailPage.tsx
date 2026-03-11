@@ -183,7 +183,40 @@ export default function PartnerJobDetailPage() {
   const canStartTravel = isMyJob && booking.status === "assigned";
   const canMarkArrived = isMyJob && booking.status === "tech_en_route";
   const canStartWork = isMyJob && booking.status === "arrived";
+  const canCreateQuote = isMyJob && (booking.status === "arrived" || booking.status === "inspection_started" || booking.status === "quote_rejected");
+  const latestQuote = quotes[0];
+  const canStartRepair = isMyJob && booking.status === "quote_approved";
+  const canCompleteRepair = isMyJob && booking.status === "repair_started";
+  const canRecordPayment = isMyJob && booking.status === "completed" && latestQuote?.status === "approved";
 
+  const handleStartRepair = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("start_repair");
+    track("repair_started", { jobId });
+    const result = await startRepair(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) { toast.success("Repair started!"); refreshAll(); }
+    else toast.error(result.error || "Failed");
+  };
+
+  const handleCompleteRepair = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("complete_repair");
+    track("repair_completed", { jobId });
+    const result = await completeRepair(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) { toast.success("Job completed!"); refreshAll(); }
+    else toast.error(result.error || "Failed");
+  };
+
+  const handleRecordPayment = async () => {
+    if (!jobId || !latestQuote) return;
+    setActionLoading("record_payment");
+    const result = await recordPayment(jobId, latestQuote.id, latestQuote.total_lkr || 0, "cash");
+    setActionLoading(null);
+    if (result.success) { toast.success("Payment recorded!"); track("payment_recorded", { jobId }); refreshAll(); }
+    else toast.error(result.error || "Failed");
+  };
   return (
     <div className="min-h-screen bg-background">
       <div className="bg-card border-b px-4 py-4 flex items-center gap-3">
