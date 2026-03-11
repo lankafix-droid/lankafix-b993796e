@@ -5,6 +5,7 @@ import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle
 import { SUPPORT_PHONE } from "@/config/contact";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import SmartPriceEstimator from "./SmartPriceEstimator";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -136,6 +137,9 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
           {pricingBadge.label}
         </Badge>
       </motion.div>
+
+      {/* Smart Price Estimator — historical data */}
+      <SmartPriceEstimator categoryCode={flow.code} />
 
       {/* Booking model card */}
       {bookingModel && (

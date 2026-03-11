@@ -155,7 +155,7 @@ export default function DispatchBoardPage() {
   const { data: partners = [] } = useVerifiedPartners();
   const { data: escalations = [] } = useDispatchEscalations();
 
-  const [activeTab, setActiveTab] = useState<"escalated" | "active" | "partners">("escalated");
+  const [activeTab, setActiveTab] = useState<"escalated" | "active" | "partners" | "availability">("escalated");
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>("");
 
@@ -235,11 +235,11 @@ export default function DispatchBoardPage() {
 
         {/* Tabs */}
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
-          {(["escalated", "active", "partners"] as const).map((tab) => (
+          {(["escalated", "active", "partners", "availability"] as const).map((tab) => (
             <Button key={tab} size="sm" className="flex-1 text-xs h-8"
               variant={activeTab === tab ? "default" : "ghost"}
               onClick={() => setActiveTab(tab)}>
-              {tab === "escalated" ? `Escalated (${escalatedBookings.length})` : tab === "active" ? "Active" : "Partners"}
+              {tab === "escalated" ? `Escalated (${escalatedBookings.length})` : tab === "active" ? "Active" : tab === "availability" ? "📍 Map" : "Partners"}
             </Button>
           ))}
         </div>
@@ -357,6 +357,89 @@ export default function DispatchBoardPage() {
               ))}
             </CardContent>
           </Card>
+        )}
+
+        {/* Availability Map Tab */}
+        {activeTab === "availability" && (
+          <div className="space-y-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-primary" /> Technician Availability by Zone
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {(() => {
+                  // Group partners by zone
+                  const zoneMap = new Map<string, { online: number; busy: number; offline: number; partners: any[] }>();
+                  partners.forEach((p: any) => {
+                    const zones = (p.service_zones || ["Unassigned"]) as string[];
+                    zones.forEach((zone: string) => {
+                      if (!zoneMap.has(zone)) zoneMap.set(zone, { online: 0, busy: 0, offline: 0, partners: [] });
+                      const z = zoneMap.get(zone)!;
+                      if (p.availability_status === "online" || p.availability_status === "available") z.online++;
+                      else if (p.availability_status === "busy") z.busy++;
+                      else z.offline++;
+                      z.partners.push(p);
+                    });
+                  });
+
+                  const zones = Array.from(zoneMap.entries())
+                    .sort((a, b) => (b[1].online + b[1].busy) - (a[1].online + a[1].busy));
+
+                  if (zones.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No partners registered</p>;
+
+                  return zones.map(([zone, data]) => (
+                    <div key={zone} className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium text-foreground">{zone}</p>
+                        <span className="text-[10px] text-muted-foreground">{data.partners.length} techs</span>
+                      </div>
+                      <div className="flex gap-3 text-[11px]">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-success" />
+                          {data.online} online
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-warning" />
+                          {data.busy} busy
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                          {data.offline} offline
+                        </span>
+                      </div>
+                      {data.online === 0 && data.busy === 0 && (
+                        <Badge variant="outline" className="mt-2 text-[9px] bg-destructive/10 text-destructive border-destructive/20">
+                          No coverage
+                        </Badge>
+                      )}
+                    </div>
+                  ));
+                })()}
+              </CardContent>
+            </Card>
+
+            {/* Summary stats */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-xl font-bold text-success">{partners.filter((p: any) => p.availability_status === "online" || p.availability_status === "available").length}</p>
+                    <p className="text-[10px] text-muted-foreground">Online Now</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-warning">{partners.filter((p: any) => p.availability_status === "busy").length}</p>
+                    <p className="text-[10px] text-muted-foreground">Busy</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-muted-foreground">{partners.filter((p: any) => p.availability_status === "offline").length}</p>
+                    <p className="text-[10px] text-muted-foreground">Offline</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Quick Links */}

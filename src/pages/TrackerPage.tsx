@@ -55,6 +55,56 @@ import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTechnicianTracking } from "@/hooks/useTechnicianTracking";
+import { getTrafficLabel } from "@/lib/etaEngine";
+
+/** Sub-component: Live technician tracking for DB-backed bookings */
+function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookingId: string; partnerId: string | null; bookingStatus: string }) {
+  const isTrackable = ["tech_en_route", "arrived", "assigned"].includes(bookingStatus);
+  const { data: tracking } = useTechnicianTracking(isTrackable ? bookingId : undefined, partnerId);
+
+  if (!isTrackable || !tracking || !tracking.technicianLat) return null;
+
+  return (
+    <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)] space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Navigation className="w-4 h-4 text-primary" />
+          <span className="text-sm font-bold text-foreground">Live Tracking</span>
+        </div>
+        {tracking.isLive && (
+          <div className="flex items-center gap-1">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+            </span>
+            <span className="text-[10px] text-success font-medium">Live</span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="text-center p-2 bg-muted/50 rounded-lg">
+          <p className="text-lg font-bold text-primary">{tracking.etaRange}</p>
+          <p className="text-[9px] text-muted-foreground">ETA</p>
+        </div>
+        <div className="text-center p-2 bg-muted/50 rounded-lg">
+          <p className="text-lg font-bold text-foreground">{tracking.distanceKm} km</p>
+          <p className="text-[9px] text-muted-foreground">Away</p>
+        </div>
+        <div className="text-center p-2 bg-muted/50 rounded-lg">
+          <p className="text-lg font-bold text-foreground capitalize">{tracking.vehicleType}</p>
+          <p className="text-[9px] text-muted-foreground">Vehicle</p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{tracking.partnerName} • ⭐ {tracking.partnerRating}</span>
+        <span>{getTrafficLabel(tracking.trafficLevel)}</span>
+      </div>
+    </div>
+  );
+}
 
 /** Sub-component: fetches and shows quote approval for DB-backed bookings */
 function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; bookingStatus: string }) {
@@ -441,6 +491,9 @@ const TrackerPage = () => {
                 </div>
               )}
             </div>
+
+            {/* Live Technician Tracking — Uber-style */}
+            <DBBookingLiveTracking bookingId={dbBooking.id} partnerId={dbBooking.partner_id} bookingStatus={dbBooking.status} />
 
             {/* Quote Approval Card - shown when quote is submitted */}
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
