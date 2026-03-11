@@ -16,6 +16,7 @@ import {
   ThumbsDown, ThumbsUp, Banknote, CircleCheck,
 } from "lucide-react";
 import QuoteForm from "@/components/quotes/QuoteForm";
+import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
 
 const DECLINE_REASONS = [
   "Too far away",
