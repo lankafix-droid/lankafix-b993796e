@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Camera, ArrowRight } from "lucide-react";
+import { AlertTriangle, Camera, ArrowRight, Smartphone, CheckCircle2 } from "lucide-react";
+import { useDevicePassportStore } from "@/store/devicePassportStore";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Props {
   questions: V2DeviceQuestion[];
@@ -17,6 +19,8 @@ interface Props {
   onDataRiskAccept?: (v: boolean) => void;
   /** Currently selected service type — used to filter conditional questions */
   activeServiceTypeId?: string;
+  /** Category code for filtering saved devices */
+  categoryCode?: string;
 }
 
 /** Check if a question should be visible based on service type and answer conditions */
