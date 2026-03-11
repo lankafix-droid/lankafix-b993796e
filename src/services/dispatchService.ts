@@ -193,6 +193,16 @@ export async function completeRepair(bookingId: string, partnerId: string): Prom
       }),
     ]);
     if (bookingRes.error) throw bookingRes.error;
+
+    // Fire fraud detection check (non-blocking)
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    fetch(`https://${projectId}.supabase.co/functions/v1/fraud-detection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": anonKey, "Authorization": `Bearer ${anonKey}` },
+      body: JSON.stringify({ booking_id: bookingId, check_type: "completion" }),
+    }).catch(() => {}); // non-blocking
+
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e.message || "Failed to complete repair" };
