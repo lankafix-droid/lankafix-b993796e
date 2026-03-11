@@ -327,6 +327,24 @@ const TrackerPage = () => {
       completed: "Completed",
       cancelled: "Cancelled",
     };
+
+    const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
+      pending: { label: "Submitted", description: "Your booking has been received. Finding the best provider...", icon: Clock },
+      dispatching: { label: "Finding Provider", description: "Matching you with verified technicians in your area.", icon: Search },
+      pending_acceptance: { label: "Provider Found", description: "A provider has been matched. Waiting for confirmation.", icon: UserCheck },
+      accepted: { label: "Provider Assigned", description: "Your provider is confirmed and preparing for the job.", icon: CheckCircle2 },
+      escalated: { label: "Searching", description: "We're expanding our search for available providers.", icon: Search },
+      no_provider_found: { label: "Searching", description: "Searching for available technicians. Our team has been notified.", icon: Clock },
+      manual: { label: "Under Review", description: "Our team is reviewing your request and will assign a specialist.", icon: ClipboardList },
+    };
+
+    const dispatchInfo = DISPATCH_MESSAGES[dbBooking.dispatch_status || "pending"] || DISPATCH_MESSAGES.pending;
+    const StatusIcon = dbBooking.status === "assigned" ? CheckCircle2 : dispatchInfo.icon;
+    const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (STATUS_LABELS[dbBooking.status] || dispatchInfo.label);
+    const statusDesc = dbBooking.status === "assigned"
+      ? "Your provider has been assigned and is preparing for the job."
+      : dispatchInfo.description;
+
     return (
       <PageTransition className="min-h-screen flex flex-col bg-background">
         <Header />
@@ -342,7 +360,7 @@ const TrackerPage = () => {
                 <p className="text-xs text-muted-foreground">{dbBooking.category_code}</p>
               </div>
               <Badge className="ml-auto bg-primary/10 text-primary border-0 text-xs font-semibold">
-                {STATUS_LABELS[dbBooking.status] || dbBooking.status}
+                {statusLabel}
               </Badge>
             </div>
 
@@ -350,11 +368,11 @@ const TrackerPage = () => {
             <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-primary" />
+                  <StatusIcon className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{STATUS_LABELS[dbBooking.status] || "Processing"}</p>
-                  <p className="text-xs text-muted-foreground">We're matching you with the best available provider</p>
+                  <p className="text-sm font-bold text-foreground">{statusLabel}</p>
+                  <p className="text-xs text-muted-foreground">{statusDesc}</p>
                 </div>
               </div>
               {dbBooking.service_type && (
@@ -373,6 +391,12 @@ const TrackerPage = () => {
                 <span className="text-muted-foreground">Submitted</span>
                 <span className="font-medium text-foreground">{new Date(dbBooking.created_at).toLocaleString()}</span>
               </div>
+              {dbBooking.assigned_at && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Assigned</span>
+                  <span className="font-medium text-foreground">{new Date(dbBooking.assigned_at).toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
             {/* Timeline events from DB */}

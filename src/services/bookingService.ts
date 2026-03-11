@@ -8,6 +8,7 @@ import type { V2BookingState } from "@/pages/V2BookingPage";
 import type { V2CategoryFlow } from "@/data/v2CategoryFlows";
 import { isCategoryConsultation, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
 import { validateServiceZone } from "@/store/locationStore";
+import { triggerDispatch } from "@/services/dispatchService";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
@@ -321,6 +322,15 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
       bookingId,
       customerId: userId,
       metadata: { category: flow.code },
+    });
+
+    // 14. Trigger dispatch engine (fire-and-forget, non-blocking)
+    triggerDispatch(bookingId).then((result) => {
+      if (!result.success) {
+        console.warn("[BookingService] Dispatch trigger failed:", result.error);
+      }
+    }).catch((e) => {
+      console.warn("[BookingService] Dispatch trigger error:", e);
     });
   }
 

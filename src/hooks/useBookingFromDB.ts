@@ -57,9 +57,10 @@ export function useBookingFromDB(bookingId: string | undefined) {
       if (error) throw error;
       return data as DBBooking;
     },
-    enabled: !!bookingId && bookingId.length > 10, // UUID check — skip for legacy LF-XXXXX IDs
+    enabled: !!bookingId && bookingId.length > 10,
     retry: 1,
     staleTime: 10_000,
+    refetchInterval: 15_000, // Poll for dispatch updates
   });
 }
 
