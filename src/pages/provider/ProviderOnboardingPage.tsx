@@ -270,6 +270,8 @@ export default function ProviderOnboardingPage() {
           policy_type: "code_of_conduct",
           policy_version: "1.0",
           accepted_at: new Date().toISOString(),
+          user_id: currentUser.id,
+          source_screen: "provider_onboarding",
         }, { onConflict: "partner_id,policy_type" });
       }
 
@@ -280,10 +282,12 @@ export default function ProviderOnboardingPage() {
           policy_type: "provider_training",
           policy_version: "1.0",
           accepted_at: new Date().toISOString(),
+          user_id: currentUser.id,
+          source_screen: "provider_onboarding",
         }, { onConflict: "partner_id,policy_type" });
       }
 
-      // Save document references to partner_documents
+      // Save document references — use partner_id + document_type uniqueness
       for (const doc of profile.documents) {
         if (doc.fileUrl) {
           await supabase.from("partner_documents").upsert({
@@ -291,7 +295,7 @@ export default function ProviderOnboardingPage() {
             document_type: doc.type,
             file_url: doc.fileUrl,
             verification_status: "pending",
-          }, { onConflict: "partner_id" }).select();
+          }, { onConflict: "partner_id,document_type" }).select();
         }
       }
 
