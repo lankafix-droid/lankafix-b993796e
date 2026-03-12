@@ -1,11 +1,13 @@
 import type { V2CategoryFlow, V2PricingArchetype } from "@/data/v2CategoryFlows";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle, Zap, Eye, Award, Lock, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle, Zap, Eye, Award, Lock, CheckCircle2, Timer } from "lucide-react";
 import { SUPPORT_PHONE } from "@/config/contact";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import SmartPriceEstimator from "./SmartPriceEstimator";
+import { useMemo } from "react";
+import { getArrivalEstimate } from "@/utils/arrivalEstimate";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
