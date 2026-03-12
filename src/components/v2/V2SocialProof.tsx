@@ -22,8 +22,6 @@ const STATS = [
 
 const V2SocialProof = () => {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [liveActivity, setLiveActivity] = useState(0);
-  const [showActivity, setShowActivity] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setActiveTestimonial((p) => (p + 1) % TESTIMONIALS.length), 5000);
