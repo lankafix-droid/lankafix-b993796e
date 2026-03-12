@@ -8,6 +8,7 @@ import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, FileText, Loader2, Shield } from "lucide-react";
 import { notifyQuoteApproved } from "@/services/notificationService";
+import { createPaymentRecord } from "@/services/paymentService";
 
 interface QuoteApprovalCardProps {
   quote: {
@@ -58,6 +59,19 @@ export default function QuoteApprovalCard({ quote, onAction }: QuoteApprovalCard
 
       track("quote_approved", { bookingId: quote.booking_id, quoteId: quote.id, total: quote.total_lkr });
       toast.success("Quote approved! Repair will begin shortly.");
+
+      // Fire-and-forget: create payment record for the approved quote
+      if (quote.total_lkr && quote.total_lkr > 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          createPaymentRecord({
+            bookingId: quote.booking_id,
+            userId: user.id,
+            amount: quote.total_lkr,
+            paymentType: "quote",
+          }).catch(() => {});
+        }
+      }
 
       // Notify partner that their quote was approved
       const { data: bk } = await supabase.from("bookings").select("partner_id").eq("id", quote.booking_id).maybeSingle();

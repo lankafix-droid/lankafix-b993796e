@@ -56,6 +56,7 @@ import ReportIssueModal from "@/components/support/ReportIssueModal";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPaymentForBooking } from "@/services/paymentService";
 import { useTechnicianTracking } from "@/hooks/useTechnicianTracking";
 import { getTrafficLabel } from "@/lib/etaEngine";
 
@@ -139,6 +140,40 @@ function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; 
         queryClient.invalidateQueries({ queryKey: ["booking-timeline", bookingId] });
       }}
     />
+  );
+}
+
+/** Sub-component: Payment status indicator for DB-backed bookings */
+function TrackerPaymentStatus({ bookingId }: { bookingId: string }) {
+  const { data: payment } = useQuery({
+    queryKey: ["tracker-payment", bookingId],
+    queryFn: () => getPaymentForBooking(bookingId),
+    enabled: !!bookingId,
+    staleTime: 30_000,
+  });
+
+  if (!payment) return null;
+
+  const isPaid = payment.payment_status === "paid";
+  const statusColor = isPaid ? "text-success" : "text-warning";
+  const statusLabel = isPaid ? "Paid" : payment.payment_status === "failed" ? "Failed" : "Pending";
+
+  return (
+    <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)]">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-bold text-foreground">Payment Status</span>
+        </div>
+        <Badge variant="outline" className={`text-[10px] ${statusColor} border-current/20`}>
+          {statusLabel}
+        </Badge>
+      </div>
+      <div className="flex justify-between text-sm mt-2">
+        <span className="text-muted-foreground capitalize">{payment.payment_type}</span>
+        <span className="font-medium text-foreground">LKR {payment.amount_lkr.toLocaleString()}</span>
+      </div>
+    </div>
   );
 }
 
@@ -499,6 +534,9 @@ const TrackerPage = () => {
 
             {/* Quote Approval Card - shown when quote is submitted */}
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
+
+            {/* Payment Status */}
+            <TrackerPaymentStatus bookingId={dbBooking.id} />
 
             {/* Timeline events from DB */}
             {dbTimeline && dbTimeline.length > 0 && (
