@@ -430,8 +430,8 @@ serve(async (req) => {
           partner_id: bestMatch.partner_id,
           booking_id,
           notification_type: "job_offer",
-          title: is_emergency ? "🚨 Emergency Job Offer" : "New Job Offer",
-          body: `${category_code} service in ${customer_zone || "your zone"} · ETA ${bestMatch.eta_min}–${bestMatch.eta_max} min`,
+          title: is_emergency ? "🚨 Emergency Job Offer" : is_priority ? "⚡ Priority Job Offer" : "New Job Offer",
+          body: `${category_code} service in ${customer_zone || "your zone"} · ETA ${bestMatch.eta_min}–${bestMatch.eta_max} min${is_priority ? " · Priority" : ""}`,
           metadata: {
             category_code, service_type, is_emergency,
             dispatch_score: bestMatch.score.total,
