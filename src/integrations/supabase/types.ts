@@ -1814,6 +1814,51 @@ export type Database = {
           },
         ]
       }
+      ratings: {
+        Row: {
+          booking_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          partner_id: string
+          rating: number
+          review_text: string | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          partner_id: string
+          rating: number
+          review_text?: string | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          partner_id?: string
+          rating?: number
+          review_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_relationships: {
         Row: {
           created_at: string
