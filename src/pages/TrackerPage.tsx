@@ -535,6 +535,9 @@ const TrackerPage = () => {
             {/* Quote Approval Card - shown when quote is submitted */}
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
+            {/* Payment Status */}
+            <TrackerPaymentStatus bookingId={dbBooking.id} />
+
             {/* Timeline events from DB */}
             {dbTimeline && dbTimeline.length > 0 && (
               <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]">
