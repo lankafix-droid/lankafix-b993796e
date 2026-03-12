@@ -1,8 +1,10 @@
 import type { V2FlowOption } from "@/data/v2CategoryFlows";
-import { CheckCircle2, Clock, Tag, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Clock, Tag, ShieldCheck, Flame, Star, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import { serviceBadges } from "@/config/serviceBadges";
+import { servicePriceRanges } from "@/config/servicePriceRanges";
 
 interface Props {
   options: V2FlowOption[];
@@ -68,6 +70,12 @@ const V2ServiceSelection = ({ options, selected, onSelect, title }: Props) => {
                             {opt.tag}
                           </Badge>
                         )}
+                        {serviceBadges[opt.id] && (
+                          <Badge variant="secondary" className="text-[10px] bg-accent/60 text-accent-foreground py-0 px-1.5 gap-0.5">
+                            <Flame className="w-2.5 h-2.5" />
+                            {serviceBadges[opt.id]}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{opt.description}</p>
                       {(opt.priceLabel || opt.estimatedTime) && (
@@ -84,6 +92,19 @@ const V2ServiceSelection = ({ options, selected, onSelect, title }: Props) => {
                               {opt.estimatedTime}
                             </span>
                           )}
+                        </div>
+                      )}
+                      {/* Estimated price range */}
+                      {isSelected && servicePriceRanges[opt.id] && (
+                        <div className="mt-2.5 bg-primary/5 border border-primary/15 rounded-xl px-3 py-2">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+                            <Info className="w-3 h-3" />
+                            Estimated Price
+                          </div>
+                          <p className="text-sm font-bold text-foreground mt-0.5">
+                            LKR {servicePriceRanges[opt.id].min.toLocaleString()} – {servicePriceRanges[opt.id].max.toLocaleString()}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Final price confirmed after technician inspection.</p>
                         </div>
                       )}
                     </div>

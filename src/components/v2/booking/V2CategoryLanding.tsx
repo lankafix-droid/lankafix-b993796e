@@ -1,11 +1,13 @@
 import type { V2CategoryFlow, V2PricingArchetype } from "@/data/v2CategoryFlows";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle, Zap, Eye, Award, Lock, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, Star, Clock, ArrowRight, Stethoscope, Phone, MessageCircle, Zap, Eye, Award, Lock, CheckCircle2, Timer } from "lucide-react";
 import { SUPPORT_PHONE } from "@/config/contact";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import SmartPriceEstimator from "./SmartPriceEstimator";
+import { useMemo } from "react";
+import { getArrivalEstimate } from "@/utils/arrivalEstimate";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -56,6 +58,7 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
   const pricingBadge = PRICING_BADGES[flow.pricingArchetype];
   const bookingModel = BOOKING_MODEL_LABELS[flow.bookingModel];
   const supportsEmergency = EMERGENCY_CATEGORIES.includes(flow.code);
+  const arrivalEstimate = useMemo(() => getArrivalEstimate(), []);
 
   return (
     <div className="space-y-6">
@@ -153,6 +156,22 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
           <p className="text-xs text-muted-foreground leading-relaxed">{bookingModel.desc}</p>
         </motion.div>
       )}
+
+      {/* Technician arrival estimate */}
+      <motion.div
+        className="flex items-center gap-3 bg-success/5 border border-success/20 rounded-2xl px-4 py-3"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.48, duration: 0.4 }}
+      >
+        <div className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+          <Timer className="w-4.5 h-4.5 text-success" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-foreground">Technician Availability</p>
+          <p className="text-[11px] text-muted-foreground">Next technician arrival: <span className="font-semibold text-success">{arrivalEstimate}</span></p>
+        </div>
+      </motion.div>
 
       {/* Emergency toggle */}
       {supportsEmergency && onEmergencyToggle && (
