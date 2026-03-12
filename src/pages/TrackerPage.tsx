@@ -955,6 +955,9 @@ const TrackerPage = () => {
                 role="customer"
               />
             </Section>
+          )}
+
+          {/* ─── Cancel ─── */}
           {canCancel && booking.status !== "cancelled" && (
             <Section delay={0.9}>
               <AnimatePresence mode="wait">
