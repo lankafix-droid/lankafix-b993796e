@@ -685,11 +685,6 @@ const TrackerPage = () => {
                 extendedCoverage={lastMatchResult?.extendedCoverage}
                 status={booking.status as "matching" | "awaiting_partner_confirmation"}
               />
-              {booking.status === "awaiting_partner_confirmation" && (
-                <Button variant="outline" size="sm" className="w-full mt-3 rounded-xl" onClick={handleDemoConfirmPartner}>
-                  <Play className="w-4 h-4 mr-2" /> Confirm Partner (Demo)
-                </Button>
-              )}
             </Section>
           )}
 
