@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import QuoteForm from "@/components/quotes/QuoteForm";
 import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
+import ReportIssueModal from "@/components/support/ReportIssueModal";
 
 const DECLINE_REASONS = [
   "Too far away",

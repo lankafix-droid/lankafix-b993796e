@@ -940,7 +940,21 @@ const TrackerPage = () => {
             </Section>
           )}
 
-          {/* ─── Cancel ─── */}
+          {/* ─── Report Issue ─── */}
+          {booking.status !== "cancelled" && (
+            <Section delay={0.87}>
+              <Button variant="outline" className="w-full rounded-xl h-11 text-sm" onClick={() => setShowReportIssue(true)}>
+                <Flag className="w-4 h-4 mr-1.5" />
+                Report an Issue
+              </Button>
+              <ReportIssueModal
+                open={showReportIssue}
+                onClose={() => setShowReportIssue(false)}
+                bookingId={booking.jobId}
+                userId=""
+                role="customer"
+              />
+            </Section>
           {canCancel && booking.status !== "cancelled" && (
             <Section delay={0.9}>
               <AnimatePresence mode="wait">
