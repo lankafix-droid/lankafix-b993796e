@@ -372,6 +372,9 @@ export default function DispatchBoardPage() {
                   under_review: "bg-red-500/15 text-red-700",
                 };
                 const tier = p.reliability_tier || "verified";
+                const aiScore = p.performance_score ?? 0;
+                const isHighPerf = aiScore >= 75 && (tier === "elite" || tier === "pro");
+                const { risk_level, factors: riskFactors } = detectRiskPartner(p);
                 return (
                   <div key={p.id} className="p-3 border rounded-lg">
                     <div className="flex items-center justify-between mb-1">
@@ -380,6 +383,11 @@ export default function DispatchBoardPage() {
                         <Badge className={`border-0 text-[9px] ${tierColors[tier] || tierColors.verified}`}>
                           {tier === "under_review" ? "Review" : tier.charAt(0).toUpperCase() + tier.slice(1)}
                         </Badge>
+                        {isHighPerf && (
+                          <Badge variant="outline" className="border-0 bg-primary/10 text-primary text-[9px] gap-0.5">
+                            <Sparkles className="w-2.5 h-2.5" /> High Performance
+                          </Badge>
+                        )}
                       </div>
                       <Badge variant="outline" className={`text-[10px] ${p.availability_status === "available" ? "bg-success/10 text-success" : p.availability_status === "busy" ? "bg-warning/10 text-warning" : "bg-muted"}`}>
                         {p.availability_status}
@@ -388,9 +396,21 @@ export default function DispatchBoardPage() {
                     <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                       <span>⭐ {p.rating_average}</span>
                       <span>{p.completed_jobs_count} jobs</span>
-                      <span>Score: {p.performance_score ?? "—"}</span>
+                      <span className="font-medium">AI Score: {aiScore || "—"}</span>
                       <span>{(p.service_zones || []).length} zones</span>
+                      {risk_level !== "low" && (
+                        <span className={`font-semibold ${RISK_COLORS[risk_level]}`}>
+                          ⚠ {risk_level} risk
+                        </span>
+                      )}
                     </div>
+                    {riskFactors.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {riskFactors.map((f, i) => (
+                          <Badge key={i} variant="outline" className="text-[8px] border-destructive/30 text-destructive">{f}</Badge>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-1 mt-1">
                       {(p.categories_supported || []).slice(0, 4).map((cat: string) => (
                         <Badge key={cat} variant="secondary" className="text-[9px]">{cat}</Badge>
