@@ -78,6 +78,7 @@ const Header = () => {
 
         {/* Mobile controls */}
         <div className="md:hidden flex items-center gap-0.5">
+          <NotificationBell />
           <button
             onClick={toggle}
             className="p-2.5 rounded-xl hover:bg-muted transition-smooth text-muted-foreground touch-target"

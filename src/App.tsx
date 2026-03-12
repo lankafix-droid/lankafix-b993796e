@@ -132,6 +132,7 @@ const App = () => (
             <Route path="/supplies" element={<ConsumablesPage />} />
             <Route path="/home-health" element={<HomeHealthPage />} />
             <Route path="/reminders" element={<RemindersPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
 
             {/* ─── Legacy V2 redirects ─── */}
             <Route path="/v2" element={<Navigate to="/" replace />} />
