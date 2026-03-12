@@ -35,6 +35,7 @@ export default function PartnerJobDetailPage() {
   const { data: partner } = useCurrentPartner();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeclineReasons, setShowDeclineReasons] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["partner-booking-detail", jobId],
