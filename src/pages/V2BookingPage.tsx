@@ -29,6 +29,9 @@ import type { DiagAnswer } from "@/data/diagnosticQuestions";
 import { motion, AnimatePresence } from "framer-motion";
 import { getServiceSteps, getServiceTypeConfig } from "@/engines/serviceStepEngine";
 import type { ServiceTypeConfig } from "@/engines/serviceStepEngine";
+import { getInstantPrice } from "@/data/instantPricing";
+import type { InstantPriceEntry } from "@/data/instantPricing";
+import InstantPriceCard from "@/components/v2/booking/InstantPriceCard";
 
 export interface V2BookingState {
   serviceTypeId: string;
