@@ -32,6 +32,10 @@ import type { ServiceTypeConfig } from "@/engines/serviceStepEngine";
 import { getInstantPrice } from "@/data/instantPricing";
 import type { InstantPriceEntry } from "@/data/instantPricing";
 import InstantPriceCard from "@/components/v2/booking/InstantPriceCard";
+import { getPriorityConfig } from "@/data/priorityServiceConfig";
+import type { PriorityServiceEntry } from "@/data/priorityServiceConfig";
+import PriorityServiceSelector from "@/components/v2/booking/PriorityServiceSelector";
+import type { ServiceSpeed } from "@/components/v2/booking/PriorityServiceSelector";
 
 export interface V2BookingState {
   serviceTypeId: string;
@@ -48,6 +52,7 @@ export interface V2BookingState {
   acInstallAddons?: Record<string, number>;
   isEmergency?: boolean;
   diagnosticAnswers?: Record<string, DiagAnswer>;
+  serviceSpeed?: ServiceSpeed;
 }
 
 const INITIAL_STATE: V2BookingState = {
@@ -103,6 +108,11 @@ const V2BookingPage = () => {
     if (!flow || !booking.serviceTypeId) return null;
     return getInstantPrice(flow.code, booking.serviceTypeId, booking.issueId);
   }, [flow, booking.serviceTypeId, booking.issueId]);
+
+  const priorityConfig: PriorityServiceEntry | null = useMemo(() => {
+    if (!flow || !booking.serviceTypeId) return null;
+    return getPriorityConfig(flow.code, booking.serviceTypeId);
+  }, [flow, booking.serviceTypeId]);
 
   const diagBlock = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
@@ -307,17 +317,26 @@ const V2BookingPage = () => {
                 />
               )}
               {currentStepName === "pricing_expectation" && (
-                instantPrice ? (
-                  <InstantPriceCard entry={instantPrice} onBookNow={goNext} />
-                ) : (
-                  <V2PricingExpectation
-                    archetype={activePricingArchetype}
-                    explanation={flow.pricingExplanation}
-                    onContinue={goNext}
-                    categoryCode={flow.code}
-                    serviceType={booking.serviceTypeId || undefined}
-                  />
-                )
+                <div className="space-y-5">
+                  {instantPrice ? (
+                    <InstantPriceCard entry={instantPrice} onBookNow={goNext} />
+                  ) : (
+                    <V2PricingExpectation
+                      archetype={activePricingArchetype}
+                      explanation={flow.pricingExplanation}
+                      onContinue={goNext}
+                      categoryCode={flow.code}
+                      serviceType={booking.serviceTypeId || undefined}
+                    />
+                  )}
+                  {priorityConfig && (
+                    <PriorityServiceSelector
+                      config={priorityConfig}
+                      selected={booking.serviceSpeed || "standard"}
+                      onSelect={(speed) => updateBooking({ serviceSpeed: speed })}
+                    />
+                  )}
+                </div>
               )}
               {currentStepName === "part_grade" && (
                 <V2PartGradeSelection

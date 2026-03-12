@@ -12,6 +12,7 @@ import { triggerDispatch } from "@/services/dispatchService";
 import { logIncident } from "@/lib/errorMonitoring";
 import { logLifecycleEvent } from "@/lib/eventLogger";
 import { getInstantPrice } from "@/data/instantPricing";
+import { getPriorityConfig } from "@/data/priorityServiceConfig";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
@@ -197,6 +198,19 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     };
   }
 
+  // 6c. Attach priority service metadata if customer selected priority
+  if (booking.serviceSpeed === "priority") {
+    const priorityCfg = getPriorityConfig(flow.code, booking.serviceTypeId || "");
+    if (priorityCfg) {
+      deviceDetails.priority_service = {
+        is_priority: true,
+        priority_fee_lkr: priorityCfg.priority_fee_lkr,
+        priority_eta_text: priorityCfg.priority_eta_text,
+        selected_speed: "priority",
+      };
+    }
+  }
+
   // 7. Determine pricing archetype
   const pricingArchetype = flow.pricingArchetype === "fixed_price"
     ? "fixed_price" as const
@@ -225,6 +239,7 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     if (issue) notesParts.push(`Issue: ${issue.label}`);
   }
   if (booking.isEmergency) notesParts.push("🚨 Emergency booking");
+  if (booking.serviceSpeed === "priority") notesParts.push("⚡ Priority Service selected");
   const siteCondEntries = Object.entries(booking.siteConditions);
   if (siteCondEntries.length > 0) {
     notesParts.push(`Site: ${siteCondEntries.map(([k, v]) => `${k}=${v}`).join(", ")}`);

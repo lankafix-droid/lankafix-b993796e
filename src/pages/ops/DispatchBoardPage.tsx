@@ -138,6 +138,11 @@ function OpsBookingRow({ booking: b }: { booking: any }) {
             Instant Price
           </Badge>
         )}
+        {(b.device_details as any)?.priority_service?.is_priority && (
+          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[9px] h-4">
+            ⚡ Priority
+          </Badge>
+        )}
         <span className="ml-auto">{timeSince(b.created_at)}</span>
       </div>
       {quote && (

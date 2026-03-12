@@ -13,7 +13,7 @@ import {
   ArrowLeft, MapPin, Wrench, CheckCircle2,
   ShieldCheck, Clock, AlertTriangle, Loader2,
   FileText, XCircle, Info, Navigation, Play,
-  ThumbsDown, ThumbsUp, Banknote, CircleCheck, Sparkles,
+  ThumbsDown, ThumbsUp, Banknote, CircleCheck, Sparkles, Zap,
 } from "lucide-react";
 import QuoteForm from "@/components/quotes/QuoteForm";
 import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
@@ -404,6 +404,19 @@ export default function PartnerJobDetailPage() {
                   <span className="text-xs text-muted-foreground ml-1.5">
                     Est. LKR {((booking.device_details as any).instant_pricing.min_price_lkr || 0).toLocaleString()}
                     –{((booking.device_details as any).instant_pricing.max_price_lkr || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
+            {/* Priority Service Badge */}
+            {(booking.device_details as any)?.priority_service?.is_priority && (
+              <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-2 mb-1">
+                <Zap className="w-4 h-4 text-primary shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-foreground">⚡ Priority Service</span>
+                  <span className="text-xs text-muted-foreground ml-1.5">
+                    Fee: LKR {((booking.device_details as any).priority_service.priority_fee_lkr || 0).toLocaleString()}
+                    · {(booking.device_details as any).priority_service.priority_eta_text}
                   </span>
                 </div>
               </div>

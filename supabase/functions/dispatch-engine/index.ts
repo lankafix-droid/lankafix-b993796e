@@ -67,7 +67,11 @@ serve(async (req) => {
 
     const MAX_DISPATCH_ROUNDS = 3;
 
-    // 5. Call smart-dispatch
+    // 5. Detect priority service from device_details metadata
+    const deviceDetails = booking.device_details || {};
+    const isPriority = !!(deviceDetails as any)?.priority_service?.is_priority;
+
+    // 6. Call smart-dispatch
     const currentRound = booking.dispatch_round || 1;
     const { data: dispatchResult, error: dispatchErr } = await supabase.functions.invoke("smart-dispatch", {
       body: {
@@ -77,6 +81,7 @@ serve(async (req) => {
         customer_lng: booking.customer_longitude,
         customer_zone: booking.zone_code,
         is_emergency: booking.is_emergency || false,
+        is_priority: isPriority,
         booking_id: booking_id,
         dispatch_round: currentRound,
         exclude_partner_ids: [],

@@ -15,6 +15,7 @@ interface DispatchRequest {
   customer_lng: number;
   customer_zone?: string;
   is_emergency: boolean;
+  is_priority?: boolean;
   booking_id?: string;
   dispatch_round?: number;
   exclude_partner_ids?: string[];
@@ -129,7 +130,7 @@ serve(async (req) => {
     const body: DispatchRequest = await req.json();
     const {
       category_code, service_type, brand, customer_lat, customer_lng,
-      is_emergency, booking_id, customer_zone,
+      is_emergency, is_priority = false, booking_id, customer_zone,
       dispatch_round = 1, exclude_partner_ids = [],
     } = body;
 
@@ -324,12 +325,17 @@ serve(async (req) => {
         total: 0,
       };
 
+      // Priority boost: fast-response partners get a modest additive bonus
+      const priorityBoost = is_priority
+        ? (responseRaw >= 85 ? 5 : responseRaw >= 65 ? 3 : 1)
+        : 0;
+
       breakdown.total = Math.max(0, Math.min(100,
         breakdown.proximity + breakdown.specialization + breakdown.rating +
         breakdown.response_speed + breakdown.workload + breakdown.completion_rate +
         breakdown.emergency_priority + breakdown.new_partner_boost +
         breakdown.vehicle_bonus + breakdown.zone_preference +
-        breakdown.performance_signal + breakdown.tier_signal - penalty
+        breakdown.performance_signal + breakdown.tier_signal + priorityBoost - penalty
       ));
 
       const eta = calculateETA(dist, vehicleType);
@@ -379,7 +385,7 @@ serve(async (req) => {
     else if (dispatchMode === "top_3") resultCandidates = scored.slice(0, 3);
 
     const bestMatch = resultCandidates[0] || null;
-    const acceptWindowSec = is_emergency ? 30 : 60;
+    const acceptWindowSec = is_emergency ? 30 : is_priority ? 45 : 60;
 
     // 4. Persist dispatch logs + booking state + notifications
     if (booking_id) {
@@ -424,8 +430,8 @@ serve(async (req) => {
           partner_id: bestMatch.partner_id,
           booking_id,
           notification_type: "job_offer",
-          title: is_emergency ? "🚨 Emergency Job Offer" : "New Job Offer",
-          body: `${category_code} service in ${customer_zone || "your zone"} · ETA ${bestMatch.eta_min}–${bestMatch.eta_max} min`,
+          title: is_emergency ? "🚨 Emergency Job Offer" : is_priority ? "⚡ Priority Job Offer" : "New Job Offer",
+          body: `${category_code} service in ${customer_zone || "your zone"} · ETA ${bestMatch.eta_min}–${bestMatch.eta_max} min${is_priority ? " · Priority" : ""}`,
           metadata: {
             category_code, service_type, is_emergency,
             dispatch_score: bestMatch.score.total,
