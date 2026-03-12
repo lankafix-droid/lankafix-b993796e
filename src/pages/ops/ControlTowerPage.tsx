@@ -83,6 +83,10 @@ export default function ControlTowerPage() {
               { label: "Avg Dispatch", value: metrics.avg_dispatch_time_min != null ? `${metrics.avg_dispatch_time_min}m` : "—", icon: Clock, color: "text-muted-foreground" },
               { label: "Payments", value: metrics.payments_today_count, icon: TrendingUp, color: "text-success" },
               { label: "Fraud Alerts", value: metrics.fraud_alerts_today, icon: Shield, color: metrics.fraud_alerts_today > 0 ? "text-destructive" : "text-muted-foreground" },
+              { label: "Dispatch Rate", value: metrics.dispatch_success_rate != null ? `${metrics.dispatch_success_rate}%` : "—", icon: Target, color: metrics.dispatch_success_rate != null && metrics.dispatch_success_rate < 80 ? "text-destructive" : "text-success" },
+              { label: "Resp Time", value: metrics.avg_partner_response_sec != null ? `${metrics.avg_partner_response_sec}s` : "—", icon: Clock, color: "text-muted-foreground" },
+              { label: "Awaiting Partner", value: metrics.jobs_awaiting_partner, icon: Users, color: metrics.jobs_awaiting_partner > 0 ? "text-warning" : "text-muted-foreground" },
+              { label: "Consult Queue", value: metrics.consultation_queue, icon: Megaphone, color: metrics.consultation_queue > 5 ? "text-destructive" : metrics.consultation_queue > 0 ? "text-warning" : "text-muted-foreground" },
             ].map((s) => (
               <Card key={s.label}>
                 <CardContent className="p-2 text-center">
