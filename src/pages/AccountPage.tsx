@@ -20,10 +20,7 @@ import type { User as SupaUser } from "@supabase/supabase-js";
 
 const APP_VERSION = "1.0.0";
 
-const MOCK_BOOKINGS = [
-  { id: "LF-A1B2C3", category: "AC Services", service: "Standard Service", status: "completed", date: "2026-02-28", icon: Snowflake },
-  { id: "LF-D4E5F6", category: "Mobile Phone Repairs", service: "Screen Replacement", status: "in_progress", date: "2026-03-07", icon: Smartphone },
-];
+// Mock bookings removed — real bookings fetched from DB below
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   completed: { label: "Completed", className: "bg-success/10 text-success border-success/20" },
