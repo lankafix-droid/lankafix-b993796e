@@ -10,16 +10,8 @@ const TESTIMONIALS = [
   { name: "Dinesh K.", location: "Maharagama", service: "Solar Panel Service", rating: 5, text: "Site inspection was thorough, quote was detailed, and installation was flawless. Transparent from start to finish.", avatar: "DK" },
 ];
 
-const LIVE_ACTIVITIES = [
-  "AC service completed in Colombo 7",
-  "Phone screen replaced in Dehiwala",
-  "CCTV installation started in Rajagiriya",
-  "Laptop repair booked in Nugegoda",
-  "Solar inspection completed in Battaramulla",
-  "AC gas top-up done in Mount Lavinia",
-  "WiFi setup completed in Kaduwela",
-  "Printer repair booked in Colombo 3",
-];
+// LIVE_ACTIVITIES removed — Zero Mock Data policy.
+// Real-time activity toasts will be powered by DB events in a future release.
 
 const STATS = [
   { icon: <Users className="w-5 h-5" />, value: "Thousands", label: "Happy Customers", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
@@ -30,48 +22,18 @@ const STATS = [
 
 const V2SocialProof = () => {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [liveActivity, setLiveActivity] = useState(0);
-  const [showActivity, setShowActivity] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setActiveTestimonial((p) => (p + 1) % TESTIMONIALS.length), 5000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const showTimer = setTimeout(() => setShowActivity(true), 3000);
-    const cycleTimer = setInterval(() => {
-      setShowActivity(false);
-      setTimeout(() => {
-        setLiveActivity((p) => (p + 1) % LIVE_ACTIVITIES.length);
-        setShowActivity(true);
-      }, 500);
-    }, 6000);
-    return () => { clearTimeout(showTimer); clearInterval(cycleTimer); };
-  }, []);
 
   const t = TESTIMONIALS[activeTestimonial];
 
   return (
     <section className="py-12 md:py-16">
       <div className="container space-y-12">
-        {/* Live Activity Toast — refined positioning */}
-        <AnimatePresence>
-          {showActivity && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, x: "-50%" }}
-              animate={{ opacity: 1, y: 0, x: "-50%" }}
-              exit={{ opacity: 0, y: -10, x: "-50%" }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed bottom-24 left-1/2 z-40 bg-card border border-border/50 rounded-full px-5 py-3 flex items-center gap-2.5 max-w-[90vw]"
-              style={{ boxShadow: "var(--shadow-lg)" }}
-            >
-              <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
-              <p className="text-xs font-medium text-foreground whitespace-nowrap">{LIVE_ACTIVITIES[liveActivity]}</p>
-              <span className="text-[10px] text-muted-foreground font-medium">just now</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Trust message */}
         <motion.p

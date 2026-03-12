@@ -179,6 +179,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Demand Heatmap (mock — retained) ──── */}
           <TabsContent value="demand" className="space-y-3">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">Zone Demand Heatmap</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {heatmap.map((z) => (
@@ -202,6 +203,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Supply Analysis ────────────────────── */}
           <TabsContent value="supply" className="space-y-3">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">Technician Supply vs. Demand</h2>
             <div className="space-y-2">
               {supply.map((s, i) => (
@@ -239,6 +241,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Conversion Funnel ──────────────────── */}
           <TabsContent value="funnel" className="space-y-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">Booking Conversion Funnel</h2>
             {funnels.map((f) => {
               const rates = computeConversionRates(f);
@@ -296,6 +299,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Trends ────────────────────────────── */}
           <TabsContent value="trends" className="space-y-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">Category Trends</h2>
             <div className="space-y-2">
               {categoryTrends.map((t) => (
@@ -351,6 +355,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Forecast ──────────────────────────── */}
           <TabsContent value="forecast" className="space-y-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-foreground">Demand Forecast</h2>
               <div className="flex gap-1">
@@ -393,6 +398,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Expansion ─────────────────────────── */}
           <TabsContent value="expansion" className="space-y-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">District Expansion Readiness</h2>
             <div className="space-y-2">
               {expansion.map((d) => (
@@ -421,6 +427,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Marketing ─────────────────────────── */}
           <TabsContent value="marketing" className="space-y-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">Marketing Intelligence</h2>
             {marketing.map((m, i) => (
               <Card key={i}>

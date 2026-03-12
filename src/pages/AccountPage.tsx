@@ -20,10 +20,7 @@ import type { User as SupaUser } from "@supabase/supabase-js";
 
 const APP_VERSION = "1.0.0";
 
-const MOCK_BOOKINGS = [
-  { id: "LF-A1B2C3", category: "AC Services", service: "Standard Service", status: "completed", date: "2026-02-28", icon: Snowflake },
-  { id: "LF-D4E5F6", category: "Mobile Phone Repairs", service: "Screen Replacement", status: "in_progress", date: "2026-03-07", icon: Smartphone },
-];
+// Mock bookings removed — real bookings fetched from DB below
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   completed: { label: "Completed", className: "bg-success/10 text-success border-success/20" },
@@ -143,26 +140,19 @@ const AccountPage = () => {
           <StaggerItem>
             <div className="space-y-2.5">
               <SectionTitle>My Bookings</SectionTitle>
-              {MOCK_BOOKINGS.length > 0 ? (
-                MOCK_BOOKINGS.map((booking) => {
-                  const statusStyle = STATUS_STYLES[booking.status] || STATUS_STYLES.pending;
-                  const Icon = booking.icon;
-                  return (
-                    <div key={booking.id} className="bg-card rounded-2xl border border-border/60 p-4 flex items-center gap-3 shadow-[var(--shadow-card)] active:scale-[0.98] transition-transform">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Icon className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-foreground truncate">{booking.category}</p>
-                          <Badge variant="outline" className={`text-[10px] ${statusStyle.className}`}>{statusStyle.label}</Badge>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{booking.service} · {booking.date}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-                    </div>
-                  );
-                })
+              {/* Real bookings — link to tracker */}
+              <Link to="/track" className="bg-card rounded-2xl border border-border/60 p-4 flex items-center gap-3 shadow-[var(--shadow-card)] active:scale-[0.98] transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground">View My Bookings</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Track active and past service requests</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/40 shrink-0" />
+              </Link>
+              {false ? (
+                null
               ) : (
                 <div className="bg-card rounded-2xl border border-dashed border-border/60 p-10 text-center">
                   <div className="w-14 h-14 rounded-2xl bg-muted/80 flex items-center justify-center mx-auto mb-4">
