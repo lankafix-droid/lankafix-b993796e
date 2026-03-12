@@ -419,7 +419,8 @@ serve(async (req) => {
       persistOps.push(supabase.from("bookings").update(bookingUpdate).eq("id", booking_id));
 
       if (bestMatch) {
-        persistOps.push(supabase.from("partner_notifications").insert({
+        // Phase 7: Partner notification with retry
+        const notificationPayload = {
           partner_id: bestMatch.partner_id,
           booking_id,
           notification_type: "job_offer",
@@ -432,6 +433,37 @@ serve(async (req) => {
             eta_range: { min: bestMatch.eta_min, max: bestMatch.eta_max },
           },
           expires_at: new Date(Date.now() + acceptWindowSec * 1000).toISOString(),
+        };
+
+        const { error: notifError } = await supabase.from("partner_notifications").insert(notificationPayload);
+
+        if (notifError) {
+          console.warn("[smart-dispatch] Notification insert failed, retrying once:", notifError.message);
+          // Retry once after 500ms
+          await new Promise(r => setTimeout(r, 500));
+          const { error: retryError } = await supabase.from("partner_notifications").insert(notificationPayload);
+
+          if (retryError) {
+            console.error("[smart-dispatch] Notification retry failed:", retryError.message);
+            // Log incident for ops visibility
+            await supabase.from("system_incidents").insert({
+              incident_type: "partner_notification_failed",
+              severity: "critical",
+              source: "smart-dispatch",
+              booking_id,
+              partner_id: bestMatch.partner_id,
+              error_message: retryError.message,
+              metadata: { category_code, dispatch_round, retry_attempted: true },
+            }).catch(() => {}); // non-blocking
+          }
+        }
+
+        // Log notification event
+        persistOps.push(supabase.from("notification_events").insert({
+          event_type: "partner_offer_sent",
+          booking_id,
+          partner_id: bestMatch.partner_id,
+          metadata: { category_code, dispatch_round, score: bestMatch.score.total },
         }));
       }
 
