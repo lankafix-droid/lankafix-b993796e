@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { Send, Loader2 } from "lucide-react";
+import { notifyQuoteSubmitted } from "@/services/notificationService";
 
 interface QuoteFormProps {
   bookingId: string;
