@@ -13,7 +13,7 @@ import {
   ArrowLeft, MapPin, Wrench, CheckCircle2,
   ShieldCheck, Clock, AlertTriangle, Loader2,
   FileText, XCircle, Info, Navigation, Play,
-  ThumbsDown, ThumbsUp, Banknote, CircleCheck, Sparkles,
+  ThumbsDown, ThumbsUp, Banknote, CircleCheck, Sparkles, Zap,
 } from "lucide-react";
 import QuoteForm from "@/components/quotes/QuoteForm";
 import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
