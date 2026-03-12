@@ -60,6 +60,7 @@ const Header = () => {
               {link.label}
             </Link>
           ))}
+          <NotificationBell />
           <button
             onClick={toggle}
             className="p-2 rounded-xl hover:bg-muted transition-smooth text-muted-foreground hover:text-foreground"
