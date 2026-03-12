@@ -366,6 +366,9 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     metadata: { serviceType: booking.serviceTypeId, zoneId: zoneCheck.zoneId },
   });
 
+  // Send customer notification (fire-and-forget)
+  notifyBookingCreated(userId, bookingId, flow.name).catch(() => {});
+
   // Also record dispatch_started for operational bookings
   if (!isConsultation) {
     await recordNotificationEvent("dispatch_started", {
