@@ -10,16 +10,8 @@ const TESTIMONIALS = [
   { name: "Dinesh K.", location: "Maharagama", service: "Solar Panel Service", rating: 5, text: "Site inspection was thorough, quote was detailed, and installation was flawless. Transparent from start to finish.", avatar: "DK" },
 ];
 
-const LIVE_ACTIVITIES = [
-  "AC service completed in Colombo 7",
-  "Phone screen replaced in Dehiwala",
-  "CCTV installation started in Rajagiriya",
-  "Laptop repair booked in Nugegoda",
-  "Solar inspection completed in Battaramulla",
-  "AC gas top-up done in Mount Lavinia",
-  "WiFi setup completed in Kaduwela",
-  "Printer repair booked in Colombo 3",
-];
+// LIVE_ACTIVITIES removed — Zero Mock Data policy.
+// Real-time activity toasts will be powered by DB events in a future release.
 
 const STATS = [
   { icon: <Users className="w-5 h-5" />, value: "Thousands", label: "Happy Customers", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
