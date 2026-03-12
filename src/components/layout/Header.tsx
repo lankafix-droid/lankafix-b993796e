@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MapPin, Menu, X, Wrench, User, Moon, Sun } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { useState, useEffect } from "react";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 import { motion, AnimatePresence } from "framer-motion";
@@ -59,6 +60,7 @@ const Header = () => {
               {link.label}
             </Link>
           ))}
+          <NotificationBell />
           <button
             onClick={toggle}
             className="p-2 rounded-xl hover:bg-muted transition-smooth text-muted-foreground hover:text-foreground"
@@ -76,6 +78,7 @@ const Header = () => {
 
         {/* Mobile controls */}
         <div className="md:hidden flex items-center gap-0.5">
+          <NotificationBell />
           <button
             onClick={toggle}
             className="p-2.5 rounded-xl hover:bg-muted transition-smooth text-muted-foreground touch-target"

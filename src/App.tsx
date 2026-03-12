@@ -76,6 +76,7 @@ const RemindersPage = lazy(() => import("./pages/RemindersPage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
 const AccountDeletionPage = lazy(() => import("./pages/AccountDeletionPage"));
 const AccountDeletionPublicPage = lazy(() => import("./pages/AccountDeletionPublicPage"));
+const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
@@ -131,6 +132,7 @@ const App = () => (
             <Route path="/supplies" element={<ConsumablesPage />} />
             <Route path="/home-health" element={<HomeHealthPage />} />
             <Route path="/reminders" element={<RemindersPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
 
             {/* ─── Legacy V2 redirects ─── */}
             <Route path="/v2" element={<Navigate to="/" replace />} />

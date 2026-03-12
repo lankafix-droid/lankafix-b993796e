@@ -13,6 +13,7 @@ import { logIncident } from "@/lib/errorMonitoring";
 import { logLifecycleEvent } from "@/lib/eventLogger";
 import { getInstantPrice } from "@/data/instantPricing";
 import { getPriorityConfig } from "@/data/priorityServiceConfig";
+import { notifyBookingCreated } from "@/services/notificationService";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
@@ -364,6 +365,9 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     dispatchMode: isConsultation ? "manual" : "auto",
     metadata: { serviceType: booking.serviceTypeId, zoneId: zoneCheck.zoneId },
   });
+
+  // Send customer notification (fire-and-forget)
+  notifyBookingCreated(userId, bookingId, flow.name).catch(() => {});
 
   // Also record dispatch_started for operational bookings
   if (!isConsultation) {
