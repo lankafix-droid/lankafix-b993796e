@@ -355,6 +355,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Forecast ──────────────────────────── */}
           <TabsContent value="forecast" className="space-y-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-foreground">Demand Forecast</h2>
               <div className="flex gap-1">
