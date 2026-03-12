@@ -52,6 +52,7 @@ export interface V2BookingState {
   acInstallAddons?: Record<string, number>;
   isEmergency?: boolean;
   diagnosticAnswers?: Record<string, DiagAnswer>;
+  serviceSpeed?: ServiceSpeed;
 }
 
 const INITIAL_STATE: V2BookingState = {
