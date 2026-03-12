@@ -219,11 +219,26 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
   const paymentRows = paymentsRes.data || [];
   const paymentsTotal = paymentRows.reduce((sum: number, r: any) => sum + (r.amount_lkr || 0), 0);
 
+  // Phase 8: Dispatch success rate
+  const dispatchedTotal = dispatchedTodayRes.count ?? 0;
+  const failuresTotal = failuresRes.count ?? 0;
+  const dispatchSuccessRate = dispatchedTotal > 0
+    ? Math.round(((dispatchedTotal - failuresTotal) / dispatchedTotal) * 100)
+    : null;
+
+  // Phase 8: Avg partner response time (seconds)
+  const dispatchRows = dispatchTimeRes.data || [];
+  let avgPartnerResponseSec: number | null = null;
+  if (dispatchRows.length > 0) {
+    const totalSec = dispatchRows.reduce((sum: number, r: any) => sum + (r.response_time_seconds || 0), 0);
+    avgPartnerResponseSec = Math.round(totalSec / dispatchRows.length);
+  }
+
   return {
     active_bookings: activeRes.count ?? 0,
     bookings_today: todayRes.count ?? 0,
     avg_dispatch_time_min: avgDispatch,
-    dispatch_failures: failuresRes.count ?? 0,
+    dispatch_failures: failuresTotal,
     dispatch_escalations: escalationsRes.count ?? 0,
     quotes_pending_approval: quotesRes.count ?? 0,
     jobs_in_progress: inProgressRes.count ?? 0,
@@ -231,6 +246,10 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     payments_today_lkr: paymentsTotal,
     payments_today_count: paymentRows.length,
     fraud_alerts_today: fraudRes.count ?? 0,
+    dispatch_success_rate: dispatchSuccessRate,
+    avg_partner_response_sec: avgPartnerResponseSec,
+    jobs_awaiting_partner: awaitingPartnerRes.count ?? 0,
+    consultation_queue: consultationQueueRes.count ?? 0,
   };
 }
 
