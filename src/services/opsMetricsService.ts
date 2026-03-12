@@ -61,6 +61,10 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     completedRes,
     paymentsRes,
     fraudRes,
+    // Phase 8
+    dispatchedTodayRes,
+    awaitingPartnerRes,
+    consultationQueueRes,
   ] = await Promise.all([
     // 1. Active bookings (not completed/cancelled)
     (() => {
@@ -166,6 +170,39 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
       .select("id", { count: "exact", head: true })
       .gte("created_at", from)
       .lte("created_at", to),
+
+    // 11. Phase 8: Total dispatched today (auto dispatch bookings created today)
+    (() => {
+      let q = supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("dispatch_mode", "auto")
+        .gte("created_at", from)
+        .lte("created_at", to);
+      if (filters.zone) q = q.eq("zone_code", filters.zone);
+      if (filters.category) q = q.eq("category_code", filters.category);
+      return q;
+    })(),
+
+    // 12. Phase 8: Jobs awaiting partner (pending_acceptance or dispatching)
+    (() => {
+      let q = supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .in("dispatch_status", ["pending_acceptance", "dispatching", "pending"])
+        .not("status", "in", '("completed","cancelled")')
+        .eq("dispatch_mode", "auto");
+      if (filters.zone) q = q.eq("zone_code", filters.zone);
+      if (filters.category) q = q.eq("category_code", filters.category);
+      return q;
+    })(),
+
+    // 13. Phase 8: Consultation queue (manual dispatch + requested)
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("dispatch_mode", "manual")
+      .eq("status", "requested"),
   ]);
 
   // Compute avg dispatch time from response_time_seconds
