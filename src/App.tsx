@@ -56,6 +56,7 @@ const WarrantyPage = lazy(() => import("./pages/WarrantyPage"));
 const RefundPage = lazy(() => import("./pages/RefundPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const BypassMonitorPage = lazy(() => import("./pages/ops/BypassMonitorPage"));
+const SupportCasesPage = lazy(() => import("./pages/ops/SupportCasesPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const FAQPage = lazy(() => import("./pages/FAQPage"));
 const HowPricingWorksPage = lazy(() => import("./pages/HowPricingWorksPage"));
