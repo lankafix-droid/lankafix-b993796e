@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentPartner } from "@/hooks/useCurrentPartner";
 import { acceptJob, declineJob, updateJobStatus, startRepair, completeRepair, recordPayment } from "@/services/dispatchService";
 import { track } from "@/lib/analytics";
+import { notifyTechnicianAssigned, notifyTechnicianEnRoute, notifyJobCompleted } from "@/services/notificationService";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
