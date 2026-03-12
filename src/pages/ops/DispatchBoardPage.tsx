@@ -244,6 +244,9 @@ export default function DispatchBoardPage() {
           ))}
         </div>
 
+        {/* Phase 6 — Reliability Alerts */}
+        <OpsReliabilityAlerts />
+
         {/* Tabs */}
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
           {(["escalated", "active", "partners", "availability"] as const).map((tab) => (

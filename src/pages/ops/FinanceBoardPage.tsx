@@ -145,6 +145,9 @@ const FinanceBoardPage = () => {
             <DollarSign className="w-6 h-6 text-primary" /> Finance Board
           </h1>
 
+          {/* Phase 6 — Settlement Exception Alerts */}
+          <OpsReliabilityAlerts detailed />
+
           {/* Commission Revenue Overview */}
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">
             <div className="flex items-center gap-2 mb-3">

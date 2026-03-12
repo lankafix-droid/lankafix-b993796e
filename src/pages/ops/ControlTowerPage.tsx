@@ -94,6 +94,10 @@ export default function ControlTowerPage() {
             ))}
           </div>
         )}
+
+        {/* Phase 6 — Launch Reliability Alerts */}
+        <OpsReliabilityAlerts detailed />
+
         {/* Shortage Alerts */}
         {alerts.length > 0 && (
           <Card className="border-destructive/30 bg-destructive/5">
