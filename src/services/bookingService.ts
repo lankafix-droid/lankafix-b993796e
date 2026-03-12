@@ -198,6 +198,19 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     };
   }
 
+  // 6c. Attach priority service metadata if customer selected priority
+  if (booking.serviceSpeed === "priority") {
+    const priorityCfg = getPriorityConfig(flow.code, booking.serviceTypeId || "");
+    if (priorityCfg) {
+      deviceDetails.priority_service = {
+        is_priority: true,
+        priority_fee_lkr: priorityCfg.priority_fee_lkr,
+        priority_eta_text: priorityCfg.priority_eta_text,
+        selected_speed: "priority",
+      };
+    }
+  }
+
   // 7. Determine pricing archetype
   const pricingArchetype = flow.pricingArchetype === "fixed_price"
     ? "fixed_price" as const
