@@ -1,8 +1,10 @@
 import type { V2FlowOption } from "@/data/v2CategoryFlows";
-import { CheckCircle2, Clock, Tag, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Clock, Tag, ShieldCheck, Flame, Star, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useMemo } from "react";
 import { motion } from "framer-motion";
+import { serviceBadges } from "@/config/serviceBadges";
+import { servicePriceRanges } from "@/config/servicePriceRanges";
 
 interface Props {
   options: V2FlowOption[];
