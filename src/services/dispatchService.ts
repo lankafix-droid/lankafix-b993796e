@@ -209,6 +209,14 @@ export async function completeRepair(bookingId: string, partnerId: string): Prom
     ]);
     if (bookingRes.error) throw bookingRes.error;
 
+    // Phase 7: Log lifecycle event
+    logLifecycleEvent({
+      event: "job_completed",
+      bookingId,
+      categoryCode: "unknown", // category not available here
+      metadata: { partnerId },
+    });
+
     // Fire fraud detection check (non-blocking)
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -220,6 +228,13 @@ export async function completeRepair(bookingId: string, partnerId: string): Prom
 
     return { success: true };
   } catch (e: any) {
+    logIncident({
+      type: "general_error",
+      source: "dispatchService.completeRepair",
+      bookingId,
+      partnerId,
+      error: e,
+    });
     return { success: false, error: e.message || "Failed to complete repair" };
   }
 }

@@ -315,7 +315,7 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     console.warn("[BookingService] Timeline insert failed:", timelineError.message);
   }
 
-  // 13. Record notification events
+  // 13. Record notification events + lifecycle log
   const eventType = isConsultation ? "consultation_requested" : "booking_created";
   await recordNotificationEvent(eventType, {
     bookingId,
@@ -329,6 +329,15 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     },
   });
 
+  // Phase 7: Structured lifecycle event
+  await logLifecycleEvent({
+    event: isConsultation ? "consultation_requested" : "booking_created",
+    bookingId,
+    categoryCode: flow.code,
+    dispatchMode: isConsultation ? "manual" : "auto",
+    metadata: { serviceType: booking.serviceTypeId, zoneId: zoneCheck.zoneId },
+  });
+
   // Also record dispatch_started for operational bookings
   if (!isConsultation) {
     await recordNotificationEvent("dispatch_started", {
@@ -340,10 +349,29 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     // 14. Trigger dispatch engine (fire-and-forget, non-blocking)
     triggerDispatch(bookingId).then((result) => {
       if (!result.success) {
-        console.warn("[BookingService] Dispatch trigger failed:", result.error);
+        logIncident({
+          type: "dispatch_trigger_failed",
+          source: "bookingService.createBooking",
+          bookingId,
+          error: result.error || "Dispatch returned failure",
+          metadata: { category: flow.code },
+        });
+      } else {
+        logLifecycleEvent({
+          event: "dispatch_triggered",
+          bookingId,
+          categoryCode: flow.code,
+          dispatchMode: "auto",
+        });
       }
     }).catch((e) => {
-      console.warn("[BookingService] Dispatch trigger error:", e);
+      logIncident({
+        type: "dispatch_trigger_failed",
+        source: "bookingService.createBooking",
+        bookingId,
+        error: e,
+        metadata: { category: flow.code },
+      });
     });
   }
 
