@@ -11,6 +11,7 @@ import { validateServiceZone } from "@/store/locationStore";
 import { triggerDispatch } from "@/services/dispatchService";
 import { logIncident } from "@/lib/errorMonitoring";
 import { logLifecycleEvent } from "@/lib/eventLogger";
+import { getInstantPrice } from "@/data/instantPricing";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
@@ -183,6 +184,17 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
   }
   if (booking.acInstallAddons) {
     deviceDetails.acInstallAddons = booking.acInstallAddons;
+  }
+
+  // 6b. Attach instant pricing metadata if applicable
+  const instantPriceEntry = getInstantPrice(flow.code, booking.serviceTypeId || "", booking.issueId);
+  if (instantPriceEntry) {
+    deviceDetails.instant_pricing = {
+      booked_via: "instant_price",
+      min_price_lkr: instantPriceEntry.min_price_lkr,
+      max_price_lkr: instantPriceEntry.max_price_lkr,
+      booking_label: instantPriceEntry.booking_label,
+    };
   }
 
   // 7. Determine pricing archetype

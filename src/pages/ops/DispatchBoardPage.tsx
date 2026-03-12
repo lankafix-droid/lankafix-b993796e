@@ -50,7 +50,7 @@ function useActiveBookings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_mode, dispatch_round, created_at, status, partner_id")
+        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_mode, dispatch_round, created_at, status, partner_id, device_details")
         .not("status", "in", '("completed","cancelled")')
         .order("created_at", { ascending: false })
         .limit(100);
@@ -130,9 +130,14 @@ function OpsBookingRow({ booking: b }: { booking: any }) {
           <Badge variant="outline" className="text-[10px]">{b.status?.replace(/_/g, " ")}</Badge>
         </div>
       </div>
-      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
         <MapPin className="w-3 h-3" /> {b.zone_code || "—"}
         {b.is_emergency && <Badge className="bg-destructive/10 text-destructive text-[9px] h-4">SOS</Badge>}
+        {(b.device_details as any)?.instant_pricing && (
+          <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[9px] h-4">
+            Instant Price
+          </Badge>
+        )}
         <span className="ml-auto">{timeSince(b.created_at)}</span>
       </div>
       {quote && (

@@ -13,7 +13,7 @@ import {
   ArrowLeft, MapPin, Wrench, CheckCircle2,
   ShieldCheck, Clock, AlertTriangle, Loader2,
   FileText, XCircle, Info, Navigation, Play,
-  ThumbsDown, ThumbsUp, Banknote, CircleCheck,
+  ThumbsDown, ThumbsUp, Banknote, CircleCheck, Sparkles,
 } from "lucide-react";
 import QuoteForm from "@/components/quotes/QuoteForm";
 import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
@@ -395,6 +395,19 @@ export default function PartnerJobDetailPage() {
             <CardTitle className="text-sm">Job Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
+            {/* Instant Pricing Badge */}
+            {(booking.device_details as any)?.instant_pricing && (
+              <div className="flex items-center gap-2 bg-success/5 border border-success/20 rounded-xl px-3 py-2 mb-1">
+                <Sparkles className="w-4 h-4 text-success shrink-0" />
+                <div>
+                  <span className="text-xs font-bold text-foreground">Instant Price Booking</span>
+                  <span className="text-xs text-muted-foreground ml-1.5">
+                    Est. LKR {((booking.device_details as any).instant_pricing.min_price_lkr || 0).toLocaleString()}
+                    –{((booking.device_details as any).instant_pricing.max_price_lkr || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium text-foreground">{booking.category_code}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span className="font-medium text-foreground">{booking.service_type || "General"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium text-foreground">{(booking.service_mode || "on_site").replace(/_/g, " ")}</span></div>

@@ -29,6 +29,9 @@ import type { DiagAnswer } from "@/data/diagnosticQuestions";
 import { motion, AnimatePresence } from "framer-motion";
 import { getServiceSteps, getServiceTypeConfig } from "@/engines/serviceStepEngine";
 import type { ServiceTypeConfig } from "@/engines/serviceStepEngine";
+import { getInstantPrice } from "@/data/instantPricing";
+import type { InstantPriceEntry } from "@/data/instantPricing";
+import InstantPriceCard from "@/components/v2/booking/InstantPriceCard";
 
 export interface V2BookingState {
   serviceTypeId: string;
@@ -95,6 +98,11 @@ const V2BookingPage = () => {
     if (!flow || !booking.serviceTypeId) return undefined;
     return getServiceTypeConfig(flow.code, booking.serviceTypeId);
   }, [flow, booking.serviceTypeId]);
+
+  const instantPrice: InstantPriceEntry | null = useMemo(() => {
+    if (!flow || !booking.serviceTypeId) return null;
+    return getInstantPrice(flow.code, booking.serviceTypeId, booking.issueId);
+  }, [flow, booking.serviceTypeId, booking.issueId]);
 
   const diagBlock = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
@@ -299,13 +307,17 @@ const V2BookingPage = () => {
                 />
               )}
               {currentStepName === "pricing_expectation" && (
-                <V2PricingExpectation
-                  archetype={activePricingArchetype}
-                  explanation={flow.pricingExplanation}
-                  onContinue={goNext}
-                  categoryCode={flow.code}
-                  serviceType={booking.serviceTypeId || undefined}
-                />
+                instantPrice ? (
+                  <InstantPriceCard entry={instantPrice} onBookNow={goNext} />
+                ) : (
+                  <V2PricingExpectation
+                    archetype={activePricingArchetype}
+                    explanation={flow.pricingExplanation}
+                    onContinue={goNext}
+                    categoryCode={flow.code}
+                    serviceType={booking.serviceTypeId || undefined}
+                  />
+                )
               )}
               {currentStepName === "part_grade" && (
                 <V2PartGradeSelection
