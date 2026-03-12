@@ -203,6 +203,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Supply Analysis ────────────────────── */}
           <TabsContent value="supply" className="space-y-3">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">Technician Supply vs. Demand</h2>
             <div className="space-y-2">
               {supply.map((s, i) => (
