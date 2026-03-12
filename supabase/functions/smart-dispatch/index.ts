@@ -15,6 +15,7 @@ interface DispatchRequest {
   customer_lng: number;
   customer_zone?: string;
   is_emergency: boolean;
+  is_priority?: boolean;
   booking_id?: string;
   dispatch_round?: number;
   exclude_partner_ids?: string[];
