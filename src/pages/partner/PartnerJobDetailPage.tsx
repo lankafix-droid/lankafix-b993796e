@@ -123,6 +123,10 @@ export default function PartnerJobDetailPage() {
     setActionLoading(null);
     if (result.success) {
       toast.success("Job accepted! Prepare to head out.");
+      // Notify customer that technician was assigned
+      if (booking?.customer_id) {
+        notifyTechnicianAssigned(booking.customer_id, jobId, partner.full_name || "Your technician").catch(() => {});
+      }
       refreshAll();
     } else {
       toast.error(result.error || "Failed to accept job");
