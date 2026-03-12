@@ -58,6 +58,7 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
   const pricingBadge = PRICING_BADGES[flow.pricingArchetype];
   const bookingModel = BOOKING_MODEL_LABELS[flow.bookingModel];
   const supportsEmergency = EMERGENCY_CATEGORIES.includes(flow.code);
+  const arrivalEstimate = useMemo(() => getArrivalEstimate(), []);
 
   return (
     <div className="space-y-6">
