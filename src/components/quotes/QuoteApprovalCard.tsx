@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, FileText, Loader2, Shield } from "lucide-react";
+import { notifyQuoteApproved } from "@/services/notificationService";
 
 interface QuoteApprovalCardProps {
   quote: {
