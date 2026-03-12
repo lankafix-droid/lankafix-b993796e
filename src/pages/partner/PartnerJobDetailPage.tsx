@@ -219,7 +219,14 @@ export default function PartnerJobDetailPage() {
     track("repair_completed", { jobId });
     const result = await completeRepair(jobId, partner.id);
     setActionLoading(null);
-    if (result.success) { toast.success("Job completed!"); refreshAll(); }
+    if (result.success) {
+      toast.success("Job completed!");
+      // Notify customer that job is done
+      if (booking?.customer_id) {
+        notifyJobCompleted(booking.customer_id, jobId).catch(() => {});
+      }
+      refreshAll();
+    }
     else toast.error(result.error || "Failed");
   };
 
