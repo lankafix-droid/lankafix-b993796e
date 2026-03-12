@@ -14,6 +14,19 @@ export async function triggerDispatch(bookingId: string): Promise<{
   dispatchStatus?: string;
 }> {
   try {
+    // ─── Safeguard: Block dispatch for consultation categories ───
+    const { data: booking } = await supabase
+      .from("bookings")
+      .select("dispatch_mode, category_code")
+      .eq("id", bookingId)
+      .single();
+
+    if (booking?.dispatch_mode === "manual") {
+      console.warn(
+        `[DispatchService] ⛔ CONSULTATION CATEGORY — AUTO DISPATCH PREVENTED | booking=${bookingId.slice(0, 8)} | category=${booking.category_code}`
+      );
+      return { success: false, error: "Consultation category — manual dispatch only" };
+    }
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
