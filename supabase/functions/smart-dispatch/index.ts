@@ -130,7 +130,7 @@ serve(async (req) => {
     const body: DispatchRequest = await req.json();
     const {
       category_code, service_type, brand, customer_lat, customer_lng,
-      is_emergency, booking_id, customer_zone,
+      is_emergency, is_priority = false, booking_id, customer_zone,
       dispatch_round = 1, exclude_partner_ids = [],
     } = body;
 
