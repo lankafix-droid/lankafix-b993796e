@@ -250,6 +250,12 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
 
   if (bookingError || !bookingData) {
     console.error("[BookingService] Insert failed:", bookingError);
+    await logIncident({
+      type: "booking_creation_failed",
+      source: "bookingService.createBooking",
+      error: bookingError?.message || "Insert returned no data",
+      metadata: { category: flow.code, userId },
+    });
     await recordNotificationEvent("booking_failed", {
       customerId: userId,
       metadata: { category: flow.code, error: bookingError?.message },
