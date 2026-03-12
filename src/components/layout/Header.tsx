@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { MapPin, Menu, X, Wrench, User, Moon, Sun } from "lucide-react";
+import NotificationBell from "@/components/NotificationBell";
 import { useState, useEffect } from "react";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 import { motion, AnimatePresence } from "framer-motion";
