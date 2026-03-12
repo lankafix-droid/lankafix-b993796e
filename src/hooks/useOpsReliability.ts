@@ -1,14 +1,16 @@
 /**
- * Phase 6 — Ops Reliability Hooks
+ * Phase 6+7 — Ops Reliability Hooks
  * Lightweight queries for launch-critical watchpoints.
  * Surfaces: consultation backlog, stuck jobs, settlement exceptions,
- * dispatch escalation backlog, bypass attempts, retention cron health.
+ * dispatch escalation backlog, bypass attempts, retention cron health,
+ * Phase 7: watchdog cron health, system incidents, alert thresholds.
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-/** Thresholds (minutes) */
+/** Thresholds */
 const STUCK_THRESHOLD_MIN = 30;
+const CONSULTATION_BACKLOG_ALERT = 5;
 
 export interface ReliabilitySummary {
   consultationBacklog: number;
@@ -17,10 +19,21 @@ export interface ReliabilitySummary {
   unresolvedEscalations: number;
   bypassAttemptsToday: number;
   retentionCronHealthy: boolean;
+  watchdogCronHealthy: boolean;
+  recentIncidentsCount: number;
+  /** Computed alert flags */
+  alerts: {
+    stuckJobAlert: boolean;
+    consultationBacklogAlert: boolean;
+    settlementAlert: boolean;
+    escalationAlert: boolean;
+    cronAlert: boolean;
+  };
   /** Detail rows for drill-down */
   consultationBookings: { id: string; category_code: string; created_at: string; zone_code: string | null }[];
   stuckBookings: { id: string; category_code: string; status: string; created_at: string; minutes_age: number }[];
   missingSettlements: { id: string; category_code: string; completed_at: string | null; partner_id: string | null }[];
+  recentIncidents: { id: string; incident_type: string; severity: string; source: string; error_message: string | null; created_at: string }[];
 }
 
 function minutesAgo(n: number): string {
@@ -44,6 +57,8 @@ async function fetchReliability(): Promise<ReliabilitySummary> {
     escalationRes,
     bypassRes,
     reminderRes,
+    watchdogRes,
+    incidentRes,
   ] = await Promise.all([
     // 1. Consultation backlog: manual + requested
     supabase
@@ -65,7 +80,6 @@ async function fetchReliability(): Promise<ReliabilitySummary> {
       .limit(50),
 
     // 3. Settlement exceptions: completed bookings with no settlement row
-    // Step A: get recent completed bookings
     supabase
       .from("bookings")
       .select("id, category_code, completed_at, partner_id")
@@ -91,6 +105,22 @@ async function fetchReliability(): Promise<ReliabilitySummary> {
       .from("customer_reminders")
       .select("id", { count: "exact", head: true })
       .gte("created_at", today),
+
+    // 7. Watchdog cron health: any watchdog timeline entries today?
+    supabase
+      .from("job_timeline")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["watchdog_timeout", "watchdog_retry_dispatch", "watchdog_unstuck"])
+      .gte("created_at", today),
+
+    // 8. Recent system incidents (last 24h)
+    supabase
+      .from("system_incidents" as any)
+      .select("id, incident_type, severity, source, error_message, created_at")
+      .gte("created_at", new Date(Date.now() - 24 * 60 * 60_000).toISOString())
+      .is("resolved_at", null)
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   const consultationBookings = (consultRes.data || []) as ReliabilitySummary["consultationBookings"];
@@ -113,16 +143,41 @@ async function fetchReliability(): Promise<ReliabilitySummary> {
     missingSettlements = completedBookings.filter((b: any) => !settledIds.has(b.id)) as any;
   }
 
+  const recentIncidents = ((incidentRes.data || []) as unknown) as ReliabilitySummary["recentIncidents"];
+
+  // Check if watchdog ran today — if there are bookings in early states,
+  // watchdog should have produced timeline entries. If no bookings need recovery,
+  // absence of watchdog entries is fine.
+  const hasActiveBookings = stuckBookings.length > 0;
+  const watchdogRanToday = (watchdogRes.count ?? 0) > 0;
+  // Watchdog is "healthy" if it ran or there's nothing to recover
+  const watchdogCronHealthy = watchdogRanToday || !hasActiveBookings;
+
+  const consultationBacklog = consultationBookings.length;
+  const stuckJobs = stuckBookings.length;
+  const settlementExceptions = missingSettlements.length;
+  const unresolvedEscalations = escalationRes.count ?? 0;
+
   return {
-    consultationBacklog: consultationBookings.length,
-    stuckJobs: stuckBookings.length,
-    settlementExceptions: missingSettlements.length,
-    unresolvedEscalations: escalationRes.count ?? 0,
+    consultationBacklog,
+    stuckJobs,
+    settlementExceptions,
+    unresolvedEscalations,
     bypassAttemptsToday: bypassRes.count ?? 0,
     retentionCronHealthy: (reminderRes.count ?? 0) > 0,
+    watchdogCronHealthy,
+    recentIncidentsCount: recentIncidents.length,
+    alerts: {
+      stuckJobAlert: stuckJobs > 0,
+      consultationBacklogAlert: consultationBacklog > CONSULTATION_BACKLOG_ALERT,
+      settlementAlert: settlementExceptions > 0,
+      escalationAlert: unresolvedEscalations > 0,
+      cronAlert: !watchdogCronHealthy || (reminderRes.count ?? 0) === 0,
+    },
     consultationBookings,
     stuckBookings,
     missingSettlements,
+    recentIncidents,
   };
 }
 
