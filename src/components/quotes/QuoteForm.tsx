@@ -73,6 +73,13 @@ export default function QuoteForm({ bookingId, partnerId, onSubmitted }: QuoteFo
 
       track("quote_submitted", { bookingId, total, partnerId });
       toast.success("Quote submitted successfully!");
+
+      // Notify customer that a quote is ready for review
+      const { data: bk } = await supabase.from("bookings").select("customer_id").eq("id", bookingId).maybeSingle();
+      if (bk?.customer_id) {
+        notifyQuoteSubmitted(bk.customer_id, bookingId).catch(() => {});
+      }
+
       onSubmitted();
     } catch (e: any) {
       toast.error(e.message || "Failed to submit quote");
