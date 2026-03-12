@@ -157,6 +157,22 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
         </motion.div>
       )}
 
+      {/* Technician arrival estimate */}
+      <motion.div
+        className="flex items-center gap-3 bg-success/5 border border-success/20 rounded-2xl px-4 py-3"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.48, duration: 0.4 }}
+      >
+        <div className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+          <Timer className="w-4.5 h-4.5 text-success" />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-foreground">Technician Availability</p>
+          <p className="text-[11px] text-muted-foreground">Next technician arrival: <span className="font-semibold text-success">{arrivalEstimate}</span></p>
+        </div>
+      </motion.div>
+
       {/* Emergency toggle */}
       {supportsEmergency && onEmergencyToggle && (
         <motion.button
