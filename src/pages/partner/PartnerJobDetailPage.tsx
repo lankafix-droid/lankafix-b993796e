@@ -161,6 +161,10 @@ export default function PartnerJobDetailPage() {
         start_work: "Work started. Good luck!",
       };
       toast.success(messages[action]);
+      // Notify customer when technician is en route
+      if (action === "start_travel" && booking?.customer_id) {
+        notifyTechnicianEnRoute(booking.customer_id, jobId, partner.full_name || "Your technician", booking.promised_eta_minutes || 30).catch(() => {});
+      }
       refreshAll();
     } else {
       toast.error(result.error || "Failed to update status");
