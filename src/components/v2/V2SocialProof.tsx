@@ -28,17 +28,6 @@ const V2SocialProof = () => {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const showTimer = setTimeout(() => setShowActivity(true), 3000);
-    const cycleTimer = setInterval(() => {
-      setShowActivity(false);
-      setTimeout(() => {
-        setLiveActivity((p) => (p + 1) % LIVE_ACTIVITIES.length);
-        setShowActivity(true);
-      }, 500);
-    }, 6000);
-    return () => { clearTimeout(showTimer); clearInterval(cycleTimer); };
-  }, []);
 
   const t = TESTIMONIALS[activeTestimonial];
 
