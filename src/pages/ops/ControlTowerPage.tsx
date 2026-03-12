@@ -179,6 +179,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Demand Heatmap (mock — retained) ──── */}
           <TabsContent value="demand" className="space-y-3">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">Zone Demand Heatmap</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {heatmap.map((z) => (
