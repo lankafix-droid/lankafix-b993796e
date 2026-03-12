@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import QuoteForm from "@/components/quotes/QuoteForm";
 import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
+import ReportIssueModal from "@/components/support/ReportIssueModal";
 
 const DECLINE_REASONS = [
   "Too far away",
@@ -34,6 +35,7 @@ export default function PartnerJobDetailPage() {
   const { data: partner } = useCurrentPartner();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeclineReasons, setShowDeclineReasons] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ["partner-booking-detail", jobId],
@@ -524,12 +526,31 @@ export default function PartnerJobDetailPage() {
           </Card>
         )}
 
+        {/* Report Issue */}
+        {isMyJob && (
+          <Button variant="outline" className="w-full rounded-xl h-10 text-sm" onClick={() => setShowReportIssue(true)}>
+            <AlertTriangle className="w-4 h-4 mr-1.5" />
+            Report an Issue
+          </Button>
+        )}
+
         {/* Trust */}
         <div className="flex items-center gap-2 bg-success/5 border border-success/20 rounded-lg p-3">
           <ShieldCheck className="w-4 h-4 text-success shrink-0" />
           <p className="text-xs text-success">No work starts without customer approval. Payment only after completion.</p>
         </div>
       </div>
+
+      {/* Report Issue Modal */}
+      {partner && (
+        <ReportIssueModal
+          open={showReportIssue}
+          onClose={() => setShowReportIssue(false)}
+          bookingId={jobId || ""}
+          userId={partner.user_id || ""}
+          role="partner"
+        />
+      )}
     </div>
   );
 }

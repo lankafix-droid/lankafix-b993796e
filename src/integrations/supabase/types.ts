@@ -1901,6 +1901,53 @@ export type Database = {
         }
         Relationships: []
       }
+      support_cases: {
+        Row: {
+          assigned_to: string | null
+          booking_id: string | null
+          created_at: string
+          description: string
+          id: string
+          issue_type: string
+          priority: string
+          resolved_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          booking_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          issue_type?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          booking_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          issue_type?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_cases_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           attachments: Json | null

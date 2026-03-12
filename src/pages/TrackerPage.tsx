@@ -52,6 +52,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
+import ReportIssueModal from "@/components/support/ReportIssueModal";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -364,6 +365,7 @@ const TrackerPage = () => {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [showOtp, setShowOtp] = useState<"start" | "completion" | null>(null);
   const [showSos, setShowSos] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
   const [simulation, setSimulation] = useState<TrackingSimulation | null>(null);
   const simRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ratingRef = useRef<HTMLDivElement>(null);
@@ -530,9 +532,23 @@ const TrackerPage = () => {
               <span>Protected by LankaFix Service Guarantee</span>
             </div>
 
+            {/* Report Issue */}
+            <Button variant="outline" className="w-full rounded-xl h-11 text-sm" onClick={() => setShowReportIssue(true)}>
+              <Flag className="w-4 h-4 mr-1.5" />
+              Report an Issue
+            </Button>
+
             <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
               Back to Home
             </Button>
+
+            <ReportIssueModal
+              open={showReportIssue}
+              onClose={() => setShowReportIssue(false)}
+              bookingId={dbBooking.id}
+              userId={dbBooking.customer_id || ""}
+              role="customer"
+            />
           </div>
         </main>
         <Footer />
@@ -921,6 +937,23 @@ const TrackerPage = () => {
                   </div>
                 </button>
               )}
+            </Section>
+          )}
+
+          {/* ─── Report Issue ─── */}
+          {booking.status !== "cancelled" && (
+            <Section delay={0.87}>
+              <Button variant="outline" className="w-full rounded-xl h-11 text-sm" onClick={() => setShowReportIssue(true)}>
+                <Flag className="w-4 h-4 mr-1.5" />
+                Report an Issue
+              </Button>
+              <ReportIssueModal
+                open={showReportIssue}
+                onClose={() => setShowReportIssue(false)}
+                bookingId={booking.jobId}
+                userId=""
+                role="customer"
+              />
             </Section>
           )}
 
