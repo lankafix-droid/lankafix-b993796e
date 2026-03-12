@@ -50,7 +50,7 @@ function useActiveBookings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_mode, dispatch_round, created_at, status, partner_id")
+        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_mode, dispatch_round, created_at, status, partner_id, device_details")
         .not("status", "in", '("completed","cancelled")')
         .order("created_at", { ascending: false })
         .limit(100);
