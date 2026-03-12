@@ -32,6 +32,10 @@ import type { ServiceTypeConfig } from "@/engines/serviceStepEngine";
 import { getInstantPrice } from "@/data/instantPricing";
 import type { InstantPriceEntry } from "@/data/instantPricing";
 import InstantPriceCard from "@/components/v2/booking/InstantPriceCard";
+import { getPriorityConfig } from "@/data/priorityServiceConfig";
+import type { PriorityServiceEntry } from "@/data/priorityServiceConfig";
+import PriorityServiceSelector from "@/components/v2/booking/PriorityServiceSelector";
+import type { ServiceSpeed } from "@/components/v2/booking/PriorityServiceSelector";
 
 export interface V2BookingState {
   serviceTypeId: string;
