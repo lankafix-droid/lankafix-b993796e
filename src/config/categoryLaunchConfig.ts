@@ -19,16 +19,16 @@ export interface CategoryLaunchConfig {
 
 const CATEGORY_LAUNCH_MAP: Record<string, CategoryLaunchState> = {
   // ─── Operational — full booking & dispatch ───
-  AC: "operational",
-  MOBILE: "operational",
   IT: "operational",
   CONSUMER_ELEC: "operational",
-  CCTV: "operational",
-  SOLAR: "operational",
   SMART_HOME_OFFICE: "operational",
-  COPIER: "operational",
+  SOLAR: "operational",
 
   // ─── Consultation — manual assignment only ───
+  AC: "consultation",
+  MOBILE: "consultation",
+  CCTV: "consultation",
+  COPIER: "consultation",
   NETWORK: "consultation",
   HOME_SECURITY: "consultation",
   POWER_BACKUP: "consultation",
