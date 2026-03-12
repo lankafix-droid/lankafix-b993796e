@@ -143,7 +143,7 @@ async function fetchReliability(): Promise<ReliabilitySummary> {
     missingSettlements = completedBookings.filter((b: any) => !settledIds.has(b.id)) as any;
   }
 
-  const recentIncidents = (incidentRes.data || []) as ReliabilitySummary["recentIncidents"];
+  const recentIncidents = ((incidentRes.data || []) as unknown) as ReliabilitySummary["recentIncidents"];
 
   // Check if watchdog ran today — if there are bookings in early states,
   // watchdog should have produced timeline entries. If no bookings need recovery,
