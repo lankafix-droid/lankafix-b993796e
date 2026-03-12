@@ -8,6 +8,7 @@ import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, FileText, Loader2, Shield } from "lucide-react";
 import { notifyQuoteApproved } from "@/services/notificationService";
+import { createPaymentRecord } from "@/services/paymentService";
 
 interface QuoteApprovalCardProps {
   quote: {
