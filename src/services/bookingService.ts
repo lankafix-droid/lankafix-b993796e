@@ -239,6 +239,7 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     if (issue) notesParts.push(`Issue: ${issue.label}`);
   }
   if (booking.isEmergency) notesParts.push("🚨 Emergency booking");
+  if (booking.serviceSpeed === "priority") notesParts.push("⚡ Priority Service selected");
   const siteCondEntries = Object.entries(booking.siteConditions);
   if (siteCondEntries.length > 0) {
     notesParts.push(`Site: ${siteCondEntries.map(([k, v]) => `${k}=${v}`).join(", ")}`);
