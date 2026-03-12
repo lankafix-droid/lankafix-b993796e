@@ -325,12 +325,17 @@ serve(async (req) => {
         total: 0,
       };
 
+      // Priority boost: fast-response partners get a modest additive bonus
+      const priorityBoost = is_priority
+        ? (responseRaw >= 85 ? 5 : responseRaw >= 65 ? 3 : 1)
+        : 0;
+
       breakdown.total = Math.max(0, Math.min(100,
         breakdown.proximity + breakdown.specialization + breakdown.rating +
         breakdown.response_speed + breakdown.workload + breakdown.completion_rate +
         breakdown.emergency_priority + breakdown.new_partner_boost +
         breakdown.vehicle_bonus + breakdown.zone_preference +
-        breakdown.performance_signal + breakdown.tier_signal - penalty
+        breakdown.performance_signal + breakdown.tier_signal + priorityBoost - penalty
       ));
 
       const eta = calculateETA(dist, vehicleType);
