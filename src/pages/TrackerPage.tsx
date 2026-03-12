@@ -780,33 +780,7 @@ const TrackerPage = () => {
 
           {/* ═══ BLOCK 4: Collapsible Lower Sections ═══ */}
 
-          {/* Demo controls (collapsible) */}
-          {(booking.status === "assigned" && booking.dispatchStatus === "pending") || booking.status === "tech_en_route" || (booking.status === "arrived" && isQuoteFlow) || booking.status === "quote_approved" || (isQuoteFlow && !booking.quote) ? (
-            <CollapsibleSection title="Demo Controls" icon={Play} delay={0.35}>
-              <div className="space-y-2">
-                {booking.status === "tech_en_route" && (
-                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={() => markArrived(booking.jobId)}>
-                    <MapPin className="w-4 h-4 mr-2" /> Mark Arrived (Demo)
-                  </Button>
-                )}
-                {booking.status === "arrived" && isQuoteFlow && (
-                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={handleDemoInspection}>
-                    <Play className="w-4 h-4 mr-2" /> Start Inspection (Demo)
-                  </Button>
-                )}
-                {booking.status === "quote_approved" && (
-                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={handleDemoRepairStarted}>
-                    <Play className="w-4 h-4 mr-2" /> Start Repair (Demo)
-                  </Button>
-                )}
-                {isQuoteFlow && !booking.quote && (
-                  <Button variant="outline" size="sm" className="w-full rounded-xl h-11" onClick={handleGenerateQuote}>
-                    <FileText className="w-4 h-4 mr-2" /> Generate Quote (Demo)
-                  </Button>
-                )}
-              </div>
-            </CollapsibleSection>
-          ) : null}
+          {/* Demo controls removed for production — partner actions are handled via partner app */}
 
           {/* Trust & Protection */}
           <CollapsibleSection title="Trust & Protection" icon={Shield} delay={0.4}>

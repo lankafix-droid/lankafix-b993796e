@@ -34,23 +34,6 @@ const V2SocialProof = () => {
   return (
     <section className="py-12 md:py-16">
       <div className="container space-y-12">
-        {/* Live Activity Toast — refined positioning */}
-        <AnimatePresence>
-          {showActivity && (
-            <motion.div
-              initial={{ opacity: 0, y: 20, x: "-50%" }}
-              animate={{ opacity: 1, y: 0, x: "-50%" }}
-              exit={{ opacity: 0, y: -10, x: "-50%" }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="fixed bottom-24 left-1/2 z-40 bg-card border border-border/50 rounded-full px-5 py-3 flex items-center gap-2.5 max-w-[90vw]"
-              style={{ boxShadow: "var(--shadow-lg)" }}
-            >
-              <span className="w-2 h-2 rounded-full bg-success animate-pulse shrink-0" />
-              <p className="text-xs font-medium text-foreground whitespace-nowrap">{LIVE_ACTIVITIES[liveActivity]}</p>
-              <span className="text-[10px] text-muted-foreground font-medium">just now</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Trust message */}
         <motion.p
