@@ -398,6 +398,7 @@ export default function ControlTowerPage() {
 
           {/* ─── Expansion ─────────────────────────── */}
           <TabsContent value="expansion" className="space-y-4">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg px-3 py-2 mb-2 text-xs text-warning font-medium">⚠️ SIMULATED DATA — For planning purposes only. Not connected to live database.</div>
             <h2 className="font-semibold text-foreground">District Expansion Readiness</h2>
             <div className="space-y-2">
               {expansion.map((d) => (
