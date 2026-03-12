@@ -91,7 +91,7 @@ export async function getUserNotifications(limit = 50): Promise<AppNotification[
     console.warn("[NotificationService] Fetch failed:", error.message);
     return [];
   }
-  return (data as AppNotification[]) || [];
+  return (data as unknown as AppNotification[]) || [];
 }
 
 /**
