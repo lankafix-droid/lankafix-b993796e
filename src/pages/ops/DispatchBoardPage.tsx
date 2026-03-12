@@ -8,9 +8,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useOpsMetrics } from "@/services/opsMetricsService";
+import { detectRiskPartner, type RiskLevel, RISK_COLORS } from "@/services/partnerIntelligence";
 import {
   Zap, AlertTriangle, CheckCircle2, Users, ArrowRight,
-  RefreshCw, MapPin, Radio, Flag, Clock, UserCheck, FileText,
+  RefreshCw, MapPin, Radio, Flag, Clock, UserCheck, FileText, Sparkles,
 } from "lucide-react";
 
 interface EscalatedBooking {
