@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import OpsReliabilityAlerts from "@/components/ops/OpsReliabilityAlerts";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
@@ -242,6 +243,9 @@ export default function DispatchBoardPage() {
             </Card>
           ))}
         </div>
+
+        {/* Phase 6 — Reliability Alerts */}
+        <OpsReliabilityAlerts />
 
         {/* Tabs */}
         <div className="flex gap-1 bg-muted/50 rounded-lg p-1">

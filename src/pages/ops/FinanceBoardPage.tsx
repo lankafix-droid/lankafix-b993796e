@@ -18,6 +18,7 @@ import { useOpsMetrics } from "@/services/opsMetricsService";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import QuoteBenchmarkCard from "@/components/ops/QuoteBenchmarkCard";
+import OpsReliabilityAlerts from "@/components/ops/OpsReliabilityAlerts";
 
 const FinanceBoardPage = () => {
   const bookings = useBookingStore((s) => s.bookings);
@@ -143,6 +144,9 @@ const FinanceBoardPage = () => {
           <h1 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
             <DollarSign className="w-6 h-6 text-primary" /> Finance Board
           </h1>
+
+          {/* Phase 6 — Settlement Exception Alerts */}
+          <OpsReliabilityAlerts detailed />
 
           {/* Commission Revenue Overview */}
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6">

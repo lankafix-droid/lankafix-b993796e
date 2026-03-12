@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle, Rocket, Target, Megaphone, Layers, Zap, CheckCircle2, Clock, FileText, Shield } from "lucide-react";
+import OpsReliabilityAlerts from "@/components/ops/OpsReliabilityAlerts";
 import { useOpsMetrics } from "@/services/opsMetricsService";
 import { useZoneIntelligence, type ZoneHealthStatus } from "@/services/zoneIntelligenceService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,6 +94,10 @@ export default function ControlTowerPage() {
             ))}
           </div>
         )}
+
+        {/* Phase 6 — Launch Reliability Alerts */}
+        <OpsReliabilityAlerts detailed />
+
         {/* Shortage Alerts */}
         {alerts.length > 0 && (
           <Card className="border-destructive/30 bg-destructive/5">
