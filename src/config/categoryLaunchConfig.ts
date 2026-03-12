@@ -25,6 +25,10 @@ const CATEGORY_LAUNCH_MAP: Record<string, CategoryLaunchState> = {
   SOLAR: "operational",
 
   // ─── Consultation — manual assignment only ───
+  AC: "consultation",
+  MOBILE: "consultation",
+  CCTV: "consultation",
+  COPIER: "consultation",
   NETWORK: "consultation",
   HOME_SECURITY: "consultation",
   POWER_BACKUP: "consultation",
