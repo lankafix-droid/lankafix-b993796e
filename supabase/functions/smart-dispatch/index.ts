@@ -385,7 +385,7 @@ serve(async (req) => {
     else if (dispatchMode === "top_3") resultCandidates = scored.slice(0, 3);
 
     const bestMatch = resultCandidates[0] || null;
-    const acceptWindowSec = is_emergency ? 30 : 60;
+    const acceptWindowSec = is_emergency ? 30 : is_priority ? 45 : 60;
 
     // 4. Persist dispatch logs + booking state + notifications
     if (booking_id) {
