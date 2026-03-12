@@ -370,6 +370,16 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
   // Send customer notification (fire-and-forget)
   notifyBookingCreated(userId, bookingId, flow.name).catch(() => {});
 
+  // Fire-and-forget: create diagnostic payment record if applicable
+  if (pricingArchetype === "diagnostic_first" && estimatedPrice && estimatedPrice > 0) {
+    createPaymentRecord({
+      bookingId,
+      userId,
+      amount: estimatedPrice,
+      paymentType: "diagnostic",
+    }).catch(() => {});
+  }
+
   // Also record dispatch_started for operational bookings
   if (!isConsultation) {
     await recordNotificationEvent("dispatch_started", {

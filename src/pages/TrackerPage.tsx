@@ -56,6 +56,7 @@ import ReportIssueModal from "@/components/support/ReportIssueModal";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getPaymentForBooking } from "@/services/paymentService";
 import { useTechnicianTracking } from "@/hooks/useTechnicianTracking";
 import { getTrafficLabel } from "@/lib/etaEngine";
 
