@@ -14,6 +14,7 @@ import { logLifecycleEvent } from "@/lib/eventLogger";
 import { getInstantPrice } from "@/data/instantPricing";
 import { getPriorityConfig } from "@/data/priorityServiceConfig";
 import { notifyBookingCreated } from "@/services/notificationService";
+import { createPaymentRecord } from "@/services/paymentService";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
