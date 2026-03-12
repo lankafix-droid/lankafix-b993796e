@@ -70,6 +70,12 @@ const V2ServiceSelection = ({ options, selected, onSelect, title }: Props) => {
                             {opt.tag}
                           </Badge>
                         )}
+                        {serviceBadges[opt.id] && (
+                          <Badge variant="secondary" className="text-[10px] bg-accent/60 text-accent-foreground py-0 px-1.5 gap-0.5">
+                            <Flame className="w-2.5 h-2.5" />
+                            {serviceBadges[opt.id]}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{opt.description}</p>
                       {(opt.priceLabel || opt.estimatedTime) && (
