@@ -49,7 +49,7 @@ function useActiveBookings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_round, created_at, status, partner_id")
+        .select("id, category_code, service_type, zone_code, is_emergency, dispatch_status, dispatch_mode, dispatch_round, created_at, status, partner_id")
         .not("status", "in", '("completed","cancelled")')
         .order("created_at", { ascending: false })
         .limit(100);
@@ -122,7 +122,12 @@ function OpsBookingRow({ booking: b }: { booking: any }) {
           <p className="text-sm font-medium font-mono">{b.id.slice(0, 8)}</p>
           <p className="text-xs text-muted-foreground">{b.category_code} • {b.service_type || "general"}</p>
         </div>
-        <Badge variant="outline" className="text-[10px]">{b.status?.replace(/_/g, " ")}</Badge>
+        <div className="flex items-center gap-1">
+          <Badge variant="outline" className={`text-[9px] ${b.dispatch_mode === "manual" ? "bg-amber-500/10 text-amber-700" : "bg-emerald-500/10 text-emerald-700"}`}>
+            {b.dispatch_mode === "manual" ? "MANUAL" : "AUTO"}
+          </Badge>
+          <Badge variant="outline" className="text-[10px]">{b.status?.replace(/_/g, " ")}</Badge>
+        </div>
       </div>
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
         <MapPin className="w-3 h-3" /> {b.zone_code || "—"}

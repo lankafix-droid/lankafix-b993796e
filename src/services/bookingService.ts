@@ -257,6 +257,11 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
 
   const bookingId = bookingData.id;
 
+  // ─── Phase-1 Launch Instrumentation ───
+  console.info(
+    `[BookingService] ✅ CREATED | id=${bookingId.slice(0, 8)} | category=${flow.code} | dispatch_mode=${isConsultation ? "MANUAL" : "AUTO"} | zone=${zoneCheck.zoneId || "none"}`
+  );
+
   // 12. Create timeline events
   const timelineEvents = isConsultation
     ? [
