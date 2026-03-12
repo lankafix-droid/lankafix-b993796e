@@ -186,6 +186,17 @@ export async function createBooking(payload: BookingCreatePayload): Promise<Book
     deviceDetails.acInstallAddons = booking.acInstallAddons;
   }
 
+  // 6b. Attach instant pricing metadata if applicable
+  const instantPriceEntry = getInstantPrice(flow.code, booking.serviceTypeId || "", booking.issueId);
+  if (instantPriceEntry) {
+    deviceDetails.instant_pricing = {
+      booked_via: "instant_price",
+      min_price_lkr: instantPriceEntry.min_price_lkr,
+      max_price_lkr: instantPriceEntry.max_price_lkr,
+      booking_label: instantPriceEntry.booking_label,
+    };
+  }
+
   // 7. Determine pricing archetype
   const pricingArchetype = flow.pricingArchetype === "fixed_price"
     ? "fixed_price" as const
