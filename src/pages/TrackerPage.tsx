@@ -365,6 +365,7 @@ const TrackerPage = () => {
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [showOtp, setShowOtp] = useState<"start" | "completion" | null>(null);
   const [showSos, setShowSos] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
   const [simulation, setSimulation] = useState<TrackingSimulation | null>(null);
   const simRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const ratingRef = useRef<HTMLDivElement>(null);
