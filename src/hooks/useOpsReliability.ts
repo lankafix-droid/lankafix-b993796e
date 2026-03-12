@@ -59,7 +59,7 @@ async function fetchReliability(): Promise<ReliabilitySummary> {
       .from("bookings")
       .select("id, category_code, status, created_at")
       .not("status", "in", '("completed","cancelled")')
-      .in("status", ["requested", "pending_dispatch", "provider_offered"])
+      .in("status", ["requested", "matching", "awaiting_partner_confirmation"])
       .lt("created_at", cutoff)
       .order("created_at", { ascending: true })
       .limit(50),
