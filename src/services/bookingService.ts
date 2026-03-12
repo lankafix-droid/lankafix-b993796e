@@ -9,6 +9,8 @@ import type { V2CategoryFlow } from "@/data/v2CategoryFlows";
 import { isCategoryConsultation, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
 import { validateServiceZone } from "@/store/locationStore";
 import { triggerDispatch } from "@/services/dispatchService";
+import { logIncident } from "@/lib/errorMonitoring";
+import { logLifecycleEvent } from "@/lib/eventLogger";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
