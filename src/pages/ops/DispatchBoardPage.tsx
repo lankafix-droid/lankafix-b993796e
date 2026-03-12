@@ -181,6 +181,10 @@ export default function DispatchBoardPage() {
     { label: "Assigned", value: assigned.length, icon: CheckCircle2, color: "text-success" },
     { label: "Quotes", value: metrics?.quotes_pending_approval ?? 0, icon: FileText, color: "text-warning" },
     { label: "Avg Dispatch", value: metrics?.avg_dispatch_time_min != null ? `${metrics.avg_dispatch_time_min}m` : "—", icon: Clock, color: "text-muted-foreground" },
+    { label: "Dispatch Rate", value: metrics?.dispatch_success_rate != null ? `${metrics.dispatch_success_rate}%` : "—", icon: Flag, color: metrics?.dispatch_success_rate != null && metrics.dispatch_success_rate < 80 ? "text-destructive" : "text-success" },
+    { label: "Resp Time", value: metrics?.avg_partner_response_sec != null ? `${metrics.avg_partner_response_sec}s` : "—", icon: Clock, color: "text-muted-foreground" },
+    { label: "Awaiting", value: metrics?.jobs_awaiting_partner ?? 0, icon: RefreshCw, color: (metrics?.jobs_awaiting_partner ?? 0) > 0 ? "text-warning" : "text-muted-foreground" },
+    { label: "Consult Q", value: metrics?.consultation_queue ?? 0, icon: Users, color: (metrics?.consultation_queue ?? 0) > 5 ? "text-destructive" : (metrics?.consultation_queue ?? 0) > 0 ? "text-warning" : "text-muted-foreground" },
   ];
 
   const handleOpsAssign = async (bookingId: string) => {
@@ -232,7 +236,7 @@ export default function DispatchBoardPage() {
 
       <div className="p-4 space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {stats.map((s) => (
             <Card key={s.label}>
               <CardContent className="p-3 text-center">

@@ -32,6 +32,11 @@ export interface OpsMetrics {
   payments_today_lkr: number;
   payments_today_count: number;
   fraud_alerts_today: number;
+  /** Phase 8: Soft launch ops metrics */
+  dispatch_success_rate: number | null;
+  avg_partner_response_sec: number | null;
+  jobs_awaiting_partner: number;
+  consultation_queue: number;
 }
 
 function todayStart(): string {
@@ -56,6 +61,10 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     completedRes,
     paymentsRes,
     fraudRes,
+    // Phase 8
+    dispatchedTodayRes,
+    awaitingPartnerRes,
+    consultationQueueRes,
   ] = await Promise.all([
     // 1. Active bookings (not completed/cancelled)
     (() => {
@@ -161,6 +170,39 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
       .select("id", { count: "exact", head: true })
       .gte("created_at", from)
       .lte("created_at", to),
+
+    // 11. Phase 8: Total dispatched today (auto dispatch bookings created today)
+    (() => {
+      let q = supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("dispatch_mode", "auto")
+        .gte("created_at", from)
+        .lte("created_at", to);
+      if (filters.zone) q = q.eq("zone_code", filters.zone);
+      if (filters.category) q = q.eq("category_code", filters.category);
+      return q;
+    })(),
+
+    // 12. Phase 8: Jobs awaiting partner (pending_acceptance or dispatching)
+    (() => {
+      let q = supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .in("dispatch_status", ["pending_acceptance", "dispatching", "pending"])
+        .not("status", "in", '("completed","cancelled")')
+        .eq("dispatch_mode", "auto");
+      if (filters.zone) q = q.eq("zone_code", filters.zone);
+      if (filters.category) q = q.eq("category_code", filters.category);
+      return q;
+    })(),
+
+    // 13. Phase 8: Consultation queue (manual dispatch + requested)
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("dispatch_mode", "manual")
+      .eq("status", "requested"),
   ]);
 
   // Compute avg dispatch time from response_time_seconds
@@ -177,11 +219,26 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
   const paymentRows = paymentsRes.data || [];
   const paymentsTotal = paymentRows.reduce((sum: number, r: any) => sum + (r.amount_lkr || 0), 0);
 
+  // Phase 8: Dispatch success rate
+  const dispatchedTotal = dispatchedTodayRes.count ?? 0;
+  const failuresTotal = failuresRes.count ?? 0;
+  const dispatchSuccessRate = dispatchedTotal > 0
+    ? Math.round(((dispatchedTotal - failuresTotal) / dispatchedTotal) * 100)
+    : null;
+
+  // Phase 8: Avg partner response time (seconds)
+  const dispatchRows = dispatchTimeRes.data || [];
+  let avgPartnerResponseSec: number | null = null;
+  if (dispatchRows.length > 0) {
+    const totalSec = dispatchRows.reduce((sum: number, r: any) => sum + (r.response_time_seconds || 0), 0);
+    avgPartnerResponseSec = Math.round(totalSec / dispatchRows.length);
+  }
+
   return {
     active_bookings: activeRes.count ?? 0,
     bookings_today: todayRes.count ?? 0,
     avg_dispatch_time_min: avgDispatch,
-    dispatch_failures: failuresRes.count ?? 0,
+    dispatch_failures: failuresTotal,
     dispatch_escalations: escalationsRes.count ?? 0,
     quotes_pending_approval: quotesRes.count ?? 0,
     jobs_in_progress: inProgressRes.count ?? 0,
@@ -189,6 +246,10 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     payments_today_lkr: paymentsTotal,
     payments_today_count: paymentRows.length,
     fraud_alerts_today: fraudRes.count ?? 0,
+    dispatch_success_rate: dispatchSuccessRate,
+    avg_partner_response_sec: avgPartnerResponseSec,
+    jobs_awaiting_partner: awaitingPartnerRes.count ?? 0,
+    consultation_queue: consultationQueueRes.count ?? 0,
   };
 }
 
