@@ -109,6 +109,11 @@ const V2BookingPage = () => {
     return getInstantPrice(flow.code, booking.serviceTypeId, booking.issueId);
   }, [flow, booking.serviceTypeId, booking.issueId]);
 
+  const priorityConfig: PriorityServiceEntry | null = useMemo(() => {
+    if (!flow || !booking.serviceTypeId) return null;
+    return getPriorityConfig(flow.code, booking.serviceTypeId);
+  }, [flow, booking.serviceTypeId]);
+
   const diagBlock = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
     return getDiagnosticBlock(flow.code, booking.serviceTypeId);
