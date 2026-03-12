@@ -236,7 +236,7 @@ export default function DispatchBoardPage() {
 
       <div className="p-4 space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {stats.map((s) => (
             <Card key={s.label}>
               <CardContent className="p-3 text-center">
