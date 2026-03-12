@@ -11,6 +11,7 @@ import { validateServiceZone } from "@/store/locationStore";
 import { triggerDispatch } from "@/services/dispatchService";
 import { logIncident } from "@/lib/errorMonitoring";
 import { logLifecycleEvent } from "@/lib/eventLogger";
+import { getInstantPrice } from "@/data/instantPricing";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
