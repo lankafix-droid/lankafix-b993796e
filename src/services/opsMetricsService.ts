@@ -32,6 +32,11 @@ export interface OpsMetrics {
   payments_today_lkr: number;
   payments_today_count: number;
   fraud_alerts_today: number;
+  /** Phase 8: Soft launch ops metrics */
+  dispatch_success_rate: number | null;
+  avg_partner_response_sec: number | null;
+  jobs_awaiting_partner: number;
+  consultation_queue: number;
 }
 
 function todayStart(): string {
