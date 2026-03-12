@@ -307,13 +307,17 @@ const V2BookingPage = () => {
                 />
               )}
               {currentStepName === "pricing_expectation" && (
-                <V2PricingExpectation
-                  archetype={activePricingArchetype}
-                  explanation={flow.pricingExplanation}
-                  onContinue={goNext}
-                  categoryCode={flow.code}
-                  serviceType={booking.serviceTypeId || undefined}
-                />
+                instantPrice ? (
+                  <InstantPriceCard entry={instantPrice} onBookNow={goNext} />
+                ) : (
+                  <V2PricingExpectation
+                    archetype={activePricingArchetype}
+                    explanation={flow.pricingExplanation}
+                    onContinue={goNext}
+                    categoryCode={flow.code}
+                    serviceType={booking.serviceTypeId || undefined}
+                  />
+                )
               )}
               {currentStepName === "part_grade" && (
                 <V2PartGradeSelection
