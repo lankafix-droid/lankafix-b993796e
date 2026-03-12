@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentPartner } from "@/hooks/useCurrentPartner";
 import { acceptJob, declineJob, updateJobStatus, startRepair, completeRepair, recordPayment } from "@/services/dispatchService";
 import { track } from "@/lib/analytics";
+import { notifyTechnicianAssigned, notifyTechnicianEnRoute, notifyJobCompleted } from "@/services/notificationService";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -122,6 +123,10 @@ export default function PartnerJobDetailPage() {
     setActionLoading(null);
     if (result.success) {
       toast.success("Job accepted! Prepare to head out.");
+      // Notify customer that technician was assigned
+      if (booking?.customer_id) {
+        notifyTechnicianAssigned(booking.customer_id, jobId, partner.full_name || "Your technician").catch(() => {});
+      }
       refreshAll();
     } else {
       toast.error(result.error || "Failed to accept job");
@@ -156,6 +161,10 @@ export default function PartnerJobDetailPage() {
         start_work: "Work started. Good luck!",
       };
       toast.success(messages[action]);
+      // Notify customer when technician is en route
+      if (action === "start_travel" && booking?.customer_id) {
+        notifyTechnicianEnRoute(booking.customer_id, jobId, partner.full_name || "Your technician", booking.promised_eta_minutes || 30).catch(() => {});
+      }
       refreshAll();
     } else {
       toast.error(result.error || "Failed to update status");
@@ -210,7 +219,14 @@ export default function PartnerJobDetailPage() {
     track("repair_completed", { jobId });
     const result = await completeRepair(jobId, partner.id);
     setActionLoading(null);
-    if (result.success) { toast.success("Job completed!"); refreshAll(); }
+    if (result.success) {
+      toast.success("Job completed!");
+      // Notify customer that job is done
+      if (booking?.customer_id) {
+        notifyJobCompleted(booking.customer_id, jobId).catch(() => {});
+      }
+      refreshAll();
+    }
     else toast.error(result.error || "Failed");
   };
 

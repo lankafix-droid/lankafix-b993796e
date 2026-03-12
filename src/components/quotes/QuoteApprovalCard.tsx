@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle, FileText, Loader2, Shield } from "lucide-react";
+import { notifyQuoteApproved } from "@/services/notificationService";
 
 interface QuoteApprovalCardProps {
   quote: {
@@ -57,6 +58,16 @@ export default function QuoteApprovalCard({ quote, onAction }: QuoteApprovalCard
 
       track("quote_approved", { bookingId: quote.booking_id, quoteId: quote.id, total: quote.total_lkr });
       toast.success("Quote approved! Repair will begin shortly.");
+
+      // Notify partner that their quote was approved
+      const { data: bk } = await supabase.from("bookings").select("partner_id").eq("id", quote.booking_id).maybeSingle();
+      if (bk?.partner_id) {
+        const { data: p } = await supabase.from("partners").select("user_id").eq("id", bk.partner_id).maybeSingle();
+        if (p?.user_id) {
+          notifyQuoteApproved(p.user_id, quote.booking_id).catch(() => {});
+        }
+      }
+
       onAction();
     } catch (e: any) {
       toast.error(e.message || "Failed to approve quote");
