@@ -18,6 +18,7 @@ import { useOpsMetrics } from "@/services/opsMetricsService";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import QuoteBenchmarkCard from "@/components/ops/QuoteBenchmarkCard";
+import OpsReliabilityAlerts from "@/components/ops/OpsReliabilityAlerts";
 
 const FinanceBoardPage = () => {
   const bookings = useBookingStore((s) => s.bookings);
