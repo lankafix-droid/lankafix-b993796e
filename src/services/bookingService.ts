@@ -12,6 +12,7 @@ import { triggerDispatch } from "@/services/dispatchService";
 import { logIncident } from "@/lib/errorMonitoring";
 import { logLifecycleEvent } from "@/lib/eventLogger";
 import { getInstantPrice } from "@/data/instantPricing";
+import { getPriorityConfig } from "@/data/priorityServiceConfig";
 
 export interface BookingCreatePayload {
   flow: V2CategoryFlow;
