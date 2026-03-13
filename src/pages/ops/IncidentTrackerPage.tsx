@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  ArrowLeft, RefreshCw, Loader2, AlertTriangle, CheckCircle2, XCircle,
+  ArrowLeft, RefreshCw, Loader2, CheckCircle2,
   ExternalLink, Filter, ShieldAlert,
 } from "lucide-react";
 
@@ -14,15 +14,9 @@ const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2
 const SEVERITY_STYLES: Record<string, string> = {
   critical: "bg-destructive/10 text-destructive border-destructive/30",
   high: "bg-destructive/5 text-destructive/80 border-destructive/20",
-  medium: "bg-warning/10 text-warning-foreground border-warning/30",
+  medium: "bg-amber-500/10 text-amber-600 border-amber-500/30",
   low: "bg-muted text-muted-foreground border-border",
 };
-
-const INCIDENT_TYPES = [
-  "dispatch_timeout", "dispatch_failed", "sla_breach", "payment_failed",
-  "partner_cancellation", "rating_low", "supply_gap_detected", "quote_stale",
-  "trust_recovery", "partner_low_acceptance", "partner_under_review",
-];
 
 const TYPE_LABELS: Record<string, string> = {
   dispatch_timeout: "Dispatch Timeout",
@@ -40,6 +34,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 type FilterSeverity = "all" | "critical" | "high" | "medium" | "low";
+type SourceFilter = "all" | "live" | "simulation";
 
 export default function IncidentTrackerPage() {
   const navigate = useNavigate();
@@ -47,6 +42,7 @@ export default function IncidentTrackerPage() {
   const [loading, setLoading] = useState(true);
   const [sevFilter, setSevFilter] = useState<FilterSeverity>("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("live");
 
   const load = async () => {
     setLoading(true);
@@ -54,7 +50,7 @@ export default function IncidentTrackerPage() {
       .from("automation_event_log")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(300);
     setEvents(data || []);
     setLoading(false);
   };
@@ -63,18 +59,24 @@ export default function IncidentTrackerPage() {
 
   const filtered = useMemo(() => {
     let list = events;
+    // Source filter
+    if (sourceFilter === "live") list = list.filter(e => !(e.metadata as any)?.simulation);
+    else if (sourceFilter === "simulation") list = list.filter(e => (e.metadata as any)?.simulation === true);
     if (sevFilter !== "all") list = list.filter(e => e.severity === sevFilter);
     if (typeFilter !== "all") list = list.filter(e => e.event_type === typeFilter);
     return list.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9));
-  }, [events, sevFilter, typeFilter]);
+  }, [events, sevFilter, typeFilter, sourceFilter]);
 
   const severityCounts = useMemo(() => {
+    const base = sourceFilter === "live" ? events.filter(e => !(e.metadata as any)?.simulation)
+      : sourceFilter === "simulation" ? events.filter(e => (e.metadata as any)?.simulation === true)
+      : events;
     const c: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
-    events.forEach(e => { c[e.severity] = (c[e.severity] || 0) + 1; });
+    base.forEach(e => { c[e.severity] = (c[e.severity] || 0) + 1; });
     return c;
-  }, [events]);
+  }, [events, sourceFilter]);
 
-  const eventTypes = useMemo(() => [...new Set(events.map(e => e.event_type))], [events]);
+  const eventTypes = useMemo(() => [...new Set(filtered.map(e => e.event_type))], [filtered]);
 
   if (loading) {
     return (
@@ -95,7 +97,7 @@ export default function IncidentTrackerPage() {
             <h1 className="text-lg font-bold flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-primary" /> Incident Tracker
             </h1>
-            <p className="text-[11px] text-muted-foreground">{events.length} events logged</p>
+            <p className="text-[11px] text-muted-foreground">{filtered.length} incidents · {sourceFilter === "live" ? "Live only" : sourceFilter === "simulation" ? "Simulations only" : "All"}</p>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={load}>
             <RefreshCw className="w-4 h-4" />
@@ -104,6 +106,21 @@ export default function IncidentTrackerPage() {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Source filter */}
+        <div className="flex gap-1.5 items-center">
+          <span className="text-[10px] text-muted-foreground font-medium">Source:</span>
+          {(["live", "simulation", "all"] as const).map(s => (
+            <Badge
+              key={s}
+              variant={sourceFilter === s ? "default" : "outline"}
+              className="text-[10px] cursor-pointer capitalize"
+              onClick={() => setSourceFilter(s)}
+            >
+              {s === "live" ? "🟢 Live" : s === "simulation" ? "🔵 Simulation" : "All"}
+            </Badge>
+          ))}
+        </div>
+
         {/* Severity summary */}
         <div className="grid grid-cols-4 gap-2">
           {(["critical", "high", "medium", "low"] as const).map(sev => (
@@ -112,7 +129,7 @@ export default function IncidentTrackerPage() {
               className={`p-3 text-center cursor-pointer ${sevFilter === sev ? "ring-2 ring-primary" : ""} ${sev === "critical" && severityCounts.critical > 0 ? "border-destructive/30" : ""}`}
               onClick={() => setSevFilter(sevFilter === sev ? "all" : sev)}
             >
-              <p className={`text-lg font-bold ${sev === "critical" && severityCounts.critical > 0 ? "text-destructive" : "text-foreground"}`}>
+              <p className={`text-lg font-bold ${sev === "critical" && severityCounts.critical > 0 ? "text-destructive" : sev === "high" && severityCounts.high > 0 ? "text-destructive/80" : "text-foreground"}`}>
                 {severityCounts[sev]}
               </p>
               <p className="text-[9px] text-muted-foreground capitalize">{sev}</p>
@@ -123,7 +140,7 @@ export default function IncidentTrackerPage() {
         {/* Type filters */}
         <div className="flex gap-1.5 flex-wrap items-center">
           <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-          <Badge variant={typeFilter === "all" ? "default" : "outline"} className="text-[10px] cursor-pointer" onClick={() => setTypeFilter("all")}>All</Badge>
+          <Badge variant={typeFilter === "all" ? "default" : "outline"} className="text-[10px] cursor-pointer" onClick={() => setTypeFilter("all")}>All Types</Badge>
           {eventTypes.map(t => (
             <Badge key={t} variant={typeFilter === t ? "default" : "outline"} className="text-[10px] cursor-pointer" onClick={() => setTypeFilter(t)}>
               {TYPE_LABELS[t] || t.replace(/_/g, " ")}
@@ -141,7 +158,7 @@ export default function IncidentTrackerPage() {
               </Card>
             )}
             {filtered.map(e => {
-              const meta = e.metadata || {};
+              const meta = (e.metadata || {}) as any;
               const isSimulation = meta.simulation === true;
               return (
                 <Card key={e.id} className={`border ${SEVERITY_STYLES[e.severity] || ""}`}>
@@ -153,7 +170,7 @@ export default function IncidentTrackerPage() {
                       <span className="text-xs font-semibold text-foreground">
                         {TYPE_LABELS[e.event_type] || e.event_type.replace(/_/g, " ")}
                       </span>
-                      {isSimulation && <Badge variant="outline" className="text-[9px] bg-accent/50">SIM</Badge>}
+                      {isSimulation && <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/20">SIM</Badge>}
                       <span className="text-[9px] text-muted-foreground ml-auto">
                         {new Date(e.created_at).toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </span>
@@ -163,7 +180,7 @@ export default function IncidentTrackerPage() {
                       {e.booking_id && (
                         <button
                           className="flex items-center gap-0.5 text-primary hover:underline"
-                          onClick={() => navigate(`/track/${e.booking_id}`)}
+                          onClick={(ev) => { ev.stopPropagation(); navigate(`/track/${e.booking_id}`); }}
                         >
                           <ExternalLink className="w-3 h-3" /> {e.booking_id.slice(0, 8)}
                         </button>
