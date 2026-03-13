@@ -516,11 +516,12 @@ export default function PartnerJobDetailPage() {
                       {q.total_lkr ? `LKR ${q.total_lkr.toLocaleString()}` : "—"}
                     </span>
                     <Badge variant="outline" className={`text-[10px] ${
-                      q.status === "approved" ? "text-success" :
-                      q.status === "rejected" ? "text-destructive" :
+                      q.status === "approved" ? "text-success bg-success/10 border-success/20" :
+                      q.status === "rejected" ? "text-destructive bg-destructive/10 border-destructive/20" :
+                      q.status === "submitted" ? "text-warning bg-warning/10 border-warning/20" :
                       "text-muted-foreground"
                     }`}>
-                      {q.status}
+                      {QUOTE_STATUS_LABELS[q.status] || q.status}
                     </Badge>
                   </div>
                   {q.customer_note && (
