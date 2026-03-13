@@ -189,6 +189,7 @@ const App = () => (
             <Route path="/ops/pricing" element={<PricingEditorPage />} />
             <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
             <Route path="/ops/ai-growth" element={<AIGrowthEnginePage />} />
+            <Route path="/ops/ai-intelligence" element={<AIIntelligencePage />} />
             <Route path="/ops/expansion" element={<ExpansionRoadmapPage />} />
             <Route path="/ops/revenue" element={<RevenueEnginePage />} />
             <Route path="/ops/intelligence" element={<MarketplaceIntelligencePage />} />
