@@ -266,10 +266,30 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </div>
         </motion.div>
 
+        {/* Warranty note */}
+        <motion.div
+          className="bg-success/5 border border-success/20 rounded-2xl p-4 flex items-start gap-3 text-left"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+        >
+          <Award className="w-5 h-5 text-success shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-foreground">Service Warranty Included</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{flow.warrantyNote}</p>
+          </div>
+        </motion.div>
+
         <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
           <ShieldCheck className="w-3.5 h-3.5 text-primary" />
           <span>Protected by LankaFix Service Guarantee</span>
         </div>
+
+        {createdJobId && (
+          <Button onClick={() => navigate(`/track/${createdJobId}`)} variant="hero" className="w-full rounded-xl h-12 gap-2">
+            Track My Booking <ArrowRight className="w-4 h-4" />
+          </Button>
+        )}
 
         <div className="flex gap-3">
           <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex-1">
@@ -284,14 +304,8 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </a>
         </div>
 
-        {createdJobId && (
-          <Button onClick={() => navigate(`/track/${createdJobId}`)} variant="hero" className="w-full rounded-xl h-12 gap-2">
-            Track My Booking <ArrowRight className="w-4 h-4" />
-          </Button>
-        )}
-
         <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
-          Back to Home
+          Book Another Service
         </Button>
       </motion.div>
     );
