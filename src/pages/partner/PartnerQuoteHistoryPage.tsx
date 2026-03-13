@@ -93,10 +93,10 @@ export default function PartnerQuoteHistoryPage() {
               key={s}
               size="sm"
               variant={statusFilter === s ? "default" : "outline"}
-              className="text-[10px] h-7 px-2"
+              className="text-[10px] h-7 px-2 capitalize"
               onClick={() => setStatusFilter(s)}
             >
-              {s === "all" ? "All" : s.replace(/_/g, " ")}
+              {s === "all" ? "All" : s === "awaiting_approval" ? "Awaiting Approval" : s === "revision_requested" ? "Revision Requested" : s.charAt(0).toUpperCase() + s.slice(1)}
             </Button>
           ))}
         </div>
