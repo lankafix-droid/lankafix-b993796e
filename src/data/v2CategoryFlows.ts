@@ -131,7 +131,7 @@ const MOBILE_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "brand", label: "Phone Brand", type: "select", options: [{ label: "Apple iPhone", value: "apple" }, { label: "Samsung", value: "samsung" }, { label: "Huawei", value: "huawei" }, { label: "Xiaomi", value: "xiaomi" }, { label: "Oppo", value: "oppo" }, { label: "Vivo", value: "vivo" }, { label: "Infinix", value: "infinix" }, { label: "Tecno", value: "tecno" }, { label: "Other", value: "other" }], required: true },
-    { key: "model", label: "Phone Model", type: "text", required: true },
+    { key: "model", label: "Phone Model", type: "text", required: false },
     // Screen-specific
     { key: "touch_working", label: "Is touch still working?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
     { key: "display_visible", label: "Is the display still visible?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
