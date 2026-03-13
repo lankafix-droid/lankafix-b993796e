@@ -113,6 +113,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <OfflineBanner />
+      <PilotModeBanner />
       <ChatWidget />
       <BrowserRouter>
         <TermsGuard>
