@@ -122,6 +122,69 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_event_log: {
+        Row: {
+          action_taken: string
+          booking_id: string | null
+          created_at: string
+          customer_id: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          partner_id: string | null
+          reversed_at: string | null
+          reversed_by: string | null
+          reversible: boolean | null
+          severity: string
+          trigger_reason: string
+        }
+        Insert: {
+          action_taken?: string
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversible?: boolean | null
+          severity?: string
+          trigger_reason: string
+        }
+        Update: {
+          action_taken?: string
+          booking_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
+          reversible?: boolean | null
+          severity?: string
+          trigger_reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_event_log_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_event_log_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_messages: {
         Row: {
           booking_id: string
