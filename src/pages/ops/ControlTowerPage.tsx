@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle,
   Target, Zap, CheckCircle2, Clock, FileText, Shield, ChevronRight,
-  Headphones, CreditCard, XCircle, Search, Briefcase,
+  Headphones, CreditCard, XCircle, Search, Briefcase, UserX, Timer, Ban,
 } from "lucide-react";
 import OpsReliabilityAlerts from "@/components/ops/OpsReliabilityAlerts";
 import { useOpsMetrics } from "@/services/opsMetricsService";
@@ -138,6 +138,46 @@ export default function ControlTowerPage() {
               color="text-destructive"
               variant={metrics.dispatch_failures > 3 ? "urgent" : "warning"}
               onClick={() => navigate("/ops/dispatch")}
+            />
+            <ActionCard
+              title="Stale Quotes"
+              description="Quotes pending customer approval for over 30 minutes"
+              count={metrics.quotes_stale}
+              icon={Timer}
+              color="text-warning"
+              variant="warning"
+            />
+            <ActionCard
+              title="Technician Late"
+              description="Active bookings where SLA has been breached"
+              count={metrics.technician_late}
+              icon={Clock}
+              color="text-destructive"
+              variant={metrics.technician_late > 0 ? "urgent" : "warning"}
+            />
+            <ActionCard
+              title="Technician Cancelled"
+              description="Bookings cancelled by technicians today"
+              count={metrics.technician_cancelled}
+              icon={UserX}
+              color="text-destructive"
+              variant={metrics.technician_cancelled > 2 ? "urgent" : "warning"}
+            />
+            <ActionCard
+              title="Payment Failures"
+              description="Payments in failed state requiring attention"
+              count={metrics.payments_failed}
+              icon={Ban}
+              color="text-destructive"
+              variant={metrics.payments_failed > 0 ? "urgent" : "warning"}
+            />
+            <ActionCard
+              title="Partners Flagged"
+              description="Partners with rating < 3.5 or acceptance rate < 60%"
+              count={metrics.partners_flagged}
+              icon={AlertTriangle}
+              color="text-warning"
+              variant="warning"
             />
           </div>
         )}

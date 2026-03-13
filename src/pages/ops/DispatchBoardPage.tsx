@@ -225,6 +225,26 @@ export default function DispatchBoardPage() {
     }
   };
 
+  const handleOpsCancel = async (bookingId: string) => {
+    if (!confirm("Cancel this booking? This action cannot be undone.")) return;
+    try {
+      await supabase.from("bookings").update({
+        status: "cancelled" as any,
+        cancellation_reason: "ops_cancelled",
+        cancelled_at: new Date().toISOString(),
+        dispatch_status: "cancelled",
+      }).eq("id", bookingId);
+      await supabase.from("job_timeline").insert({
+        booking_id: bookingId,
+        status: "cancelled",
+        actor: "ops",
+        note: "Cancelled by operations team",
+      });
+    } catch (e) {
+      console.error("Ops cancel failed:", e);
+    }
+  };
+
   const timeSince = (iso: string) => {
     const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
     if (mins < 60) return `${mins}m ago`;
@@ -318,6 +338,17 @@ export default function DispatchBoardPage() {
                       <UserCheck className="w-3 h-3 mr-1" /> Assign
                     </Button>
                   </div>
+                  {/* Ops intervention actions */}
+                  <div className="flex gap-1 mt-1">
+                    <Button size="sm" variant="outline" className="text-[10px] h-6 text-destructive border-destructive/30"
+                      onClick={() => handleOpsCancel(b.id)}>
+                      Cancel Job
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] h-6"
+                      onClick={() => navigate(`/track/${b.id}`)}>
+                      View Tracker
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -404,6 +435,12 @@ export default function DispatchBoardPage() {
                         </span>
                       )}
                     </div>
+                    {/* Pilot: Flag partners needing review */}
+                    {((p.rating_average ?? 0) < 3.5 || (p.acceptance_rate ?? 100) < 60) && (
+                      <Badge variant="outline" className="mt-1 text-[9px] bg-destructive/10 text-destructive border-destructive/20">
+                        ⚠ Flagged: {(p.rating_average ?? 0) < 3.5 ? `Rating ${p.rating_average}` : ""}{(p.rating_average ?? 0) < 3.5 && (p.acceptance_rate ?? 100) < 60 ? " + " : ""}{(p.acceptance_rate ?? 100) < 60 ? `Accept ${p.acceptance_rate}%` : ""}
+                      </Badge>
+                    )}
                     {riskFactors.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {riskFactors.map((f, i) => (
