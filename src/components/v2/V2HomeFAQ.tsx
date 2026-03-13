@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { track } from "@/lib/analytics";
 import { motion } from "framer-motion";
 import {
   Accordion,
