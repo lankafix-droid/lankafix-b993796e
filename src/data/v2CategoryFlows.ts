@@ -414,8 +414,8 @@ const CONSUMER_ELEC_FLOW: V2CategoryFlow = {
   deviceQuestions: [
     // Appliance-specific brand selectors
     { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Sony", value: "sony" }, { label: "Panasonic", value: "panasonic" }, { label: "Singer", value: "singer" }, { label: "Abans", value: "abans" }, { label: "Sisil", value: "sisil" }, { label: "Haier", value: "haier" }, { label: "Hisense", value: "hisense" }, { label: "Other", value: "other" }], required: true },
-    { key: "model_number", label: "Model Number (check label on back)", type: "text", required: true },
-    { key: "age", label: "Approximate Age", type: "select", options: [{ label: "Under 1 year", value: "lt_1y" }, { label: "1-3 years", value: "1_3y" }, { label: "3-5 years", value: "3_5y" }, { label: "Over 5 years", value: "gt_5y" }], required: true },
+    { key: "model_number", label: "Model Number (check label on back)", type: "text", required: false },
+    { key: "age", label: "Approximate Age", type: "select", options: [{ label: "Under 1 year", value: "lt_1y" }, { label: "1-3 years", value: "1_3y" }, { label: "3-5 years", value: "3_5y" }, { label: "Over 5 years", value: "gt_5y" }, { label: "Not Sure", value: "not_sure" }], required: false },
     // TV-specific
     { key: "tv_type", label: "TV Type", type: "select", options: [{ label: "LED / LCD", value: "led" }, { label: "OLED", value: "oled" }, { label: "Smart TV", value: "smart" }, { label: "Not Sure", value: "not_sure" }], required: true, showForServiceTypes: ["tv"] },
     { key: "tv_size", label: "Screen Size (approx.)", type: "select", options: [{ label: "32\" or smaller", value: "lt_32" }, { label: "40\"-50\"", value: "40_50" }, { label: "55\"-65\"", value: "55_65" }, { label: "75\" or larger", value: "gt_75" }], required: false, showForServiceTypes: ["tv"] },
