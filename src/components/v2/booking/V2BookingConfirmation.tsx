@@ -27,9 +27,9 @@ interface Props {
 }
 
 const WARRANTY_NOTES: Record<string, string> = {
-  AC: "All AC services include a 30-day labour warranty. Parts warranty depends on grade selected.",
-  MOB: "Screen and battery repairs include a 90-day parts warranty. Labour covered for 30 days.",
-  ELEC: "Appliance repairs include a 30-day labour warranty. Replacement parts carry manufacturer warranty.",
+  AC: "All AC services include a 30-day labour warranty. Parts warranty depends on the grade selected.",
+  MOBILE: "Screen and battery repairs include a 90-day parts warranty. Labour covered for 30 days.",
+  CONSUMER_ELEC: "Appliance repairs include a 30-day labour warranty. Replacement parts carry manufacturer warranty.",
   IT: "IT repairs include a 14-day labour warranty. Software fixes covered for 7 days.",
 };
 
