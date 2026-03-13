@@ -56,6 +56,7 @@ const V2BookAgain = () => {
               >
                 <Link
                   to={`/book/${booking.category_code}`}
+                  onClick={() => track("homepage_book_again_click", { category: booking.category_code })}
                   className="block w-[200px] bg-card rounded-2xl border border-border/40 p-4 hover:border-primary/20 hover:shadow-card-hover transition-all duration-300 group active:scale-[0.97]"
                 >
                   <div className="flex items-center gap-2 mb-3">

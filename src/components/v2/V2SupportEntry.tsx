@@ -67,6 +67,7 @@ const V2SupportEntry = () => {
                 {/* @ts-ignore - dynamic component */}
                 <Wrapper
                   {...props}
+                  onClick={() => track("homepage_support_click", { entry: entry.title })}
                   className="group flex flex-col items-center text-center gap-3 p-4 bg-card rounded-2xl border border-border/40 hover:border-primary/20 hover:shadow-card-hover transition-all duration-300 active:scale-[0.97]"
                 >
                   <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${entry.gradient} ${entry.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
