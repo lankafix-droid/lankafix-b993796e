@@ -24,6 +24,8 @@ import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { getCategoryLaunchState, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
+import { logCategoryInterest } from "@/lib/demandCapture";
 import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
 import type { DiagAnswer } from "@/data/diagnosticQuestions";
 import { motion, AnimatePresence } from "framer-motion";
