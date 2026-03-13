@@ -1,5 +1,23 @@
 export type CategoryCode = "AC" | "CCTV" | "MOBILE" | "IT" | "SOLAR" | "CONSUMER_ELEC" | "SMART_HOME_OFFICE" | "COPIER" | "PRINT_SUPPLIES" | "ELECTRICAL" | "PLUMBING" | "NETWORK" | "HOME_SECURITY" | "POWER_BACKUP" | "APPLIANCE_INSTALL";
 
+export const CATEGORY_LABELS: Record<CategoryCode, string> = {
+  AC: "AC Solutions",
+  MOBILE: "Mobile Phone Repairs",
+  CONSUMER_ELEC: "Consumer Electronics",
+  IT: "IT Repairs & Support",
+  ELECTRICAL: "Electrical",
+  PLUMBING: "Plumbing",
+  CCTV: "CCTV & Surveillance",
+  SOLAR: "Solar Energy",
+  NETWORK: "Networking",
+  SMART_HOME_OFFICE: "Smart Home & Office",
+  COPIER: "Copier & Printer",
+  PRINT_SUPPLIES: "Print Supplies",
+  HOME_SECURITY: "Home Security",
+  POWER_BACKUP: "Power Backup",
+  APPLIANCE_INSTALL: "Appliance Installation",
+};
+
 export type ServiceMode = "on_site" | "drop_off" | "pickup_return" | "remote";
 
 export type BookingStatus =

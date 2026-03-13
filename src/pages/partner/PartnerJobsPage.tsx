@@ -8,21 +8,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
 import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell } from "lucide-react";
+import { BOOKING_STATUS_LABELS, CATEGORY_LABELS } from "@/types/booking";
 
+// Partner-specific overrides
 const STATUS_LABELS: Record<string, string> = {
-  requested: "Submitted",
-  matching: "Finding Provider",
+  ...BOOKING_STATUS_LABELS,
+  requested: "Submitted", matching: "Finding Provider",
   awaiting_partner_confirmation: "Awaiting Confirmation",
-  assigned: "Assigned",
-  tech_en_route: "En Route",
-  arrived: "Arrived",
-  inspection_started: "Inspecting",
-  quote_submitted: "Quote Submitted",
-  quote_approved: "Quote Approved",
-  repair_started: "Repair In Progress",
-  in_progress: "In Progress",
-  completed: "Completed",
-  cancelled: "Cancelled",
+  tech_en_route: "En Route", repair_started: "Repair In Progress",
 };
 
 const STATUS_COLORS: Record<string, string> = {

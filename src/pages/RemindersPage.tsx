@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { CATEGORY_LABELS } from "@/types/booking";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,12 +54,9 @@ interface RetentionData {
   stats: { total_bookings: number; completed_bookings: number; pending_quotes: number; active_warranties: number };
 }
 
-const CATEGORY_LABELS: Record<string, string> = {
-  AC: "AC Services", MOBILE: "Mobile Repairs", IT: "IT Support", CCTV: "CCTV Solutions",
-  SOLAR: "Solar Solutions", CONSUMER_ELEC: "Electronics", SMART_HOME_OFFICE: "Smart Home",
-  COPIER: "Copier/Printer", ELECTRICAL: "Electrical", PLUMBING: "Plumbing",
-  NETWORK: "Network", HOME_SECURITY: "Home Security", POWER_BACKUP: "Power Backup",
-  APPLIANCE_INSTALL: "Appliance Install", PRINT_SUPPLIES: "Print Supplies",
+// Use shared labels, with fallback for non-standard codes
+const REMINDER_CATEGORY_LABELS: Record<string, string> = {
+  ...CATEGORY_LABELS,
   DEVICE: "Device", UNKNOWN: "Service",
 };
 

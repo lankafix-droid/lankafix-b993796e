@@ -18,7 +18,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS,
   BOOKING_TIMELINE_STEPS, QUOTE_TIMELINE_STEPS,
-  CANCELLABLE_STATUSES, SERVICE_MODE_LABELS,
+  CANCELLABLE_STATUSES, SERVICE_MODE_LABELS, CATEGORY_LABELS,
   getTimelineStepsForBooking,
 } from "@/types/booking";
 import type { BookingStatus, TimelineStepDef } from "@/types/booking";
@@ -482,31 +482,7 @@ const TrackerPage = () => {
     // DB-backed booking view (real bookings from Phase 1)
     if (!booking && dbBooking) {
     const shortId = dbBooking.id.slice(0, 8).toUpperCase();
-    const CATEGORY_LABELS: Record<string, string> = {
-      AC: "AC Solutions", MOBILE: "Mobile Phone Repairs",
-      CONSUMER_ELEC: "Consumer Electronics", IT: "IT Repairs & Support",
-      CCTV: "CCTV & Surveillance", SOLAR: "Solar Services",
-      ELECTRICAL: "Electrical Services", PLUMBING: "Plumbing Services",
-    };
-    const STATUS_LABELS: Record<string, string> = {
-      requested: "Submitted",
-      matching: "Finding Provider",
-      awaiting_partner_confirmation: "Awaiting Confirmation",
-      scheduled: "Scheduled",
-      assigned: "Provider Assigned",
-      tech_en_route: "On the Way",
-      arrived: "Provider Arrived",
-      inspection_started: "Inspecting",
-      quote_submitted: "Quote Ready",
-      quote_approved: "Quote Approved",
-      quote_rejected: "Quote Rejected",
-      quote_revised: "Quote Revised",
-      in_progress: "In Progress",
-      repair_started: "Repair In Progress",
-      completed: "Completed",
-      rated: "Rated",
-      cancelled: "Cancelled",
-    };
+    const catLabel = CATEGORY_LABELS[dbBooking.category_code as keyof typeof CATEGORY_LABELS] || dbBooking.category_code;
 
     const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
       pending: { label: "Submitted", description: "Your booking has been received. We're finding the best provider for you.", icon: Clock },
@@ -520,7 +496,7 @@ const TrackerPage = () => {
 
     const dispatchInfo = DISPATCH_MESSAGES[dbBooking.dispatch_status || "pending"] || DISPATCH_MESSAGES.pending;
     const StatusIcon = dbBooking.status === "assigned" ? CheckCircle2 : dispatchInfo.icon;
-    const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (STATUS_LABELS[dbBooking.status] || dispatchInfo.label);
+    const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (BOOKING_STATUS_LABELS[dbBooking.status as keyof typeof BOOKING_STATUS_LABELS] || dispatchInfo.label);
     const statusDesc = dbBooking.status === "assigned"
       ? "Your provider has been assigned and is preparing for the job."
       : dbBooking.status === "quote_submitted" ? "Your technician has submitted a quote for review."

@@ -20,6 +20,7 @@ import QuoteForm from "@/components/quotes/QuoteForm";
 import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
 import ReportIssueModal from "@/components/support/ReportIssueModal";
 import PartnerRatingBadge from "@/components/ratings/PartnerRatingBadge";
+import { CATEGORY_LABELS, BOOKING_STATUS_LABELS, SERVICE_MODE_LABELS } from "@/types/booking";
 
 const DECLINE_REASONS = [
   "Too far away",
@@ -29,31 +30,17 @@ const DECLINE_REASONS = [
   "Other",
 ];
 
+// Partner-specific status labels (slightly different wording for partner context)
 const STATUS_LABELS: Record<string, string> = {
+  ...BOOKING_STATUS_LABELS,
   requested: "Submitted", matching: "Finding Provider",
-  awaiting_partner_confirmation: "Awaiting Confirmation", scheduled: "Scheduled",
-  assigned: "Provider Assigned", tech_en_route: "On the Way",
-  arrived: "Provider Arrived", inspection_started: "Inspecting",
-  quote_submitted: "Quote Ready", quote_approved: "Quote Approved",
-  quote_rejected: "Quote Rejected", quote_revised: "Quote Revised",
-  in_progress: "In Progress", repair_started: "Repair In Progress",
-  completed: "Completed", rated: "Rated", cancelled: "Cancelled",
+  awaiting_partner_confirmation: "Awaiting Confirmation",
+  tech_en_route: "On the Way", arrived: "Provider Arrived",
+  inspection_started: "Inspecting", quote_submitted: "Quote Ready",
+  repair_started: "Repair In Progress",
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  AC: "AC Solutions", MOBILE: "Mobile Phone Repairs",
-  CONSUMER_ELEC: "Consumer Electronics", IT: "IT Repairs & Support",
-  CCTV: "CCTV Solutions", SOLAR: "Solar Solutions",
-  SMART_HOME_OFFICE: "Smart Home & Office", COPIER: "Copier Repairs",
-  ELECTRICAL: "Electrical", PLUMBING: "Plumbing",
-  NETWORK: "Internet & Network", HOME_SECURITY: "Home Security",
-  POWER_BACKUP: "Power Backup", APPLIANCE_INSTALL: "Appliance Installation",
-};
-
-const MODE_LABELS: Record<string, string> = {
-  on_site: "On-Site", drop_off: "Drop-Off",
-  pickup_return: "Pickup & Return", remote: "Remote",
-};
+const MODE_LABELS = SERVICE_MODE_LABELS as Record<string, string>;
 
 const QUOTE_STATUS_LABELS: Record<string, string> = {
   draft: "Draft", submitted: "Awaiting Approval",
