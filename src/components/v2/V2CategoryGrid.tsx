@@ -5,6 +5,7 @@ import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
 import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
+import { logCategoryInterest } from "@/lib/demandCapture";
 import { motion } from "framer-motion";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
@@ -99,7 +100,12 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
     >
       <Link
         to={linkTarget}
-        onClick={() => track("v2_category_click", { category: cat.code, launchState })}
+        onClick={() => {
+          track("v2_category_click", { category: cat.code, launchState });
+          if (isComingSoon) {
+            logCategoryInterest(cat.code, "category_grid");
+          }
+        }}
         className={`group block bg-card rounded-2xl border border-border/40 overflow-hidden transition-smooth hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97] ${isComingSoon ? "opacity-70" : ""}`}
       >
         <div className={`relative ${featured ? "h-32 sm:h-36" : "h-24 sm:h-28"} overflow-hidden`}>

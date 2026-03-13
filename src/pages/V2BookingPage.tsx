@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import PageTransition from "@/components/motion/PageTransition";
 import { useState, useMemo, useEffect } from "react";
 import { getV2Flow } from "@/data/v2CategoryFlows";
@@ -24,6 +24,8 @@ import type { CategoryCode } from "@/types/booking";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { track } from "@/lib/analytics";
+import { getCategoryLaunchState, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
+import { logCategoryInterest } from "@/lib/demandCapture";
 import { getDiagnosticBlock, generateDiagnosisSummary } from "@/data/diagnosticQuestions";
 import type { DiagAnswer } from "@/data/diagnosticQuestions";
 import { motion, AnimatePresence } from "framer-motion";
@@ -98,6 +100,7 @@ const V2BookingPage = () => {
   const [booking, setBooking] = useState<V2BookingState>({ ...INITIAL_STATE, diagnosticAnswers: {} });
 
   const flow = getV2Flow(category || "");
+  const launchState = getCategoryLaunchState(category || "");
 
   const serviceConfig: ServiceTypeConfig | undefined = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
@@ -133,6 +136,40 @@ const V2BookingPage = () => {
   useEffect(() => {
     if (step >= steps.length) setStep(steps.length - 1);
   }, [steps.length, step]);
+
+  // Route-level guard: log interest for coming_soon
+  useEffect(() => {
+    if (category && launchState === "coming_soon") {
+      logCategoryInterest(category, "direct_route");
+    }
+  }, [category, launchState]);
+
+  // Coming soon guard — block booking
+  if (launchState === "coming_soon") {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center bg-background">
+          <div className="text-center max-w-md px-6 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <span className="text-2xl">🚀</span>
+            </div>
+            <h1 className="text-xl font-bold text-foreground">Launching Soon</h1>
+            <p className="text-sm text-muted-foreground">
+              We're preparing this service category for launch. Join the waitlist to be the first to know!
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="hero" asChild>
+                <Link to="/waitlist">Join Waitlist</Link>
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/")}>Browse Services</Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (!flow) {
     return (

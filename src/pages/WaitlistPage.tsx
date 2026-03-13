@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { logCategoryInterest } from "@/lib/demandCapture";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ const WaitlistPage = () => {
 
   const handleSubmit = () => {
     if (name && phone && area) {
+      // Log interest for each selected category
+      selectedCats.forEach((cat) => logCategoryInterest(cat, "waitlist_submit"));
       setSubmitted(true);
     }
   };
