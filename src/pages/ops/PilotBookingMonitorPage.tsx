@@ -72,11 +72,10 @@ export default function PilotBookingMonitorPage() {
     return <span className="text-[10px] text-muted-foreground">{mins}m</span>;
   };
 
-  const getQuoteDisplay = (b: any) => {
+  const getQuoteBadge = (b: any) => {
     const q = quotes[b.id];
-    if (q) return q.status?.replace(/_/g, " ") || "—";
-    if (b.status === "completed") return "done";
-    return "—";
+    const status = q?.status || (b.status === "completed" ? "approved" : null);
+    return <Badge variant="outline" className={`text-[9px] ${quoteStatusColor(status)}`}>{quoteStatusLabel(status)}</Badge>;
   };
 
   const rowHighlight = (b: any) => {
