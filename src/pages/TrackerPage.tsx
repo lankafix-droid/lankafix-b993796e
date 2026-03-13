@@ -482,9 +482,7 @@ const TrackerPage = () => {
     // DB-backed booking view (real bookings from Phase 1)
     if (!booking && dbBooking) {
     const shortId = dbBooking.id.slice(0, 8).toUpperCase();
-    // Use shared labels from types/booking
     const catLabel = CATEGORY_LABELS[dbBooking.category_code as keyof typeof CATEGORY_LABELS] || dbBooking.category_code;
-    const statusLabel = BOOKING_STATUS_LABELS[dbBooking.status as keyof typeof BOOKING_STATUS_LABELS] || dbBooking.status;
 
     const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
       pending: { label: "Submitted", description: "Your booking has been received. We're finding the best provider for you.", icon: Clock },
@@ -498,7 +496,7 @@ const TrackerPage = () => {
 
     const dispatchInfo = DISPATCH_MESSAGES[dbBooking.dispatch_status || "pending"] || DISPATCH_MESSAGES.pending;
     const StatusIcon = dbBooking.status === "assigned" ? CheckCircle2 : dispatchInfo.icon;
-    const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (STATUS_LABELS[dbBooking.status] || dispatchInfo.label);
+    const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (BOOKING_STATUS_LABELS[dbBooking.status as keyof typeof BOOKING_STATUS_LABELS] || dispatchInfo.label);
     const statusDesc = dbBooking.status === "assigned"
       ? "Your provider has been assigned and is preparing for the job."
       : dbBooking.status === "quote_submitted" ? "Your technician has submitted a quote for review."
