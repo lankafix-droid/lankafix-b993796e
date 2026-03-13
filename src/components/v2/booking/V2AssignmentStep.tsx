@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar,
   Monitor, Navigation, Zap, Wifi, RefreshCw, Car, Bike, Truck, Timer, Award,
-  Brain, BarChart3, Target, Briefcase, Info,
+  Brain, BarChart3, Target, Briefcase, Info, Search, Headphones,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -321,26 +321,44 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         <LiveSearchingCard techCount={searchingTechCount} isEmergency={isEmergency} />
       )}
 
-      {/* ── No Match ── */}
+      {/* ── No Match / Escalated — calm trust-first messaging ── */}
       {(phase === "no_match" || phase === "escalated") && (
-        <div className="bg-card rounded-2xl border p-6 text-center space-y-3">
-          <div className="w-14 h-14 mx-auto rounded-full bg-warning/10 flex items-center justify-center">
-            <Users className="w-6 h-6 text-warning" />
+        <motion.div
+          className="bg-card rounded-2xl border border-border/60 p-6 space-y-4 shadow-[var(--shadow-card)]"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Search className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-foreground">
+                {phase === "escalated" ? "Our Team Is On It" : "Expanding Search"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                {phase === "escalated"
+                  ? "The LankaFix operations team has been notified and is personally finding the right technician for you. You'll receive an update shortly."
+                  : "All nearby technicians are currently on jobs. We're expanding the search area and our team is being notified to assist."}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-semibold text-foreground">
-              {phase === "escalated" ? "Escalated to Operations" : "Searching for available technician…"}
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {phase === "escalated"
-                ? "Our operations team has been notified and will assign a technician shortly."
-                : "All technicians are currently busy. We're notifying our team to help."}
-            </p>
+
+          <div className="bg-muted/30 rounded-xl p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
+              <span>Your booking is safe — no charges until a technician is confirmed</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+              <span>You'll be notified as soon as a match is found</span>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={dispatch.refresh} className="gap-1.5 rounded-xl">
-            <RefreshCw className="w-3.5 h-3.5" /> Retry
+
+          <Button variant="outline" size="sm" onClick={dispatch.refresh} className="gap-1.5 rounded-xl w-full">
+            <RefreshCw className="w-3.5 h-3.5" /> Check Again
           </Button>
-        </div>
+        </motion.div>
       )}
 
       {/* ── Matched / Accepting / Confirmed — Premium Tech Card ── */}
@@ -577,13 +595,14 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         size="lg"
         className="w-full gap-2 rounded-xl h-12"
       >
-        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding best technician…</>}
-        {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}
-        {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Waiting for response…</>}
-        {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Continue</>}
-        {(phase === "no_match" || phase === "escalated") && <><Users className="w-4 h-4" /> Waiting for operations…</>}
-        {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Try again</>}
-        {phase === "error" && <><RefreshCw className="w-4 h-4" /> Retry</>}
+        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding your technician…</>}
+        {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm & Book</>}
+        {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Technician reviewing…</>}
+        {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Proceed to Confirmation</>}
+        {phase === "no_match" && <><Clock className="w-4 h-4" /> Searching for technicians…</>}
+        {phase === "escalated" && <><Clock className="w-4 h-4" /> Operations team assisting…</>}
+        {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Search Again</>}
+        {phase === "error" && <><RefreshCw className="w-4 h-4" /> Try Again</>}
       </Button>
     </div>
   );

@@ -27,9 +27,9 @@ interface Props {
 }
 
 const WARRANTY_NOTES: Record<string, string> = {
-  AC: "All AC services include a 30-day labour warranty. Parts warranty depends on grade selected.",
-  MOB: "Screen and battery repairs include a 90-day parts warranty. Labour covered for 30 days.",
-  ELEC: "Appliance repairs include a 30-day labour warranty. Replacement parts carry manufacturer warranty.",
+  AC: "All AC services include a 30-day labour warranty. Parts warranty depends on the grade selected.",
+  MOBILE: "Screen and battery repairs include a 90-day parts warranty. Labour covered for 30 days.",
+  CONSUMER_ELEC: "Appliance repairs include a 30-day labour warranty. Replacement parts carry manufacturer warranty.",
   IT: "IT repairs include a 14-day labour warranty. Software fixes covered for 7 days.",
 };
 
@@ -209,21 +209,29 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
         >
-          <SummaryRow label="Job ID" value={<span className="font-mono font-bold text-xs bg-muted px-2 py-0.5 rounded">{shortId}</span>} />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Booking Summary</span>
+            <span className="font-mono font-bold text-[11px] bg-muted px-2.5 py-1 rounded-lg text-muted-foreground">{shortId}</span>
+          </div>
           <SummaryRow label="Status" value={
             <Badge className="bg-primary/10 text-primary border-0 font-semibold text-xs">Finding Provider</Badge>
           } />
           <SummaryRow label="Category" value={flow.name} />
           {selectedService && <SummaryRow label="Service" value={selectedService.label} />}
           {booking.issueId && (
-            <SummaryRow label="Issue" value={flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label || "Described"} />
+            <SummaryRow label="Issue" value={flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label || "Described in notes"} />
           )}
-          {selectedMode && <SummaryRow label="Mode" value={selectedMode.label} />}
+          {selectedPackage && <SummaryRow label="Package" value={selectedPackage.name} />}
+          {selectedMode && <SummaryRow label="Service Mode" value={selectedMode.label} />}
+          {selectedGrade && <SummaryRow label="Part Quality" value={selectedGrade.label} />}
           {activeAddress && (
             <SummaryRow label="Location" value={activeAddress.displayName || activeAddress.area || "Greater Colombo"} />
           )}
+          {flow.requiresCommitmentFee && (
+            <SummaryRow label="Commitment Fee" value={`LKR ${flow.commitmentFeeAmount.toLocaleString()}`} />
+          )}
           {selectedPackage && (
-            <SummaryRow label="Estimated" value={
+            <SummaryRow label="Estimated Cost" value={
               selectedPackage.price === 0 ? "Free" :
               selectedPackage.priceType === "starts_from"
                 ? `From LKR ${selectedPackage.price.toLocaleString()}`

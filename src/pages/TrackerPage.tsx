@@ -477,10 +477,10 @@ const TrackerPage = () => {
     const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
       pending: { label: "Submitted", description: "Your booking has been received. We're finding the best provider for you.", icon: Clock },
       dispatching: { label: "Finding Provider", description: "Matching you with verified technicians in your area.", icon: Search },
-      pending_acceptance: { label: "Provider Found", description: "A technician has been matched. Awaiting their confirmation.", icon: UserCheck },
-      accepted: { label: "Provider Assigned", description: "Your technician is confirmed and preparing for the job.", icon: CheckCircle2 },
-      escalated: { label: "Expanding Search", description: "We're reaching more providers to find you the best match.", icon: Search },
-      no_provider_found: { label: "Searching", description: "Searching for available technicians. Our team has been notified.", icon: Clock },
+      pending_acceptance: { label: "Provider Found", description: "A technician has been matched and is reviewing your request.", icon: UserCheck },
+      accepted: { label: "Provider Confirmed", description: "Your technician is confirmed and preparing for the job.", icon: CheckCircle2 },
+      escalated: { label: "Team Assisting", description: "Our operations team is personally finding the best technician for you. You'll be updated shortly.", icon: Headphones },
+      no_provider_found: { label: "Expanding Search", description: "All nearby technicians are currently busy. We're expanding the search — you'll be notified once matched.", icon: Search },
       manual: { label: "Under Review", description: "Our team is reviewing your request and will assign the right specialist.", icon: ClipboardList },
     };
 
@@ -576,7 +576,7 @@ const TrackerPage = () => {
             {/* Payment Status */}
             <TrackerPaymentStatus bookingId={dbBooking.id} />
 
-            {/* Timeline events from DB — refined design */}
+            {/* Timeline events from DB — refined with current stage highlight */}
             {dbTimeline && dbTimeline.length > 0 && (
               <motion.div
                 className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
@@ -593,11 +593,11 @@ const TrackerPage = () => {
                     return (
                       <div key={evt.id} className="flex items-start gap-3 relative">
                         {i < dbTimeline.length - 1 && (
-                          <div className="absolute left-[11px] top-6 w-0.5 h-full bg-border/40" />
+                          <div className={`absolute left-[11px] top-6 w-0.5 h-full ${isLatest ? "bg-primary/30" : "bg-success/30"}`} />
                         )}
                         <div className="relative z-10 mt-0.5">
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                            isLatest ? "bg-primary" : "bg-success"
+                            isLatest ? "bg-primary ring-4 ring-primary/10" : "bg-success"
                           }`}>
                             {isLatest ? (
                               <Circle className="w-2.5 h-2.5 text-primary-foreground" />
@@ -606,8 +606,8 @@ const TrackerPage = () => {
                             )}
                           </div>
                         </div>
-                        <div className="pb-4 flex-1">
-                          <p className={`text-sm ${isLatest ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+                        <div className={`pb-4 flex-1 ${isLatest ? "bg-primary/5 -mx-2 px-2 py-1.5 rounded-lg" : ""}`}>
+                          <p className={`text-sm ${isLatest ? "font-bold text-primary" : "font-medium text-foreground"}`}>
                             {evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                           </p>
                           {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
@@ -654,13 +654,18 @@ const TrackerPage = () => {
                     </div>
                   )}
 
-                  {/* Warranty card */}
+                  {/* Warranty card — category-specific */}
                   <div className="bg-success/5 border border-success/20 rounded-xl p-3 flex items-start gap-2.5">
                     <Award className="w-4 h-4 text-success shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-bold text-foreground">Warranty Active</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                        Your service warranty is active from the completion date. Keep your Job ID ({shortId}) for warranty claims.
+                        {dbBooking.category_code === "AC" && "30-day labour warranty included. Parts warranty depends on grade selected."}
+                        {dbBooking.category_code === "MOBILE" && "90-day parts warranty on screen and battery repairs. 30-day labour warranty."}
+                        {dbBooking.category_code === "CONSUMER_ELEC" && "30-day labour warranty. Replacement parts carry manufacturer warranty."}
+                        {dbBooking.category_code === "IT" && "14-day labour warranty. Software fixes covered for 7 days."}
+                        {!["AC", "MOBILE", "CONSUMER_ELEC", "IT"].includes(dbBooking.category_code) && "Your service warranty is active from the completion date."}
+                        {" "}Keep your Job ID ({shortId}) for warranty claims.
                       </p>
                     </div>
                   </div>

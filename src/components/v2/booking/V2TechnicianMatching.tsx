@@ -80,21 +80,29 @@ const V2TechnicianMatching = ({ categoryCode, filter, onFilterChange, onConfirm 
         </motion.div>
       )}
 
-      {/* No match */}
+      {/* No match — calm trust-first messaging */}
       {!isSearching && noMatch && (
-        <div className="bg-card rounded-2xl border border-warning/20 p-6 text-center space-y-3">
-          <div className="w-14 h-14 mx-auto rounded-full bg-warning/10 flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-warning" />
+        <div className="bg-card rounded-2xl border border-border/60 p-6 space-y-4 shadow-[var(--shadow-card)]">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground">Our Team Is On It</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                All nearby technicians are currently on jobs. Our operations team has been notified and will assign the right technician for you shortly.
+              </p>
+            </div>
           </div>
-          <p className="font-semibold text-foreground">No verified provider available right now</p>
-          <p className="text-sm text-muted-foreground">
-            We're actively onboarding providers in your area. You can still book and we'll assign one shortly.
-          </p>
-          <div className="flex gap-2 justify-center">
-            <Button variant="outline" size="sm" onClick={refresh} className="gap-1.5 rounded-xl">
-              <RefreshCw className="w-3.5 h-3.5" /> Retry
+          <div className="bg-muted/30 rounded-xl p-3 flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
+            <span>Your booking is safe — no charges until a technician is confirmed</span>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={refresh} className="flex-1 gap-1.5 rounded-xl">
+              <RefreshCw className="w-3.5 h-3.5" /> Check Again
             </Button>
-            <Button size="sm" onClick={onConfirm} className="gap-1.5 rounded-xl">
+            <Button size="sm" onClick={onConfirm} className="flex-1 gap-1.5 rounded-xl">
               <CheckCircle2 className="w-3.5 h-3.5" /> Book Anyway
             </Button>
           </div>
