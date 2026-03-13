@@ -225,6 +225,26 @@ export default function DispatchBoardPage() {
     }
   };
 
+  const handleOpsCancel = async (bookingId: string) => {
+    if (!confirm("Cancel this booking? This action cannot be undone.")) return;
+    try {
+      await supabase.from("bookings").update({
+        status: "cancelled" as any,
+        cancellation_reason: "ops_cancelled",
+        cancelled_at: new Date().toISOString(),
+        dispatch_status: "cancelled",
+      }).eq("id", bookingId);
+      await supabase.from("job_timeline").insert({
+        booking_id: bookingId,
+        status: "cancelled",
+        actor: "ops",
+        note: "Cancelled by operations team",
+      });
+    } catch (e) {
+      console.error("Ops cancel failed:", e);
+    }
+  };
+
   const timeSince = (iso: string) => {
     const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
     if (mins < 60) return `${mins}m ago`;
