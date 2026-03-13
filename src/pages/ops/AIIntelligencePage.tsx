@@ -10,7 +10,7 @@ import {
   Brain, TrendingUp, Users, MapPin, Zap, Shield, DollarSign, BarChart3,
   AlertTriangle, Clock, Star, ArrowUp, ArrowDown, ArrowLeft,
   Activity, ChevronRight, Flame, Gauge, Target, Loader2, RefreshCw,
-  CheckCircle2, XCircle, Truck, PieChart,
+  CheckCircle2, XCircle, Truck, PieChart, Bot,
 } from "lucide-react";
 import { CATEGORY_LABELS, type CategoryCode } from "@/types/booking";
 import { MARKET_PRICE_RANGES, formatLKR } from "@/engines/pricingIntelligenceEngine";
