@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyBookings } from "@/hooks/useBookingFromDB";
 import { ArrowRight, RotateCcw, Clock, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { track } from "@/lib/analytics";
 import { categories } from "@/data/categories";
 
 const CATEGORY_LABELS: Record<string, string> = {};
