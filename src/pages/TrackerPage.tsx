@@ -610,6 +610,18 @@ const TrackerPage = () => {
                 <div className="space-y-0">
                   {dbTimeline.map((evt, i) => {
                     const isLatest = i === 0;
+                    const TIMELINE_LABELS: Record<string, string> = {
+                      requested: "Booking Submitted", matching: "Finding Provider",
+                      awaiting_partner_confirmation: "Awaiting Confirmation",
+                      assigned: "Provider Assigned", tech_en_route: "Provider On the Way",
+                      arrived: "Provider Arrived", inspection_started: "Inspection Started",
+                      quote_submitted: "Quote Ready", quote_approved: "Quote Approved",
+                      quote_rejected: "Quote Rejected", quote_revised: "Quote Revised",
+                      repair_started: "Repair In Progress", in_progress: "Work In Progress",
+                      completed: "Service Completed", rated: "Review Submitted",
+                      cancelled: "Booking Cancelled", scheduled: "Scheduled",
+                    };
+                    const eventLabel = TIMELINE_LABELS[evt.status] || evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
                     return (
                       <div key={evt.id} className="flex items-start gap-3 relative">
                         {i < dbTimeline.length - 1 && (
@@ -628,7 +640,7 @@ const TrackerPage = () => {
                         </div>
                         <div className={`pb-4 flex-1 ${isLatest ? "bg-primary/5 -mx-2 px-2 py-1.5 rounded-lg" : ""}`}>
                           <p className={`text-sm ${isLatest ? "font-bold text-primary" : "font-medium text-foreground"}`}>
-                            {evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                            {eventLabel}
                           </p>
                           {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
                           <p className="text-[10px] text-muted-foreground/60 mt-0.5">{new Date(evt.created_at).toLocaleString()}</p>

@@ -93,10 +93,10 @@ export default function PartnerQuoteHistoryPage() {
               key={s}
               size="sm"
               variant={statusFilter === s ? "default" : "outline"}
-              className="text-[10px] h-7 px-2"
+              className="text-[10px] h-7 px-2 capitalize"
               onClick={() => setStatusFilter(s)}
             >
-              {s === "all" ? "All" : s.replace(/_/g, " ")}
+              {s === "all" ? "All" : s === "awaiting_approval" ? "Awaiting Approval" : s === "revision_requested" ? "Revision Requested" : s.charAt(0).toUpperCase() + s.slice(1)}
             </Button>
           ))}
         </div>
@@ -123,7 +123,7 @@ export default function PartnerQuoteHistoryPage() {
                         {q.total_lkr ? `LKR ${q.total_lkr.toLocaleString()}` : "Draft"}
                       </span>
                       <Badge className={`text-[10px] ${STATUS_COLORS[q.status] || "bg-muted text-muted-foreground"}`}>
-                        {q.status.replace(/_/g, " ")}
+                        {q.status === "awaiting_approval" ? "Awaiting Approval" : q.status === "revision_requested" ? "Revision Requested" : q.status.charAt(0).toUpperCase() + q.status.slice(1)}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">

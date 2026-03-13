@@ -231,30 +231,49 @@ export default function PartnerDashboardPage() {
               </Button>
             </div>
             <div className="space-y-2">
-              {activeJobs.slice(0, 4).map((b: any) => (
-                <button
-                  key={b.id}
-                  onClick={() => navigate(`/partner/job/${b.id}`)}
-                  className="flex items-center justify-between p-3 rounded-xl border border-border/40 hover:border-primary/30 transition-all w-full text-left"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {b.category_code} • {b.service_type || "General"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {b.id.slice(0, 8).toUpperCase()} • {new Date(b.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <Badge variant="outline" className={`text-[10px] ${
-                      b.dispatch_status === "pending_acceptance" ? "bg-warning/10 text-warning border-warning/20" : ""
-                    }`}>
-                      {b.status.replace(/_/g, " ")}
-                    </Badge>
-                    <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                  </div>
-                </button>
-              ))}
+              {activeJobs.slice(0, 4).map((b: any) => {
+                const JOB_LABELS: Record<string, string> = {
+                  requested: "Submitted", matching: "Finding Provider",
+                  awaiting_partner_confirmation: "Awaiting Confirmation", assigned: "Assigned",
+                  tech_en_route: "En Route", arrived: "Arrived",
+                  inspection_started: "Inspecting", quote_submitted: "Quote Submitted",
+                  quote_approved: "Quote Approved", repair_started: "Repair In Progress",
+                  in_progress: "In Progress", completed: "Completed", cancelled: "Cancelled",
+                };
+                const JOB_COLORS: Record<string, string> = {
+                  awaiting_partner_confirmation: "bg-warning/10 text-warning border-warning/20",
+                  tech_en_route: "bg-warning/10 text-warning border-warning/20",
+                  quote_submitted: "bg-warning/10 text-warning border-warning/20",
+                  completed: "bg-success/10 text-success border-success/20",
+                  cancelled: "bg-destructive/10 text-destructive border-destructive/20",
+                };
+                const label = JOB_LABELS[b.status] || b.status.replace(/_/g, " ");
+                const colorClass = b.dispatch_status === "pending_acceptance"
+                  ? "bg-warning/10 text-warning border-warning/20"
+                  : (JOB_COLORS[b.status] || "");
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => navigate(`/partner/job/${b.id}`)}
+                    className="flex items-center justify-between p-3 rounded-xl border border-border/40 hover:border-primary/30 transition-all w-full text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {b.category_code} • {b.service_type || "General"}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {b.id.slice(0, 8).toUpperCase()} • {new Date(b.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <Badge variant="outline" className={`text-[10px] ${colorClass}`}>
+                        {label}
+                      </Badge>
+                      <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
         )}
