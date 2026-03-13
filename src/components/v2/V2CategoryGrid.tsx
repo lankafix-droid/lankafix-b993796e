@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
 import { v2CategoryFlows, type V2PricingArchetype } from "@/data/v2CategoryFlows";
 import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
-import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging } from "lucide-react";
+import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 import { logCategoryInterest } from "@/lib/demandCapture";
@@ -52,11 +52,12 @@ const ESTIMATED_TIMES: Record<string, string> = {
 
 const PRICING_MICROCOPY: Record<string, string> = {
   AC: "Inspection from Rs 2,500", MOBILE: "Repair from Rs 3,000",
-  IT: "Diagnosis from Rs 2,000", ELECTRICAL: "Visit from Rs 1,500",
-  PLUMBING: "Visit from Rs 1,500", NETWORK: "Setup from Rs 2,000",
+  IT: "Diagnosis from Rs 2,000", CONSUMER_ELEC: "Quote after diagnosis",
   CCTV: "Quote after site visit", SMART_HOME_OFFICE: "Project quote after assessment",
+  SOLAR: "Free site inspection",
+  ELECTRICAL: "Visit from Rs 1,500", PLUMBING: "Visit from Rs 1,500",
+  NETWORK: "Setup from Rs 2,000",
   HOME_SECURITY: "Equipment quoted separately", POWER_BACKUP: "From Rs 3,000",
-  SOLAR: "Free site inspection", CONSUMER_ELEC: "Quote after diagnosis",
   COPIER: "Diagnosis from Rs 2,000", PRINT_SUPPLIES: "Delivery available",
   APPLIANCE_INSTALL: "From Rs 2,500",
 };
@@ -67,15 +68,10 @@ const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: stri
   quote_required: { label: "Quote Required", className: "bg-primary/90 text-primary-foreground" },
 };
 
-const GROUP_A = ["AC", "MOBILE", "IT", "ELECTRICAL", "PLUMBING", "NETWORK"];
-const GROUP_B = ["CCTV", "SMART_HOME_OFFICE", "HOME_SECURITY", "POWER_BACKUP", "SOLAR"];
-const GROUP_C = ["CONSUMER_ELEC", "COPIER", "PRINT_SUPPLIES", "APPLIANCE_INSTALL"];
-
-const QUICK_BOOKS = [
-  { label: "Phone Screen", price: "From Rs 5,000", link: "/book/MOBILE", icon: <Smartphone className="w-5 h-5" /> },
-  { label: "AC Not Cooling", price: "Rs 2,500", link: "/book/AC", icon: <Snowflake className="w-5 h-5" /> },
-  { label: "Laptop Fix", price: "From Rs 8,000", link: "/book/IT", icon: <Monitor className="w-5 h-5" /> },
-];
+// Phase-1 launch priority: primary categories first, then secondary, then coming soon
+const PRIMARY_CATS = ["AC", "MOBILE", "CONSUMER_ELEC", "IT"];
+const SECONDARY_CATS = ["CCTV", "SOLAR", "SMART_HOME_OFFICE"];
+const COMING_SOON_CATS = ["ELECTRICAL", "PLUMBING", "NETWORK", "HOME_SECURITY", "POWER_BACKUP", "COPIER", "PRINT_SUPPLIES", "APPLIANCE_INSTALL"];
 
 const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof categories[0]; featured?: boolean; index?: number }) => {
   const thumb = categoryThumbs[cat.code];
@@ -96,21 +92,21 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-30px" }}
-      transition={{ delay: index * 0.05, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ delay: index * 0.04, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
     >
       <Link
         to={linkTarget}
         onClick={() => {
-          track("v2_category_click", { category: cat.code, launchState });
+          track("homepage_category_click", { category: cat.code, launchState });
           if (isComingSoon) {
             logCategoryInterest(cat.code, "category_grid");
           }
         }}
-        className={`group block bg-card rounded-2xl border border-border/40 overflow-hidden transition-smooth hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97] ${isComingSoon ? "opacity-70" : ""}`}
+        className={`group block bg-card rounded-2xl border border-border/40 overflow-hidden transition-all duration-300 hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97] ${isComingSoon ? "opacity-60" : ""}`}
       >
         <div className={`relative ${featured ? "h-32 sm:h-36" : "h-24 sm:h-28"} overflow-hidden`}>
           {thumb ? (
-            <img src={thumb} alt={cat.name} className={`w-full h-full object-cover group-hover:scale-105 transition-all duration-700 ease-out-expo ${isComingSoon ? "grayscale" : ""}`} loading="lazy" />
+            <img src={thumb} alt={cat.name} className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ${isComingSoon ? "grayscale" : ""}`} loading="lazy" />
           ) : (
             <div className="w-full h-full bg-muted flex items-center justify-center">
               {iconMap[cat.icon] || <Monitor className="w-8 h-8 text-muted-foreground" />}
@@ -164,7 +160,7 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
                 {estTime}
               </span>
             )}
-            <div className="w-7 h-7 rounded-full bg-primary/8 flex items-center justify-center group-hover:bg-gradient-brand group-hover:text-primary-foreground text-primary transition-smooth ml-auto">
+            <div className="w-7 h-7 rounded-full bg-primary/8 flex items-center justify-center group-hover:bg-gradient-brand group-hover:text-primary-foreground text-primary transition-colors ml-auto">
               <ArrowRight className="w-3.5 h-3.5" />
             </div>
           </div>
@@ -188,65 +184,48 @@ const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string })
 );
 
 const V2CategoryGrid = () => {
-  const groupA = categories.filter((c) => GROUP_A.includes(c.code));
-  const groupB = categories.filter((c) => GROUP_B.includes(c.code));
-  const groupC = categories.filter((c) => GROUP_C.includes(c.code));
+  const primary = categories.filter((c) => PRIMARY_CATS.includes(c.code));
+  const secondary = categories.filter((c) => SECONDARY_CATS.includes(c.code));
+  const comingSoon = categories.filter((c) => COMING_SOON_CATS.includes(c.code));
+
+  // Sort to match priority order
+  const sortByOrder = (cats: typeof categories, order: string[]) =>
+    [...cats].sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
 
   return (
     <section id="categories" className="pb-12">
-      <div className="container space-y-12">
-        {/* Quick Book */}
+      <div className="container space-y-10">
+        {/* Primary — Phase-1 launch categories */}
         <div>
-          <SectionHeader title="Quick Book" subtitle="Most popular — book in seconds" />
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-            {QUICK_BOOKS.map((qb, i) => (
-              <motion.div
-                key={qb.label}
-                initial={{ opacity: 0, x: 16 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.04, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                className="flex-shrink-0"
-              >
-                <Link
-                  to={qb.link}
-                  onClick={() => track("v2_quickbook_click", { label: qb.label })}
-                  className="block w-[128px] bg-card rounded-2xl border border-border/40 p-4 hover:border-primary/20 hover:shadow-card-hover transition-smooth group active:scale-[0.96]"
-                >
-                  <div className="w-11 h-11 rounded-xl bg-primary/8 text-primary flex items-center justify-center mb-3 group-hover:scale-105 transition-spring">
-                    {qb.icon}
-                  </div>
-                  <p className="text-xs font-semibold text-foreground leading-tight">{qb.label}</p>
-                  <p className="text-[10px] font-bold mt-1.5 text-gradient bg-gradient-brand bg-clip-text text-transparent">{qb.price}</p>
-                </Link>
-              </motion.div>
+          <SectionHeader title="Launch Services" subtitle="Available now across Greater Colombo" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {sortByOrder(primary, PRIMARY_CATS).map((cat, i) => (
+              <CategoryCard key={cat.code} cat={cat} featured index={i} />
             ))}
           </div>
         </div>
 
-        {/* Group A */}
+        {/* Secondary — consultation / project-based */}
         <div>
-          <SectionHeader title="Popular Services" subtitle="Same-day availability · Emergency support" />
+          <SectionHeader title="More Solutions" subtitle="Installations, energy & automation" />
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {groupA.map((cat, i) => <CategoryCard key={cat.code} cat={cat} featured index={i} />)}
+            {sortByOrder(secondary, SECONDARY_CATS).map((cat, i) => (
+              <CategoryCard key={cat.code} cat={cat} index={i} />
+            ))}
           </div>
         </div>
 
-        {/* Group B */}
-        <div>
-          <SectionHeader title="Home & Office Systems" subtitle="Installations, security, and energy" />
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {groupB.map((cat, i) => <CategoryCard key={cat.code} cat={cat} index={i} />)}
+        {/* Coming Soon — demand capture */}
+        {comingSoon.length > 0 && (
+          <div>
+            <SectionHeader title="Coming Soon" subtitle="Join the waitlist to get early access" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {sortByOrder(comingSoon, COMING_SOON_CATS).map((cat, i) => (
+                <CategoryCard key={cat.code} cat={cat} index={i} />
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Group C */}
-        <div>
-          <SectionHeader title="More Services" subtitle="Electronics, printers, and appliances" />
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {groupC.map((cat, i) => <CategoryCard key={cat.code} cat={cat} index={i} />)}
-          </div>
-        </div>
+        )}
       </div>
     </section>
   );
