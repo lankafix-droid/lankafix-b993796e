@@ -10,7 +10,7 @@ categories.forEach(c => { CATEGORY_LABELS[c.code] = c.name; });
 
 const V2BookAgain = () => {
   const { user } = useAuth();
-  const { data: bookings, isLoading } = useBookingFromDB();
+  const { data: bookings, isLoading } = useMyBookings();
 
   // Only show for logged-in users with completed bookings
   const completedBookings = (bookings || [])
