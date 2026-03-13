@@ -5,6 +5,7 @@ import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
 import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, ShieldCheck, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
+import { logCategoryInterest } from "@/lib/demandCapture";
 import { motion } from "framer-motion";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
