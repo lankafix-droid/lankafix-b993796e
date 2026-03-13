@@ -8,7 +8,7 @@ import TermsGuard from "@/components/consent/TermsGuard";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import ChatWidget from "./components/chat/ChatWidget";
-
+import PilotModeBanner from "./components/ops/PilotModeBanner";
 // Eager-load homepage for fast first paint
 import HomePage from "./pages/V2HomePage";
 
@@ -80,7 +80,9 @@ const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
 const AccountDeletionPage = lazy(() => import("./pages/AccountDeletionPage"));
 const AccountDeletionPublicPage = lazy(() => import("./pages/AccountDeletionPublicPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
-
+const PilotBookingMonitorPage = lazy(() => import("./pages/ops/PilotBookingMonitorPage"));
+const IncidentTrackerPage = lazy(() => import("./pages/ops/IncidentTrackerPage"));
+const PartnerPilotReadinessPage = lazy(() => import("./pages/ops/PartnerPilotReadinessPage"));
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
 const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
@@ -111,6 +113,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <OfflineBanner />
+      <PilotModeBanner />
       <ChatWidget />
       <BrowserRouter>
         <TermsGuard>
@@ -198,6 +201,9 @@ const App = () => (
             <Route path="/ops/launch" element={<LaunchReadinessPage />} />
             <Route path="/ops/pilot-simulation" element={<PilotSimulationPage />} />
             <Route path="/ops/provider-readiness" element={<ProviderReadinessPage />} />
+            <Route path="/ops/pilot-bookings" element={<PilotBookingMonitorPage />} />
+            <Route path="/ops/incidents" element={<IncidentTrackerPage />} />
+            <Route path="/ops/partner-readiness" element={<PartnerPilotReadinessPage />} />
             <Route path="/ops/support" element={<SupportCasesPage />} />
 
             {/* ─── Content Pages ─── */}
