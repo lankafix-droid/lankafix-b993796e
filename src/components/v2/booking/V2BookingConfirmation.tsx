@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   CheckCircle2, ShieldCheck, Clock, FileText, AlertTriangle, Phone,
   MessageCircle, Shield, ArrowRight, Circle, MapPin, Award, Sparkles,
-  Loader2,
+  Loader2, RotateCcw, Headphones, Star, Briefcase,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -26,15 +26,22 @@ interface Props {
   booking: V2BookingState;
 }
 
+const WARRANTY_NOTES: Record<string, string> = {
+  AC: "All AC services include a 30-day labour warranty. Parts warranty depends on grade selected.",
+  MOB: "Screen and battery repairs include a 90-day parts warranty. Labour covered for 30 days.",
+  ELEC: "Appliance repairs include a 30-day labour warranty. Replacement parts carry manufacturer warranty.",
+  IT: "IT repairs include a 14-day labour warranty. Software fixes covered for 7 days.",
+};
+
 const TRACKING_STAGES = [
-  { label: "Booking Submitted", key: "submitted", icon: "✓" },
-  { label: "Provider Matching", key: "matching", icon: "🔍" },
-  { label: "Provider Assigned", key: "assigned", icon: "👤" },
-  { label: "On the Way", key: "en_route", icon: "🚗" },
-  { label: "Diagnosis / Inspection", key: "diagnosis", icon: "🔍" },
-  { label: "Quote Approval", key: "quote", icon: "📋" },
-  { label: "Work in Progress", key: "repair", icon: "🔧" },
-  { label: "Completed", key: "completed", icon: "🎉" },
+  { label: "Booking Submitted", key: "submitted" },
+  { label: "Provider Matching", key: "matching" },
+  { label: "Provider Assigned", key: "assigned" },
+  { label: "En Route", key: "en_route" },
+  { label: "Diagnosis", key: "diagnosis" },
+  { label: "Quote Approval", key: "quote" },
+  { label: "Work in Progress", key: "repair" },
+  { label: "Completed", key: "completed" },
 ];
 
 function SummaryRow({ label, value, bold }: { label: string; value: React.ReactNode; bold?: boolean }) {
@@ -62,6 +69,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
   const selectedGrade = booking.partGrade ? PART_GRADES.find(g => g.code === booking.partGrade) : null;
   const warranty = getServiceWarranty(flow.code, booking.serviceTypeId);
   const travelZone = TRAVEL_ZONES[0];
+  const activeAddress = getActiveAddress();
 
   const [zoneBlocked, setZoneBlocked] = useState(false);
 
@@ -69,7 +77,6 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
     if (submitting) return;
     setSubmitting(true);
 
-    const activeAddress = getActiveAddress();
     const locationData = {
       lat: activeAddress?.lat,
       lng: activeAddress?.lng,
@@ -98,23 +105,15 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
   };
 
   const handleConfirm = async () => {
-    // Category gating
     if (isCategoryComingSoon(flow.code)) {
       toast.info("This category is coming soon! Join the waitlist.");
       navigate("/waitlist");
       return;
     }
-    if (isCategoryConsultation(flow.code)) {
-      toast.info("This category requires a consultation. Our team will contact you.");
-      // Still create a booking but mark it appropriately
-    }
-
-    // Auth gate — require login before submitting
     if (!isAuthenticated || !user) {
       setShowAuthGate(true);
       return;
     }
-
     await submitBooking(user.id);
   };
 
@@ -132,12 +131,8 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         </div>
         <h2 className="text-2xl font-extrabold text-foreground">Launching Soon in Your Area</h2>
         <p className="text-muted-foreground text-sm">We currently serve Greater Colombo. Join the waitlist to be notified when we expand to your area.</p>
-        <Button onClick={() => navigate("/waitlist")} className="w-full rounded-xl h-12">
-          Join the Waitlist
-        </Button>
-        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
-          Back to Home
-        </Button>
+        <Button onClick={() => navigate("/waitlist")} className="w-full rounded-xl h-12">Join the Waitlist</Button>
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">Back to Home</Button>
       </div>
     );
   }
@@ -151,12 +146,8 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         </div>
         <h2 className="text-2xl font-extrabold text-foreground">Coming Soon</h2>
         <p className="text-muted-foreground text-sm">This service category is launching soon in your area.</p>
-        <Button onClick={() => navigate("/waitlist")} className="w-full rounded-xl h-12">
-          Join the Waitlist
-        </Button>
-        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
-          Back to Home
-        </Button>
+        <Button onClick={() => navigate("/waitlist")} className="w-full rounded-xl h-12">Join the Waitlist</Button>
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">Back to Home</Button>
       </div>
     );
   }
@@ -174,58 +165,93 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
           Submit Consultation Request
         </Button>
-        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
-          Back to Home
-        </Button>
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">Back to Home</Button>
         <BookingAuthGate open={showAuthGate} onClose={() => setShowAuthGate(false)} onAuthenticated={handleAuthSuccess} />
       </div>
     );
   }
 
-  /* ─── SUCCESS STATE ─── */
+  /* ─── SUCCESS STATE — Premium post-confirmation ─── */
   if (confirmed) {
     const shortId = createdJobId ? createdJobId.slice(0, 8).toUpperCase() : "";
+    const categoryWarranty = WARRANTY_NOTES[flow.code] || flow.warrantyNote;
+
     return (
       <motion.div
-        className="space-y-5 text-center py-6 pb-28"
+        className="space-y-4 py-6 pb-28"
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
+        {/* Success header */}
         <motion.div
-          className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto"
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-        >
-          <CheckCircle2 className="w-10 h-10 text-success" />
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <h2 className="text-2xl font-extrabold text-foreground">Booking Confirmed!</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Your service request has been submitted</p>
-        </motion.div>
-
-        <motion.div
-          className="bg-card rounded-2xl border border-border/60 p-5 text-left space-y-0 shadow-[var(--shadow-card)]"
+          className="text-center space-y-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.2 }}
         >
-          <SummaryRow label="Job ID" value={<span className="font-mono font-bold text-xs">{shortId}</span>} />
+          <motion.div
+            className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          >
+            <CheckCircle2 className="w-10 h-10 text-success" />
+          </motion.div>
+          <h2 className="text-2xl font-extrabold text-foreground">Booking Confirmed!</h2>
+          <p className="text-muted-foreground text-sm">Your service request has been submitted successfully</p>
+        </motion.div>
+
+        {/* Complete booking summary card */}
+        <motion.div
+          className="bg-card rounded-2xl border border-border/60 p-5 space-y-0 shadow-[var(--shadow-card)]"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <SummaryRow label="Job ID" value={<span className="font-mono font-bold text-xs bg-muted px-2 py-0.5 rounded">{shortId}</span>} />
           <SummaryRow label="Status" value={
             <Badge className="bg-primary/10 text-primary border-0 font-semibold text-xs">Finding Provider</Badge>
           } />
           <SummaryRow label="Category" value={flow.name} />
           {selectedService && <SummaryRow label="Service" value={selectedService.label} />}
+          {booking.issueId && (
+            <SummaryRow label="Issue" value={flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label || "Described"} />
+          )}
+          {selectedMode && <SummaryRow label="Service Mode" value={selectedMode.label} />}
+          {activeAddress && (
+            <SummaryRow label="Location" value={activeAddress.displayName || activeAddress.area || "Greater Colombo"} />
+          )}
+          {selectedPackage && (
+            <SummaryRow label="Estimated" value={
+              selectedPackage.price === 0 ? "Free" :
+              selectedPackage.priceType === "starts_from"
+                ? `From LKR ${selectedPackage.price.toLocaleString()}`
+                : `LKR ${selectedPackage.price.toLocaleString()}`
+            } bold />
+          )}
         </motion.div>
 
-        {/* Timeline */}
+        {/* Warranty note */}
         <motion.div
-          className="bg-card rounded-2xl border border-border/60 p-5 text-left shadow-[var(--shadow-card)]"
+          className="bg-success/5 border border-success/20 rounded-2xl p-4 flex items-start gap-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.45 }}
+        >
+          <Award className="w-5 h-5 text-success shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-foreground">Service Warranty Included</p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{categoryWarranty}</p>
+          </div>
+        </motion.div>
+
+        {/* What happens next — compact timeline */}
+        <motion.div
+          className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
         >
           <h3 className="font-bold text-foreground text-sm mb-4">What happens next</h3>
           <div className="space-y-0">
@@ -252,7 +278,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
                       </div>
                     )}
                   </div>
-                  <div className={`pb-4 ${isDone || isCurrent ? "" : "opacity-50"}`}>
+                  <div className={`pb-3.5 ${isDone || isCurrent ? "" : "opacity-50"}`}>
                     <span className={`text-sm ${isDone || isCurrent ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
                       {stage.label}
                     </span>
@@ -266,31 +292,20 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </div>
         </motion.div>
 
-        {/* Warranty note */}
-        <motion.div
-          className="bg-success/5 border border-success/20 rounded-2xl p-4 flex items-start gap-3 text-left"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65 }}
-        >
-          <Award className="w-5 h-5 text-success shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-foreground">Service Warranty Included</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{flow.warrantyNote}</p>
-          </div>
-        </motion.div>
-
+        {/* Trust footer */}
         <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
           <ShieldCheck className="w-3.5 h-3.5 text-primary" />
           <span>Protected by LankaFix Service Guarantee</span>
         </div>
 
+        {/* Primary CTA */}
         {createdJobId && (
           <Button onClick={() => navigate(`/track/${createdJobId}`)} variant="hero" className="w-full rounded-xl h-12 gap-2">
             Track My Booking <ArrowRight className="w-4 h-4" />
           </Button>
         )}
 
+        {/* Support shortcuts */}
         <div className="flex gap-3">
           <a href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} className="flex-1">
             <Button variant="outline" className="w-full gap-2 rounded-xl h-11">
@@ -304,14 +319,14 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </a>
         </div>
 
-        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
-          Book Another Service
+        <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11 gap-2">
+          <RotateCcw className="w-4 h-4" /> Book Another Service
         </Button>
       </motion.div>
     );
   }
 
-  /* ─── REVIEW STATE ─── */
+  /* ─── REVIEW STATE — Clean final summary ─── */
   return (
     <div className="space-y-4 pb-28">
       <div>
@@ -330,7 +345,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         <SummaryRow label="Category" value={flow.name} />
         {selectedService && <SummaryRow label="Service Type" value={selectedService.label} />}
         {booking.issueId && (
-          <SummaryRow label="Issue" value={flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label} />
+          <SummaryRow label="Issue" value={flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label || "Described"} />
         )}
         {selectedMode && <SummaryRow label="Service Mode" value={selectedMode.label} />}
         {selectedGrade && <SummaryRow label="Part Quality" value={selectedGrade.label} />}
@@ -345,7 +360,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         } />
       </motion.div>
 
-      {/* Device details */}
+      {/* Device details — handle "Not sure" gracefully */}
       {Object.keys(booking.deviceAnswers).length > 0 && (
         <motion.div
           className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
@@ -356,9 +371,31 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           <h3 className="font-bold text-foreground text-sm mb-1">Device / Property Details</h3>
           {Object.entries(booking.deviceAnswers).map(([key, value]) => {
             const question = flow.deviceQuestions.find((q) => q.key === key);
-            const displayValue = typeof value === "boolean" ? (value ? "Yes" : "No") : (question?.options?.find((o) => o.value === value)?.label || value);
+            // Handle "not_sure" values cleanly
+            const rawValue = typeof value === "boolean" ? (value ? "Yes" : "No") : value;
+            const displayValue = rawValue === "not_sure" || rawValue === "Not Sure"
+              ? "Will confirm on-site"
+              : (question?.options?.find((o) => o.value === rawValue)?.label || rawValue);
             return <SummaryRow key={key} label={question?.label || key} value={String(displayValue)} />;
           })}
+        </motion.div>
+      )}
+
+      {/* Location */}
+      {activeAddress && (
+        <motion.div
+          className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)] flex items-center gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.3 }}
+        >
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <MapPin className="w-5 h-5 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">{activeAddress.displayName || activeAddress.area}</p>
+            <p className="text-xs text-muted-foreground">{activeAddress.city || "Greater Colombo"}</p>
+          </div>
         </motion.div>
       )}
 

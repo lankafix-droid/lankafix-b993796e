@@ -12,6 +12,7 @@ import {
   CreditCard, Play, Flag, Shield, Clock, MapPin, Sparkles,
   ChevronDown, HelpCircle, ClipboardList, Search, UserCheck,
   Navigation, Wrench, Package, Building2, SearchCheck, CheckSquare,
+  Award, RotateCcw, Headphones,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
@@ -454,8 +455,8 @@ const TrackerPage = () => {
   // Auto-show rating modal for completed DB bookings (once)
   const [ratingModalShown, setRatingModalShown] = useState(false);
 
-  // DB-backed booking view (real bookings from Phase 1)
-  if (!booking && dbBooking) {
+    // DB-backed booking view (real bookings from Phase 1)
+    if (!booking && dbBooking) {
     const shortId = dbBooking.id.slice(0, 8).toUpperCase();
     const STATUS_LABELS: Record<string, string> = {
       requested: "Submitted",
@@ -494,64 +495,82 @@ const TrackerPage = () => {
       : dbBooking.status === "completed" ? "Your service has been completed!"
       : dispatchInfo.description;
 
+    const isCompleted = dbBooking.status === "completed";
+    const isCancelled = dbBooking.status === "cancelled";
+    const isActive = !isCompleted && !isCancelled;
+
     return (
       <PageTransition className="min-h-screen flex flex-col bg-background">
         <Header />
         <main className="flex-1">
           <div className="container max-w-2xl py-5 px-4 space-y-4">
-            {/* Header */}
+            {/* Sticky header */}
             <div className="flex items-center gap-3">
               <Link to="/track" className="text-muted-foreground hover:text-foreground">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-bold text-foreground text-sm">Job {shortId}</p>
                 <p className="text-xs text-muted-foreground">{dbBooking.category_code}</p>
               </div>
-              <Badge className="ml-auto bg-primary/10 text-primary border-0 text-xs font-semibold">
+              <Badge className={`text-xs font-semibold ${isCompleted ? "bg-success/10 text-success border-success/20" : "bg-primary/10 text-primary border-0"}`}>
                 {statusLabel}
               </Badge>
             </div>
 
-            {/* Status card */}
-            <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] space-y-3">
+            {/* Status card — premium design */}
+            <motion.div
+              className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] space-y-3"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <StatusIcon className="w-5 h-5 text-primary" />
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCompleted ? "bg-success/10" : "bg-primary/10"}`}>
+                  <StatusIcon className={`w-6 h-6 ${isCompleted ? "text-success" : "text-primary"}`} />
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-foreground">{statusLabel}</p>
-                  <p className="text-xs text-muted-foreground">{statusDesc}</p>
+                <div className="flex-1">
+                  <p className="text-base font-bold text-foreground">{statusLabel}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{statusDesc}</p>
                 </div>
               </div>
-              {dbBooking.service_type && (
-                <div className="flex justify-between text-sm border-t border-border/20 pt-3">
-                  <span className="text-muted-foreground">Service</span>
-                  <span className="font-medium text-foreground">{dbBooking.service_type}</span>
-                </div>
-              )}
-              {dbBooking.estimated_price_lkr && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Estimated</span>
-                  <span className="font-medium text-foreground">LKR {dbBooking.estimated_price_lkr.toLocaleString()}</span>
-                </div>
-              )}
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Submitted</span>
-                <span className="font-medium text-foreground">{new Date(dbBooking.created_at).toLocaleString()}</span>
-              </div>
-              {dbBooking.assigned_at && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Assigned</span>
-                  <span className="font-medium text-foreground">{new Date(dbBooking.assigned_at).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
 
-            {/* Live Technician Tracking — Uber-style */}
+              {/* Booking details grid */}
+              <div className="border-t border-border/30 pt-3 space-y-2">
+                {dbBooking.service_type && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Service</span>
+                    <span className="font-medium text-foreground">{dbBooking.service_type}</span>
+                  </div>
+                )}
+                {dbBooking.estimated_price_lkr && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Estimated</span>
+                    <span className="font-bold text-foreground">LKR {dbBooking.estimated_price_lkr.toLocaleString()}</span>
+                  </div>
+                )}
+                {dbBooking.is_emergency && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Priority</span>
+                    <Badge className="bg-warning/10 text-warning border-warning/20 text-[10px]">Emergency</Badge>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Submitted</span>
+                  <span className="font-medium text-foreground">{new Date(dbBooking.created_at).toLocaleString()}</span>
+                </div>
+                {dbBooking.assigned_at && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Assigned</span>
+                    <span className="font-medium text-foreground">{new Date(dbBooking.assigned_at).toLocaleString()}</span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Live Technician Tracking */}
             <DBBookingLiveTracking bookingId={dbBooking.id} partnerId={dbBooking.partner_id} bookingStatus={dbBooking.status} />
 
-            {/* Quote Approval Card - shown when quote is submitted */}
+            {/* Quote Approval Card */}
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
             {/* Payment Status */}
@@ -560,12 +579,14 @@ const TrackerPage = () => {
             {/* Timeline events from DB */}
             {dbTimeline && dbTimeline.length > 0 && (
               <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]">
-                <h3 className="text-sm font-bold text-foreground mb-3">Timeline</h3>
+                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Timeline
+                </h3>
                 <div className="space-y-0">
                   {dbTimeline.map((evt, i) => (
                     <div key={evt.id} className="flex items-start gap-3 relative">
                       {i < dbTimeline.length - 1 && (
-                        <div className="absolute left-[11px] top-6 w-0.5 h-full bg-success/40" />
+                        <div className="absolute left-[11px] top-6 w-0.5 h-full bg-success/30" />
                       )}
                       <div className="relative z-10 mt-0.5">
                         <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
@@ -583,8 +604,52 @@ const TrackerPage = () => {
               </div>
             )}
 
+            {/* Completion state — enhanced */}
+            {isCompleted && (
+              <motion.div
+                className="bg-success/5 border border-success/20 rounded-2xl p-5 space-y-4"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-base font-bold text-foreground">Service Completed</p>
+                    {dbBooking.completed_at && (
+                      <p className="text-xs text-muted-foreground">{new Date(dbBooking.completed_at).toLocaleString()}</p>
+                    )}
+                  </div>
+                </div>
+
+                {dbBooking.final_price_lkr && (
+                  <div className="flex justify-between items-center text-sm border-t border-success/20 pt-3">
+                    <span className="text-muted-foreground">Final Amount</span>
+                    <span className="text-lg font-bold text-foreground">LKR {dbBooking.final_price_lkr.toLocaleString()}</span>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-card rounded-xl p-3">
+                  <Award className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                  <span>Warranty active from completion date. Keep your Job ID ({shortId}) for warranty claims.</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
+                    <RotateCcw className="w-3.5 h-3.5" /> Book Again
+                  </Button>
+                  <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
+                    <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">
+                      <Headphones className="w-3.5 h-3.5" /> Support
+                    </a>
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+
             {/* Rating Section for completed DB bookings */}
-            {dbBooking.status === "completed" && dbBooking.partner_id && user?.id && (
+            {isCompleted && dbBooking.partner_id && user?.id && (
               <>
                 {existingRating ? (
                   <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] text-center">
@@ -622,7 +687,29 @@ const TrackerPage = () => {
               </>
             )}
 
-            {/* Trust */}
+            {/* Support shortcut — active bookings */}
+            {isActive && (
+              <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)]">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Headphones className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Need help?</p>
+                      <p className="text-[11px] text-muted-foreground">Chat with our support team</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="rounded-xl h-9" asChild>
+                    <a href={whatsappLink(SUPPORT_WHATSAPP, `Hi, booking ${shortId} - need help`)} target="_blank" rel="noopener noreferrer">
+                      <MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Chat
+                    </a>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Trust footer */}
             <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
               <Shield className="w-3.5 h-3.5 text-primary" />
               <span>Protected by LankaFix Service Guarantee</span>
