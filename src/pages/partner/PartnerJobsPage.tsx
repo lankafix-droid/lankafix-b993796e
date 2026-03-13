@@ -9,13 +9,34 @@ import { track } from "@/lib/analytics";
 import { useEffect } from "react";
 import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell } from "lucide-react";
 
+const STATUS_LABELS: Record<string, string> = {
+  requested: "Submitted",
+  matching: "Finding Provider",
+  awaiting_partner_confirmation: "Awaiting Confirmation",
+  assigned: "Assigned",
+  tech_en_route: "En Route",
+  arrived: "Arrived",
+  inspection_started: "Inspecting",
+  quote_submitted: "Quote Submitted",
+  quote_approved: "Quote Approved",
+  repair_started: "Repair In Progress",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-muted text-muted-foreground",
+  matching: "bg-primary/10 text-primary",
   awaiting_partner_confirmation: "bg-warning/10 text-warning",
   assigned: "bg-primary/10 text-primary",
-  en_route: "bg-primary/10 text-primary",
+  tech_en_route: "bg-warning/10 text-warning",
+  arrived: "bg-success/10 text-success",
   inspection_started: "bg-primary/10 text-primary",
+  quote_submitted: "bg-warning/10 text-warning",
+  quote_approved: "bg-success/10 text-success",
   repair_started: "bg-primary/10 text-primary",
+  in_progress: "bg-primary/10 text-primary",
   completed: "bg-success/10 text-success",
   cancelled: "bg-destructive/10 text-destructive",
 };
