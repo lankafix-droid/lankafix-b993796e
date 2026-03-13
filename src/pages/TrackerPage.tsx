@@ -477,10 +477,10 @@ const TrackerPage = () => {
     const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
       pending: { label: "Submitted", description: "Your booking has been received. We're finding the best provider for you.", icon: Clock },
       dispatching: { label: "Finding Provider", description: "Matching you with verified technicians in your area.", icon: Search },
-      pending_acceptance: { label: "Provider Found", description: "A technician has been matched. Awaiting their confirmation.", icon: UserCheck },
-      accepted: { label: "Provider Assigned", description: "Your technician is confirmed and preparing for the job.", icon: CheckCircle2 },
-      escalated: { label: "Expanding Search", description: "We're reaching more providers to find you the best match.", icon: Search },
-      no_provider_found: { label: "Searching", description: "Searching for available technicians. Our team has been notified.", icon: Clock },
+      pending_acceptance: { label: "Provider Found", description: "A technician has been matched and is reviewing your request.", icon: UserCheck },
+      accepted: { label: "Provider Confirmed", description: "Your technician is confirmed and preparing for the job.", icon: CheckCircle2 },
+      escalated: { label: "Team Assisting", description: "Our operations team is personally finding the best technician for you. You'll be updated shortly.", icon: Headphones },
+      no_provider_found: { label: "Expanding Search", description: "All nearby technicians are currently busy. We're expanding the search — you'll be notified once matched.", icon: Search },
       manual: { label: "Under Review", description: "Our team is reviewing your request and will assign the right specialist.", icon: ClipboardList },
     };
 
