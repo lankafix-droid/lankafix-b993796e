@@ -29,6 +29,37 @@ const DECLINE_REASONS = [
   "Other",
 ];
 
+const STATUS_LABELS: Record<string, string> = {
+  requested: "Submitted", matching: "Finding Provider",
+  awaiting_partner_confirmation: "Awaiting Confirmation", scheduled: "Scheduled",
+  assigned: "Provider Assigned", tech_en_route: "On the Way",
+  arrived: "Provider Arrived", inspection_started: "Inspecting",
+  quote_submitted: "Quote Ready", quote_approved: "Quote Approved",
+  quote_rejected: "Quote Rejected", quote_revised: "Quote Revised",
+  in_progress: "In Progress", repair_started: "Repair In Progress",
+  completed: "Completed", rated: "Rated", cancelled: "Cancelled",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  AC: "AC Solutions", MOBILE: "Mobile Phone Repairs",
+  CONSUMER_ELEC: "Consumer Electronics", IT: "IT Repairs & Support",
+  CCTV: "CCTV Solutions", SOLAR: "Solar Solutions",
+  SMART_HOME_OFFICE: "Smart Home & Office", COPIER: "Copier Repairs",
+  ELECTRICAL: "Electrical", PLUMBING: "Plumbing",
+  NETWORK: "Internet & Network", HOME_SECURITY: "Home Security",
+  POWER_BACKUP: "Power Backup", APPLIANCE_INSTALL: "Appliance Installation",
+};
+
+const MODE_LABELS: Record<string, string> = {
+  on_site: "On-Site", drop_off: "Drop-Off",
+  pickup_return: "Pickup & Return", remote: "Remote",
+};
+
+const QUOTE_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft", submitted: "Awaiting Approval",
+  approved: "Approved", rejected: "Rejected", expired: "Expired",
+};
+
 export default function PartnerJobDetailPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
