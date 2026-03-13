@@ -461,6 +461,11 @@ export default function AIIntelligencePage() {
               </Button>
             </Link>
           </TabsContent>
+
+          {/* ── Automation Events ── */}
+          <TabsContent value="automation" className="space-y-4 mt-0">
+            <AutomationTab />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
