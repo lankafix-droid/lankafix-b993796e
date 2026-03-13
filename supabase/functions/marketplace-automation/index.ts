@@ -348,12 +348,13 @@ serve(async (req) => {
 
       const [zone, category] = key.split(":");
 
-      // Check if already flagged this week
+      // Check if already flagged this week for this specific zone+category
       const { data: existingGap } = await supabase
         .from("automation_event_log")
         .select("id")
         .eq("event_type", "supply_gap_detected")
         .gte("created_at", sevenDaysAgo)
+        .contains("metadata", { zone, category })
         .limit(1)
         .maybeSingle();
 

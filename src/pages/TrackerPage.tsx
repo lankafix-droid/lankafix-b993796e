@@ -489,8 +489,9 @@ const TrackerPage = () => {
       dispatching: { label: "Finding Provider", description: "Matching you with verified technicians in your area.", icon: Search },
       pending_acceptance: { label: "Provider Found", description: "A technician has been matched and is reviewing your request.", icon: UserCheck },
       accepted: { label: "Provider Confirmed", description: "Your technician is confirmed and preparing for the job.", icon: CheckCircle2 },
+      ops_confirmed: { label: "Provider Confirmed", description: "Your technician has been assigned and confirmed by our team.", icon: CheckCircle2 },
       escalated: { label: "Team Assisting", description: "Our operations team is personally finding the best technician for you. You'll be updated shortly.", icon: Headphones },
-      no_provider_found: { label: "Expanding Search", description: "All nearby technicians are currently busy. We're expanding the search — you'll be notified once matched.", icon: Search },
+      no_provider_found: { label: "Expanding Search", description: "All nearby technicians are currently busy. Our team is personally coordinating — you'll be notified soon.", icon: Headphones },
       manual: { label: "Under Review", description: "Our team is reviewing your request and will assign the right specialist.", icon: ClipboardList },
     };
 
