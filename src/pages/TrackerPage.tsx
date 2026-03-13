@@ -576,32 +576,48 @@ const TrackerPage = () => {
             {/* Payment Status */}
             <TrackerPaymentStatus bookingId={dbBooking.id} />
 
-            {/* Timeline events from DB */}
+            {/* Timeline events from DB — refined design */}
             {dbTimeline && dbTimeline.length > 0 && (
-              <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]">
-                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" /> Timeline
+              <motion.div
+                className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Service Timeline
                 </h3>
                 <div className="space-y-0">
-                  {dbTimeline.map((evt, i) => (
-                    <div key={evt.id} className="flex items-start gap-3 relative">
-                      {i < dbTimeline.length - 1 && (
-                        <div className="absolute left-[11px] top-6 w-0.5 h-full bg-success/30" />
-                      )}
-                      <div className="relative z-10 mt-0.5">
-                        <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />
+                  {dbTimeline.map((evt, i) => {
+                    const isLatest = i === 0;
+                    return (
+                      <div key={evt.id} className="flex items-start gap-3 relative">
+                        {i < dbTimeline.length - 1 && (
+                          <div className="absolute left-[11px] top-6 w-0.5 h-full bg-border/40" />
+                        )}
+                        <div className="relative z-10 mt-0.5">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                            isLatest ? "bg-primary" : "bg-success"
+                          }`}>
+                            {isLatest ? (
+                              <Circle className="w-2.5 h-2.5 text-primary-foreground" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="pb-4 flex-1">
+                          <p className={`text-sm ${isLatest ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+                            {evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                          </p>
+                          {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{new Date(evt.created_at).toLocaleString()}</p>
                         </div>
                       </div>
-                      <div className="pb-4">
-                        <p className="text-sm font-semibold text-foreground">{evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
-                        {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
-                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">{new Date(evt.created_at).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Completion state — premium */}
