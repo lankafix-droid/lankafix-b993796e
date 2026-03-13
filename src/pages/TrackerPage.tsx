@@ -583,6 +583,45 @@ const TrackerPage = () => {
               </div>
             )}
 
+            {/* Rating Section for completed DB bookings */}
+            {dbBooking.status === "completed" && dbBooking.partner_id && user?.id && (
+              <>
+                {existingRating ? (
+                  <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)] text-center">
+                    <CheckCircle2 className="w-10 h-10 text-success mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-success mb-2">Thanks for your feedback!</p>
+                    <div className="flex justify-center gap-1">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star key={s} className={`w-5 h-5 ${s <= existingRating.rating ? "text-warning fill-warning" : "text-muted-foreground/30"}`} />
+                      ))}
+                    </div>
+                    {existingRating.review_text && (
+                      <p className="text-xs text-muted-foreground mt-2 italic">"{existingRating.review_text}"</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-card rounded-2xl border border-primary/20 p-5 shadow-[var(--shadow-card)]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Star className="w-5 h-5 text-warning" />
+                      <h3 className="text-sm font-semibold text-foreground">Rate Your Experience</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">Help us improve — your feedback matters!</p>
+                    <Button variant="hero" className="w-full rounded-xl h-11" onClick={() => setShowRatingModal(true)}>
+                      Leave a Review
+                    </Button>
+                  </div>
+                )}
+                <RatingModal
+                  open={showRatingModal}
+                  onClose={() => setShowRatingModal(false)}
+                  bookingId={dbBooking.id}
+                  partnerId={dbBooking.partner_id}
+                  customerId={user.id}
+                  onSubmitted={() => refetchRating()}
+                />
+              </>
+            )}
+
             {/* Trust */}
             <div className="flex items-center justify-center gap-2 text-[11px] text-muted-foreground">
               <Shield className="w-3.5 h-3.5 text-primary" />
