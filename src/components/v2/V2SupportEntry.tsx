@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { MessageCircle, HelpCircle, FileText, ArrowRight } from "lucide-react";
+import { MessageCircle, HelpCircle, FileText } from "lucide-react";
 import { motion } from "framer-motion";
+import { track } from "@/lib/analytics";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 
 const entries = [
