@@ -1,3 +1,4 @@
+/** ARCHIVED — removed during homepage optimization. Candidate for reuse on secondary pages. */
 import { Link } from "react-router-dom";
 import { Wrench, PlusCircle, Sparkles, ClipboardList, HelpCircle } from "lucide-react";
 import { track } from "@/lib/analytics";

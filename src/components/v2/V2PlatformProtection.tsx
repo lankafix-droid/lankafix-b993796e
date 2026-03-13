@@ -1,3 +1,4 @@
+/** ARCHIVED — removed during homepage optimization. Trust messaging merged into V2WhyLankaFix. */
 import { Link } from "react-router-dom";
 import { ShieldCheck, Eye, KeyRound, FileCheck, Award, Lock, HeartHandshake, MessageCircle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";

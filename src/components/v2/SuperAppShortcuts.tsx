@@ -1,3 +1,4 @@
+/** ARCHIVED — removed during homepage optimization. Candidate for reuse on account dashboard. */
 import { Link } from "react-router-dom";
 import { Smartphone, Shield, Package, History, HeartPulse } from "lucide-react";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";

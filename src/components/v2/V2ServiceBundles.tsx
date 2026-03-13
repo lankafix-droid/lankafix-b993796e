@@ -1,3 +1,4 @@
+/** ARCHIVED — removed during homepage optimization. Candidate for reuse on bundle booking page. */
 import { useNavigate } from "react-router-dom";
 import { SERVICE_BUNDLES, getBundleSavingsLKR } from "@/data/serviceBundles";
 import type { ServiceBundle } from "@/data/serviceBundles";

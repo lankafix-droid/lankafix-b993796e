@@ -1,3 +1,4 @@
+/** ARCHIVED — removed during homepage optimization. Candidate for reuse on promotions page. */
 import { Link } from "react-router-dom";
 import { Droplets, Sun, Sparkles, Zap, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
