@@ -143,6 +143,7 @@ export default function WarRoomPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [escalations, setEscalations] = useState<EscalationRow[]>([]);
+  const [dispatchLogs, setDispatchLogs] = useState<DispatchLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
@@ -152,22 +153,30 @@ export default function WarRoomPage() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [bk, qt, pt, inc, pay, esc] = await Promise.all([
+    const [bk, qt, pt, inc, pay, esc, dl] = await Promise.all([
       supabase.from("bookings").select("id,category_code,zone_code,status,dispatch_status,payment_status,customer_rating,created_at,assigned_at,partner_id,booking_source,is_emergency,sla_eta_minutes")
         .neq("booking_source", "pilot_simulation").order("created_at", { ascending: false }).limit(200),
       supabase.from("quotes").select("id,booking_id,status,created_at,submitted_at,approved_at,total_lkr").order("created_at", { ascending: false }).limit(200),
       supabase.from("partners").select("id,full_name,categories_supported,service_zones,availability_status,acceptance_rate,cancellation_rate,rating_average,average_response_time_minutes,completed_jobs_count"),
       supabase.from("automation_event_log").select("id,event_type,severity,trigger_reason,action_taken,created_at,booking_id")
         .neq("action_taken", "simulation_logged").order("created_at", { ascending: false }).limit(100),
-      supabase.from("payments").select("id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
+      supabase.from("payments").select("id,booking_id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
       supabase.from("dispatch_escalations").select("id,booking_id,reason,dispatch_rounds_attempted,created_at,resolved_at").order("created_at", { ascending: false }).limit(50),
+      supabase.from("dispatch_log").select("id,booking_id,partner_id,status,response,created_at,responded_at,response_time_seconds").gte("created_at", todayStart).order("created_at", { ascending: false }).limit(500),
     ]);
-    setBookings((bk.data || []) as BookingRow[]);
-    setQuotes((qt.data || []) as QuoteRow[]);
+    const liveBookings = (bk.data || []) as BookingRow[];
+    setBookings(liveBookings);
+
+    // Build live booking ID set for simulation isolation
+    const liveBookingIds = new Set(liveBookings.map(b => b.id));
+
+    // Filter quotes, payments, escalations to only those linked to live bookings
+    setQuotes(((qt.data || []) as QuoteRow[]).filter(q => liveBookingIds.has(q.booking_id)));
     setPartners((pt.data || []) as PartnerRow[]);
-    setIncidents((inc.data || []) as IncidentRow[]);
-    setPayments((pay.data || []) as PaymentRow[]);
-    setEscalations((esc.data || []) as EscalationRow[]);
+    setIncidents(((inc.data || []) as IncidentRow[]).filter(i => !i.booking_id || liveBookingIds.has(i.booking_id)));
+    setPayments(((pay.data || []) as PaymentRow[]).filter(p => liveBookingIds.has(p.booking_id)));
+    setEscalations(((esc.data || []) as EscalationRow[]).filter(e => liveBookingIds.has(e.booking_id)));
+    setDispatchLogs(((dl.data || []) as DispatchLogRow[]).filter(d => liveBookingIds.has(d.booking_id)));
     setLoading(false);
     setLastRefresh(new Date());
   };
