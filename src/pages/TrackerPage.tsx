@@ -474,6 +474,12 @@ const TrackerPage = () => {
     // DB-backed booking view (real bookings from Phase 1)
     if (!booking && dbBooking) {
     const shortId = dbBooking.id.slice(0, 8).toUpperCase();
+    const CATEGORY_LABELS: Record<string, string> = {
+      AC: "AC Solutions", MOBILE: "Mobile Phone Repairs",
+      CONSUMER_ELEC: "Consumer Electronics", IT: "IT Repairs & Support",
+      CCTV: "CCTV & Surveillance", SOLAR: "Solar Services",
+      ELECTRICAL: "Electrical Services", PLUMBING: "Plumbing Services",
+    };
     const STATUS_LABELS: Record<string, string> = {
       requested: "Submitted",
       matching: "Finding Provider",
