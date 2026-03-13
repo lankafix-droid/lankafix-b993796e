@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar,
   Monitor, Navigation, Zap, Wifi, RefreshCw, Car, Bike, Truck, Timer, Award,
-  Brain, BarChart3, Target, Briefcase, Info,
+  Brain, BarChart3, Target, Briefcase, Info, Search, Headphones,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
