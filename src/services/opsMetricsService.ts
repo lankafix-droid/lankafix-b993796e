@@ -209,6 +209,47 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
       .select("id", { count: "exact", head: true })
       .eq("dispatch_mode", "manual")
       .eq("status", "requested"),
+
+    // 14. Pilot: Payment failures
+    supabase
+      .from("payments")
+      .select("id", { count: "exact", head: true })
+      .eq("payment_status", "failed"),
+
+    // 15. Pilot: Technician cancelled bookings today
+    (() => {
+      let q = supabase
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "cancelled")
+        .eq("cancellation_reason", "technician_cancelled")
+        .gte("cancelled_at", from);
+      return q;
+    })(),
+
+    // 16. Pilot: Technician late (SLA breached, still active)
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("sla_breached", true)
+      .not("status", "in", '("completed","cancelled")'),
+
+    // 17. Pilot: Partners flagged (rating < 3.5 OR acceptance < 60)
+    supabase
+      .from("partners")
+      .select("id", { count: "exact", head: true })
+      .eq("verification_status", "verified")
+      .or("rating_average.lt.3.5,acceptance_rate.lt.60"),
+
+    // 18. Pilot: Stale quotes (submitted > 30 min ago, not approved/rejected)
+    (() => {
+      const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      return supabase
+        .from("quotes")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "submitted")
+        .lt("submitted_at", thirtyMinAgo);
+    })(),
   ]);
 
   // Compute avg dispatch time from response_time_seconds
@@ -240,6 +281,11 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     avgPartnerResponseSec = Math.round(totalSec / dispatchRows.length);
   }
 
+  // Destructure pilot metrics
+  const [paymentFailedRes, techCancelledRes, techLateRes, partnersFlaggedRes, staleQuotesRes] = [
+    results[13], results[14], results[15], results[16], results[17],
+  ];
+
   return {
     active_bookings: activeRes.count ?? 0,
     bookings_today: todayRes.count ?? 0,
@@ -256,6 +302,11 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     avg_partner_response_sec: avgPartnerResponseSec,
     jobs_awaiting_partner: awaitingPartnerRes.count ?? 0,
     consultation_queue: consultationQueueRes.count ?? 0,
+    payments_failed: paymentFailedRes?.count ?? 0,
+    technician_cancelled: techCancelledRes?.count ?? 0,
+    technician_late: techLateRes?.count ?? 0,
+    partners_flagged: partnersFlaggedRes?.count ?? 0,
+    quotes_stale: staleQuotesRes?.count ?? 0,
   };
 }
 
