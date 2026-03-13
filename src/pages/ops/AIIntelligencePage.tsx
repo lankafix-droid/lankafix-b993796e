@@ -136,7 +136,7 @@ function AutomationTab() {
                   </div>
                   <p className="text-[11px] text-muted-foreground">{e.trigger_reason}</p>
                   {meta.category && <p className="text-[10px] text-muted-foreground">Category: {catLabel(meta.category)}</p>}
-                  {meta.zone && <p className="text-[10px] text-muted-foreground">Zone: {meta.zone}</p>}
+                  {meta.zone && <p className="text-[10px] text-muted-foreground">Zone: {zoneLabel(meta.zone)}</p>}
                   {EVENT_ACTION_GUIDE[e.event_type] && (
                     <div className="bg-primary/5 border border-primary/10 rounded px-2 py-1.5 mt-1">
                       <p className="text-[10px] text-primary font-medium">→ {EVENT_ACTION_GUIDE[e.event_type]}</p>
