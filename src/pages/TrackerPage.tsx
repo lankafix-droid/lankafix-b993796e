@@ -744,7 +744,45 @@ const TrackerPage = () => {
               </motion.div>
             )}
 
-            {/* Rating Section for completed DB bookings */}
+            {/* Cancelled booking state */}
+            {isCancelled && (
+              <motion.div
+                className="bg-card rounded-2xl border border-destructive/20 overflow-hidden shadow-[var(--shadow-card)]"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="bg-destructive/5 border-b border-destructive/20 px-5 py-4 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
+                    <XCircle className="w-6 h-6 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-base font-bold text-foreground">Booking Cancelled</p>
+                    {dbBooking.cancelled_at && (
+                      <p className="text-xs text-muted-foreground">{new Date(dbBooking.cancelled_at).toLocaleString()}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="p-5 space-y-3">
+                  {dbBooking.cancellation_reason && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Reason</span>
+                      <span className="font-medium text-foreground">{dbBooking.cancellation_reason}</span>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">If you have any questions about this cancellation, please contact our support team.</p>
+                  <div className="flex gap-2">
+                    <Button variant="hero" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> Book Again
+                    </Button>
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
+                      <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} was cancelled - need help`)} target="_blank" rel="noopener noreferrer">
+                        <Headphones className="w-3.5 h-3.5" /> Support
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )
             {isCompleted && dbBooking.partner_id && user?.id && (
               <>
                 {existingRating ? (
