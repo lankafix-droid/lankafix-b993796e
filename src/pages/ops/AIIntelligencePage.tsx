@@ -408,7 +408,7 @@ export default function AIIntelligencePage() {
               <CardContent className="space-y-1.5">
                 {d.zonePerformance.map(z => (
                   <div key={z.zone} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
-                    <span>{z.zone}</span>
+                    <span>{zoneLabel(z.zone)}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">{z.bookings} jobs · {z.partners} partners</span>
                       <Badge variant={z.health === "healthy" ? "default" : z.health === "watch" ? "secondary" : "destructive"} className="text-[9px]">{z.health}</Badge>
