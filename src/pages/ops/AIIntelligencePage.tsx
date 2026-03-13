@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { zoneLabel } from "@/lib/opsLabels";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -135,7 +136,7 @@ function AutomationTab() {
                   </div>
                   <p className="text-[11px] text-muted-foreground">{e.trigger_reason}</p>
                   {meta.category && <p className="text-[10px] text-muted-foreground">Category: {catLabel(meta.category)}</p>}
-                  {meta.zone && <p className="text-[10px] text-muted-foreground">Zone: {meta.zone}</p>}
+                  {meta.zone && <p className="text-[10px] text-muted-foreground">Zone: {zoneLabel(meta.zone)}</p>}
                   {EVENT_ACTION_GUIDE[e.event_type] && (
                     <div className="bg-primary/5 border border-primary/10 rounded px-2 py-1.5 mt-1">
                       <p className="text-[10px] text-primary font-medium">→ {EVENT_ACTION_GUIDE[e.event_type]}</p>
@@ -407,7 +408,7 @@ export default function AIIntelligencePage() {
               <CardContent className="space-y-1.5">
                 {d.zonePerformance.map(z => (
                   <div key={z.zone} className="flex items-center justify-between text-xs py-1 border-b border-border/40 last:border-0">
-                    <span>{z.zone}</span>
+                    <span>{zoneLabel(z.zone)}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-muted-foreground">{z.bookings} jobs · {z.partners} partners</span>
                       <Badge variant={z.health === "healthy" ? "default" : z.health === "watch" ? "secondary" : "destructive"} className="text-[9px]">{z.health}</Badge>
@@ -449,7 +450,7 @@ export default function AIIntelligencePage() {
                 ) : d.zonePerformance.filter(z => z.health !== "healthy").map(z => (
                   <div key={z.zone} className="flex items-center justify-between text-xs border-l-2 border-destructive pl-3 py-1">
                     <div>
-                      <span className="font-medium">{z.zone}</span>
+                      <span className="font-medium">{zoneLabel(z.zone)}</span>
                       <p className="text-[10px] text-muted-foreground">{z.bookings} bookings · {z.partners} partners</p>
                     </div>
                     <Badge variant="destructive" className="text-[9px]">{z.health}</Badge>
@@ -489,7 +490,7 @@ export default function AIIntelligencePage() {
                       <span className="text-sm font-semibold">{catLabel(g.category)}</span>
                       <Badge variant={g.severity === "critical" ? "destructive" : "secondary"} className="text-[9px]">{g.severity}</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Zone: {g.zone}</p>
+                    <p className="text-xs text-muted-foreground">Zone: {zoneLabel(g.zone)}</p>
                     <div className="flex gap-4 text-xs mt-1">
                       <span>Demand: <strong>{g.demand}</strong></span>
                       <span>Partners: <strong>{g.partners}</strong></span>
