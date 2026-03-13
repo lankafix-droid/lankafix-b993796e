@@ -576,7 +576,7 @@ const TrackerPage = () => {
             {/* Payment Status */}
             <TrackerPaymentStatus bookingId={dbBooking.id} />
 
-            {/* Timeline events from DB — refined design */}
+            {/* Timeline events from DB — refined with current stage highlight */}
             {dbTimeline && dbTimeline.length > 0 && (
               <motion.div
                 className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
@@ -593,11 +593,11 @@ const TrackerPage = () => {
                     return (
                       <div key={evt.id} className="flex items-start gap-3 relative">
                         {i < dbTimeline.length - 1 && (
-                          <div className="absolute left-[11px] top-6 w-0.5 h-full bg-border/40" />
+                          <div className={`absolute left-[11px] top-6 w-0.5 h-full ${isLatest ? "bg-primary/30" : "bg-success/30"}`} />
                         )}
                         <div className="relative z-10 mt-0.5">
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                            isLatest ? "bg-primary" : "bg-success"
+                            isLatest ? "bg-primary ring-4 ring-primary/10" : "bg-success"
                           }`}>
                             {isLatest ? (
                               <Circle className="w-2.5 h-2.5 text-primary-foreground" />
@@ -606,8 +606,8 @@ const TrackerPage = () => {
                             )}
                           </div>
                         </div>
-                        <div className="pb-4 flex-1">
-                          <p className={`text-sm ${isLatest ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+                        <div className={`pb-4 flex-1 ${isLatest ? "bg-primary/5 -mx-2 px-2 py-1.5 rounded-lg" : ""}`}>
+                          <p className={`text-sm ${isLatest ? "font-bold text-primary" : "font-medium text-foreground"}`}>
                             {evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                           </p>
                           {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
