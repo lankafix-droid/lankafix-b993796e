@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import {
   MapPin, Navigation, Search, CheckCircle2, ArrowRight, Shield,
   Home, Building2, Building, Users, Pencil, X, AlertTriangle, Loader2,

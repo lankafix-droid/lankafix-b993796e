@@ -435,6 +435,12 @@ export default function DispatchBoardPage() {
                         </span>
                       )}
                     </div>
+                    {/* Pilot: Flag partners needing review */}
+                    {((p.rating_average ?? 0) < 3.5 || (p.acceptance_rate ?? 100) < 60) && (
+                      <Badge variant="outline" className="mt-1 text-[9px] bg-destructive/10 text-destructive border-destructive/20">
+                        ⚠ Flagged: {(p.rating_average ?? 0) < 3.5 ? `Rating ${p.rating_average}` : ""}{(p.rating_average ?? 0) < 3.5 && (p.acceptance_rate ?? 100) < 60 ? " + " : ""}{(p.acceptance_rate ?? 100) < 60 ? `Accept ${p.acceptance_rate}%` : ""}
+                      </Badge>
+                    )}
                     {riskFactors.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
                         {riskFactors.map((f, i) => (
