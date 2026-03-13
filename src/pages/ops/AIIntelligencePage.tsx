@@ -368,6 +368,8 @@ export default function AIIntelligencePage() {
               <TabsTrigger value="partners" className="text-[10px] px-2.5 py-1.5"><Gauge className="w-3 h-3 mr-1" />Partners</TabsTrigger>
               <TabsTrigger value="pricing" className="text-[10px] px-2.5 py-1.5"><DollarSign className="w-3 h-3 mr-1" />Pricing</TabsTrigger>
               <TabsTrigger value="automation" className="text-[10px] px-2.5 py-1.5"><Bot className="w-3 h-3 mr-1" />Auto</TabsTrigger>
+              <TabsTrigger value="alerts" className="text-[10px] px-2.5 py-1.5"><Bell className="w-3 h-3 mr-1" />Alerts</TabsTrigger>
+              <TabsTrigger value="milestones" className="text-[10px] px-2.5 py-1.5"><Trophy className="w-3 h-3 mr-1" />Milestones</TabsTrigger>
             </TabsList>
           </div>
 
