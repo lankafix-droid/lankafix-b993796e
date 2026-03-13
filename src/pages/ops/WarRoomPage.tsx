@@ -72,6 +72,7 @@ interface IncidentRow {
 
 interface PaymentRow {
   id: string;
+  booking_id: string;
   payment_status: string;
   amount_lkr: number;
   created_at: string;
@@ -84,6 +85,17 @@ interface EscalationRow {
   dispatch_rounds_attempted: number | null;
   created_at: string;
   resolved_at: string | null;
+}
+
+interface DispatchLogRow {
+  id: string;
+  booking_id: string;
+  partner_id: string;
+  status: string | null;
+  response: string | null;
+  created_at: string;
+  responded_at: string | null;
+  response_time_seconds: number | null;
 }
 
 // ── SLA config per category (minutes) ──
@@ -131,6 +143,7 @@ export default function WarRoomPage() {
   const [incidents, setIncidents] = useState<IncidentRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [escalations, setEscalations] = useState<EscalationRow[]>([]);
+  const [dispatchLogs, setDispatchLogs] = useState<DispatchLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
@@ -140,22 +153,30 @@ export default function WarRoomPage() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [bk, qt, pt, inc, pay, esc] = await Promise.all([
+    const [bk, qt, pt, inc, pay, esc, dl] = await Promise.all([
       supabase.from("bookings").select("id,category_code,zone_code,status,dispatch_status,payment_status,customer_rating,created_at,assigned_at,partner_id,booking_source,is_emergency,sla_eta_minutes")
         .neq("booking_source", "pilot_simulation").order("created_at", { ascending: false }).limit(200),
       supabase.from("quotes").select("id,booking_id,status,created_at,submitted_at,approved_at,total_lkr").order("created_at", { ascending: false }).limit(200),
       supabase.from("partners").select("id,full_name,categories_supported,service_zones,availability_status,acceptance_rate,cancellation_rate,rating_average,average_response_time_minutes,completed_jobs_count"),
       supabase.from("automation_event_log").select("id,event_type,severity,trigger_reason,action_taken,created_at,booking_id")
         .neq("action_taken", "simulation_logged").order("created_at", { ascending: false }).limit(100),
-      supabase.from("payments").select("id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
+      supabase.from("payments").select("id,booking_id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
       supabase.from("dispatch_escalations").select("id,booking_id,reason,dispatch_rounds_attempted,created_at,resolved_at").order("created_at", { ascending: false }).limit(50),
+      supabase.from("dispatch_log").select("id,booking_id,partner_id,status,response,created_at,responded_at,response_time_seconds").gte("created_at", todayStart).order("created_at", { ascending: false }).limit(500),
     ]);
-    setBookings((bk.data || []) as BookingRow[]);
-    setQuotes((qt.data || []) as QuoteRow[]);
+    const liveBookings = (bk.data || []) as BookingRow[];
+    setBookings(liveBookings);
+
+    // Build live booking ID set for simulation isolation
+    const liveBookingIds = new Set(liveBookings.map(b => b.id));
+
+    // Filter quotes, payments, escalations to only those linked to live bookings
+    setQuotes(((qt.data || []) as QuoteRow[]).filter(q => liveBookingIds.has(q.booking_id)));
     setPartners((pt.data || []) as PartnerRow[]);
-    setIncidents((inc.data || []) as IncidentRow[]);
-    setPayments((pay.data || []) as PaymentRow[]);
-    setEscalations((esc.data || []) as EscalationRow[]);
+    setIncidents(((inc.data || []) as IncidentRow[]).filter(i => !i.booking_id || liveBookingIds.has(i.booking_id)));
+    setPayments(((pay.data || []) as PaymentRow[]).filter(p => liveBookingIds.has(p.booking_id)));
+    setEscalations(((esc.data || []) as EscalationRow[]).filter(e => liveBookingIds.has(e.booking_id)));
+    setDispatchLogs(((dl.data || []) as DispatchLogRow[]).filter(d => liveBookingIds.has(d.booking_id)));
     setLoading(false);
     setLastRefresh(new Date());
   };
@@ -166,23 +187,38 @@ export default function WarRoomPage() {
   const todayBookings = bookings.filter(b => b.created_at >= todayStart);
   const activeJobs = bookings.filter(b => ["assigned", "in_progress", "en_route", "diagnosing", "quoting"].includes(b.status));
   const openEscalations = escalations.filter(e => !e.resolved_at);
+
+  // Partner lookup map for provider names
+  const partnerMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    partners.forEach(p => { m[p.id] = p.full_name; });
+    return m;
+  }, [partners]);
+
+  // Quote aging helper — prefer submitted_at, fallback to created_at
+  const quoteAgeMinutes = (q: QuoteRow) => {
+    const ref = q.submitted_at || q.created_at;
+    return (Date.now() - new Date(ref).getTime()) / 60000;
+  };
+
   const staleQuotes = quotes.filter(q => {
     if (q.status !== "submitted" && q.status !== "pending") return false;
-    return (Date.now() - new Date(q.created_at).getTime()) > 30 * 60000;
+    return quoteAgeMinutes(q) > 30;
   });
   const paymentFailures = payments.filter(p => p.payment_status === "failed");
   const lowRatings = todayBookings.filter(b => b.customer_rating !== null && b.customer_rating < 3);
   const slaBreaches = todayBookings.filter(b => getSlaStatus(b) === "breached");
 
-  // Dispatch metrics
-  const todayDispatched = todayBookings.filter(b => b.dispatch_status && b.dispatch_status !== "pending");
-  const dispatchSuccess = todayDispatched.filter(b => b.dispatch_status === "accepted" || b.dispatch_status === "completed");
-  const dispatchSuccessRate = todayDispatched.length > 0 ? (dispatchSuccess.length / todayDispatched.length) * 100 : 100;
-  const avgDispatchMs = todayBookings
-    .filter(b => b.assigned_at && b.created_at)
-    .map(b => new Date(b.assigned_at!).getTime() - new Date(b.created_at).getTime());
-  const avgDispatchMin = avgDispatchMs.length > 0 ? (avgDispatchMs.reduce((a, b) => a + b, 0) / avgDispatchMs.length) / 60000 : 0;
-  const noProviderCases = todayDispatched.filter(b => b.dispatch_status === "no_provider_found");
+  // Dispatch metrics — computed from dispatch_log for accuracy
+  const dlAccepted = dispatchLogs.filter(d => d.status === "accepted" || d.response === "accepted");
+  const dlTotal = dispatchLogs.length;
+  const dispatchSuccessRate = dlTotal > 0 ? (dlAccepted.length / dlTotal) * 100 : 100;
+  const dlResponseTimes = dispatchLogs
+    .filter(d => d.response_time_seconds !== null && d.response_time_seconds > 0)
+    .map(d => d.response_time_seconds!);
+  const avgDispatchMin = dlResponseTimes.length > 0
+    ? (dlResponseTimes.reduce((a, b) => a + b, 0) / dlResponseTimes.length) / 60 : 0;
+  const noProviderCases = todayBookings.filter(b => b.dispatch_status === "no_provider_found");
 
   // Quote metrics
   const quotesSubmitted = quotes.filter(q => q.status === "submitted" || q.status === "approved" || q.status === "rejected");
@@ -191,13 +227,12 @@ export default function WarRoomPage() {
   const quotesRevised = quotes.filter(q => q.status === "revised");
   const quotesExpired = quotes.filter(q => q.status === "expired");
 
-  // Quote aging
-  const quoteAge = (q: QuoteRow) => (Date.now() - new Date(q.created_at).getTime()) / 60000;
+  // Quote aging buckets — using submitted_at-aware helper
   const pendingQuotes = quotes.filter(q => q.status === "submitted" || q.status === "pending");
-  const qBucket0_15 = pendingQuotes.filter(q => quoteAge(q) <= 15);
-  const qBucket15_30 = pendingQuotes.filter(q => quoteAge(q) > 15 && quoteAge(q) <= 30);
-  const qBucket30_60 = pendingQuotes.filter(q => quoteAge(q) > 30 && quoteAge(q) <= 60);
-  const qBucket60 = pendingQuotes.filter(q => quoteAge(q) > 60);
+  const qBucket0_15 = pendingQuotes.filter(q => quoteAgeMinutes(q) <= 15);
+  const qBucket15_30 = pendingQuotes.filter(q => quoteAgeMinutes(q) > 15 && quoteAgeMinutes(q) <= 30);
+  const qBucket30_60 = pendingQuotes.filter(q => quoteAgeMinutes(q) > 30 && quoteAgeMinutes(q) <= 60);
+  const qBucket60 = pendingQuotes.filter(q => quoteAgeMinutes(q) > 60);
 
   // Partner tiers
   const partnerTier = (p: PartnerRow) => {
@@ -316,6 +351,7 @@ export default function WarRoomPage() {
                       <TableHead className="text-[10px]">ID</TableHead>
                       <TableHead className="text-[10px]">Cat</TableHead>
                       <TableHead className="text-[10px]">Zone</TableHead>
+                      <TableHead className="text-[10px]">Provider</TableHead>
                       <TableHead className="text-[10px]">Status</TableHead>
                       <TableHead className="text-[10px]">Dispatch</TableHead>
                       <TableHead className="text-[10px]">Quote</TableHead>
@@ -332,11 +368,12 @@ export default function WarRoomPage() {
                       return (
                         <TableRow key={b.id}
                           className={`cursor-pointer ${isCancelled ? "bg-destructive/5" : isLowRated ? "bg-amber-500/5" : sla === "breached" ? "bg-destructive/5" : ""}`}
-                          onClick={() => navigate(`/tracker/${b.id}`)}
+                          onClick={() => navigate(`/track/${b.id}`)}
                         >
                           <TableCell className="text-[10px] font-mono">{b.id.slice(0, 6)}</TableCell>
                           <TableCell className="text-[10px]">{catLabel(b.category_code)}</TableCell>
                           <TableCell className="text-[10px]">{zoneLabel(b.zone_code)}</TableCell>
+                          <TableCell className="text-[10px] truncate max-w-[80px]">{b.partner_id ? (partnerMap[b.partner_id] || b.partner_id.slice(0, 6)) : "—"}</TableCell>
                           <TableCell><Badge className={`${bookingStatusColor(b.status)} text-[9px]`}>{bookingStatusLabel(b.status)}</Badge></TableCell>
                           <TableCell><Badge className={`${dispatchStatusColor(b.dispatch_status || "")} text-[9px]`}>{dispatchStatusLabel(b.dispatch_status)}</Badge></TableCell>
                           <TableCell>
@@ -417,7 +454,7 @@ export default function WarRoomPage() {
                         <TableCell className="text-[10px]">{e.dispatch_rounds_attempted ?? 0}</TableCell>
                         <TableCell className="text-[10px]">{new Date(e.created_at).toLocaleTimeString()}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => navigate(`/tracker/${e.booking_id}`)}>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => navigate(`/track/${e.booking_id}`)}>
                             <Eye className="w-3 h-3 mr-1" /> View
                           </Button>
                         </TableCell>
@@ -624,15 +661,19 @@ export default function WarRoomPage() {
                 <div className="text-[10px] text-muted-foreground">Medium</div>
               </div>
             </div>
-            {todayIncidents.slice(0, 5).map(inc => (
-              <div key={inc.id} className="flex items-center gap-2 p-1.5 rounded bg-muted/30 mb-1 text-[11px]">
-                <Badge className={`text-[9px] ${inc.severity === "critical" ? "bg-destructive/10 text-destructive" : inc.severity === "high" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"}`}>
-                  {inc.severity}
-                </Badge>
-                <span className="truncate flex-1">{inc.event_type.replace(/_/g, " ")}</span>
-                <span className="text-muted-foreground">{new Date(inc.created_at).toLocaleTimeString()}</span>
-              </div>
-            ))}
+            {todayIncidents.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-3">No incidents today — all clear</div>
+            ) : (
+              todayIncidents.slice(0, 5).map(inc => (
+                <div key={inc.id} className="flex items-center gap-2 p-1.5 rounded bg-muted/30 mb-1 text-[11px]">
+                  <Badge className={`text-[9px] ${inc.severity === "critical" ? "bg-destructive/10 text-destructive" : inc.severity === "high" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"}`}>
+                    {inc.severity}
+                  </Badge>
+                  <span className="truncate flex-1">{inc.event_type.replace(/_/g, " ")}</span>
+                  <span className="text-muted-foreground">{new Date(inc.created_at).toLocaleTimeString()}</span>
+                </div>
+              ))
+            )}
             <Button variant="ghost" size="sm" className="w-full mt-2 text-[11px]" onClick={() => navigate("/ops/incidents")}>
               View All Incidents <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
