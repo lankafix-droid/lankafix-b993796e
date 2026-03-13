@@ -318,6 +318,17 @@ export default function DispatchBoardPage() {
                       <UserCheck className="w-3 h-3 mr-1" /> Assign
                     </Button>
                   </div>
+                  {/* Ops intervention actions */}
+                  <div className="flex gap-1 mt-1">
+                    <Button size="sm" variant="outline" className="text-[10px] h-6 text-destructive border-destructive/30"
+                      onClick={() => handleOpsCancel(b.id)}>
+                      Cancel Job
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-[10px] h-6"
+                      onClick={() => navigate(`/track/${b.id}`)}>
+                      View Tracker
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
