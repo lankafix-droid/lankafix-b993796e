@@ -19,6 +19,7 @@ import {
 import QuoteForm from "@/components/quotes/QuoteForm";
 import { usePartnerLocationPush } from "@/hooks/usePartnerLocationPush";
 import ReportIssueModal from "@/components/support/ReportIssueModal";
+import PartnerRatingBadge from "@/components/ratings/PartnerRatingBadge";
 
 const DECLINE_REASONS = [
   "Too far away",
