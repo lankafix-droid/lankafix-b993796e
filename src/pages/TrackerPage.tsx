@@ -190,6 +190,14 @@ function TrackerPaymentStatus({ bookingId, bookingStatus }: { bookingId: string;
       {isPaid && payment.paid_at && (
         <p className="text-[10px] text-muted-foreground mt-1.5">Confirmed {new Date(payment.paid_at).toLocaleString()}</p>
       )}
+      {isFailed && (
+        <div className="mt-2 space-y-1.5">
+          <p className="text-[10px] text-destructive">Payment could not be processed. Please try again or contact support.</p>
+          <a href={`https://wa.me/${SUPPORT_WHATSAPP.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hi, payment failed for my booking. Need help.')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary font-medium hover:underline">
+            <MessageCircle className="w-3 h-3" /> Contact Support
+          </a>
+        </div>
+      )}
       {!isPaid && !isFailed && (
         <p className="text-[10px] text-muted-foreground mt-1.5">Payment will be confirmed once received</p>
       )}
@@ -474,6 +482,12 @@ const TrackerPage = () => {
     // DB-backed booking view (real bookings from Phase 1)
     if (!booking && dbBooking) {
     const shortId = dbBooking.id.slice(0, 8).toUpperCase();
+    const CATEGORY_LABELS: Record<string, string> = {
+      AC: "AC Solutions", MOBILE: "Mobile Phone Repairs",
+      CONSUMER_ELEC: "Consumer Electronics", IT: "IT Repairs & Support",
+      CCTV: "CCTV & Surveillance", SOLAR: "Solar Services",
+      ELECTRICAL: "Electrical Services", PLUMBING: "Plumbing Services",
+    };
     const STATUS_LABELS: Record<string, string> = {
       requested: "Submitted",
       matching: "Finding Provider",
@@ -531,9 +545,13 @@ const TrackerPage = () => {
               </Link>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-foreground text-sm">Job {shortId}</p>
-                <p className="text-xs text-muted-foreground">{dbBooking.category_code}</p>
+                <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[dbBooking.category_code] || dbBooking.category_code}</p>
               </div>
-              <Badge className={`text-xs font-semibold ${isCompleted ? "bg-success/10 text-success border-success/20" : "bg-primary/10 text-primary border-0"}`}>
+              <Badge className={`text-xs font-semibold ${
+                isCompleted ? "bg-success/10 text-success border-success/20" :
+                isCancelled ? "bg-destructive/10 text-destructive border-destructive/20" :
+                "bg-primary/10 text-primary border-0"
+              }`}>
                 {statusLabel}
               </Badge>
             </div>
@@ -718,6 +736,46 @@ const TrackerPage = () => {
                     </Button>
                     <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
                       <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">
+                        <Headphones className="w-3.5 h-3.5" /> Support
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Cancelled booking state */}
+            {isCancelled && (
+              <motion.div
+                className="bg-card rounded-2xl border border-destructive/20 overflow-hidden shadow-[var(--shadow-card)]"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="bg-destructive/5 border-b border-destructive/20 px-5 py-4 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center">
+                    <XCircle className="w-6 h-6 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-base font-bold text-foreground">Booking Cancelled</p>
+                    {dbBooking.cancelled_at && (
+                      <p className="text-xs text-muted-foreground">{new Date(dbBooking.cancelled_at).toLocaleString()}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="p-5 space-y-3">
+                  {dbBooking.cancellation_reason && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Reason</span>
+                      <span className="font-medium text-foreground">{dbBooking.cancellation_reason}</span>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">If you have any questions about this cancellation, please contact our support team.</p>
+                  <div className="flex gap-2">
+                    <Button variant="hero" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> Book Again
+                    </Button>
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
+                      <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} was cancelled - need help`)} target="_blank" rel="noopener noreferrer">
                         <Headphones className="w-3.5 h-3.5" /> Support
                       </a>
                     </Button>
