@@ -287,10 +287,6 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     avgPartnerResponseSec = Math.round(totalSec / dispatchRows.length);
   }
 
-  // Destructure pilot metrics
-  const [paymentFailedRes, techCancelledRes, techLateRes, partnersFlaggedRes, staleQuotesRes] = [
-    results[13], results[14], results[15], results[16], results[17],
-  ];
 
   return {
     active_bookings: activeRes.count ?? 0,
