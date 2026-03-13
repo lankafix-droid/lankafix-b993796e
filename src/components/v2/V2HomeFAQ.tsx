@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { track } from "@/lib/analytics";
 import { motion } from "framer-motion";
 import {
   Accordion,
@@ -67,7 +68,7 @@ const V2HomeFAQ = () => {
                 value={`faq-${i}`}
                 className="bg-background rounded-xl border border-border/50 px-5 data-[state=open]:border-primary/20 data-[state=open]:shadow-card-hover transition-all duration-300"
               >
-                <AccordionTrigger className="text-sm font-semibold text-foreground hover:no-underline py-4 text-left">
+                <AccordionTrigger className="text-sm font-semibold text-foreground hover:no-underline py-4 text-left" onClick={() => track("homepage_faq_expand", { question: item.q })}>
                   {item.q}
                 </AccordionTrigger>
                 <AccordionContent className="text-[13px] text-muted-foreground leading-relaxed pb-4">

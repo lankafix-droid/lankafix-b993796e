@@ -8,9 +8,9 @@ import Footer from "@/components/landing/Footer";
 import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
 
-// Lazy-load below-fold sections for performance
-const V2BookAgain = lazy(() => import("@/components/v2/V2BookAgain"));
+// Lazy-load below-fold sections for mobile performance
 const V2NearbyTechnicians = lazy(() => import("@/components/v2/V2NearbyTechnicians"));
+const V2BookAgain = lazy(() => import("@/components/v2/V2BookAgain"));
 const V2WhyLankaFix = lazy(() => import("@/components/v2/V2WhyLankaFix"));
 const V2HowItWorks = lazy(() => import("@/components/v2/V2HowItWorks"));
 const V2SocialProof = lazy(() => import("@/components/v2/V2SocialProof"));
@@ -18,7 +18,7 @@ const V2HomeFAQ = lazy(() => import("@/components/v2/V2HomeFAQ"));
 const V2SupportEntry = lazy(() => import("@/components/v2/V2SupportEntry"));
 const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
 
-const SectionFallback = () => <div className="h-32" />;
+const SectionFallback = () => <div className="h-24" aria-hidden />;
 
 const V2HomePage = () => {
   const { locationSetupComplete } = useLocationStore();
@@ -45,23 +45,23 @@ const V2HomePage = () => {
     <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
-        {/* 1. Hero — search, location, emergency CTA, trust pills */}
+        {/* 1. Hero — search, location, emergency, trust pills */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
-        {/* 2. Popular services — most booked, quick conversion */}
+        {/* 2. Popular Services — high-conversion quick links */}
         <V2PopularServices />
 
-        {/* 3. Book again — returning users */}
-        <Suspense fallback={<SectionFallback />}>
-          <V2BookAgain />
-        </Suspense>
-
-        {/* 4. Category grid — all launch categories */}
+        {/* 3. Category Grid — Phase-1 launch categories prioritized */}
         <V2CategoryGrid />
 
-        {/* 5. Nearby verified technicians */}
+        {/* 4. Nearby Verified Technicians — trust + social proof */}
         <Suspense fallback={<SectionFallback />}>
           <V2NearbyTechnicians />
+        </Suspense>
+
+        {/* 5. Book Again — returning users only */}
+        <Suspense fallback={<SectionFallback />}>
+          <V2BookAgain />
         </Suspense>
 
         {/* 6. Why LankaFix — trust differentiators */}
@@ -69,12 +69,12 @@ const V2HomePage = () => {
           <V2WhyLankaFix />
         </Suspense>
 
-        {/* 7. How it works — 4-step explainer */}
+        {/* 7. How It Works — 4-step explainer */}
         <Suspense fallback={<SectionFallback />}>
           <V2HowItWorks />
         </Suspense>
 
-        {/* 8. Social proof — testimonials + stats */}
+        {/* 8. Social Proof — testimonials + stats */}
         <Suspense fallback={<SectionFallback />}>
           <V2SocialProof />
         </Suspense>
@@ -84,16 +84,18 @@ const V2HomePage = () => {
           <V2HomeFAQ />
         </Suspense>
 
-        {/* 10. Support entry */}
+        {/* 10. Support — WhatsApp, help, track */}
         <Suspense fallback={<SectionFallback />}>
           <V2SupportEntry />
         </Suspense>
 
-        {/* 11. Trust strip — final confidence builder */}
+        {/* 11. Trust Strip — final confidence builder */}
         <Suspense fallback={<SectionFallback />}>
           <V2TrustStrip />
         </Suspense>
       </main>
+
+      {/* 12. Footer */}
       <Footer />
     </PageTransition>
   );
