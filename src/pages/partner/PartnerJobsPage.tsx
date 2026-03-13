@@ -147,18 +147,18 @@ export default function PartnerJobsPage() {
           </div>
         )}
         {bookings.map((b: any) => {
-          const statusLabel = (b.status || "").replace(/_/g, " ");
+          const statusLabel = STATUS_LABELS[b.status] || (b.status || "").replace(/_/g, " ");
           const colorClass = STATUS_COLORS[b.status] || "bg-muted text-muted-foreground";
           return (
             <div
               key={b.id}
-              className="bg-card border rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/30 transition-colors"
+              className="bg-card border border-border/60 rounded-2xl p-4 space-y-2 cursor-pointer hover:border-primary/30 transition-all shadow-sm"
               onClick={() => { track("partner_job_open", { jobId: b.id }); navigate(`/partner/job/${b.id}`); }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">{b.id.slice(0, 8)}...</p>
-                  <Badge className={`text-[10px] capitalize ${colorClass}`}>{statusLabel}</Badge>
+                  <p className="text-sm font-semibold text-foreground">{b.id.slice(0, 8).toUpperCase()}</p>
+                  <Badge className={`text-[10px] ${colorClass}`}>{statusLabel}</Badge>
                 </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground" />
               </div>
