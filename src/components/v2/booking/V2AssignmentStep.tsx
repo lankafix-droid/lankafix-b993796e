@@ -595,13 +595,14 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         size="lg"
         className="w-full gap-2 rounded-xl h-12"
       >
-        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding best technician…</>}
-        {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}
-        {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Waiting for response…</>}
-        {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Continue</>}
-        {(phase === "no_match" || phase === "escalated") && <><Users className="w-4 h-4" /> Waiting for operations…</>}
-        {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Try again</>}
-        {phase === "error" && <><RefreshCw className="w-4 h-4" /> Retry</>}
+        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding your technician…</>}
+        {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm & Book</>}
+        {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Technician reviewing…</>}
+        {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Proceed to Confirmation</>}
+        {phase === "no_match" && <><Clock className="w-4 h-4" /> Searching for technicians…</>}
+        {phase === "escalated" && <><Clock className="w-4 h-4" /> Operations team assisting…</>}
+        {phase === "timeout" && <><RefreshCw className="w-4 h-4" /> Search Again</>}
+        {phase === "error" && <><RefreshCw className="w-4 h-4" /> Try Again</>}
       </Button>
     </div>
   );

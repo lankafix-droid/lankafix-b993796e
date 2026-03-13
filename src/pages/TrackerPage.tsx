@@ -654,13 +654,18 @@ const TrackerPage = () => {
                     </div>
                   )}
 
-                  {/* Warranty card */}
+                  {/* Warranty card — category-specific */}
                   <div className="bg-success/5 border border-success/20 rounded-xl p-3 flex items-start gap-2.5">
                     <Award className="w-4 h-4 text-success shrink-0 mt-0.5" />
                     <div>
                       <p className="text-xs font-bold text-foreground">Warranty Active</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                        Your service warranty is active from the completion date. Keep your Job ID ({shortId}) for warranty claims.
+                        {dbBooking.category_code === "AC" && "30-day labour warranty included. Parts warranty depends on grade selected."}
+                        {dbBooking.category_code === "MOBILE" && "90-day parts warranty on screen and battery repairs. 30-day labour warranty."}
+                        {dbBooking.category_code === "CONSUMER_ELEC" && "30-day labour warranty. Replacement parts carry manufacturer warranty."}
+                        {dbBooking.category_code === "IT" && "14-day labour warranty. Software fixes covered for 7 days."}
+                        {!["AC", "MOBILE", "CONSUMER_ELEC", "IT"].includes(dbBooking.category_code) && "Your service warranty is active from the completion date."}
+                        {" "}Keep your Job ID ({shortId}) for warranty claims.
                       </p>
                     </div>
                   </div>
