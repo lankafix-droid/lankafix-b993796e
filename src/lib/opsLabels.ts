@@ -81,11 +81,30 @@ export const paymentStatusColor = (status: string | null | undefined): string =>
 };
 
 // Quote status (DB enum values)
-export const QUOTE_DB_STATUS_LABELS: Record<string, string> = {
+export const QUOTE_STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   submitted: "Submitted",
   approved: "Approved",
   rejected: "Rejected",
   revised: "Revised",
   expired: "Expired",
+};
+
+export const QUOTE_STATUS_COLORS: Record<string, string> = {
+  pending: "bg-muted text-muted-foreground",
+  submitted: "bg-primary/10 text-primary",
+  approved: "bg-emerald-500/10 text-emerald-600",
+  rejected: "bg-destructive/10 text-destructive",
+  revised: "bg-amber-500/10 text-amber-600",
+  expired: "bg-muted text-muted-foreground",
+};
+
+export const quoteStatusLabel = (status: string | null | undefined): string => {
+  if (!status) return "—";
+  return QUOTE_STATUS_LABELS[status] || status.replace(/_/g, " ");
+};
+
+export const quoteStatusColor = (status: string | null | undefined): string => {
+  if (!status) return "bg-muted text-muted-foreground";
+  return QUOTE_STATUS_COLORS[status] || "bg-muted text-muted-foreground";
 };

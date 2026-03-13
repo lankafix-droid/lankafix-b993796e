@@ -12,6 +12,7 @@ import {
 import {
   catLabel, zoneLabel, bookingStatusLabel, bookingStatusColor,
   dispatchStatusLabel, dispatchStatusColor, paymentStatusLabel, paymentStatusColor,
+  quoteStatusLabel, quoteStatusColor,
 } from "@/lib/opsLabels";
 
 type FilterKey = "all" | "sla_breached" | "dispatch_pending" | "completed" | "cancelled";
