@@ -37,6 +37,12 @@ export interface OpsMetrics {
   avg_partner_response_sec: number | null;
   jobs_awaiting_partner: number;
   consultation_queue: number;
+  /** Pilot launch ops metrics */
+  payments_failed: number;
+  technician_cancelled: number;
+  technician_late: number;
+  partners_flagged: number;
+  quotes_stale: number;
 }
 
 function todayStart(): string {

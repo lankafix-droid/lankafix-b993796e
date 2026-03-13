@@ -39,6 +39,25 @@ export async function submitRating(opts: SubmitRatingOpts) {
     return { error: error.message };
   }
 
+  // Auto-create support case for low ratings (≤ 2 stars)
+  if (opts.rating <= 2 && data?.id) {
+    try {
+      await supabase
+        .from("support_cases" as any)
+        .insert({
+          booking_id: opts.bookingId,
+          user_id: opts.customerId,
+          issue_type: "service_quality_issue",
+          description: `Auto-generated: Customer rated service ${opts.rating}/5 stars.${opts.reviewText ? ` Review: "${opts.reviewText}"` : ""} Requires ops review.`,
+          priority: opts.rating === 1 ? "high" : "normal",
+          status: "open",
+        });
+      console.info("[RatingService] Auto support case created for low rating");
+    } catch (e) {
+      console.warn("[RatingService] Failed to create auto support case:", e);
+    }
+  }
+
   return { id: data?.id };
 }
 
