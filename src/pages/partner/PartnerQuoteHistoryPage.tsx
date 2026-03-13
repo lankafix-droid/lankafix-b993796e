@@ -123,7 +123,7 @@ export default function PartnerQuoteHistoryPage() {
                         {q.total_lkr ? `LKR ${q.total_lkr.toLocaleString()}` : "Draft"}
                       </span>
                       <Badge className={`text-[10px] ${STATUS_COLORS[q.status] || "bg-muted text-muted-foreground"}`}>
-                        {q.status.replace(/_/g, " ")}
+                        {q.status === "awaiting_approval" ? "Awaiting Approval" : q.status === "revision_requested" ? "Revision Requested" : q.status.charAt(0).toUpperCase() + q.status.slice(1)}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">
