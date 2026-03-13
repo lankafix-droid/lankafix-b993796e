@@ -661,15 +661,19 @@ export default function WarRoomPage() {
                 <div className="text-[10px] text-muted-foreground">Medium</div>
               </div>
             </div>
-            {todayIncidents.slice(0, 5).map(inc => (
-              <div key={inc.id} className="flex items-center gap-2 p-1.5 rounded bg-muted/30 mb-1 text-[11px]">
-                <Badge className={`text-[9px] ${inc.severity === "critical" ? "bg-destructive/10 text-destructive" : inc.severity === "high" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"}`}>
-                  {inc.severity}
-                </Badge>
-                <span className="truncate flex-1">{inc.event_type.replace(/_/g, " ")}</span>
-                <span className="text-muted-foreground">{new Date(inc.created_at).toLocaleTimeString()}</span>
-              </div>
-            ))}
+            {todayIncidents.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-3">No incidents today — all clear</div>
+            ) : (
+              todayIncidents.slice(0, 5).map(inc => (
+                <div key={inc.id} className="flex items-center gap-2 p-1.5 rounded bg-muted/30 mb-1 text-[11px]">
+                  <Badge className={`text-[9px] ${inc.severity === "critical" ? "bg-destructive/10 text-destructive" : inc.severity === "high" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"}`}>
+                    {inc.severity}
+                  </Badge>
+                  <span className="truncate flex-1">{inc.event_type.replace(/_/g, " ")}</span>
+                  <span className="text-muted-foreground">{new Date(inc.created_at).toLocaleTimeString()}</span>
+                </div>
+              ))
+            )}
             <Button variant="ghost" size="sm" className="w-full mt-2 text-[11px]" onClick={() => navigate("/ops/incidents")}>
               View All Incidents <ChevronRight className="w-3 h-3 ml-1" />
             </Button>
