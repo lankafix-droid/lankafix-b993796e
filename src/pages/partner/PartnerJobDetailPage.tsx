@@ -29,6 +29,37 @@ const DECLINE_REASONS = [
   "Other",
 ];
 
+const STATUS_LABELS: Record<string, string> = {
+  requested: "Submitted", matching: "Finding Provider",
+  awaiting_partner_confirmation: "Awaiting Confirmation", scheduled: "Scheduled",
+  assigned: "Provider Assigned", tech_en_route: "On the Way",
+  arrived: "Provider Arrived", inspection_started: "Inspecting",
+  quote_submitted: "Quote Ready", quote_approved: "Quote Approved",
+  quote_rejected: "Quote Rejected", quote_revised: "Quote Revised",
+  in_progress: "In Progress", repair_started: "Repair In Progress",
+  completed: "Completed", rated: "Rated", cancelled: "Cancelled",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  AC: "AC Solutions", MOBILE: "Mobile Phone Repairs",
+  CONSUMER_ELEC: "Consumer Electronics", IT: "IT Repairs & Support",
+  CCTV: "CCTV Solutions", SOLAR: "Solar Solutions",
+  SMART_HOME_OFFICE: "Smart Home & Office", COPIER: "Copier Repairs",
+  ELECTRICAL: "Electrical", PLUMBING: "Plumbing",
+  NETWORK: "Internet & Network", HOME_SECURITY: "Home Security",
+  POWER_BACKUP: "Power Backup", APPLIANCE_INSTALL: "Appliance Installation",
+};
+
+const MODE_LABELS: Record<string, string> = {
+  on_site: "On-Site", drop_off: "Drop-Off",
+  pickup_return: "Pickup & Return", remote: "Remote",
+};
+
+const QUOTE_STATUS_LABELS: Record<string, string> = {
+  draft: "Draft", submitted: "Awaiting Approval",
+  approved: "Approved", rejected: "Rejected", expired: "Expired",
+};
+
 export default function PartnerJobDetailPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -248,8 +279,8 @@ export default function PartnerJobDetailPage() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-foreground">{booking.id.slice(0, 8)}...</h1>
-          <Badge variant="outline" className="text-[10px]">{booking.status.replace(/_/g, " ")}</Badge>
+          <h1 className="text-lg font-bold text-foreground">Job {booking.id.slice(0, 8).toUpperCase()}</h1>
+          <Badge variant="outline" className="text-[10px]">{STATUS_LABELS[booking.status] || booking.status.replace(/_/g, " ")}</Badge>
         </div>
       </div>
 
@@ -440,9 +471,9 @@ export default function PartnerJobDetailPage() {
                 </div>
               </div>
             )}
-            <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium text-foreground">{booking.category_code}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium text-foreground">{CATEGORY_LABELS[booking.category_code] || booking.category_code}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span className="font-medium text-foreground">{booking.service_type || "General"}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium text-foreground">{(booking.service_mode || "on_site").replace(/_/g, " ")}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium text-foreground">{MODE_LABELS[booking.service_mode || "on_site"] || "On-Site"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Emergency</span><span className="font-medium text-foreground">{booking.is_emergency ? "Yes" : "No"}</span></div>
             <div className="flex items-center gap-1 text-muted-foreground"><MapPin className="w-3 h-3" /> {booking.zone_code || "Not specified"}</div>
             {booking.estimated_price_lkr && (
@@ -485,11 +516,12 @@ export default function PartnerJobDetailPage() {
                       {q.total_lkr ? `LKR ${q.total_lkr.toLocaleString()}` : "—"}
                     </span>
                     <Badge variant="outline" className={`text-[10px] ${
-                      q.status === "approved" ? "text-success" :
-                      q.status === "rejected" ? "text-destructive" :
+                      q.status === "approved" ? "text-success bg-success/10 border-success/20" :
+                      q.status === "rejected" ? "text-destructive bg-destructive/10 border-destructive/20" :
+                      q.status === "submitted" ? "text-warning bg-warning/10 border-warning/20" :
                       "text-muted-foreground"
                     }`}>
-                      {q.status}
+                      {QUOTE_STATUS_LABELS[q.status] || q.status}
                     </Badge>
                   </div>
                   {q.customer_note && (
@@ -516,7 +548,7 @@ export default function PartnerJobDetailPage() {
                   <div key={e.id} className="flex items-start gap-2 text-xs">
                     <div className="w-2 h-2 rounded-full bg-primary mt-1 shrink-0" />
                     <div>
-                      <p className="font-medium text-foreground">{e.status.replace(/_/g, " ")}</p>
+                      <p className="font-medium text-foreground">{STATUS_LABELS[e.status] || e.status.replace(/_/g, " ")}</p>
                       {e.note && <p className="text-muted-foreground">{e.note}</p>}
                       <p className="text-[10px] text-muted-foreground">{new Date(e.created_at).toLocaleString()}</p>
                     </div>
