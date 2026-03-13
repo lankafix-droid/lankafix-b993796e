@@ -28,8 +28,10 @@ export interface DBBooking {
   started_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
+  cancellation_reason: string | null;
   booking_source: string | null;
   dispatch_status: string | null;
+  payment_status: string | null;
 }
 
 export interface DBTimelineEvent {
