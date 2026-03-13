@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useBookingFromDB } from "@/hooks/useBookingFromDB";
+import { useMyBookings } from "@/hooks/useBookingFromDB";
 import { ArrowRight, RotateCcw, Clock, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { categories } from "@/data/categories";
