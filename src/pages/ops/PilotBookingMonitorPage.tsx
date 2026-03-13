@@ -179,7 +179,7 @@ export default function PilotBookingMonitorPage() {
                     <TableCell><Badge className={`text-[9px] ${dispatchStatusColor(b.dispatch_status)}`}>{dispatchStatusLabel(b.dispatch_status)}</Badge></TableCell>
                     <TableCell className="text-[10px] max-w-[60px] truncate">{b.partner_id ? (partners[b.partner_id] || b.partner_id.slice(0, 6)) : "—"}</TableCell>
                     <TableCell>{getSlaBadge(b)}</TableCell>
-                    <TableCell className="text-[10px] capitalize">{getQuoteDisplay(b)}</TableCell>
+                    <TableCell>{getQuoteBadge(b)}</TableCell>
                     <TableCell><Badge variant="outline" className={`text-[9px] ${paymentStatusColor(b.payment_status)}`}>{paymentStatusLabel(b.payment_status)}</Badge></TableCell>
                     <TableCell className="text-[10px]">{b.customer_rating ? `${b.customer_rating}★` : "—"}</TableCell>
                   </TableRow>
