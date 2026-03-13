@@ -71,6 +71,12 @@ async function fetchOpsMetrics(filters: OpsMetricsFilters = {}): Promise<OpsMetr
     dispatchedTodayRes,
     awaitingPartnerRes,
     consultationQueueRes,
+    // Pilot launch
+    paymentFailedRes,
+    techCancelledRes,
+    techLateRes,
+    partnersFlaggedRes,
+    staleQuotesRes,
   ] = await Promise.all([
     // 1. Active bookings (not completed/cancelled)
     (() => {
