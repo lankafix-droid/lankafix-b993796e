@@ -604,14 +604,14 @@ const TrackerPage = () => {
               </div>
             )}
 
-            {/* Completion state — enhanced */}
+            {/* Completion state — premium */}
             {isCompleted && (
               <motion.div
-                className="bg-success/5 border border-success/20 rounded-2xl p-5 space-y-4"
+                className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-[var(--shadow-card)]"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="flex items-center gap-3">
+                <div className="bg-success/5 border-b border-success/20 px-5 py-4 flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
                     <CheckCircle2 className="w-6 h-6 text-success" />
                   </div>
@@ -623,27 +623,52 @@ const TrackerPage = () => {
                   </div>
                 </div>
 
-                {dbBooking.final_price_lkr && (
-                  <div className="flex justify-between items-center text-sm border-t border-success/20 pt-3">
-                    <span className="text-muted-foreground">Final Amount</span>
-                    <span className="text-lg font-bold text-foreground">LKR {dbBooking.final_price_lkr.toLocaleString()}</span>
+                <div className="p-5 space-y-4">
+                  {dbBooking.final_price_lkr && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Final Amount</span>
+                      <span className="text-lg font-bold text-foreground">LKR {dbBooking.final_price_lkr.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {dbBooking.service_type && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Service</span>
+                      <span className="font-medium text-foreground">{dbBooking.service_type}</span>
+                    </div>
+                  )}
+
+                  {/* Warranty card */}
+                  <div className="bg-success/5 border border-success/20 rounded-xl p-3 flex items-start gap-2.5">
+                    <Award className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Warranty Active</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Your service warranty is active from the completion date. Keep your Job ID ({shortId}) for warranty claims.
+                      </p>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-card rounded-xl p-3">
-                  <Award className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                  <span>Warranty active from completion date. Keep your Job ID ({shortId}) for warranty claims.</span>
-                </div>
+                  {/* Invoice status */}
+                  <div className="flex items-center justify-between text-sm bg-muted/30 rounded-xl p-3">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" /> Invoice
+                    </span>
+                    <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20">
+                      Available
+                    </Badge>
+                  </div>
 
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
-                    <RotateCcw className="w-3.5 h-3.5" /> Book Again
-                  </Button>
-                  <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
-                    <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">
-                      <Headphones className="w-3.5 h-3.5" /> Support
-                    </a>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> Book Again
+                    </Button>
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
+                      <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">
+                        <Headphones className="w-3.5 h-3.5" /> Support
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             )}
