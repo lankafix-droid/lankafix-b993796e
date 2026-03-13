@@ -8,7 +8,7 @@ import TermsGuard from "@/components/consent/TermsGuard";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import ChatWidget from "./components/chat/ChatWidget";
-
+import PilotModeBanner from "./components/ops/PilotModeBanner";
 // Eager-load homepage for fast first paint
 import HomePage from "./pages/V2HomePage";
 
