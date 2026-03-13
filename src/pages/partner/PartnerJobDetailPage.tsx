@@ -279,8 +279,8 @@ export default function PartnerJobDetailPage() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-foreground">{booking.id.slice(0, 8)}...</h1>
-          <Badge variant="outline" className="text-[10px]">{booking.status.replace(/_/g, " ")}</Badge>
+          <h1 className="text-lg font-bold text-foreground">Job {booking.id.slice(0, 8).toUpperCase()}</h1>
+          <Badge variant="outline" className="text-[10px]">{STATUS_LABELS[booking.status] || booking.status.replace(/_/g, " ")}</Badge>
         </div>
       </div>
 
