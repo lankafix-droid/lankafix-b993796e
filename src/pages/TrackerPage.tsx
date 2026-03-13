@@ -18,7 +18,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS,
   BOOKING_TIMELINE_STEPS, QUOTE_TIMELINE_STEPS,
-  CANCELLABLE_STATUSES, SERVICE_MODE_LABELS,
+  CANCELLABLE_STATUSES, SERVICE_MODE_LABELS, CATEGORY_LABELS,
   getTimelineStepsForBooking,
 } from "@/types/booking";
 import type { BookingStatus, TimelineStepDef } from "@/types/booking";
