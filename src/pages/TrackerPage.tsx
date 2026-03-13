@@ -782,7 +782,9 @@ const TrackerPage = () => {
                   </div>
                 </div>
               </motion.div>
-            )
+            )}
+
+            {/* Rating Section for completed DB bookings */}
             {isCompleted && dbBooking.partner_id && user?.id && (
               <>
                 {existingRating ? (
