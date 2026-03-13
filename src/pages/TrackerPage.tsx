@@ -190,6 +190,14 @@ function TrackerPaymentStatus({ bookingId, bookingStatus }: { bookingId: string;
       {isPaid && payment.paid_at && (
         <p className="text-[10px] text-muted-foreground mt-1.5">Confirmed {new Date(payment.paid_at).toLocaleString()}</p>
       )}
+      {isFailed && (
+        <div className="mt-2 space-y-1.5">
+          <p className="text-[10px] text-destructive">Payment could not be processed. Please try again or contact support.</p>
+          <a href={`https://wa.me/${SUPPORT_WHATSAPP.replace(/[^0-9]/g, '')}?text=${encodeURIComponent('Hi, payment failed for my booking. Need help.')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary font-medium hover:underline">
+            <MessageCircle className="w-3 h-3" /> Contact Support
+          </a>
+        </div>
+      )}
       {!isPaid && !isFailed && (
         <p className="text-[10px] text-muted-foreground mt-1.5">Payment will be confirmed once received</p>
       )}
