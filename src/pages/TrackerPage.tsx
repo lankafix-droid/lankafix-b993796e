@@ -59,6 +59,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getPaymentForBooking } from "@/services/paymentService";
 import { useTechnicianTracking } from "@/hooks/useTechnicianTracking";
 import { getTrafficLabel } from "@/lib/etaEngine";
+import RatingModal from "@/components/ratings/RatingModal";
+import { getRatingForBooking } from "@/services/ratingService";
+import { useAuth } from "@/hooks/useAuth";
 
 /** Sub-component: Live technician tracking for DB-backed bookings */
 function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookingId: string; partnerId: string | null; bookingStatus: string }) {
