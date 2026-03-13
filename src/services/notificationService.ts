@@ -22,6 +22,10 @@ export type NotificationType =
   | "quote_submitted"
   | "quote_approved"
   | "job_completed"
+  | "payment_due"
+  | "payment_received"
+  | "warranty_active"
+  | "reminder"
   | "new_job_offer"
   | "booking_assignment";
 
