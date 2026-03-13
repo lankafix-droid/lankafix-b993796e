@@ -535,6 +535,14 @@ export default function PartnerJobDetailPage() {
           </Button>
         )}
 
+        {/* Partner Rating */}
+        {partner && (
+          <div className="flex items-center justify-between bg-card border border-border/60 rounded-lg p-3">
+            <span className="text-xs text-muted-foreground">Your Rating</span>
+            <PartnerRatingBadge ratingAverage={partner.rating_average} completedJobsCount={partner.completed_jobs_count} size="md" />
+          </div>
+        )}
+
         {/* Trust */}
         <div className="flex items-center gap-2 bg-success/5 border border-success/20 rounded-lg p-3">
           <ShieldCheck className="w-4 h-4 text-success shrink-0" />
