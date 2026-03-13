@@ -148,7 +148,7 @@ function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; 
 }
 
 /** Sub-component: Payment status indicator for DB-backed bookings */
-function TrackerPaymentStatus({ bookingId }: { bookingId: string }) {
+function TrackerPaymentStatus({ bookingId, bookingStatus }: { bookingId: string; bookingStatus?: string }) {
   const { data: payment } = useQuery({
     queryKey: ["tracker-payment", bookingId],
     queryFn: () => getPaymentForBooking(bookingId),
@@ -159,24 +159,40 @@ function TrackerPaymentStatus({ bookingId }: { bookingId: string }) {
   if (!payment) return null;
 
   const isPaid = payment.payment_status === "paid";
-  const statusColor = isPaid ? "text-success" : "text-warning";
-  const statusLabel = isPaid ? "Paid" : payment.payment_status === "failed" ? "Failed" : "Pending";
+  const isFailed = payment.payment_status === "failed";
+  const statusColor = isPaid ? "text-success" : isFailed ? "text-destructive" : "text-warning";
+  const statusLabel = isPaid ? "Payment Received" : isFailed ? "Payment Failed" : "Payment Due";
+  const statusBg = isPaid ? "bg-success/10 border-success/20" : isFailed ? "bg-destructive/10 border-destructive/20" : "bg-warning/10 border-warning/20";
+
+  const typeLabels: Record<string, string> = {
+    diagnostic: "Diagnostic Fee",
+    quote: "Quote Payment",
+    completion: "Service Payment",
+    service: "Service Payment",
+    commitment: "Commitment Fee",
+  };
 
   return (
     <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm font-bold text-foreground">Payment Status</span>
+          <span className="text-sm font-bold text-foreground">Payment</span>
         </div>
-        <Badge variant="outline" className={`text-[10px] ${statusColor} border-current/20`}>
+        <Badge variant="outline" className={`text-[10px] font-semibold ${statusColor} ${statusBg}`}>
           {statusLabel}
         </Badge>
       </div>
-      <div className="flex justify-between text-sm mt-2">
-        <span className="text-muted-foreground capitalize">{payment.payment_type}</span>
-        <span className="font-medium text-foreground">LKR {payment.amount_lkr.toLocaleString()}</span>
+      <div className="flex justify-between text-sm mt-2.5">
+        <span className="text-muted-foreground">{typeLabels[payment.payment_type] || payment.payment_type}</span>
+        <span className="font-bold text-foreground">LKR {payment.amount_lkr.toLocaleString()}</span>
       </div>
+      {isPaid && payment.paid_at && (
+        <p className="text-[10px] text-muted-foreground mt-1.5">Confirmed {new Date(payment.paid_at).toLocaleString()}</p>
+      )}
+      {!isPaid && !isFailed && (
+        <p className="text-[10px] text-muted-foreground mt-1.5">Payment will be confirmed once received</p>
+      )}
     </div>
   );
 }
@@ -461,6 +477,8 @@ const TrackerPage = () => {
     const STATUS_LABELS: Record<string, string> = {
       requested: "Submitted",
       matching: "Finding Provider",
+      awaiting_partner_confirmation: "Awaiting Confirmation",
+      scheduled: "Scheduled",
       assigned: "Provider Assigned",
       tech_en_route: "On the Way",
       arrived: "Provider Arrived",
@@ -468,9 +486,11 @@ const TrackerPage = () => {
       quote_submitted: "Quote Ready",
       quote_approved: "Quote Approved",
       quote_rejected: "Quote Rejected",
+      quote_revised: "Quote Revised",
       in_progress: "In Progress",
-      repair_started: "Repair Started",
+      repair_started: "Repair In Progress",
       completed: "Completed",
+      rated: "Rated",
       cancelled: "Cancelled",
     };
 
@@ -574,7 +594,7 @@ const TrackerPage = () => {
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
             {/* Payment Status */}
-            <TrackerPaymentStatus bookingId={dbBooking.id} />
+            <TrackerPaymentStatus bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
             {/* Timeline events from DB — refined with current stage highlight */}
             {dbTimeline && dbTimeline.length > 0 && (

@@ -9,13 +9,34 @@ import { track } from "@/lib/analytics";
 import { useEffect } from "react";
 import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell } from "lucide-react";
 
+const STATUS_LABELS: Record<string, string> = {
+  requested: "Submitted",
+  matching: "Finding Provider",
+  awaiting_partner_confirmation: "Awaiting Confirmation",
+  assigned: "Assigned",
+  tech_en_route: "En Route",
+  arrived: "Arrived",
+  inspection_started: "Inspecting",
+  quote_submitted: "Quote Submitted",
+  quote_approved: "Quote Approved",
+  repair_started: "Repair In Progress",
+  in_progress: "In Progress",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
 const STATUS_COLORS: Record<string, string> = {
   requested: "bg-muted text-muted-foreground",
+  matching: "bg-primary/10 text-primary",
   awaiting_partner_confirmation: "bg-warning/10 text-warning",
   assigned: "bg-primary/10 text-primary",
-  en_route: "bg-primary/10 text-primary",
+  tech_en_route: "bg-warning/10 text-warning",
+  arrived: "bg-success/10 text-success",
   inspection_started: "bg-primary/10 text-primary",
+  quote_submitted: "bg-warning/10 text-warning",
+  quote_approved: "bg-success/10 text-success",
   repair_started: "bg-primary/10 text-primary",
+  in_progress: "bg-primary/10 text-primary",
   completed: "bg-success/10 text-success",
   cancelled: "bg-destructive/10 text-destructive",
 };
@@ -119,25 +140,32 @@ export default function PartnerJobsPage() {
         )}
 
         {bookings.length === 0 && pendingOffers.length === 0 && (
-          <div className="text-center py-16 space-y-3">
-            <Briefcase className="w-10 h-10 text-muted-foreground mx-auto" />
-            <p className="text-sm text-muted-foreground">No jobs yet</p>
-            <p className="text-xs text-muted-foreground">Jobs assigned to you will appear here once you start receiving bookings through LankaFix.</p>
+          <div className="text-center py-16 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mx-auto">
+              <Briefcase className="w-7 h-7 text-primary/40" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">No Jobs Yet</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">Jobs assigned to you will appear here once you start receiving bookings through LankaFix.</p>
+            </div>
+            <Button variant="outline" className="rounded-xl" onClick={() => navigate("/partner")}>
+              Back to Dashboard
+            </Button>
           </div>
         )}
         {bookings.map((b: any) => {
-          const statusLabel = (b.status || "").replace(/_/g, " ");
+          const statusLabel = STATUS_LABELS[b.status] || (b.status || "").replace(/_/g, " ");
           const colorClass = STATUS_COLORS[b.status] || "bg-muted text-muted-foreground";
           return (
             <div
               key={b.id}
-              className="bg-card border rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/30 transition-colors"
+              className="bg-card border border-border/60 rounded-2xl p-4 space-y-2 cursor-pointer hover:border-primary/30 transition-all shadow-sm"
               onClick={() => { track("partner_job_open", { jobId: b.id }); navigate(`/partner/job/${b.id}`); }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-foreground">{b.id.slice(0, 8)}...</p>
-                  <Badge className={`text-[10px] capitalize ${colorClass}`}>{statusLabel}</Badge>
+                  <p className="text-sm font-semibold text-foreground">{b.id.slice(0, 8).toUpperCase()}</p>
+                  <Badge className={`text-[10px] ${colorClass}`}>{statusLabel}</Badge>
                 </div>
                 <ArrowRight className="w-4 h-4 text-muted-foreground" />
               </div>
