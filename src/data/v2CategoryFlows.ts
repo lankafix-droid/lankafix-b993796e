@@ -131,7 +131,7 @@ const MOBILE_FLOW: V2CategoryFlow = {
   ],
   deviceQuestions: [
     { key: "brand", label: "Phone Brand", type: "select", options: [{ label: "Apple iPhone", value: "apple" }, { label: "Samsung", value: "samsung" }, { label: "Huawei", value: "huawei" }, { label: "Xiaomi", value: "xiaomi" }, { label: "Oppo", value: "oppo" }, { label: "Vivo", value: "vivo" }, { label: "Infinix", value: "infinix" }, { label: "Tecno", value: "tecno" }, { label: "Other", value: "other" }], required: true },
-    { key: "model", label: "Phone Model", type: "text", required: true },
+    { key: "model", label: "Phone Model", type: "text", required: false },
     // Screen-specific
     { key: "touch_working", label: "Is touch still working?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
     { key: "display_visible", label: "Is the display still visible?", type: "toggle", required: true, showForServiceTypes: ["screen"] },
@@ -205,13 +205,14 @@ const AC_FLOW: V2CategoryFlow = {
   deviceQuestions: [
     { key: "ac_type", label: "AC Type", type: "select", options: [{ label: "Wall Mount / Split", value: "split" }, { label: "Cassette", value: "cassette" }, { label: "Window", value: "window" }, { label: "Portable", value: "portable" }, { label: "Not Sure", value: "not_sure" }], required: true },
     { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Daikin", value: "daikin" }, { label: "Mitsubishi", value: "mitsubishi" }, { label: "Panasonic", value: "panasonic" }, { label: "Haier", value: "haier" }, { label: "Midea", value: "midea" }, { label: "Singer", value: "singer" }, { label: "Other", value: "other" }], required: false },
-    { key: "capacity", label: "Capacity (BTU)", type: "select", options: [{ label: "9,000 BTU", value: "9000" }, { label: "12,000 BTU", value: "12000" }, { label: "18,000 BTU", value: "18000" }, { label: "24,000 BTU", value: "24000" }, { label: "Not Sure", value: "not_sure" }], required: false },
-    { key: "refrigerant", label: "Refrigerant Type (if known)", type: "select", options: [{ label: "R-22", value: "r22" }, { label: "R-32", value: "r32" }, { label: "R-410A", value: "r410a" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["gas", "repair"] },
     { key: "units", label: "Number of Units", type: "select", options: [{ label: "1 Unit", value: "1" }, { label: "2 Units", value: "2" }, { label: "3 Units", value: "3" }, { label: "4+ Units", value: "4_plus" }], required: true },
     { key: "property_type", label: "Property Type", type: "select", options: [{ label: "House", value: "house" }, { label: "Apartment", value: "apartment" }, { label: "Office", value: "office" }, { label: "Shop / Showroom", value: "shop" }], required: true },
+    // Technical questions — shown only for relevant service types
+    { key: "capacity", label: "Capacity (BTU)", type: "select", options: [{ label: "9,000 BTU", value: "9000" }, { label: "12,000 BTU", value: "12000" }, { label: "18,000 BTU", value: "18000" }, { label: "24,000 BTU", value: "24000" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["gas", "install", "deep_clean"] },
+    { key: "refrigerant", label: "Refrigerant Type (if known)", type: "select", options: [{ label: "R-22", value: "r22" }, { label: "R-32", value: "r32" }, { label: "R-410A", value: "r410a" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["gas", "repair"] },
     // Installation-specific
     { key: "install_floor", label: "Installation Floor", type: "select", options: [{ label: "Ground Floor", value: "ground" }, { label: "1st Floor", value: "1st" }, { label: "2nd Floor", value: "2nd" }, { label: "3rd Floor+", value: "3rd_plus" }], required: true, showForServiceTypes: ["install", "relocation"] },
-    { key: "piping_estimate", label: "Estimated piping distance", type: "select", options: [{ label: "Under 3 meters", value: "lt_3" }, { label: "3-5 meters", value: "3_5" }, { label: "Over 5 meters", value: "gt_5" }], required: false, showForServiceTypes: ["install", "relocation"] },
+    { key: "piping_estimate", label: "Estimated piping distance", type: "select", options: [{ label: "Under 3 meters", value: "lt_3" }, { label: "3-5 meters", value: "3_5" }, { label: "Over 5 meters", value: "gt_5" }, { label: "Not Sure", value: "not_sure" }], required: false, showForServiceTypes: ["install", "relocation"] },
   ],
   siteConditions: [
     { key: "emergency", label: "Is this an emergency?", type: "toggle" },
@@ -413,8 +414,8 @@ const CONSUMER_ELEC_FLOW: V2CategoryFlow = {
   deviceQuestions: [
     // Appliance-specific brand selectors
     { key: "brand", label: "Brand", type: "select", options: [{ label: "Samsung", value: "samsung" }, { label: "LG", value: "lg" }, { label: "Sony", value: "sony" }, { label: "Panasonic", value: "panasonic" }, { label: "Singer", value: "singer" }, { label: "Abans", value: "abans" }, { label: "Sisil", value: "sisil" }, { label: "Haier", value: "haier" }, { label: "Hisense", value: "hisense" }, { label: "Other", value: "other" }], required: true },
-    { key: "model_number", label: "Model Number (check label on back)", type: "text", required: true },
-    { key: "age", label: "Approximate Age", type: "select", options: [{ label: "Under 1 year", value: "lt_1y" }, { label: "1-3 years", value: "1_3y" }, { label: "3-5 years", value: "3_5y" }, { label: "Over 5 years", value: "gt_5y" }], required: true },
+    { key: "model_number", label: "Model Number (check label on back)", type: "text", required: false },
+    { key: "age", label: "Approximate Age", type: "select", options: [{ label: "Under 1 year", value: "lt_1y" }, { label: "1-3 years", value: "1_3y" }, { label: "3-5 years", value: "3_5y" }, { label: "Over 5 years", value: "gt_5y" }, { label: "Not Sure", value: "not_sure" }], required: false },
     // TV-specific
     { key: "tv_type", label: "TV Type", type: "select", options: [{ label: "LED / LCD", value: "led" }, { label: "OLED", value: "oled" }, { label: "Smart TV", value: "smart" }, { label: "Not Sure", value: "not_sure" }], required: true, showForServiceTypes: ["tv"] },
     { key: "tv_size", label: "Screen Size (approx.)", type: "select", options: [{ label: "32\" or smaller", value: "lt_32" }, { label: "40\"-50\"", value: "40_50" }, { label: "55\"-65\"", value: "55_65" }, { label: "75\" or larger", value: "gt_75" }], required: false, showForServiceTypes: ["tv"] },
