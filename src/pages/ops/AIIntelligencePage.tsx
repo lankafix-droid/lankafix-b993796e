@@ -490,7 +490,7 @@ export default function AIIntelligencePage() {
                       <span className="text-sm font-semibold">{catLabel(g.category)}</span>
                       <Badge variant={g.severity === "critical" ? "destructive" : "secondary"} className="text-[9px]">{g.severity}</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">Zone: {g.zone}</p>
+                    <p className="text-xs text-muted-foreground">Zone: {zoneLabel(g.zone)}</p>
                     <div className="flex gap-4 text-xs mt-1">
                       <span>Demand: <strong>{g.demand}</strong></span>
                       <span>Partners: <strong>{g.partners}</strong></span>
