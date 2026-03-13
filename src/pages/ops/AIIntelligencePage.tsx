@@ -20,6 +20,95 @@ import { computeReliabilityTier } from "@/engines/partnerTieringEngine";
 const catLabel = (code: string) => CATEGORY_LABELS[code as CategoryCode] || code;
 const PHASE1_CATS = ["AC", "MOBILE", "CONSUMER_ELEC", "IT"];
 
+const EVENT_LABELS: Record<string, string> = {
+  trust_recovery: "Trust Recovery",
+  sla_breach: "SLA Breach",
+  partner_fatigue: "Partner Fatigue",
+  quote_stale: "Stale Quote",
+  supply_gap_detected: "Supply Gap",
+  dispatch_timeout: "Dispatch Timeout",
+  partner_low_acceptance: "Low Acceptance",
+  rating_low: "Low Rating",
+  payment_failed: "Payment Failed",
+  partner_under_review: "Partner Review",
+};
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: "bg-destructive text-destructive-foreground",
+  high: "bg-destructive/80 text-destructive-foreground",
+  medium: "bg-warning text-warning-foreground",
+  low: "bg-muted text-muted-foreground",
+  info: "bg-muted text-muted-foreground",
+};
+
+function AutomationTab() {
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("automation_event_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setEvents(data || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
+
+  // Summary by type
+  const typeCounts: Record<string, number> = {};
+  events.forEach(e => { typeCounts[e.event_type] = (typeCounts[e.event_type] || 0) + 1; });
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><Bot className="w-4 h-4 text-primary" />Automation Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(typeCounts).length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No automation events recorded yet. The system runs every 5 minutes.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
+                <Badge key={type} variant="outline" className="text-xs gap-1">
+                  {EVENT_LABELS[type] || type.replace(/_/g, " ")} <span className="font-bold">{count}</span>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2"><Clock className="w-4 h-4 text-primary" />Recent Events</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {events.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No events yet</p>}
+          {events.slice(0, 20).map(e => (
+            <div key={e.id} className="flex items-start gap-2 border-b border-border/30 pb-2 last:border-0">
+              <Badge className={`text-[9px] px-1.5 shrink-0 ${SEVERITY_COLORS[e.severity] || ""}`}>{e.severity}</Badge>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground">{EVENT_LABELS[e.event_type] || e.event_type.replace(/_/g, " ")}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{e.trigger_reason}</p>
+                <p className="text-[10px] text-muted-foreground">Action: {e.action_taken}</p>
+              </div>
+              <span className="text-[9px] text-muted-foreground shrink-0">
+                {new Date(e.created_at).toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
 function Metric({ label, value, sub, icon: Icon, alert }: {
   label: string; value: string | number; sub?: string;
   icon: React.ElementType; alert?: boolean;
