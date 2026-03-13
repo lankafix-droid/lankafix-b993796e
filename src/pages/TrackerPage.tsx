@@ -438,6 +438,22 @@ const TrackerPage = () => {
     return () => { if (simRef.current) clearInterval(simRef.current); };
   }, [simulation?.isRunning]);
 
+  // Auth for rating
+  const { user } = useAuth();
+
+  // Check if already rated (for DB bookings)
+  const { data: existingRating, refetch: refetchRating } = useQuery({
+    queryKey: ["booking-rating", jobId],
+    queryFn: () => getRatingForBooking(jobId!),
+    enabled: !!jobId,
+    staleTime: 60_000,
+  });
+
+  const [showRatingModal, setShowRatingModal] = useState(false);
+
+  // Auto-show rating modal for completed DB bookings (once)
+  const [ratingModalShown, setRatingModalShown] = useState(false);
+
   // DB-backed booking view (real bookings from Phase 1)
   if (!booking && dbBooking) {
     const shortId = dbBooking.id.slice(0, 8).toUpperCase();
