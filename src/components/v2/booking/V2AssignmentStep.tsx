@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar,
   Monitor, Navigation, Zap, Wifi, RefreshCw, Car, Bike, Truck, Timer, Award,
-  Brain, BarChart3, Target,
+  Brain, BarChart3, Target, Briefcase,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 
 interface Props {
   categoryCode: CategoryCode;
@@ -263,15 +264,23 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         </p>
       </div>
 
-      {/* Emergency mode banner */}
+      {/* Emergency mode banner — improved messaging */}
       {isEmergency && (
-        <div className="bg-warning/10 border border-warning/30 rounded-xl p-4 flex items-start gap-3">
-          <Zap className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Emergency Mode Active</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Response within 2 hours · +25% surcharge applies · Priority dispatch</p>
+        <motion.div
+          className="bg-warning/10 border border-warning/30 rounded-2xl p-4 flex items-start gap-3"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div className="w-10 h-10 rounded-xl bg-warning/20 flex items-center justify-center shrink-0">
+            <Zap className="w-5 h-5 text-warning" />
           </div>
-        </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Emergency Priority Active</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              Your request is prioritized for a response within 2 hours. A 25% emergency surcharge applies. You'll see the exact amount before confirming.
+            </p>
+          </div>
+        </motion.div>
       )}
 
       {/* ── Searching Phase ── */}
@@ -281,7 +290,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
       {/* ── No Match ── */}
       {(phase === "no_match" || phase === "escalated") && (
-        <div className="bg-card rounded-xl border p-6 text-center space-y-3">
+        <div className="bg-card rounded-2xl border p-6 text-center space-y-3">
           <div className="w-14 h-14 mx-auto rounded-full bg-warning/10 flex items-center justify-center">
             <Users className="w-6 h-6 text-warning" />
           </div>
@@ -301,54 +310,63 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         </div>
       )}
 
-      {/* ── Matched / Accepting / Confirmed — Live Tech Card ── */}
+      {/* ── Matched / Accepting / Confirmed — Premium Tech Card ── */}
       {(phase === "matched" || phase === "accepting" || phase === "confirmed") && bestMatch && tech && (
-        <div className="bg-card rounded-xl border overflow-hidden">
+        <motion.div
+          className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-[var(--shadow-card)]"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        >
           {/* Live status bar */}
-          <div className="bg-muted/40 px-4 py-2 flex items-center justify-between border-b">
+          <div className="bg-success/5 px-5 py-2.5 flex items-center justify-between border-b border-border/40">
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-success" />
               </span>
-              <span className="text-[11px] font-medium text-success">Online</span>
-              <span className="text-[10px] text-muted-foreground">· Currently in {bestMatch.currentZoneName}</span>
+              <span className="text-xs font-semibold text-success">Online Now</span>
+              {bestMatch.currentZoneName && (
+                <span className="text-[10px] text-muted-foreground">· {bestMatch.currentZoneName}</span>
+              )}
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              <Brain className="w-3 h-3 text-primary" />
-              <span>AI Dispatch</span>
-              {dispatchRound > 1 && <span>· Round {dispatchRound}</span>}
-            </div>
+            {phase === "confirmed" && (
+              <Badge className="bg-success/10 text-success border-success/20 text-[10px] font-semibold gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Confirmed
+              </Badge>
+            )}
           </div>
 
           <div className="p-5 space-y-4">
-            {/* Tech header */}
+            {/* Tech header — premium layout */}
             <div className="flex items-start gap-4">
               <div className="relative">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
-                  {tech.full_name.charAt(0)}
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xl overflow-hidden">
+                  {tech.profile_photo_url ? (
+                    <img src={tech.profile_photo_url} alt={tech.full_name} className="w-full h-full object-cover" />
+                  ) : (
+                    tech.full_name.charAt(0)
+                  )}
                 </div>
-                {/* Online pulse dot */}
-                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-success border-2 border-card" />
-                </span>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-success border-2 border-card flex items-center justify-center">
+                  <ShieldCheck className="w-3 h-3 text-success-foreground" />
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-foreground">{tech.full_name}</h3>
-                  <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20 gap-1">
-                    <ShieldCheck className="w-3 h-3" /> Verified
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{tech.business_name}</p>
-                <div className="flex items-center gap-3 mt-1.5 text-sm">
-                  <span className="flex items-center gap-1 text-warning">
-                    <Star className="w-3.5 h-3.5 fill-warning" /> {tech.rating_average}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-foreground text-base">{tech.full_name}</h3>
+                {tech.business_name && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{tech.business_name}</p>
+                )}
+                <div className="flex items-center gap-3 mt-2">
+                  <span className="flex items-center gap-1 text-sm">
+                    <Star className="w-4 h-4 fill-warning text-warning" />
+                    <span className="font-bold text-foreground">{(tech.rating_average || 0).toFixed(1)}</span>
                   </span>
-                  <span className="text-muted-foreground">{tech.completed_jobs_count} jobs</span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Award className="w-3.5 h-3.5" /> {tech.experience_years}y exp
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Briefcase className="w-3 h-3" /> {tech.completed_jobs_count || 0} jobs
+                  </span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Award className="w-3 h-3" /> {tech.experience_years || 0}y exp
                   </span>
                 </div>
               </div>
@@ -358,56 +376,38 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             {tech.brand_specializations && tech.brand_specializations.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {tech.brand_specializations.slice(0, 4).map((brand) => (
-                  <Badge key={brand} variant="secondary" className="text-[10px] font-normal">{brand}</Badge>
+                  <Badge key={brand} variant="secondary" className="text-[10px] font-normal rounded-full">{brand}</Badge>
                 ))}
                 {tech.brand_specializations.length > 4 && (
-                  <Badge variant="secondary" className="text-[10px] font-normal">+{tech.brand_specializations.length - 4}</Badge>
+                  <Badge variant="secondary" className="text-[10px] font-normal rounded-full">+{tech.brand_specializations.length - 4}</Badge>
                 )}
               </div>
             )}
 
-            {/* Smart dispatch stats grid */}
-            <div className="grid grid-cols-4 gap-2">
-              <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">{matchIntelligence?.confidenceScore || bestMatch.score?.total || 0}%</div>
-                <div className="text-[10px] text-muted-foreground">{matchIntelligence?.tierLabel || "Match"}</div>
+            {/* Key stats — clean 3-column grid */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-primary/5 rounded-xl p-3 text-center">
+                <div className="text-lg font-bold text-primary">~{bestMatch.eta_minutes}</div>
+                <div className="text-[10px] text-muted-foreground font-medium">min ETA</div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">{bestMatch.distance_km} km</div>
-                <div className="text-[10px] text-muted-foreground">Distance</div>
+              <div className="bg-muted/50 rounded-xl p-3 text-center">
+                <div className="text-lg font-bold text-foreground">{bestMatch.distance_km}</div>
+                <div className="text-[10px] text-muted-foreground font-medium">km away</div>
               </div>
-              <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <VehicleIcon className="w-3.5 h-3.5 text-primary mx-auto mb-0.5" />
-                <div className="text-[10px] text-muted-foreground capitalize">{tech.vehicle_type}</div>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-2.5 text-center">
-                <div className="text-sm font-bold text-foreground">~{bestMatch.eta_minutes}</div>
-                <div className="text-[10px] text-muted-foreground">min ETA</div>
+              <div className="bg-muted/50 rounded-xl p-3 text-center">
+                <div className="text-lg font-bold text-foreground">{matchIntelligence?.confidenceScore || bestMatch.score?.total || 0}%</div>
+                <div className="text-[10px] text-muted-foreground font-medium">Match</div>
               </div>
             </div>
 
-            {/* Match Intelligence Panel — replaces raw score breakdown */}
+            {/* Match Intelligence Panel */}
             {matchIntelligence && (
               <MatchReasoningPanel intelligence={matchIntelligence} compact />
             )}
 
-            {/* ETA & Traffic detail */}
-            <div className="bg-primary/5 rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary" />
-                <div>
-                  <p className="text-sm font-bold text-primary">ETA: {bestMatch.etaRangeLabel || `~${bestMatch.eta_minutes} min`}</p>
-                  <p className="text-[10px] text-muted-foreground">{bestMatch.traffic_label || "Normal traffic"}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <Badge variant="secondary" className="text-[9px] gap-1"><Target className="w-3 h-3" /> {dispatchMode === "top_3" ? "Top 3" : dispatchMode === "manual" ? "Ops Review" : "Auto"}</Badge>
-              </div>
-            </div>
-
             {/* Travel fee */}
             {travelFee && travelFee.fee > 0 && (
-              <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 flex items-center justify-between text-sm">
+              <div className="bg-warning/5 border border-warning/20 rounded-xl p-3 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5" /> Travel charge</span>
                 <span className="font-medium text-foreground">LKR {travelFee.fee.toLocaleString()}</span>
               </div>
@@ -415,7 +415,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
             {/* Acceptance countdown */}
             {phase === "accepting" && (
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
                     <Timer className="w-4 h-4 text-primary" /> Awaiting technician response
@@ -432,21 +432,25 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             )}
 
             {phase === "confirmed" && (
-              <div className="bg-success/10 border border-success/20 rounded-lg p-3 flex items-center gap-2">
+              <div className="bg-success/10 border border-success/20 rounded-xl p-3 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-success" />
                 <span className="text-sm font-medium text-success">Technician accepted your booking!</span>
               </div>
             )}
           </div>
 
-          {/* Trust note */}
-          <div className="border-t px-5 py-2.5 bg-muted/20">
-            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-success" />
-              No work starts without your approval · OTP verification required
-            </p>
+          {/* Trust footer */}
+          <div className="border-t border-border/40 px-5 py-3 bg-muted/20 flex items-center gap-4">
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <ShieldCheck className="w-3.5 h-3.5 text-success" />
+              <span>Verified & background checked</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+              <span>OTP verification required</span>
+            </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* ── Top 3 Mode: Selectable candidates ── */}
@@ -459,32 +463,36 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             <button
               key={c.partner_id}
               onClick={() => dispatch.selectCandidate(c.partner_id)}
-              className={`w-full text-left rounded-xl border p-4 transition-all ${
+              className={`w-full text-left rounded-2xl border p-4 transition-all ${
                 bestMatch?.partner_id === c.partner_id
                   ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                   : "border-border hover:border-primary/30"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                  {c.partner.full_name.charAt(0)}
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm overflow-hidden">
+                  {c.partner.profile_photo_url ? (
+                    <img src={c.partner.profile_photo_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    c.partner.full_name.charAt(0)
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground text-sm truncate">{c.partner.full_name}</span>
+                    <span className="font-semibold text-foreground text-sm truncate">{c.partner.full_name}</span>
                     {i === 0 && <Badge className="text-[9px] bg-primary/10 text-primary border-0">Best Match</Badge>}
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
                     <span className="flex items-center gap-0.5"><Star className="w-3 h-3 fill-warning text-warning" /> {c.partner.rating_average}</span>
                     <span>·</span>
-                    <span>{c.distance_km} km</span>
+                    <span>{c.partner.completed_jobs_count} jobs</span>
                     <span>·</span>
-                    <span>~{c.eta_minutes} min</span>
+                    <span>{c.distance_km} km · ~{c.eta_minutes} min</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-primary">{c.score?.total}%</div>
-                  <div className="text-[10px] text-muted-foreground">AI Score</div>
+                  <div className="text-[10px] text-muted-foreground">Match</div>
                 </div>
               </div>
             </button>
@@ -508,7 +516,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
       {/* Service address */}
       {activeAddress && (phase === "matched" || phase === "accepting" || phase === "confirmed") && (
-        <div className="bg-muted/30 rounded-lg p-3 flex items-center gap-2">
+        <div className="bg-muted/30 rounded-xl p-3 flex items-center gap-2">
           <MapPin className="w-4 h-4 text-primary shrink-0" />
           <p className="text-sm text-foreground">{activeAddress.displayName || activeAddress.area}</p>
         </div>
@@ -536,7 +544,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         size="lg"
         className="w-full gap-2"
       >
-        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> AI finding best technician…</>}
+        {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding best technician…</>}
         {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}
         {phase === "accepting" && <><Timer className="w-4 h-4 animate-pulse" /> Waiting for response…</>}
         {phase === "confirmed" && <><CheckCircle2 className="w-4 h-4" /> Continue</>}
@@ -557,21 +565,21 @@ const LiveSearchingCard = ({ techCount, isEmergency }: { techCount: number; isEm
   }, []);
 
   return (
-    <div className="bg-card rounded-xl border p-8 text-center space-y-4">
+    <motion.div
+      className="bg-card rounded-2xl border border-border/60 p-8 text-center space-y-5 shadow-[var(--shadow-card)]"
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+    >
       <div className="relative w-20 h-20 mx-auto">
-        {/* Outer pulse */}
         <div className="absolute inset-0 rounded-full bg-primary/10 animate-ping" style={{ animationDuration: "2s" }} />
-        {/* Mid pulse */}
         <div className="absolute inset-2 rounded-full bg-primary/20 animate-ping" style={{ animationDuration: "2s", animationDelay: "0.4s" }} />
-        {/* Inner pulse */}
         <div className="absolute inset-4 rounded-full bg-primary/30 animate-ping" style={{ animationDuration: "2s", animationDelay: "0.8s" }} />
-        {/* Center icon */}
         <div className="absolute inset-6 rounded-full bg-primary flex items-center justify-center">
           <Users className="w-5 h-5 text-primary-foreground" />
         </div>
       </div>
       <div>
-        <p className="font-medium text-foreground">
+        <p className="font-bold text-foreground">
           {isEmergency ? "Priority matching in progress" : "Finding the best technician"}
           {".".repeat(dots)}
         </p>
@@ -579,12 +587,12 @@ const LiveSearchingCard = ({ techCount, isEmergency }: { techCount: number; isEm
           Scanning {techCount || 8} verified technicians nearby
         </p>
       </div>
-      <div className="flex justify-center gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Checking distance</span>
-        <span className="flex items-center gap-1"><Star className="w-3 h-3" /> Rating match</span>
+      <div className="flex justify-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Distance</span>
+        <span className="flex items-center gap-1"><Star className="w-3 h-3" /> Rating</span>
         <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Availability</span>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
