@@ -73,6 +73,7 @@ const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
 const MarketplaceIntelligencePage = lazy(() => import("./pages/ops/MarketplaceIntelligencePage"));
 const RetentionDashboardPage = lazy(() => import("./pages/ops/RetentionDashboardPage"));
 const LaunchReadinessPage = lazy(() => import("./pages/ops/LaunchReadinessPage"));
+const PilotSimulationPage = lazy(() => import("./pages/ops/PilotSimulationPage"));
 const ProviderReadinessPage = lazy(() => import("./pages/ops/ProviderReadinessPage"));
 const RemindersPage = lazy(() => import("./pages/RemindersPage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
