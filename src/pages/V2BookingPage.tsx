@@ -100,6 +100,40 @@ const V2BookingPage = () => {
   const [booking, setBooking] = useState<V2BookingState>({ ...INITIAL_STATE, diagnosticAnswers: {} });
 
   const flow = getV2Flow(category || "");
+  const launchState = getCategoryLaunchState(category || "");
+
+  // Route-level guard: coming_soon categories cannot be booked
+  useEffect(() => {
+    if (category && launchState === "coming_soon") {
+      logCategoryInterest(category, "direct_route");
+    }
+  }, [category, launchState]);
+
+  if (launchState === "coming_soon") {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center bg-background">
+          <div className="text-center max-w-md px-6 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+              <span className="text-2xl">🚀</span>
+            </div>
+            <h1 className="text-xl font-bold text-foreground">Launching Soon</h1>
+            <p className="text-sm text-muted-foreground">
+              We're preparing this service category for launch. Join the waitlist to be the first to know!
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="hero" asChild>
+                <Link to="/waitlist">Join Waitlist</Link>
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/")}>Browse Services</Button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const serviceConfig: ServiceTypeConfig | undefined = useMemo(() => {
     if (!flow || !booking.serviceTypeId) return undefined;
