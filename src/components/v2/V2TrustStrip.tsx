@@ -1,63 +1,31 @@
-import { ShieldCheck, Eye, Award, Lock, HeartHandshake, FileText, MessageCircle, KeyRound } from "lucide-react";
+import { ShieldCheck, Eye, Award, FileText, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 
 const badges = [
-  { icon: <ShieldCheck className="w-5 h-5" />, label: "Verified Technicians", desc: "Background checked & certified" },
-  { icon: <Eye className="w-5 h-5" />, label: "Transparent Pricing", desc: "No hidden fees, ever" },
-  { icon: <KeyRound className="w-5 h-5" />, label: "OTP Verification", desc: "Secure start & completion" },
-  { icon: <Award className="w-5 h-5" />, label: "Quote Approval", desc: "No surprises on your bill" },
-  { icon: <FileText className="w-5 h-5" />, label: "Digital Invoice", desc: "Complete breakdown after service" },
-  { icon: <Lock className="w-5 h-5" />, label: "Warranty Included", desc: "Parts and labor guaranteed" },
-  { icon: <HeartHandshake className="w-5 h-5" />, label: "LankaFix Mediation", desc: "We resolve disputes fairly" },
-  { icon: <MessageCircle className="w-5 h-5" />, label: "WhatsApp Support", desc: "Help when you need it" },
+  { icon: <ShieldCheck className="w-4 h-4" />, label: "Verified Technicians" },
+  { icon: <Eye className="w-4 h-4" />, label: "Transparent Pricing" },
+  { icon: <Award className="w-4 h-4" />, label: "Warranty-Backed Repairs" },
+  { icon: <FileText className="w-4 h-4" />, label: "Digital Invoices" },
+  { icon: <MapPin className="w-4 h-4" />, label: "Colombo Service Coverage" },
 ];
 
 const V2TrustStrip = () => {
   return (
-    <section className="py-14 md:py-20 bg-navy relative overflow-hidden">
-      {/* Subtle dot pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
-        backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
-        backgroundSize: "32px 32px",
-      }} />
-
-      <div className="container space-y-10 relative z-10">
-        <motion.div
-          className="text-center"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.5 }}
-        >
-          <h2 className="font-heading text-xl md:text-3xl font-bold text-white mb-2.5">
-            Why Sri Lankans Trust LankaFix
-          </h2>
-          <p className="text-sm text-white/40">
-            Built for transparency, trust, and real service delivery
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+    <section className="py-8 md:py-10 bg-secondary/30 border-t border-border/30">
+      <div className="container">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
           {badges.map((item, i) => (
-            <motion.div
-              key={i}
-              className="flex flex-col items-center text-center gap-3 group"
-              initial={{ opacity: 0, y: 16 }}
+            <motion.span
+              key={item.label}
+              initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-30px" }}
-              transition={{ delay: i * 0.06, duration: 0.4, ease: "easeOut" }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05, duration: 0.3 }}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"
             >
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300"
-                style={{ background: "linear-gradient(135deg, hsl(211 78% 42% / 0.4), hsl(147 48% 40% / 0.25))" }}
-              >
-                <span className="text-white">{item.icon}</span>
-              </div>
-              <div>
-                <span className="text-xs font-bold text-white block leading-snug">{item.label}</span>
-                <p className="text-[10px] text-white/35 mt-1">{item.desc}</p>
-              </div>
-            </motion.div>
+              <span className="text-primary">{item.icon}</span>
+              {item.label}
+            </motion.span>
           ))}
         </div>
       </div>

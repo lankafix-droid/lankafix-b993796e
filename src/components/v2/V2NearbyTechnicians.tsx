@@ -175,7 +175,9 @@ const V2NearbyTechnicians = () => {
                         {availLabel}
                       </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-primary" />
+                    <span className="text-[10px] font-medium text-primary inline-flex items-center gap-0.5">
+                      View <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
                   </div>
                 </motion.div>
               );

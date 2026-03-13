@@ -32,7 +32,7 @@ const CATEGORY_SHORTCUTS = [
   { icon: <Snowflake className="w-4 h-4" />, label: "AC", link: "/book/AC" },
   { icon: <Smartphone className="w-4 h-4" />, label: "Mobile", link: "/book/MOBILE" },
   { icon: <Monitor className="w-4 h-4" />, label: "IT", link: "/book/IT" },
-  { icon: <Camera className="w-4 h-4" />, label: "CCTV", link: "/book/CCTV" },
+  { icon: <Tv className="w-4 h-4" />, label: "Electronics", link: "/book/CONSUMER_ELEC" },
 ];
 
 const SEARCH_SUGGESTIONS = [
