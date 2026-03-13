@@ -41,6 +41,19 @@ const SEVERITY_COLORS: Record<string, string> = {
   info: "bg-muted text-muted-foreground",
 };
 
+const EVENT_ACTION_GUIDE: Record<string, string> = {
+  trust_recovery: "Review support case → contact customer within 1h → check partner history",
+  sla_breach: "Check dispatch board → manually assign if needed → contact customer",
+  partner_fatigue: "Review partner workload → redistribute dispatch → check zone coverage",
+  quote_stale: "Follow up with customer (WhatsApp) → check if still interested → escalate to partner",
+  supply_gap_detected: "Review recruitment pipeline → prioritize onboarding for this zone/category",
+  dispatch_timeout: "Check partner availability → verify phone is reachable → consider manual assignment",
+  partner_low_acceptance: "Review partner → schedule call → consider warning or training",
+  rating_low: "Contact customer → review service quality → document findings",
+  payment_failed: "Verify payment method with customer → re-attempt or switch to cash",
+  partner_under_review: "Review partner warnings → decide: coaching, probation, or suspension",
+};
+
 function AutomationTab() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,21 +74,36 @@ function AutomationTab() {
 
   // Summary by type
   const typeCounts: Record<string, number> = {};
-  events.forEach(e => { typeCounts[e.event_type] = (typeCounts[e.event_type] || 0) + 1; });
+  const severityCounts: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  events.forEach(e => {
+    typeCounts[e.event_type] = (typeCounts[e.event_type] || 0) + 1;
+    severityCounts[e.severity] = (severityCounts[e.severity] || 0) + 1;
+  });
+
+  const criticalAndHigh = events.filter(e => e.severity === "critical" || e.severity === "high");
 
   return (
     <>
+      {/* Health summary */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2"><Bot className="w-4 h-4 text-primary" />Automation Summary</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><Bot className="w-4 h-4 text-primary" />Automation Health</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {(["critical", "high", "medium", "info"] as const).map(sev => (
+              <div key={sev} className={`text-center p-2 rounded-lg border ${sev === "critical" || sev === "high" ? (severityCounts[sev] > 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-card") : "border-border bg-card"}`}>
+                <p className="text-lg font-bold text-foreground">{severityCounts[sev]}</p>
+                <p className="text-[9px] text-muted-foreground capitalize">{sev}</p>
+              </div>
+            ))}
+          </div>
           {Object.keys(typeCounts).length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">No automation events recorded yet. The system runs every 5 minutes.</p>
+            <p className="text-xs text-muted-foreground text-center py-2">No automation events recorded yet. The system checks every 5 minutes.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).map(([type, count]) => (
-                <Badge key={type} variant="outline" className="text-xs gap-1">
+                <Badge key={type} variant="outline" className="text-[10px] gap-1">
                   {EVENT_LABELS[type] || type.replace(/_/g, " ")} <span className="font-bold">{count}</span>
                 </Badge>
               ))}
@@ -84,6 +112,42 @@ function AutomationTab() {
         </CardContent>
       </Card>
 
+      {/* Action required — critical/high events */}
+      {criticalAndHigh.length > 0 && (
+        <Card className="border-destructive/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-4 h-4" />Action Required ({criticalAndHigh.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {criticalAndHigh.slice(0, 10).map(e => {
+              const meta = e.metadata || {};
+              return (
+                <div key={e.id} className="border border-destructive/20 rounded-lg p-3 bg-destructive/5 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Badge className={`text-[9px] px-1.5 ${SEVERITY_COLORS[e.severity]}`}>{e.severity}</Badge>
+                    <span className="text-xs font-semibold text-foreground">{EVENT_LABELS[e.event_type] || e.event_type}</span>
+                    <span className="text-[9px] text-muted-foreground ml-auto">
+                      {new Date(e.created_at).toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{e.trigger_reason}</p>
+                  {meta.category && <p className="text-[10px] text-muted-foreground">Category: {catLabel(meta.category)}</p>}
+                  {meta.zone && <p className="text-[10px] text-muted-foreground">Zone: {meta.zone}</p>}
+                  {EVENT_ACTION_GUIDE[e.event_type] && (
+                    <div className="bg-primary/5 border border-primary/10 rounded px-2 py-1.5 mt-1">
+                      <p className="text-[10px] text-primary font-medium">→ {EVENT_ACTION_GUIDE[e.event_type]}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent events */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2"><Clock className="w-4 h-4 text-primary" />Recent Events</CardTitle>
