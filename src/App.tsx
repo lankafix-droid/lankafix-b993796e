@@ -83,6 +83,7 @@ const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const PilotBookingMonitorPage = lazy(() => import("./pages/ops/PilotBookingMonitorPage"));
 const IncidentTrackerPage = lazy(() => import("./pages/ops/IncidentTrackerPage"));
 const PartnerPilotReadinessPage = lazy(() => import("./pages/ops/PartnerPilotReadinessPage"));
+const WarRoomPage = lazy(() => import("./pages/ops/WarRoomPage"));
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
 const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
@@ -204,6 +205,7 @@ const App = () => (
             <Route path="/ops/pilot-bookings" element={<PilotBookingMonitorPage />} />
             <Route path="/ops/incidents" element={<IncidentTrackerPage />} />
             <Route path="/ops/partner-readiness" element={<PartnerPilotReadinessPage />} />
+            <Route path="/ops/war-room" element={<WarRoomPage />} />
             <Route path="/ops/support" element={<SupportCasesPage />} />
 
             {/* ─── Content Pages ─── */}
