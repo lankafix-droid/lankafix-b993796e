@@ -40,10 +40,7 @@ const STATUS_LABELS: Record<string, string> = {
   repair_started: "Repair In Progress",
 };
 
-const MODE_LABELS: Record<string, string> = {
-  on_site: "On-Site", drop_off: "Drop-Off",
-  pickup_return: "Pickup & Return", remote: "Remote",
-};
+const MODE_LABELS = SERVICE_MODE_LABELS as Record<string, string>;
 
 const QUOTE_STATUS_LABELS: Record<string, string> = {
   draft: "Draft", submitted: "Awaiting Approval",

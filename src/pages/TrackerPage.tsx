@@ -482,31 +482,9 @@ const TrackerPage = () => {
     // DB-backed booking view (real bookings from Phase 1)
     if (!booking && dbBooking) {
     const shortId = dbBooking.id.slice(0, 8).toUpperCase();
-    const CATEGORY_LABELS: Record<string, string> = {
-      AC: "AC Solutions", MOBILE: "Mobile Phone Repairs",
-      CONSUMER_ELEC: "Consumer Electronics", IT: "IT Repairs & Support",
-      CCTV: "CCTV & Surveillance", SOLAR: "Solar Services",
-      ELECTRICAL: "Electrical Services", PLUMBING: "Plumbing Services",
-    };
-    const STATUS_LABELS: Record<string, string> = {
-      requested: "Submitted",
-      matching: "Finding Provider",
-      awaiting_partner_confirmation: "Awaiting Confirmation",
-      scheduled: "Scheduled",
-      assigned: "Provider Assigned",
-      tech_en_route: "On the Way",
-      arrived: "Provider Arrived",
-      inspection_started: "Inspecting",
-      quote_submitted: "Quote Ready",
-      quote_approved: "Quote Approved",
-      quote_rejected: "Quote Rejected",
-      quote_revised: "Quote Revised",
-      in_progress: "In Progress",
-      repair_started: "Repair In Progress",
-      completed: "Completed",
-      rated: "Rated",
-      cancelled: "Cancelled",
-    };
+    // Use shared labels from types/booking
+    const catLabel = CATEGORY_LABELS[dbBooking.category_code as keyof typeof CATEGORY_LABELS] || dbBooking.category_code;
+    const statusLabel = BOOKING_STATUS_LABELS[dbBooking.status as keyof typeof BOOKING_STATUS_LABELS] || dbBooking.status;
 
     const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
       pending: { label: "Submitted", description: "Your booking has been received. We're finding the best provider for you.", icon: Clock },
