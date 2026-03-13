@@ -140,10 +140,17 @@ export default function PartnerJobsPage() {
         )}
 
         {bookings.length === 0 && pendingOffers.length === 0 && (
-          <div className="text-center py-16 space-y-3">
-            <Briefcase className="w-10 h-10 text-muted-foreground mx-auto" />
-            <p className="text-sm text-muted-foreground">No jobs yet</p>
-            <p className="text-xs text-muted-foreground">Jobs assigned to you will appear here once you start receiving bookings through LankaFix.</p>
+          <div className="text-center py-16 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mx-auto">
+              <Briefcase className="w-7 h-7 text-primary/40" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">No Jobs Yet</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">Jobs assigned to you will appear here once you start receiving bookings through LankaFix.</p>
+            </div>
+            <Button variant="outline" className="rounded-xl" onClick={() => navigate("/partner")}>
+              Back to Dashboard
+            </Button>
           </div>
         )}
         {bookings.map((b: any) => {
