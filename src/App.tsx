@@ -73,6 +73,7 @@ const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
 const MarketplaceIntelligencePage = lazy(() => import("./pages/ops/MarketplaceIntelligencePage"));
 const RetentionDashboardPage = lazy(() => import("./pages/ops/RetentionDashboardPage"));
 const LaunchReadinessPage = lazy(() => import("./pages/ops/LaunchReadinessPage"));
+const PilotSimulationPage = lazy(() => import("./pages/ops/PilotSimulationPage"));
 const ProviderReadinessPage = lazy(() => import("./pages/ops/ProviderReadinessPage"));
 const RemindersPage = lazy(() => import("./pages/RemindersPage"));
 const HomeHealthPage = lazy(() => import("./pages/HomeHealthPage"));
@@ -195,6 +196,7 @@ const App = () => (
             <Route path="/ops/intelligence" element={<MarketplaceIntelligencePage />} />
             <Route path="/ops/retention" element={<RetentionDashboardPage />} />
             <Route path="/ops/launch" element={<LaunchReadinessPage />} />
+            <Route path="/ops/pilot-simulation" element={<PilotSimulationPage />} />
             <Route path="/ops/provider-readiness" element={<ProviderReadinessPage />} />
             <Route path="/ops/support" element={<SupportCasesPage />} />
 
