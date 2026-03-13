@@ -6,12 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  ArrowLeft, RefreshCw, Loader2, Users, CheckCircle2, AlertTriangle, XCircle, Star, Clock, TrendingUp, Trophy,
+  ArrowLeft, RefreshCw, Loader2, Users, CheckCircle2, AlertTriangle, XCircle,
 } from "lucide-react";
-import { CATEGORY_LABELS, type CategoryCode } from "@/types/booking";
+import { catLabel } from "@/lib/opsLabels";
 
 const PHASE1_CATS = ["AC", "MOBILE", "CONSUMER_ELEC", "IT"];
-const catLabel = (c: string) => CATEGORY_LABELS[c as CategoryCode] || c;
 
 interface CatMetrics {
   code: string;
@@ -46,24 +45,32 @@ export default function PartnerPilotReadinessPage() {
       const verified = catPartners.filter(p => p.verification_status === "verified");
       const active = verified.filter(p => p.availability_status !== "offline");
 
-      const avg = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-      const acceptRates = verified.map(p => p.acceptance_rate ?? 0).filter(r => r > 0);
-      const cancelRates = verified.map(p => p.cancellation_rate ?? 0);
-      const responseTimes = verified.map(p => p.average_response_time_minutes ?? 0).filter(r => r > 0);
-      const ratings = verified.map(p => p.rating_average ?? 0).filter(r => r > 0);
+      // Null-safe averages: only include non-null, non-zero values
+      const safeAvg = (arr: (number | null | undefined)[], filterZero = true): number => {
+        const valid = arr.filter((v): v is number => v != null && (!filterZero || v > 0));
+        return valid.length > 0 ? valid.reduce((a, b) => a + b, 0) / valid.length : 0;
+      };
 
-      const avgAccept = avg(acceptRates);
-      const avgCancel = avg(cancelRates);
-      const avgRat = avg(ratings);
+      const avgAccept = safeAvg(verified.map(p => p.acceptance_rate));
+      const avgCancel = safeAvg(verified.map(p => p.cancellation_rate), false);
+      const avgResponse = safeAvg(verified.map(p => p.average_response_time_minutes));
+      const avgRat = safeAvg(verified.map(p => p.rating_average));
 
+      // Status: categories with 0 verified partners MUST be critical
       let status: CatMetrics["status"] = "healthy";
-      if (verified.length === 0 || avgAccept < 40 || avgRat < 3) status = "critical";
-      else if (avgAccept < 60 || avgCancel > 30 || avgRat < 3.5) status = "attention";
+      if (verified.length === 0) status = "critical";
+      else if (avgAccept > 0 && avgAccept < 40) status = "critical";
+      else if (avgRat > 0 && avgRat < 3) status = "critical";
+      else if ((avgAccept > 0 && avgAccept < 60) || avgCancel > 30 || (avgRat > 0 && avgRat < 3.5)) status = "attention";
 
       return {
-        code, verified: verified.length, activeToday: active.length,
-        avgAcceptRate: Math.round(avgAccept), avgCancelRate: Math.round(avgCancel),
-        avgResponseMin: Math.round(avg(responseTimes)), avgRating: parseFloat(avg(ratings).toFixed(1)),
+        code,
+        verified: verified.length,
+        activeToday: active.length,
+        avgAcceptRate: Math.round(avgAccept),
+        avgCancelRate: Math.round(avgCancel),
+        avgResponseMin: Math.round(avgResponse),
+        avgRating: parseFloat(avgRat.toFixed(1)),
         status,
       };
     });
@@ -148,39 +155,49 @@ export default function PartnerPilotReadinessPage() {
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div>
-                  <p className="text-sm font-bold text-foreground">{m.verified}</p>
+                  <p className={`text-sm font-bold ${m.verified === 0 ? "text-destructive" : "text-foreground"}`}>{m.verified}</p>
                   <p className="text-[9px] text-muted-foreground">Verified</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{m.activeToday}</p>
+                  <p className={`text-sm font-bold ${m.verified > 0 && m.activeToday === 0 ? "text-amber-600" : "text-foreground"}`}>{m.activeToday}</p>
                   <p className="text-[9px] text-muted-foreground">Active</p>
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-foreground">{m.avgRating || "—"}</p>
+                  <p className="text-sm font-bold text-foreground">{m.avgRating > 0 ? m.avgRating : "—"}</p>
                   <p className="text-[9px] text-muted-foreground">Avg Rating</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <div>
-                  <div className="flex justify-between text-[10px] mb-0.5">
-                    <span className="text-muted-foreground">Acceptance Rate</span>
-                    <span className={m.avgAcceptRate < 40 ? "text-destructive font-semibold" : m.avgAcceptRate < 60 ? "text-amber-600 font-semibold" : "text-foreground"}>{m.avgAcceptRate}%</span>
+              {m.verified === 0 ? (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-2.5 text-center">
+                  <p className="text-[11px] text-destructive font-medium">No verified partners — recruitment needed</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div>
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="text-muted-foreground">Acceptance Rate</span>
+                      <span className={m.avgAcceptRate > 0 && m.avgAcceptRate < 40 ? "text-destructive font-semibold" : m.avgAcceptRate > 0 && m.avgAcceptRate < 60 ? "text-amber-600 font-semibold" : "text-foreground"}>
+                        {m.avgAcceptRate > 0 ? `${m.avgAcceptRate}%` : "—"}
+                      </span>
+                    </div>
+                    <Progress value={m.avgAcceptRate} className="h-1.5" />
                   </div>
-                  <Progress value={m.avgAcceptRate} className="h-1.5" />
-                </div>
-                <div>
-                  <div className="flex justify-between text-[10px] mb-0.5">
-                    <span className="text-muted-foreground">Cancellation Rate</span>
-                    <span className={m.avgCancelRate > 30 ? "text-destructive font-semibold" : "text-foreground"}>{m.avgCancelRate}%</span>
+                  <div>
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="text-muted-foreground">Cancellation Rate</span>
+                      <span className={m.avgCancelRate > 30 ? "text-destructive font-semibold" : "text-foreground"}>
+                        {m.avgCancelRate}%
+                      </span>
+                    </div>
+                    <Progress value={m.avgCancelRate} className="h-1.5" />
                   </div>
-                  <Progress value={m.avgCancelRate} className="h-1.5" />
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Avg Response Time</span>
+                    <span className="text-foreground">{m.avgResponseMin > 0 ? `${m.avgResponseMin}m` : "—"}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-muted-foreground">Avg Response Time</span>
-                  <span className="text-foreground">{m.avgResponseMin > 0 ? `${m.avgResponseMin}m` : "—"}</span>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         ))}

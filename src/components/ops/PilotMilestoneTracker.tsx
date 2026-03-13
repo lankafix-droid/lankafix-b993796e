@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Trophy, CheckCircle2, Star, Clock, BarChart3, TrendingUp, XCircle } from "lucide-react";
+import { Trophy, CheckCircle2, Clock, TrendingUp } from "lucide-react";
 
 const MILESTONES = [10, 25, 50, 100];
 
@@ -13,7 +13,6 @@ export default function PilotMilestoneTracker() {
 
   useEffect(() => {
     (async () => {
-      // Exclude simulation bookings
       const { data } = await supabase
         .from("bookings")
         .select("id, status, created_at, customer_rating, final_price_lkr, assigned_at, completed_at, cancelled_at, payment_status")
@@ -48,7 +47,7 @@ export default function PilotMilestoneTracker() {
       return {
         target: m,
         reached: true,
-        date: subset[m - 1]?.created_at ? new Date(subset[m - 1].created_at).toLocaleDateString("en-LK", { month: "short", day: "numeric" }) : null,
+        date: subset[m - 1]?.created_at ? new Date(subset[m - 1].created_at).toLocaleDateString("en-LK", { month: "short", day: "numeric", year: "numeric" }) : null,
         ratingAtMilestone: r.length > 0 ? (r.reduce((s: number, b: any) => s + b.customer_rating, 0) / r.length).toFixed(1) : "—",
         completionAtMilestone: subset.length > 0 ? Math.round(comp.length / subset.length * 100) : 0,
       };
@@ -75,43 +74,49 @@ export default function PilotMilestoneTracker() {
           <div>
             <div className="flex justify-between text-xs mb-1">
               <span className="font-medium text-foreground">{stats.total} bookings</span>
-              <span className="text-muted-foreground">Next: {nextMilestone}</span>
+              <span className="text-muted-foreground">Next milestone: {nextMilestone}</span>
             </div>
             <Progress value={progress} className="h-2.5" />
           </div>
 
           {/* Summary metrics */}
           <div className="grid grid-cols-3 gap-2">
-            <div className="text-center p-2 rounded-lg border border-border bg-card">
+            <div className="text-center p-2.5 rounded-lg border border-border bg-card">
               <p className="text-sm font-bold text-emerald-600">{stats.completed}</p>
               <p className="text-[9px] text-muted-foreground">Completed</p>
             </div>
-            <div className="text-center p-2 rounded-lg border border-border bg-card">
+            <div className="text-center p-2.5 rounded-lg border border-border bg-card">
               <p className="text-sm font-bold text-foreground">{stats.avgRating}</p>
               <p className="text-[9px] text-muted-foreground">Avg Rating</p>
             </div>
-            <div className="text-center p-2 rounded-lg border border-border bg-card">
+            <div className="text-center p-2.5 rounded-lg border border-border bg-card">
               <p className="text-sm font-bold text-foreground">{stats.completionRate}%</p>
               <p className="text-[9px] text-muted-foreground">Completion</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-center p-2 rounded-lg border border-border bg-card">
-              <p className="text-sm font-bold text-foreground">{stats.cancelled}</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-2.5 rounded-lg border border-border bg-card">
+              <p className="text-sm font-bold text-destructive/80">{stats.cancelled}</p>
               <p className="text-[9px] text-muted-foreground">Cancelled</p>
             </div>
-            <div className="text-center p-2 rounded-lg border border-border bg-card">
+            <div className="text-center p-2.5 rounded-lg border border-border bg-card">
               <p className="text-sm font-bold text-foreground">{stats.avgDispatchMin > 0 ? `${stats.avgDispatchMin}m` : "—"}</p>
               <p className="text-[9px] text-muted-foreground">Avg Dispatch</p>
+            </div>
+            <div className="text-center p-2.5 rounded-lg border border-border bg-card">
+              <p className="text-sm font-bold text-foreground">{stats.total}</p>
+              <p className="text-[9px] text-muted-foreground">Total</p>
             </div>
           </div>
 
           {/* Milestones */}
           <div className="space-y-2">
-            <p className="text-xs font-semibold text-foreground">Milestones</p>
+            <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-primary" /> Milestones
+            </p>
             {stats.milestones.map(m => (
-              <div key={m.target} className={`flex items-center gap-3 p-2 rounded-lg border ${m.reached ? "border-emerald-500/20 bg-emerald-500/5" : "border-border bg-card opacity-60"}`}>
+              <div key={m.target} className={`flex items-center gap-3 p-2.5 rounded-lg border ${m.reached ? "border-emerald-500/20 bg-emerald-500/5" : "border-border bg-card opacity-50"}`}>
                 {m.reached
                   ? <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                   : <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />}
@@ -120,6 +125,11 @@ export default function PilotMilestoneTracker() {
                   {m.reached && m.date && (
                     <p className="text-[10px] text-muted-foreground">
                       Reached {m.date} · Rating: {m.ratingAtMilestone} · Completion: {m.completionAtMilestone}%
+                    </p>
+                  )}
+                  {!m.reached && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {m.target - stats.total} more bookings to go
                     </p>
                   )}
                 </div>
