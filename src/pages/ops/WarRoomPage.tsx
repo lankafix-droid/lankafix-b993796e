@@ -454,7 +454,7 @@ export default function WarRoomPage() {
                         <TableCell className="text-[10px]">{e.dispatch_rounds_attempted ?? 0}</TableCell>
                         <TableCell className="text-[10px]">{new Date(e.created_at).toLocaleTimeString()}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => navigate(`/tracker/${e.booking_id}`)}>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => navigate(`/track/${e.booking_id}`)}>
                             <Eye className="w-3 h-3 mr-1" /> View
                           </Button>
                         </TableCell>
