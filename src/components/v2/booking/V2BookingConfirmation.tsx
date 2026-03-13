@@ -34,13 +34,13 @@ const WARRANTY_NOTES: Record<string, string> = {
 };
 
 const TRACKING_STAGES = [
-  { label: "Booking Submitted", key: "submitted" },
-  { label: "Provider Matching", key: "matching" },
-  { label: "Provider Assigned", key: "assigned" },
+  { label: "Submitted", key: "submitted" },
+  { label: "Matching", key: "matching" },
+  { label: "Assigned", key: "assigned" },
   { label: "En Route", key: "en_route" },
   { label: "Diagnosis", key: "diagnosis" },
   { label: "Quote Approval", key: "quote" },
-  { label: "Work in Progress", key: "repair" },
+  { label: "In Progress", key: "repair" },
   { label: "Completed", key: "completed" },
 ];
 
@@ -171,7 +171,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
     );
   }
 
-  /* ─── SUCCESS STATE — Premium post-confirmation ─── */
+  /* ─── SUCCESS STATE ─── */
   if (confirmed) {
     const shortId = createdJobId ? createdJobId.slice(0, 8).toUpperCase() : "";
     const categoryWarranty = WARRANTY_NOTES[flow.code] || flow.warrantyNote;
@@ -199,10 +199,10 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
             <CheckCircle2 className="w-10 h-10 text-success" />
           </motion.div>
           <h2 className="text-2xl font-extrabold text-foreground">Booking Confirmed!</h2>
-          <p className="text-muted-foreground text-sm">Your service request has been submitted successfully</p>
+          <p className="text-muted-foreground text-sm">Your service request has been submitted</p>
         </motion.div>
 
-        {/* Complete booking summary card */}
+        {/* Booking summary card */}
         <motion.div
           className="bg-card rounded-2xl border border-border/60 p-5 space-y-0 shadow-[var(--shadow-card)]"
           initial={{ opacity: 0, y: 10 }}
@@ -218,7 +218,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           {booking.issueId && (
             <SummaryRow label="Issue" value={flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label || "Described"} />
           )}
-          {selectedMode && <SummaryRow label="Service Mode" value={selectedMode.label} />}
+          {selectedMode && <SummaryRow label="Mode" value={selectedMode.label} />}
           {activeAddress && (
             <SummaryRow label="Location" value={activeAddress.displayName || activeAddress.area || "Greater Colombo"} />
           )}
@@ -246,7 +246,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </div>
         </motion.div>
 
-        {/* What happens next — compact timeline */}
+        {/* What happens next — compact */}
         <motion.div
           className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
           initial={{ opacity: 0, y: 10 }}
@@ -278,7 +278,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
                       </div>
                     )}
                   </div>
-                  <div className={`pb-3.5 ${isDone || isCurrent ? "" : "opacity-50"}`}>
+                  <div className={`pb-3 ${isDone || isCurrent ? "" : "opacity-50"}`}>
                     <span className={`text-sm ${isDone || isCurrent ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
                       {stage.label}
                     </span>
@@ -326,7 +326,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
     );
   }
 
-  /* ─── REVIEW STATE — Clean final summary ─── */
+  /* ─── REVIEW STATE ─── */
   return (
     <div className="space-y-4 pb-28">
       <div>
@@ -343,11 +343,11 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
       >
         <h3 className="font-bold text-foreground text-sm mb-1">Service Summary</h3>
         <SummaryRow label="Category" value={flow.name} />
-        {selectedService && <SummaryRow label="Service Type" value={selectedService.label} />}
+        {selectedService && <SummaryRow label="Service" value={selectedService.label} />}
         {booking.issueId && (
           <SummaryRow label="Issue" value={flow.issueSelectors?.find((i) => i.id === booking.issueId)?.label || "Described"} />
         )}
-        {selectedMode && <SummaryRow label="Service Mode" value={selectedMode.label} />}
+        {selectedMode && <SummaryRow label="Mode" value={selectedMode.label} />}
         {selectedGrade && <SummaryRow label="Part Quality" value={selectedGrade.label} />}
         <SummaryRow label="Pricing" value={
           <Badge variant="outline" className={`text-[10px] font-semibold ${
@@ -368,12 +368,11 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, duration: 0.3 }}
         >
-          <h3 className="font-bold text-foreground text-sm mb-1">Device / Property Details</h3>
+          <h3 className="font-bold text-foreground text-sm mb-1">Device Details</h3>
           {Object.entries(booking.deviceAnswers).map(([key, value]) => {
             const question = flow.deviceQuestions.find((q) => q.key === key);
-            // Handle "not_sure" values cleanly
             const rawValue = typeof value === "boolean" ? (value ? "Yes" : "No") : value;
-            const displayValue = rawValue === "not_sure" || rawValue === "Not Sure"
+            const displayValue = rawValue === "not_sure" || rawValue === "Not Sure" || rawValue === "not_known"
               ? "Will confirm on-site"
               : (question?.options?.find((o) => o.value === rawValue)?.label || rawValue);
             return <SummaryRow key={key} label={question?.label || key} value={String(displayValue)} />;
@@ -459,7 +458,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         >
           <h3 className="font-bold text-foreground text-sm mb-1 flex items-center gap-1.5">
             <Award className="w-3.5 h-3.5 text-primary" />
-            Warranty Information
+            Warranty
           </h3>
           {selectedGrade && <SummaryRow label={`Part Warranty (${selectedGrade.label})`} value={selectedGrade.warrantyLabel} />}
           {warranty && (
@@ -487,7 +486,7 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         <Shield className="w-5 h-5 text-success shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-bold text-foreground">No extra work without your approval</p>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">You'll receive a revised quote for approval before any additional work begins.</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">You'll receive a detailed quote for approval before any additional work begins.</p>
         </div>
       </div>
 

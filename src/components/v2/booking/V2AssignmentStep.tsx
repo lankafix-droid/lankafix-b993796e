@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ShieldCheck, Star, Clock, MapPin, Users, CheckCircle2, Store, Calendar,
   Monitor, Navigation, Zap, Wifi, RefreshCw, Car, Bike, Truck, Timer, Award,
-  Brain, BarChart3, Target, Briefcase,
+  Brain, BarChart3, Target, Briefcase, Info,
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -73,8 +73,8 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
     return (
       <div className="space-y-5">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Partner Shop Assigned</h2>
-          <p className="text-sm text-muted-foreground mt-1">Your nearest verified repair shop</p>
+          <h2 className="text-xl font-bold text-foreground">Choose a Repair Shop</h2>
+          <p className="text-sm text-muted-foreground mt-1">Verified partner shops near you</p>
         </div>
 
         <div className="flex gap-2">
@@ -88,51 +88,64 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         </div>
 
         {sortedShops.map((s: any, i: number) => (
-          <div key={i} className={`bg-card rounded-xl border p-5 space-y-4 ${i === 0 ? "border-primary/30" : ""}`}>
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Store className="w-6 h-6 text-primary" />
+          <motion.div
+            key={i}
+            className={`bg-card rounded-2xl border overflow-hidden ${i === 0 ? "border-primary/30 ring-1 ring-primary/10" : "border-border/60"}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.08 }}
+          >
+            {i === 0 && (
+              <div className="bg-primary/5 px-4 py-1.5 text-[10px] font-semibold text-primary flex items-center gap-1.5">
+                <Award className="w-3 h-3" /> Recommended
               </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <h3 className="font-semibold text-foreground">{s.name}</h3>
-                  {s.verified && (
-                    <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20 gap-1">
-                      <ShieldCheck className="w-3 h-3" /> Verified
-                    </Badge>
-                  )}
+            )}
+            <div className="p-5 space-y-3">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <Store className="w-5 h-5 text-primary" />
                 </div>
-                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <MapPin className="w-3.5 h-3.5" /> {s.location}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-bold text-foreground text-sm">{s.name}</h3>
+                    {s.verified && (
+                      <Badge variant="outline" className="text-[9px] bg-success/10 text-success border-success/20 gap-0.5">
+                        <ShieldCheck className="w-2.5 h-2.5" /> Verified
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {s.location}
+                  </p>
                 </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-4 gap-2">
-              <div className="bg-muted/50 rounded-lg p-2 text-center">
-                <div className="flex items-center justify-center gap-1">
-                  <Star className="w-3 h-3 text-warning fill-warning" />
-                  <span className="text-sm font-bold text-foreground">{s.rating}</span>
+              <div className="grid grid-cols-4 gap-2">
+                <div className="bg-muted/40 rounded-xl p-2.5 text-center">
+                  <div className="flex items-center justify-center gap-0.5">
+                    <Star className="w-3 h-3 text-warning fill-warning" />
+                    <span className="text-sm font-bold text-foreground">{s.rating}</span>
+                  </div>
+                  <div className="text-[9px] text-muted-foreground mt-0.5">Rating</div>
                 </div>
-                <div className="text-[10px] text-muted-foreground">Rating</div>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-2 text-center">
-                <div className="text-sm font-bold text-foreground">{s.distance?.toFixed(1) || "?"} km</div>
-                <div className="text-[10px] text-muted-foreground">Distance</div>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-2 text-center">
-                <div className="text-sm font-bold text-foreground">{s.repairTimeEstimate}</div>
-                <div className="text-[10px] text-muted-foreground">Est. Time</div>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-2 text-center">
-                <div className="text-[10px] font-bold text-foreground">{s.openHours}</div>
-                <div className="text-[10px] text-muted-foreground">Hours</div>
+                <div className="bg-muted/40 rounded-xl p-2.5 text-center">
+                  <div className="text-sm font-bold text-foreground">{s.distance?.toFixed(1) || "?"}</div>
+                  <div className="text-[9px] text-muted-foreground mt-0.5">km away</div>
+                </div>
+                <div className="bg-muted/40 rounded-xl p-2.5 text-center">
+                  <div className="text-sm font-bold text-foreground">{s.repairTimeEstimate}</div>
+                  <div className="text-[9px] text-muted-foreground mt-0.5">Est. time</div>
+                </div>
+                <div className="bg-muted/40 rounded-xl p-2.5 text-center">
+                  <div className="text-[10px] font-bold text-foreground leading-tight">{s.openHours}</div>
+                  <div className="text-[9px] text-muted-foreground mt-0.5">Hours</div>
+                </div>
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
 
-        <Button onClick={onConfirm} size="lg" className="w-full gap-2">
+        <Button onClick={onConfirm} size="lg" className="w-full gap-2 rounded-xl h-12">
           <CheckCircle2 className="w-4 h-4" /> Confirm Booking
         </Button>
       </div>
@@ -145,56 +158,68 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
       <div className="space-y-5">
         <div>
           <h2 className="text-xl font-bold text-foreground">Book Site Inspection</h2>
-          <p className="text-sm text-muted-foreground mt-1">Our inspection team will visit your property</p>
+          <p className="text-sm text-muted-foreground mt-1">A qualified team will assess your requirements on-site</p>
         </div>
 
-        <div className="bg-card rounded-xl border p-5 space-y-4">
+        <motion.div
+          className="bg-card rounded-2xl border border-border/60 p-5 space-y-4 shadow-[var(--shadow-card)]"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Calendar className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-foreground">Inspection Team Available</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">Next available slot</p>
+              <h3 className="font-bold text-foreground">Inspection Team</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Choose your preferred time slot</p>
             </div>
           </div>
 
           {activeAddress && (
-            <div className="bg-muted/30 rounded-lg p-3 flex items-center gap-2">
+            <div className="bg-muted/30 rounded-xl p-3 flex items-center gap-2">
               <MapPin className="w-4 h-4 text-primary shrink-0" />
               <div>
-                <p className="text-sm text-foreground">{activeAddress.displayName || activeAddress.area}</p>
+                <p className="text-sm font-medium text-foreground">{activeAddress.displayName || activeAddress.area}</p>
                 <p className="text-xs text-muted-foreground">{activeAddress.city}</p>
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <div className="text-sm font-bold text-foreground">Tomorrow</div>
-              <div className="text-xs text-muted-foreground">9 AM – 12 PM</div>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-4 text-center border-2 border-primary">
-              <div className="text-sm font-bold text-foreground">Day After</div>
-              <div className="text-xs text-muted-foreground">2 PM – 5 PM</div>
-            </div>
+            {[
+              { day: "Tomorrow", time: "9 AM – 12 PM", selected: false },
+              { day: "Day After", time: "2 PM – 5 PM", selected: true },
+            ].map((slot) => (
+              <button
+                key={slot.day}
+                className={`rounded-xl p-4 text-center transition-all ${
+                  slot.selected
+                    ? "bg-primary/5 border-2 border-primary"
+                    : "bg-muted/50 border-2 border-transparent hover:border-primary/20"
+                }`}
+              >
+                <div className="text-sm font-bold text-foreground">{slot.day}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{slot.time}</div>
+              </button>
+            ))}
           </div>
 
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success" /><span>2-person inspection team</span></div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success" /><span>Detailed quote within 24 hours</span></div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success" /><span>Visit fee deductible from project</span></div>
+          <div className="space-y-2.5 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" /><span>2-person qualified inspection team</span></div>
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" /><span>Detailed quote within 24 hours</span></div>
+            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success shrink-0" /><span>Visit fee deductible from final project cost</span></div>
           </div>
 
           {travelFee && travelFee.fee > 0 && (
-            <div className="bg-warning/5 border border-warning/20 rounded-lg p-3 flex items-center justify-between text-sm">
+            <div className="bg-warning/5 border border-warning/20 rounded-xl p-3 flex items-center justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-1.5"><Navigation className="w-3.5 h-3.5" /> Travel charge</span>
-              <span className="font-medium text-foreground">LKR {travelFee.fee.toLocaleString()}</span>
+              <span className="font-bold text-foreground">LKR {travelFee.fee.toLocaleString()}</span>
             </div>
           )}
-        </div>
+        </motion.div>
 
-        <Button onClick={onConfirm} size="lg" className="w-full gap-2">
+        <Button onClick={onConfirm} size="lg" className="w-full gap-2 rounded-xl h-12">
           <CheckCircle2 className="w-4 h-4" /> Book Inspection
         </Button>
       </div>
@@ -207,46 +232,54 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
       <div className="space-y-5">
         <div>
           <h2 className="text-xl font-bold text-foreground">Book Remote Session</h2>
-          <p className="text-sm text-muted-foreground mt-1">Connect with an IT specialist remotely</p>
+          <p className="text-sm text-muted-foreground mt-1">Connect with an IT specialist from anywhere</p>
         </div>
 
-        <div className="bg-card rounded-xl border p-5 space-y-4">
+        <motion.div
+          className="bg-card rounded-2xl border border-border/60 p-5 space-y-4 shadow-[var(--shadow-card)]"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
               <Monitor className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-foreground">Remote Support Available</h3>
-              <p className="text-sm text-muted-foreground mt-0.5">Available slots today</p>
+              <h3 className="font-bold text-foreground">Remote Support</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Pick a convenient time</p>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             {["10:00 AM", "2:00 PM", "4:00 PM"].map((slot, i) => (
-              <button key={slot} className={`rounded-lg p-3 text-center text-sm transition-all ${
-                i === 0 ? "bg-primary/10 border-2 border-primary text-primary font-medium" : "bg-muted/50 text-muted-foreground hover:bg-muted"
+              <button key={slot} className={`rounded-xl p-3 text-center text-sm transition-all ${
+                i === 0 ? "bg-primary/10 border-2 border-primary text-primary font-semibold" : "bg-muted/50 text-muted-foreground hover:bg-muted border-2 border-transparent"
               }`}>{slot}</button>
             ))}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <div className="bg-muted/40 rounded-xl p-3 text-center">
               <div className="text-sm font-bold text-foreground">30 min</div>
-              <div className="text-xs text-muted-foreground">Session</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">Session length</div>
             </div>
-            <div className="bg-muted/50 rounded-lg p-3 text-center">
-              <div className="text-sm font-bold text-foreground">LKR 2,000</div>
-              <div className="text-xs text-muted-foreground">vs LKR 3,500 on-site</div>
+            <div className="bg-success/5 rounded-xl p-3 text-center border border-success/20">
+              <div className="text-sm font-bold text-success">LKR 2,000</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5">vs LKR 3,500 on-site</div>
             </div>
           </div>
 
-          <div className="space-y-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success" /><span>Screen sharing link sent via SMS</span></div>
-            <div className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-success" /><span>No software installation needed</span></div>
+          <div className="bg-muted/30 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-foreground">How it works</p>
+            <div className="space-y-1.5 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-success shrink-0" /><span>You'll receive a screen-sharing link via SMS</span></div>
+              <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-success shrink-0" /><span>No software installation needed</span></div>
+              <div className="flex items-center gap-2"><CheckCircle2 className="w-3 h-3 text-success shrink-0" /><span>If unresolved, we'll schedule an on-site visit</span></div>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
-        <Button onClick={onConfirm} size="lg" className="w-full gap-2">
+        <Button onClick={onConfirm} size="lg" className="w-full gap-2 rounded-xl h-12">
           <CheckCircle2 className="w-4 h-4" /> Book Session
         </Button>
       </div>
@@ -260,24 +293,24 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
       <div>
         <h2 className="text-xl font-bold text-foreground">Technician Assignment</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          {isEmergency ? "Priority matching — emergency response within 2 hours" : "Connecting you with verified technicians in your area"}
+          {isEmergency ? "Priority matching — faster response for urgent issues" : "Connecting you with verified technicians in your area"}
         </p>
       </div>
 
-      {/* Emergency mode banner — improved messaging */}
+      {/* Emergency mode banner — softened wording */}
       {isEmergency && (
         <motion.div
-          className="bg-warning/10 border border-warning/30 rounded-2xl p-4 flex items-start gap-3"
+          className="bg-warning/8 border border-warning/25 rounded-2xl p-4 flex items-start gap-3"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div className="w-10 h-10 rounded-xl bg-warning/20 flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-warning/15 flex items-center justify-center shrink-0">
             <Zap className="w-5 h-5 text-warning" />
           </div>
           <div>
-            <p className="text-sm font-bold text-foreground">Emergency Priority Active</p>
+            <p className="text-sm font-bold text-foreground">Priority Response Enabled</p>
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-              Your request is prioritized for a response within 2 hours. A 25% emergency surcharge applies. You'll see the exact amount before confirming.
+              Your request is prioritized for a faster response. An additional emergency fee may apply — you'll see the exact amount before any work begins.
             </p>
           </div>
         </motion.div>
@@ -295,16 +328,16 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             <Users className="w-6 h-6 text-warning" />
           </div>
           <div>
-            <p className="font-medium text-foreground">
+            <p className="font-semibold text-foreground">
               {phase === "escalated" ? "Escalated to Operations" : "Searching for available technician…"}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               {phase === "escalated"
                 ? "Our operations team has been notified and will assign a technician shortly."
-                : "All technicians are currently busy. We're notifying the Operations team."}
+                : "All technicians are currently busy. We're notifying our team to help."}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={dispatch.refresh} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={dispatch.refresh} className="gap-1.5 rounded-xl">
             <RefreshCw className="w-3.5 h-3.5" /> Retry
           </Button>
         </div>
@@ -338,7 +371,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
           </div>
 
           <div className="p-5 space-y-4">
-            {/* Tech header — premium layout */}
+            {/* Tech header */}
             <div className="flex items-start gap-4">
               <div className="relative">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-bold text-xl overflow-hidden">
@@ -418,7 +451,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                    <Timer className="w-4 h-4 text-primary" /> Awaiting technician response
+                    <Timer className="w-4 h-4 text-primary" /> Awaiting confirmation
                   </span>
                   <span className="text-sm font-bold text-primary">{acceptCountdown}s</span>
                 </div>
@@ -447,7 +480,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-              <span>OTP verification required</span>
+              <span>OTP required to start</span>
             </div>
           </div>
         </motion.div>
@@ -524,7 +557,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
 
       {/* Zone intelligence */}
       <div className="bg-muted/30 rounded-xl p-4 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Technicians in your area</span>
+        <span className="text-muted-foreground">Verified technicians nearby</span>
         <span className="font-medium text-foreground">{searchingTechCount || candidates.length} available</span>
       </div>
 
@@ -542,7 +575,7 @@ const V2AssignmentStep = ({ categoryCode, assignmentType, serviceModeId, partner
         }}
         disabled={phase === "searching" || phase === "loading" || phase === "no_match" || phase === "accepting" || phase === "escalated"}
         size="lg"
-        className="w-full gap-2"
+        className="w-full gap-2 rounded-xl h-12"
       >
         {(phase === "searching" || phase === "loading") && <><RefreshCw className="w-4 h-4 animate-spin" /> Finding best technician…</>}
         {phase === "matched" && <><CheckCircle2 className="w-4 h-4" /> Confirm Booking</>}

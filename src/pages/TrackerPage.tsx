@@ -475,13 +475,13 @@ const TrackerPage = () => {
     };
 
     const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
-      pending: { label: "Submitted", description: "Your booking has been received. Finding the best provider...", icon: Clock },
+      pending: { label: "Submitted", description: "Your booking has been received. We're finding the best provider for you.", icon: Clock },
       dispatching: { label: "Finding Provider", description: "Matching you with verified technicians in your area.", icon: Search },
-      pending_acceptance: { label: "Provider Found", description: "A provider has been matched. Waiting for confirmation.", icon: UserCheck },
-      accepted: { label: "Provider Assigned", description: "Your provider is confirmed and preparing for the job.", icon: CheckCircle2 },
-      escalated: { label: "Searching", description: "We're expanding our search for available providers.", icon: Search },
+      pending_acceptance: { label: "Provider Found", description: "A technician has been matched. Awaiting their confirmation.", icon: UserCheck },
+      accepted: { label: "Provider Assigned", description: "Your technician is confirmed and preparing for the job.", icon: CheckCircle2 },
+      escalated: { label: "Expanding Search", description: "We're reaching more providers to find you the best match.", icon: Search },
       no_provider_found: { label: "Searching", description: "Searching for available technicians. Our team has been notified.", icon: Clock },
-      manual: { label: "Under Review", description: "Our team is reviewing your request and will assign a specialist.", icon: ClipboardList },
+      manual: { label: "Under Review", description: "Our team is reviewing your request and will assign the right specialist.", icon: ClipboardList },
     };
 
     const dispatchInfo = DISPATCH_MESSAGES[dbBooking.dispatch_status || "pending"] || DISPATCH_MESSAGES.pending;
@@ -576,42 +576,58 @@ const TrackerPage = () => {
             {/* Payment Status */}
             <TrackerPaymentStatus bookingId={dbBooking.id} />
 
-            {/* Timeline events from DB */}
+            {/* Timeline events from DB — refined design */}
             {dbTimeline && dbTimeline.length > 0 && (
-              <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]">
-                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" /> Timeline
+              <motion.div
+                className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Service Timeline
                 </h3>
                 <div className="space-y-0">
-                  {dbTimeline.map((evt, i) => (
-                    <div key={evt.id} className="flex items-start gap-3 relative">
-                      {i < dbTimeline.length - 1 && (
-                        <div className="absolute left-[11px] top-6 w-0.5 h-full bg-success/30" />
-                      )}
-                      <div className="relative z-10 mt-0.5">
-                        <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />
+                  {dbTimeline.map((evt, i) => {
+                    const isLatest = i === 0;
+                    return (
+                      <div key={evt.id} className="flex items-start gap-3 relative">
+                        {i < dbTimeline.length - 1 && (
+                          <div className="absolute left-[11px] top-6 w-0.5 h-full bg-border/40" />
+                        )}
+                        <div className="relative z-10 mt-0.5">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                            isLatest ? "bg-primary" : "bg-success"
+                          }`}>
+                            {isLatest ? (
+                              <Circle className="w-2.5 h-2.5 text-primary-foreground" />
+                            ) : (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />
+                            )}
+                          </div>
+                        </div>
+                        <div className="pb-4 flex-1">
+                          <p className={`text-sm ${isLatest ? "font-bold text-foreground" : "font-semibold text-foreground"}`}>
+                            {evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                          </p>
+                          {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">{new Date(evt.created_at).toLocaleString()}</p>
                         </div>
                       </div>
-                      <div className="pb-4">
-                        <p className="text-sm font-semibold text-foreground">{evt.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</p>
-                        {evt.note && <p className="text-xs text-muted-foreground mt-0.5">{evt.note}</p>}
-                        <p className="text-[10px] text-muted-foreground/70 mt-0.5">{new Date(evt.created_at).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
+              </motion.div>
             )}
 
-            {/* Completion state — enhanced */}
+            {/* Completion state — premium */}
             {isCompleted && (
               <motion.div
-                className="bg-success/5 border border-success/20 rounded-2xl p-5 space-y-4"
+                className="bg-card rounded-2xl border border-border/60 overflow-hidden shadow-[var(--shadow-card)]"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="flex items-center gap-3">
+                <div className="bg-success/5 border-b border-success/20 px-5 py-4 flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
                     <CheckCircle2 className="w-6 h-6 text-success" />
                   </div>
@@ -623,27 +639,52 @@ const TrackerPage = () => {
                   </div>
                 </div>
 
-                {dbBooking.final_price_lkr && (
-                  <div className="flex justify-between items-center text-sm border-t border-success/20 pt-3">
-                    <span className="text-muted-foreground">Final Amount</span>
-                    <span className="text-lg font-bold text-foreground">LKR {dbBooking.final_price_lkr.toLocaleString()}</span>
+                <div className="p-5 space-y-4">
+                  {dbBooking.final_price_lkr && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Final Amount</span>
+                      <span className="text-lg font-bold text-foreground">LKR {dbBooking.final_price_lkr.toLocaleString()}</span>
+                    </div>
+                  )}
+
+                  {dbBooking.service_type && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Service</span>
+                      <span className="font-medium text-foreground">{dbBooking.service_type}</span>
+                    </div>
+                  )}
+
+                  {/* Warranty card */}
+                  <div className="bg-success/5 border border-success/20 rounded-xl p-3 flex items-start gap-2.5">
+                    <Award className="w-4 h-4 text-success shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Warranty Active</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                        Your service warranty is active from the completion date. Keep your Job ID ({shortId}) for warranty claims.
+                      </p>
+                    </div>
                   </div>
-                )}
 
-                <div className="flex items-start gap-2 text-xs text-muted-foreground bg-card rounded-xl p-3">
-                  <Award className="w-4 h-4 text-success shrink-0 mt-0.5" />
-                  <span>Warranty active from completion date. Keep your Job ID ({shortId}) for warranty claims.</span>
-                </div>
+                  {/* Invoice status */}
+                  <div className="flex items-center justify-between text-sm bg-muted/30 rounded-xl p-3">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" /> Invoice
+                    </span>
+                    <Badge variant="outline" className="text-[10px] bg-success/10 text-success border-success/20">
+                      Available
+                    </Badge>
+                  </div>
 
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
-                    <RotateCcw className="w-3.5 h-3.5" /> Book Again
-                  </Button>
-                  <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
-                    <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">
-                      <Headphones className="w-3.5 h-3.5" /> Support
-                    </a>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> Book Again
+                    </Button>
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
+                      <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">
+                        <Headphones className="w-3.5 h-3.5" /> Support
+                      </a>
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             )}
