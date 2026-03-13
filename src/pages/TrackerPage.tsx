@@ -539,7 +539,11 @@ const TrackerPage = () => {
                 <p className="font-bold text-foreground text-sm">Job {shortId}</p>
                 <p className="text-xs text-muted-foreground">{CATEGORY_LABELS[dbBooking.category_code] || dbBooking.category_code}</p>
               </div>
-              <Badge className={`text-xs font-semibold ${isCompleted ? "bg-success/10 text-success border-success/20" : "bg-primary/10 text-primary border-0"}`}>
+              <Badge className={`text-xs font-semibold ${
+                isCompleted ? "bg-success/10 text-success border-success/20" :
+                isCancelled ? "bg-destructive/10 text-destructive border-destructive/20" :
+                "bg-primary/10 text-primary border-0"
+              }`}>
                 {statusLabel}
               </Badge>
             </div>
