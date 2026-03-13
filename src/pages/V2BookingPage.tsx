@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import PageTransition from "@/components/motion/PageTransition";
 import { useState, useMemo, useEffect } from "react";
 import { getV2Flow } from "@/data/v2CategoryFlows";
