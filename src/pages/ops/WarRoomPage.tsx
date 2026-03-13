@@ -187,23 +187,38 @@ export default function WarRoomPage() {
   const todayBookings = bookings.filter(b => b.created_at >= todayStart);
   const activeJobs = bookings.filter(b => ["assigned", "in_progress", "en_route", "diagnosing", "quoting"].includes(b.status));
   const openEscalations = escalations.filter(e => !e.resolved_at);
+
+  // Partner lookup map for provider names
+  const partnerMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    partners.forEach(p => { m[p.id] = p.full_name; });
+    return m;
+  }, [partners]);
+
+  // Quote aging helper — prefer submitted_at, fallback to created_at
+  const quoteAgeMinutes = (q: QuoteRow) => {
+    const ref = q.submitted_at || q.created_at;
+    return (Date.now() - new Date(ref).getTime()) / 60000;
+  };
+
   const staleQuotes = quotes.filter(q => {
     if (q.status !== "submitted" && q.status !== "pending") return false;
-    return (Date.now() - new Date(q.created_at).getTime()) > 30 * 60000;
+    return quoteAgeMinutes(q) > 30;
   });
   const paymentFailures = payments.filter(p => p.payment_status === "failed");
   const lowRatings = todayBookings.filter(b => b.customer_rating !== null && b.customer_rating < 3);
   const slaBreaches = todayBookings.filter(b => getSlaStatus(b) === "breached");
 
-  // Dispatch metrics
-  const todayDispatched = todayBookings.filter(b => b.dispatch_status && b.dispatch_status !== "pending");
-  const dispatchSuccess = todayDispatched.filter(b => b.dispatch_status === "accepted" || b.dispatch_status === "completed");
-  const dispatchSuccessRate = todayDispatched.length > 0 ? (dispatchSuccess.length / todayDispatched.length) * 100 : 100;
-  const avgDispatchMs = todayBookings
-    .filter(b => b.assigned_at && b.created_at)
-    .map(b => new Date(b.assigned_at!).getTime() - new Date(b.created_at).getTime());
-  const avgDispatchMin = avgDispatchMs.length > 0 ? (avgDispatchMs.reduce((a, b) => a + b, 0) / avgDispatchMs.length) / 60000 : 0;
-  const noProviderCases = todayDispatched.filter(b => b.dispatch_status === "no_provider_found");
+  // Dispatch metrics — computed from dispatch_log for accuracy
+  const dlAccepted = dispatchLogs.filter(d => d.status === "accepted" || d.response === "accepted");
+  const dlTotal = dispatchLogs.length;
+  const dispatchSuccessRate = dlTotal > 0 ? (dlAccepted.length / dlTotal) * 100 : 100;
+  const dlResponseTimes = dispatchLogs
+    .filter(d => d.response_time_seconds !== null && d.response_time_seconds > 0)
+    .map(d => d.response_time_seconds!);
+  const avgDispatchMin = dlResponseTimes.length > 0
+    ? (dlResponseTimes.reduce((a, b) => a + b, 0) / dlResponseTimes.length) / 60 : 0;
+  const noProviderCases = todayBookings.filter(b => b.dispatch_status === "no_provider_found");
 
   // Quote metrics
   const quotesSubmitted = quotes.filter(q => q.status === "submitted" || q.status === "approved" || q.status === "rejected");
@@ -212,13 +227,12 @@ export default function WarRoomPage() {
   const quotesRevised = quotes.filter(q => q.status === "revised");
   const quotesExpired = quotes.filter(q => q.status === "expired");
 
-  // Quote aging
-  const quoteAge = (q: QuoteRow) => (Date.now() - new Date(q.created_at).getTime()) / 60000;
+  // Quote aging buckets — using submitted_at-aware helper
   const pendingQuotes = quotes.filter(q => q.status === "submitted" || q.status === "pending");
-  const qBucket0_15 = pendingQuotes.filter(q => quoteAge(q) <= 15);
-  const qBucket15_30 = pendingQuotes.filter(q => quoteAge(q) > 15 && quoteAge(q) <= 30);
-  const qBucket30_60 = pendingQuotes.filter(q => quoteAge(q) > 30 && quoteAge(q) <= 60);
-  const qBucket60 = pendingQuotes.filter(q => quoteAge(q) > 60);
+  const qBucket0_15 = pendingQuotes.filter(q => quoteAgeMinutes(q) <= 15);
+  const qBucket15_30 = pendingQuotes.filter(q => quoteAgeMinutes(q) > 15 && quoteAgeMinutes(q) <= 30);
+  const qBucket30_60 = pendingQuotes.filter(q => quoteAgeMinutes(q) > 30 && quoteAgeMinutes(q) <= 60);
+  const qBucket60 = pendingQuotes.filter(q => quoteAgeMinutes(q) > 60);
 
   // Partner tiers
   const partnerTier = (p: PartnerRow) => {
