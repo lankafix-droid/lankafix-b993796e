@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, FileText, MapPin, CheckCircle2, Clock, Snowflake, Smartphone, Monitor, Camera } from "lucide-react";
+import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, FileText, MapPin, CheckCircle2, Clock, Snowflake, Smartphone, Monitor, Tv } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
