@@ -213,6 +213,7 @@ export default function AIIntelligencePage() {
               <TabsTrigger value="dispatch" className="text-[10px] px-2.5 py-1.5"><Zap className="w-3 h-3 mr-1" />Dispatch</TabsTrigger>
               <TabsTrigger value="partners" className="text-[10px] px-2.5 py-1.5"><Gauge className="w-3 h-3 mr-1" />Partners</TabsTrigger>
               <TabsTrigger value="pricing" className="text-[10px] px-2.5 py-1.5"><DollarSign className="w-3 h-3 mr-1" />Pricing</TabsTrigger>
+              <TabsTrigger value="automation" className="text-[10px] px-2.5 py-1.5"><Bot className="w-3 h-3 mr-1" />Auto</TabsTrigger>
             </TabsList>
           </div>
 
