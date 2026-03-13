@@ -209,3 +209,43 @@ export async function notifyNewJobOffer(partnerUserId: string, bookingId: string
     bookingId,
   });
 }
+
+export async function notifyPaymentDue(userId: string, bookingId: string, amountLkr: number) {
+  return sendNotification({
+    userId,
+    type: "payment_due",
+    title: "Payment Due",
+    message: `Payment of LKR ${amountLkr.toLocaleString()} is due for your service.`,
+    bookingId,
+  });
+}
+
+export async function notifyPaymentReceived(userId: string, bookingId: string, amountLkr: number) {
+  return sendNotification({
+    userId,
+    type: "payment_received",
+    title: "Payment Received ✅",
+    message: `Your payment of LKR ${amountLkr.toLocaleString()} has been confirmed.`,
+    bookingId,
+  });
+}
+
+export async function notifyWarrantyActive(userId: string, bookingId: string, categoryName: string) {
+  return sendNotification({
+    userId,
+    type: "warranty_active",
+    title: "Warranty Active 🛡️",
+    message: `Your ${categoryName} service warranty is now active. Keep your job ID for future claims.`,
+    bookingId,
+  });
+}
+
+export async function notifyReminder(userId: string, title: string, message: string, bookingId?: string) {
+  return sendNotification({
+    userId,
+    type: "reminder",
+    title,
+    message,
+    bookingId,
+  });
+}
