@@ -475,13 +475,13 @@ const TrackerPage = () => {
     };
 
     const DISPATCH_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType }> = {
-      pending: { label: "Submitted", description: "Your booking has been received. Finding the best provider...", icon: Clock },
+      pending: { label: "Submitted", description: "Your booking has been received. We're finding the best provider for you.", icon: Clock },
       dispatching: { label: "Finding Provider", description: "Matching you with verified technicians in your area.", icon: Search },
-      pending_acceptance: { label: "Provider Found", description: "A provider has been matched. Waiting for confirmation.", icon: UserCheck },
-      accepted: { label: "Provider Assigned", description: "Your provider is confirmed and preparing for the job.", icon: CheckCircle2 },
-      escalated: { label: "Searching", description: "We're expanding our search for available providers.", icon: Search },
+      pending_acceptance: { label: "Provider Found", description: "A technician has been matched. Awaiting their confirmation.", icon: UserCheck },
+      accepted: { label: "Provider Assigned", description: "Your technician is confirmed and preparing for the job.", icon: CheckCircle2 },
+      escalated: { label: "Expanding Search", description: "We're reaching more providers to find you the best match.", icon: Search },
       no_provider_found: { label: "Searching", description: "Searching for available technicians. Our team has been notified.", icon: Clock },
-      manual: { label: "Under Review", description: "Our team is reviewing your request and will assign a specialist.", icon: ClipboardList },
+      manual: { label: "Under Review", description: "Our team is reviewing your request and will assign the right specialist.", icon: ClipboardList },
     };
 
     const dispatchInfo = DISPATCH_MESSAGES[dbBooking.dispatch_status || "pending"] || DISPATCH_MESSAGES.pending;
