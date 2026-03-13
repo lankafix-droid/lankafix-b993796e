@@ -1,3 +1,4 @@
+/** ARCHIVED — removed during homepage optimization. Emergency CTA consolidated into Hero section. */
 import { Link } from "react-router-dom";
 import { Zap, Snowflake, ArrowRight, Clock, Smartphone, Laptop } from "lucide-react";
 import { motion } from "framer-motion";

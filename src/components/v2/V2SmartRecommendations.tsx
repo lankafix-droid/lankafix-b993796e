@@ -1,3 +1,4 @@
+/** ARCHIVED — removed during homepage optimization. Candidate for reuse on secondary pages. */
 import { Link } from "react-router-dom";
 import { Snowflake, Wrench, Printer, Camera, Shield, Laptop, ArrowRight, Sparkles, Plus, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
