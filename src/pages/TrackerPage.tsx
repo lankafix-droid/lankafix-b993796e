@@ -574,7 +574,7 @@ const TrackerPage = () => {
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
             {/* Payment Status */}
-            <TrackerPaymentStatus bookingId={dbBooking.id} />
+            <TrackerPaymentStatus bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
             {/* Timeline events from DB — refined with current stage highlight */}
             {dbTimeline && dbTimeline.length > 0 && (
