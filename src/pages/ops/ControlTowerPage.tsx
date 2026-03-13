@@ -4,6 +4,7 @@ import {
   ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle,
   Target, Zap, CheckCircle2, Clock, FileText, Shield, ChevronRight,
   Headphones, CreditCard, XCircle, Search, Briefcase, UserX, Timer, Ban,
+  Brain,
 } from "lucide-react";
 import OpsReliabilityAlerts from "@/components/ops/OpsReliabilityAlerts";
 import { useOpsMetrics } from "@/services/opsMetricsService";
