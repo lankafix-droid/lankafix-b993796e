@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,12 @@ import {
   Brain, TrendingUp, Users, MapPin, Zap, Shield, DollarSign, BarChart3,
   AlertTriangle, Clock, Star, ArrowUp, ArrowDown, ArrowLeft,
   Activity, ChevronRight, Flame, Gauge, Target, Loader2, RefreshCw,
-  CheckCircle2, XCircle, Truck, PieChart, Bot,
+  CheckCircle2, XCircle, Truck, PieChart, Bot, Bell, ExternalLink, Trophy,
 } from "lucide-react";
 import { CATEGORY_LABELS, type CategoryCode } from "@/types/booking";
 import { MARKET_PRICE_RANGES, formatLKR } from "@/engines/pricingIntelligenceEngine";
 import { computeReliabilityTier } from "@/engines/partnerTieringEngine";
+import PilotMilestoneTracker from "@/components/ops/PilotMilestoneTracker";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 const catLabel = (code: string) => CATEGORY_LABELS[code as CategoryCode] || code;
