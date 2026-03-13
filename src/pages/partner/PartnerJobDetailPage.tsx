@@ -471,9 +471,9 @@ export default function PartnerJobDetailPage() {
                 </div>
               </div>
             )}
-            <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium text-foreground">{booking.category_code}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium text-foreground">{CATEGORY_LABELS[booking.category_code] || booking.category_code}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span className="font-medium text-foreground">{booking.service_type || "General"}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium text-foreground">{(booking.service_mode || "on_site").replace(/_/g, " ")}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium text-foreground">{MODE_LABELS[booking.service_mode || "on_site"] || "On-Site"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Emergency</span><span className="font-medium text-foreground">{booking.is_emergency ? "Yes" : "No"}</span></div>
             <div className="flex items-center gap-1 text-muted-foreground"><MapPin className="w-3 h-3" /> {booking.zone_code || "Not specified"}</div>
             {booking.estimated_price_lkr && (
