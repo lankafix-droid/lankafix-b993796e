@@ -72,6 +72,7 @@ interface IncidentRow {
 
 interface PaymentRow {
   id: string;
+  booking_id: string;
   payment_status: string;
   amount_lkr: number;
   created_at: string;
@@ -84,6 +85,17 @@ interface EscalationRow {
   dispatch_rounds_attempted: number | null;
   created_at: string;
   resolved_at: string | null;
+}
+
+interface DispatchLogRow {
+  id: string;
+  booking_id: string;
+  partner_id: string;
+  status: string | null;
+  response: string | null;
+  created_at: string;
+  responded_at: string | null;
+  response_time_seconds: number | null;
 }
 
 // ── SLA config per category (minutes) ──
