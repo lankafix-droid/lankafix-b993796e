@@ -12,6 +12,7 @@ import {
   CreditCard, Play, Flag, Shield, Clock, MapPin, Sparkles,
   ChevronDown, HelpCircle, ClipboardList, Search, UserCheck,
   Navigation, Wrench, Package, Building2, SearchCheck, CheckSquare,
+  Award, RotateCcw, Headphones,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import {
