@@ -477,6 +477,8 @@ const TrackerPage = () => {
     const STATUS_LABELS: Record<string, string> = {
       requested: "Submitted",
       matching: "Finding Provider",
+      awaiting_partner_confirmation: "Awaiting Confirmation",
+      scheduled: "Scheduled",
       assigned: "Provider Assigned",
       tech_en_route: "On the Way",
       arrived: "Provider Arrived",
@@ -484,9 +486,11 @@ const TrackerPage = () => {
       quote_submitted: "Quote Ready",
       quote_approved: "Quote Approved",
       quote_rejected: "Quote Rejected",
+      quote_revised: "Quote Revised",
       in_progress: "In Progress",
-      repair_started: "Repair Started",
+      repair_started: "Repair In Progress",
       completed: "Completed",
+      rated: "Rated",
       cancelled: "Cancelled",
     };
 
