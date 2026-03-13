@@ -622,8 +622,110 @@ export default function AIIntelligencePage() {
           <TabsContent value="automation" className="space-y-4 mt-0">
             <AutomationTab />
           </TabsContent>
+
+          {/* ── Critical Alerts ── */}
+          <TabsContent value="alerts" className="space-y-4 mt-0">
+            <AlertsTab />
+          </TabsContent>
+
+          {/* ── Milestones ── */}
+          <TabsContent value="milestones" className="space-y-4 mt-0">
+            <PilotMilestoneTracker />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
+  );
+}
+
+function AlertsTab() {
+  const navigate = useNavigate();
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("automation_event_log")
+        .select("*")
+        .in("severity", ["critical", "high"])
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setEvents(data || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
+
+  if (events.length === 0) {
+    return (
+      <Card className="p-8 text-center">
+        <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+        <p className="text-sm font-medium text-foreground">No critical alerts</p>
+        <p className="text-xs text-muted-foreground">All systems operating normally</p>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card className="border-destructive/30">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2 text-destructive">
+            <AlertTriangle className="w-4 h-4" /> {events.length} Critical & High Alerts
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {events.map(e => {
+            const meta = e.metadata || {};
+            const isSimulation = meta.simulation === true;
+            return (
+              <div key={e.id} className="border border-destructive/20 rounded-lg p-3 bg-destructive/5 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Badge className={`text-[9px] px-1.5 ${e.severity === "critical" ? "bg-destructive text-destructive-foreground" : "bg-destructive/80 text-destructive-foreground"}`}>
+                    {e.severity}
+                  </Badge>
+                  <span className="text-xs font-semibold text-foreground">
+                    {EVENT_LABELS[e.event_type] || e.event_type.replace(/_/g, " ")}
+                  </span>
+                  {isSimulation && <Badge variant="outline" className="text-[9px] bg-accent/50">SIM</Badge>}
+                  <span className="text-[9px] text-muted-foreground ml-auto">
+                    {new Date(e.created_at).toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">{e.trigger_reason}</p>
+                <div className="flex items-center gap-2">
+                  {e.booking_id && (
+                    <button
+                      className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                      onClick={() => navigate(`/track/${e.booking_id}`)}
+                    >
+                      <ExternalLink className="w-3 h-3" /> Open Booking
+                    </button>
+                  )}
+                  {e.partner_id && (
+                    <button
+                      className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                      onClick={() => navigate(`/ops/provider-readiness`)}
+                    >
+                      <ExternalLink className="w-3 h-3" /> View Partner
+                    </button>
+                  )}
+                  {EVENT_ACTION_GUIDE[e.event_type] && (
+                    <span className="text-[10px] text-primary ml-auto">→ {EVENT_ACTION_GUIDE[e.event_type].split("→")[0]}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+      <Link to="/ops/incidents">
+        <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+          Full Incident Tracker <ChevronRight className="w-3 h-3 ml-auto" />
+        </Button>
+      </Link>
+    </>
   );
 }
