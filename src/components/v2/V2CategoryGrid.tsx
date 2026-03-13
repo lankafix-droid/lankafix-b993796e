@@ -136,13 +136,7 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
               </Badge>
             )}
           </div>
-          {!isComingSoon && pricingChip && (
-            <div className="absolute top-2.5 right-2.5">
-              <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${pricingChip.className}`}>
-                {pricingChip.label}
-              </Badge>
-            </div>
-          )}
+          {/* Pricing archetype chip removed — pricing microcopy in card body is sufficient */}
 
           <div className="absolute bottom-2.5 left-3 right-3">
             <h3 className="font-heading font-bold text-white text-sm leading-tight drop-shadow-lg">{cat.name}</h3>
