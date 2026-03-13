@@ -548,7 +548,7 @@ export default function PartnerJobDetailPage() {
                   <div key={e.id} className="flex items-start gap-2 text-xs">
                     <div className="w-2 h-2 rounded-full bg-primary mt-1 shrink-0" />
                     <div>
-                      <p className="font-medium text-foreground">{e.status.replace(/_/g, " ")}</p>
+                      <p className="font-medium text-foreground">{STATUS_LABELS[e.status] || e.status.replace(/_/g, " ")}</p>
                       {e.note && <p className="text-muted-foreground">{e.note}</p>}
                       <p className="text-[10px] text-muted-foreground">{new Date(e.created_at).toLocaleString()}</p>
                     </div>
