@@ -4,6 +4,7 @@ import {
   ArrowLeft, Activity, MapPin, TrendingUp, BarChart3, Users, AlertTriangle,
   Target, Zap, CheckCircle2, Clock, FileText, Shield, ChevronRight,
   Headphones, CreditCard, XCircle, Search, Briefcase, UserX, Timer, Ban,
+  Brain,
 } from "lucide-react";
 import OpsReliabilityAlerts from "@/components/ops/OpsReliabilityAlerts";
 import { useOpsMetrics } from "@/services/opsMetricsService";
@@ -277,6 +278,7 @@ export default function ControlTowerPage() {
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Dashboards</p>
           <div className="grid grid-cols-2 gap-2">
             {[
+              { label: "AI Intelligence", icon: Brain, path: "/ops/ai-intelligence" },
               { label: "Dispatch Board", icon: MapPin, path: "/ops/dispatch" },
               { label: "Finance Board", icon: CreditCard, path: "/ops/finance" },
               { label: "Support Cases", icon: Headphones, path: "/ops/support" },
