@@ -289,16 +289,43 @@ const LocationSetupFlow = ({ onComplete, onSkip }: Props) => {
           )}
         </div>
 
-        {/* Outside zone warning */}
+        {/* Outside zone warning with lead capture */}
         {geoInfo?.status === "outside" && (
-          <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-foreground">Outside Service Coverage</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                LankaFix currently serves Greater Colombo. You can save this address and join the waitlist for your area.
-              </p>
+          <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Outside Service Coverage</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  LankaFix is currently launching in selected areas of Greater Colombo.
+                  We will notify you when services expand to your location.
+                </p>
+              </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs"
+              onClick={async () => {
+                try {
+                  await supabase.from("notification_events").insert({
+                    event_type: "zone_expansion_lead",
+                    metadata: {
+                      area: manualArea || geoInfo?.area,
+                      lat: position?.lat,
+                      lng: position?.lng,
+                      zone_label: geoInfo?.zoneLabel,
+                      captured_at: new Date().toISOString(),
+                    },
+                  });
+                  alert("Thanks! We'll notify you when LankaFix launches in your area.");
+                } catch {
+                  // silent fail
+                }
+              }}
+            >
+              Notify Me When Available
+            </Button>
           </div>
         )}
 
