@@ -22,6 +22,8 @@ const WaitlistPage = () => {
 
   const handleSubmit = () => {
     if (name && phone && area) {
+      // Log interest for each selected category
+      selectedCats.forEach((cat) => logCategoryInterest(cat, "waitlist_submit"));
       setSubmitted(true);
     }
   };
