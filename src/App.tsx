@@ -63,6 +63,7 @@ const HowPricingWorksPage = lazy(() => import("./pages/HowPricingWorksPage"));
 const BundleBookingPage = lazy(() => import("./pages/BundleBookingPage"));
 const SMEServicesPage = lazy(() => import("./pages/SMEServicesPage"));
 const AIGrowthEnginePage = lazy(() => import("./pages/ops/AIGrowthEnginePage"));
+const AIIntelligencePage = lazy(() => import("./pages/ops/AIIntelligencePage"));
 const ReferralPage = lazy(() => import("./pages/ReferralPage"));
 const CorporateServicesPage = lazy(() => import("./pages/CorporateServicesPage"));
 const ExpansionRoadmapPage = lazy(() => import("./pages/ops/ExpansionRoadmapPage"));
