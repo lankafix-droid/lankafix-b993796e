@@ -351,6 +351,7 @@ export default function WarRoomPage() {
                       <TableHead className="text-[10px]">ID</TableHead>
                       <TableHead className="text-[10px]">Cat</TableHead>
                       <TableHead className="text-[10px]">Zone</TableHead>
+                      <TableHead className="text-[10px]">Provider</TableHead>
                       <TableHead className="text-[10px]">Status</TableHead>
                       <TableHead className="text-[10px]">Dispatch</TableHead>
                       <TableHead className="text-[10px]">Quote</TableHead>
@@ -367,11 +368,12 @@ export default function WarRoomPage() {
                       return (
                         <TableRow key={b.id}
                           className={`cursor-pointer ${isCancelled ? "bg-destructive/5" : isLowRated ? "bg-amber-500/5" : sla === "breached" ? "bg-destructive/5" : ""}`}
-                          onClick={() => navigate(`/tracker/${b.id}`)}
+                          onClick={() => navigate(`/track/${b.id}`)}
                         >
                           <TableCell className="text-[10px] font-mono">{b.id.slice(0, 6)}</TableCell>
                           <TableCell className="text-[10px]">{catLabel(b.category_code)}</TableCell>
                           <TableCell className="text-[10px]">{zoneLabel(b.zone_code)}</TableCell>
+                          <TableCell className="text-[10px] truncate max-w-[80px]">{b.partner_id ? (partnerMap[b.partner_id] || b.partner_id.slice(0, 6)) : "—"}</TableCell>
                           <TableCell><Badge className={`${bookingStatusColor(b.status)} text-[9px]`}>{bookingStatusLabel(b.status)}</Badge></TableCell>
                           <TableCell><Badge className={`${dispatchStatusColor(b.dispatch_status || "")} text-[9px]`}>{dispatchStatusLabel(b.dispatch_status)}</Badge></TableCell>
                           <TableCell>
