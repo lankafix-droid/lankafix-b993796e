@@ -292,6 +292,25 @@ export default function WarRoomPage() {
   const currentMilestone = milestones.find(m => totalCompleted < m) || 100;
   const milestoneProgress = Math.min((totalCompleted / currentMilestone) * 100, 100);
 
+  // Service Proof metrics
+  const evidenceMap = useMemo(() => {
+    const m: Record<string, EvidenceRow> = {};
+    evidenceRecords.forEach(e => { m[e.booking_id] = e; });
+    return m;
+  }, [evidenceRecords]);
+  const completedBookings = bookings.filter(b => b.status === "completed");
+  const jobsMissingEvidence = completedBookings.filter(b => {
+    const ev = evidenceMap[b.id];
+    if (!ev) return true;
+    const before = Array.isArray(ev.before_photos) ? ev.before_photos : [];
+    const after = Array.isArray(ev.after_photos) ? ev.after_photos : [];
+    return before.length === 0 && after.length === 0;
+  });
+  const unresolvedDisputes = evidenceRecords.filter(e => e.customer_dispute && !evidenceMap[e.booking_id]);
+  const activeDisputes = evidenceRecords.filter(e => e.customer_dispute);
+  const pendingConfirmations = evidenceRecords.filter(e => !e.customer_confirmed && !e.customer_dispute);
+  const verifiedJobs = evidenceRecords.filter(e => e.service_verified);
+
   // ── Protocol state ──
   const [guideOpen, setGuideOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
