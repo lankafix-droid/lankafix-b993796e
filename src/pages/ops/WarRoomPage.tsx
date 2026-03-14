@@ -182,7 +182,7 @@ export default function WarRoomPage() {
       supabase.from("payments").select("id,booking_id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
       supabase.from("dispatch_escalations").select("id,booking_id,reason,dispatch_rounds_attempted,created_at,resolved_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("dispatch_log").select("id,booking_id,partner_id,status,response,created_at,responded_at,response_time_seconds").gte("created_at", todayStart).order("created_at", { ascending: false }).limit(500),
-      supabase.from("service_evidence").select("booking_id,service_verified,customer_confirmed,customer_dispute,before_photos,after_photos,created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("service_evidence").select("booking_id,service_verified,customer_confirmed,customer_dispute,before_photos,after_photos,warranty_activated,warranty_end_date,maintenance_due_date,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     const liveBookings = (bk.data || []) as BookingRow[];
     setBookings(liveBookings);
