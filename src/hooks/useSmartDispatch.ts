@@ -47,6 +47,9 @@ export interface SmartDispatchCandidate {
     profile_photo_url: string | null;
     acceptance_rate: number;
     cancellation_rate: number;
+    skill_level: number;
+    quote_approval_rate: number;
+    inspection_capable: boolean;
   };
   distance_km: number;
   eta_minutes: number;
