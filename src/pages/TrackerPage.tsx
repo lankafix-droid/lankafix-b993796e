@@ -32,6 +32,7 @@ import WarrantyCard from "@/components/tracker/WarrantyCard";
 import ZoneIntelligenceCard from "@/components/tracker/ZoneIntelligenceCard";
 import TechnicianConfidenceCard from "@/components/tracker/TechnicianConfidenceCard";
 import EvidenceCard from "@/components/tracker/EvidenceCard";
+import ServiceEvidencePanel from "@/components/proof/ServiceEvidencePanel";
 import SOSPanel from "@/components/tracker/SOSPanel";
 import MatchingCard from "@/components/tracker/MatchingCard";
 import AssignmentCard from "@/components/tracker/AssignmentCard";
