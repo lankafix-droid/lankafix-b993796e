@@ -296,6 +296,18 @@ export default function TechnicianJobDetailPage() {
 
         <TimelineEventLog events={booking.timelineEvents} />
 
+        {/* Service Evidence Panel — enforces completion lock */}
+        {booking.categoryCode && ["assigned", "tech_en_route", "arrived", "inspection_started", "in_progress", "repair_started"].includes(status) && (
+          <ServiceEvidencePanel
+            bookingId={booking.jobId}
+            categoryCode={booking.categoryCode}
+            bookingStatus={status}
+            serviceType={booking.serviceCode}
+            role="technician"
+            onCompletionBlocked={setEvidenceBlocked}
+          />
+        )}
+
         {showRejectReasons && (
           <Card className="border-destructive/30">
             <CardHeader className="pb-2"><CardTitle className="text-sm text-destructive">Reject Reason</CardTitle></CardHeader>
