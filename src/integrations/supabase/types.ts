@@ -651,6 +651,48 @@ export type Database = {
         }
         Relationships: []
       }
+      device_registry: {
+        Row: {
+          brand: string
+          category_code: string
+          created_at: string
+          device_type: string
+          id: string
+          model: string
+          notes: string | null
+          purchase_year: number | null
+          serial_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand: string
+          category_code: string
+          created_at?: string
+          device_type: string
+          id?: string
+          model: string
+          notes?: string | null
+          purchase_year?: number | null
+          serial_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand?: string
+          category_code?: string
+          created_at?: string
+          device_type?: string
+          id?: string
+          model?: string
+          notes?: string | null
+          purchase_year?: number | null
+          serial_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       device_service_ledger: {
         Row: {
           created_at: string
@@ -1934,24 +1976,35 @@ export type Database = {
           before_photos: Json
           before_uploaded_at: string | null
           booking_id: string
+          category_code: string | null
           completion_notes: string | null
           created_at: string
           customer_confirmed: boolean | null
           customer_confirmed_at: string | null
           customer_dispute: boolean | null
           customer_id: string | null
+          device_id: string | null
           dispute_opened_at: string | null
           dispute_reason: string | null
           dispute_resolved_at: string | null
           evidence_required: boolean | null
           id: string
+          maintenance_due_date: string | null
           min_after_photos: number | null
           min_before_photos: number | null
           partner_id: string | null
           photo_consent: string | null
+          privacy_flags: Json | null
           service_verified: boolean | null
           technician_notes: string | null
           updated_at: string
+          uploaded_by_role: string | null
+          uploaded_by_user_id: string | null
+          visibility_mode: string | null
+          warranty_activated: boolean | null
+          warranty_end_date: string | null
+          warranty_start_date: string | null
+          warranty_text: string | null
         }
         Insert: {
           after_notes?: string | null
@@ -1961,24 +2014,35 @@ export type Database = {
           before_photos?: Json
           before_uploaded_at?: string | null
           booking_id: string
+          category_code?: string | null
           completion_notes?: string | null
           created_at?: string
           customer_confirmed?: boolean | null
           customer_confirmed_at?: string | null
           customer_dispute?: boolean | null
           customer_id?: string | null
+          device_id?: string | null
           dispute_opened_at?: string | null
           dispute_reason?: string | null
           dispute_resolved_at?: string | null
           evidence_required?: boolean | null
           id?: string
+          maintenance_due_date?: string | null
           min_after_photos?: number | null
           min_before_photos?: number | null
           partner_id?: string | null
           photo_consent?: string | null
+          privacy_flags?: Json | null
           service_verified?: boolean | null
           technician_notes?: string | null
           updated_at?: string
+          uploaded_by_role?: string | null
+          uploaded_by_user_id?: string | null
+          visibility_mode?: string | null
+          warranty_activated?: boolean | null
+          warranty_end_date?: string | null
+          warranty_start_date?: string | null
+          warranty_text?: string | null
         }
         Update: {
           after_notes?: string | null
@@ -1988,24 +2052,35 @@ export type Database = {
           before_photos?: Json
           before_uploaded_at?: string | null
           booking_id?: string
+          category_code?: string | null
           completion_notes?: string | null
           created_at?: string
           customer_confirmed?: boolean | null
           customer_confirmed_at?: string | null
           customer_dispute?: boolean | null
           customer_id?: string | null
+          device_id?: string | null
           dispute_opened_at?: string | null
           dispute_reason?: string | null
           dispute_resolved_at?: string | null
           evidence_required?: boolean | null
           id?: string
+          maintenance_due_date?: string | null
           min_after_photos?: number | null
           min_before_photos?: number | null
           partner_id?: string | null
           photo_consent?: string | null
+          privacy_flags?: Json | null
           service_verified?: boolean | null
           technician_notes?: string | null
           updated_at?: string
+          uploaded_by_role?: string | null
+          uploaded_by_user_id?: string | null
+          visibility_mode?: string | null
+          warranty_activated?: boolean | null
+          warranty_end_date?: string | null
+          warranty_start_date?: string | null
+          warranty_text?: string | null
         }
         Relationships: [
           {
