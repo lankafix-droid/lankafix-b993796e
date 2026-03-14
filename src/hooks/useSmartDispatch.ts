@@ -19,6 +19,12 @@ export interface DispatchScoreBreakdown {
   new_partner_boost: number;
   vehicle_bonus: number;
   zone_preference: number;
+  performance_signal: number;
+  tier_signal: number;
+  skill_match: number;
+  customer_preference: number;
+  reliability: number;
+  quote_competence: number;
   total: number;
 }
 
