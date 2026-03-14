@@ -209,6 +209,7 @@ const App = () => (
             <Route path="/ops/incidents" element={<IncidentTrackerPage />} />
             <Route path="/ops/partner-readiness" element={<PartnerPilotReadinessPage />} />
             <Route path="/ops/war-room" element={<WarRoomPage />} />
+            <Route path="/ops/dispatch-war-room" element={<DispatchWarRoomPage />} />
             <Route path="/ops/support" element={<SupportCasesPage />} />
 
             {/* ─── Content Pages ─── */}
