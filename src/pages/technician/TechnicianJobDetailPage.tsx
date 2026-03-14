@@ -54,6 +54,7 @@ export default function TechnicianJobDetailPage() {
   const [disputeDesc, setDisputeDesc] = useState("");
   const [techNote, setTechNote] = useState("");
   const [chatMsg, setChatMsg] = useState("");
+  const [evidenceBlocked, setEvidenceBlocked] = useState(false);
 
   useEffect(() => { if (jobId) track("technician_job_detail_view", { jobId }); }, [jobId]);
 
