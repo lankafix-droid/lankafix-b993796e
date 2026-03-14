@@ -1,17 +1,20 @@
 /**
  * Before/After evidence capture and display component.
  * Technicians upload real photos via Supabase Storage.
- * Customers view evidence in read-only mode.
+ * Supports upload progress, delete, replace, max count enforcement.
  */
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Image, AlertTriangle, CheckCircle2, Loader2, X } from "lucide-react";
+import { Camera, Upload, Image, AlertTriangle, CheckCircle2, Loader2, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { uploadEvidencePhoto, getEvidencePhotoUrl } from "@/hooks/useServiceEvidence";
+import { uploadEvidencePhoto, getEvidencePhotoUrl, deleteEvidencePhoto } from "@/hooks/useServiceEvidence";
 import type { ServiceEvidenceData } from "@/hooks/useServiceEvidence";
 import type { EvidenceRule } from "@/config/evidenceRules";
+
+const MAX_PHOTOS_PER_PHASE = 6;
 
 interface BeforeAfterEvidenceProps {
   evidence: ServiceEvidenceData | null;
@@ -23,24 +26,43 @@ interface BeforeAfterEvidenceProps {
   onUploadAfter?: (photos: string[], notes: string) => void;
 }
 
-function PhotoGrid({ paths, label }: { paths: string[]; label: string }) {
+function PhotoGrid({ paths, label, onDelete }: { paths: string[]; label: string; onDelete?: (index: number) => void }) {
   const [urls, setUrls] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
     Promise.all(paths.map(p => getEvidencePhotoUrl(p))).then(resolved => {
-      if (!cancelled) setUrls(resolved);
-    });
+      if (!cancelled) { setUrls(resolved); setLoading(false); }
+    }).catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [paths]);
 
   if (paths.length === 0) return null;
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {paths.map((_, i) => <Skeleton key={i} className="aspect-square rounded-lg" />)}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-3 gap-2 mb-3">
       {urls.map((url, i) => (
-        <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+        <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted group">
           <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
           <Badge className="absolute bottom-1 left-1 text-[9px] bg-card/80 text-foreground">{label}</Badge>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(i)}
+              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive/80 text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
       ))}
     </div>
@@ -59,6 +81,7 @@ const BeforeAfterEvidence = ({
   const [beforeNotes, setBeforeNotes] = useState(evidence?.before_notes || "");
   const [afterNotes, setAfterNotes] = useState(evidence?.after_notes || "");
   const [uploading, setUploading] = useState<"before" | "after" | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const beforeInputRef = useRef<HTMLInputElement>(null);
   const afterInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,19 +89,27 @@ const BeforeAfterEvidence = ({
   const afterPhotos = evidence?.after_photos || [];
   const beforeComplete = beforePhotos.length >= (rule.minBeforePhotos || 0);
   const afterComplete = afterPhotos.length >= (rule.minAfterPhotos || 0);
-
   const isMobile = categoryCode === "MOBILE";
 
   const handleFileUpload = async (files: FileList | null, phase: "before" | "after") => {
     if (!files || files.length === 0) return;
-    setUploading(phase);
     const existingPhotos = phase === "before" ? [...beforePhotos] : [...afterPhotos];
+    const remaining = MAX_PHOTOS_PER_PHASE - existingPhotos.length;
+    if (remaining <= 0) {
+      toast.error(`Maximum ${MAX_PHOTOS_PER_PHASE} photos per phase`);
+      return;
+    }
+
+    setUploading(phase);
+    const filesToUpload = Array.from(files).slice(0, remaining);
     const notes = phase === "before" ? beforeNotes : afterNotes;
 
-    for (const file of Array.from(files)) {
-      const path = await uploadEvidencePhoto(file, bookingId, phase);
+    for (let i = 0; i < filesToUpload.length; i++) {
+      setUploadProgress(Math.round(((i) / filesToUpload.length) * 100));
+      const path = await uploadEvidencePhoto(filesToUpload[i], bookingId, phase);
       if (path) existingPhotos.push(path);
     }
+    setUploadProgress(100);
 
     if (phase === "before") {
       onUploadBefore?.(existingPhotos, notes);
@@ -86,7 +117,23 @@ const BeforeAfterEvidence = ({
       onUploadAfter?.(existingPhotos, notes);
     }
     setUploading(null);
-    toast.success(`${phase === "before" ? "Before" : "After"} photo${files.length > 1 ? "s" : ""} uploaded`);
+    setUploadProgress(0);
+    toast.success(`${phase === "before" ? "Before" : "After"} photo${filesToUpload.length > 1 ? "s" : ""} uploaded`);
+  };
+
+  const handleDeletePhoto = async (phase: "before" | "after", index: number) => {
+    const photos = phase === "before" ? [...beforePhotos] : [...afterPhotos];
+    const path = photos[index];
+    const deleted = await deleteEvidencePhoto(path);
+    if (!deleted) return;
+    photos.splice(index, 1);
+    const notes = phase === "before" ? beforeNotes : afterNotes;
+    if (phase === "before") {
+      onUploadBefore?.(photos, notes);
+    } else {
+      onUploadAfter?.(photos, notes);
+    }
+    toast.success("Photo removed");
   };
 
   return (
@@ -127,7 +174,11 @@ const BeforeAfterEvidence = ({
           )}
         </div>
 
-        <PhotoGrid paths={beforePhotos} label="Before" />
+        <PhotoGrid
+          paths={beforePhotos}
+          label="Before"
+          onDelete={role === "technician" ? (i) => handleDeletePhoto("before", i) : undefined}
+        />
 
         {role === "technician" && (
           <>
@@ -148,11 +199,16 @@ const BeforeAfterEvidence = ({
               className="hidden"
               onChange={(e) => handleFileUpload(e.target.files, "before")}
             />
+            {uploading === "before" && (
+              <div className="w-full h-1.5 bg-muted rounded-full mb-2 overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"
               className="w-full"
-              disabled={uploading === "before"}
+              disabled={uploading === "before" || beforePhotos.length >= MAX_PHOTOS_PER_PHASE}
               onClick={() => beforeInputRef.current?.click()}
             >
               {uploading === "before" ? (
@@ -160,7 +216,7 @@ const BeforeAfterEvidence = ({
               ) : (
                 <Upload className="w-4 h-4 mr-2" />
               )}
-              {uploading === "before" ? "Uploading..." : "Add Before Photo"}
+              {uploading === "before" ? "Uploading..." : `Add Before Photo (${beforePhotos.length}/${MAX_PHOTOS_PER_PHASE})`}
             </Button>
           </>
         )}
@@ -188,7 +244,11 @@ const BeforeAfterEvidence = ({
           )}
         </div>
 
-        <PhotoGrid paths={afterPhotos} label="After" />
+        <PhotoGrid
+          paths={afterPhotos}
+          label="After"
+          onDelete={role === "technician" ? (i) => handleDeletePhoto("after", i) : undefined}
+        />
 
         {role === "technician" && (
           <>
@@ -206,11 +266,16 @@ const BeforeAfterEvidence = ({
               className="hidden"
               onChange={(e) => handleFileUpload(e.target.files, "after")}
             />
+            {uploading === "after" && (
+              <div className="w-full h-1.5 bg-muted rounded-full mb-2 overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${uploadProgress}%` }} />
+              </div>
+            )}
             <Button
               variant="outline"
               size="sm"
               className="w-full"
-              disabled={uploading === "after"}
+              disabled={uploading === "after" || afterPhotos.length >= MAX_PHOTOS_PER_PHASE}
               onClick={() => afterInputRef.current?.click()}
             >
               {uploading === "after" ? (
@@ -218,7 +283,7 @@ const BeforeAfterEvidence = ({
               ) : (
                 <Upload className="w-4 h-4 mr-2" />
               )}
-              {uploading === "after" ? "Uploading..." : "Add After Photo"}
+              {uploading === "after" ? "Uploading..." : `Add After Photo (${afterPhotos.length}/${MAX_PHOTOS_PER_PHASE})`}
             </Button>
           </>
         )}

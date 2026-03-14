@@ -1,7 +1,7 @@
 /**
  * Customer review panel for confirming service or opening disputes.
- * Shows before/after evidence, technician notes, warranty info, and action buttons.
  * Confirmation activates warranty + schedules maintenance reminder.
+ * Dispute auto-creates support case + incident event.
  */
 import { useState, useEffect } from "react";
 import { CheckCircle2, AlertTriangle, MessageSquare, Shield, Calendar, Award } from "lucide-react";
@@ -16,7 +16,8 @@ import type { ServiceEvidenceData } from "@/hooks/useServiceEvidence";
 interface CustomerReviewPanelProps {
   evidence: ServiceEvidenceData | null;
   categoryCode?: string;
-  onConfirm: (categoryCode?: string) => Promise<any>;
+  serviceType?: string | null;
+  onConfirm: (categoryCode?: string, serviceType?: string | null) => Promise<any>;
   onDispute: (reason: string) => Promise<any>;
 }
 
@@ -48,7 +49,25 @@ function ReviewPhotoGrid({ paths, label }: { paths: string[]; label: string }) {
   );
 }
 
-const CustomerReviewPanel = ({ evidence, categoryCode, onConfirm, onDispute }: CustomerReviewPanelProps) => {
+function WarrantyStatusBadge({ evidence }: { evidence: ServiceEvidenceData }) {
+  if (!evidence.warranty_activated || !evidence.warranty_end_date) return null;
+  const now = new Date();
+  const end = new Date(evidence.warranty_end_date);
+  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000);
+
+  if (evidence.customer_dispute) {
+    return <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-[10px]">Disputed</Badge>;
+  }
+  if (daysLeft <= 0) {
+    return <Badge className="bg-muted text-muted-foreground text-[10px]">Warranty Expired</Badge>;
+  }
+  if (daysLeft <= 7) {
+    return <Badge className="bg-warning/10 text-warning border-warning/20 text-[10px]">Expiring Soon ({daysLeft}d)</Badge>;
+  }
+  return <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">Warranty Active</Badge>;
+}
+
+const CustomerReviewPanel = ({ evidence, categoryCode, serviceType, onConfirm, onDispute }: CustomerReviewPanelProps) => {
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -62,7 +81,7 @@ const CustomerReviewPanel = ({ evidence, categoryCode, onConfirm, onDispute }: C
 
   const handleConfirm = async () => {
     setSubmitting(true);
-    await onConfirm(categoryCode);
+    await onConfirm(categoryCode, serviceType);
     toast.success("Service confirmed! Warranty activated.");
     setSubmitting(false);
   };
@@ -86,7 +105,10 @@ const CustomerReviewPanel = ({ evidence, categoryCode, onConfirm, onDispute }: C
           <Shield className="w-4 h-4 text-primary" />
           Service Review
         </h3>
-        <ServiceProofBadge verified={evidence.service_verified} />
+        <div className="flex items-center gap-1.5">
+          <ServiceProofBadge verified={evidence.service_verified} />
+          <WarrantyStatusBadge evidence={evidence} />
+        </div>
       </div>
 
       {/* Before/After comparison */}
