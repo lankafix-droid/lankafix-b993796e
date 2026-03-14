@@ -122,6 +122,63 @@ export type Database = {
         }
         Relationships: []
       }
+      asset_maintenance_schedule: {
+        Row: {
+          asset_id: string
+          created_at: string
+          id: string
+          interval_months: number
+          last_service_date: string | null
+          next_service_due: string | null
+          property_id: string
+          service_category: string
+          status: string
+          technician_notes: string | null
+          user_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          id?: string
+          interval_months?: number
+          last_service_date?: string | null
+          next_service_due?: string | null
+          property_id: string
+          service_category: string
+          status?: string
+          technician_notes?: string | null
+          user_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          id?: string
+          interval_months?: number
+          last_service_date?: string | null
+          next_service_due?: string | null
+          property_id?: string
+          service_category?: string
+          status?: string
+          technician_notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asset_maintenance_schedule_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "property_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_maintenance_schedule_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_event_log: {
         Row: {
           action_taken: string
@@ -2024,6 +2081,182 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      properties: {
+        Row: {
+          approximate_size_sqft: number | null
+          created_at: string
+          floor_count: number
+          health_score: number
+          id: string
+          latitude: number | null
+          location: string | null
+          longitude: number | null
+          property_name: string
+          property_type: string
+          roof_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approximate_size_sqft?: number | null
+          created_at?: string
+          floor_count?: number
+          health_score?: number
+          id?: string
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          property_name?: string
+          property_type?: string
+          roof_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          approximate_size_sqft?: number | null
+          created_at?: string
+          floor_count?: number
+          health_score?: number
+          id?: string
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          property_name?: string
+          property_type?: string
+          roof_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      property_assets: {
+        Row: {
+          asset_category: string
+          asset_type: string
+          brand: string | null
+          confidence_score: number | null
+          created_at: string
+          detected_via: string | null
+          device_passport_id: string | null
+          estimated_age_years: number | null
+          id: string
+          last_service_date: string | null
+          location_in_property: string | null
+          model: string | null
+          next_service_due: string | null
+          notes: string | null
+          property_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_category: string
+          asset_type: string
+          brand?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          detected_via?: string | null
+          device_passport_id?: string | null
+          estimated_age_years?: number | null
+          id?: string
+          last_service_date?: string | null
+          location_in_property?: string | null
+          model?: string | null
+          next_service_due?: string | null
+          notes?: string | null
+          property_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          asset_category?: string
+          asset_type?: string
+          brand?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          detected_via?: string | null
+          device_passport_id?: string | null
+          estimated_age_years?: number | null
+          id?: string
+          last_service_date?: string | null
+          location_in_property?: string | null
+          model?: string | null
+          next_service_due?: string | null
+          notes?: string | null
+          property_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_assets_device_passport_id_fkey"
+            columns: ["device_passport_id"]
+            isOneToOne: false
+            referencedRelation: "device_passports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_assets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_insights: {
+        Row: {
+          action_url: string | null
+          category: string | null
+          created_at: string
+          description: string
+          dismissed_at: string | null
+          id: string
+          insight_type: string
+          property_id: string
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          action_url?: string | null
+          category?: string | null
+          created_at?: string
+          description: string
+          dismissed_at?: string | null
+          id?: string
+          insight_type?: string
+          property_id: string
+          severity?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          action_url?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string
+          dismissed_at?: string | null
+          id?: string
+          insight_type?: string
+          property_id?: string
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_insights_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_items: {
         Row: {
