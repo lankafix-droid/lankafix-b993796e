@@ -15,6 +15,7 @@ import { JOB_OUTCOME_LABELS } from "@/types/booking";
 import { DISPUTE_REASONS } from "@/types/provider";
 import TimelineEventLog from "@/components/tracker/TimelineEventLog";
 import QuoteBuilder from "@/components/technician/QuoteBuilder";
+import ServiceEvidencePanel from "@/components/proof/ServiceEvidencePanel";
 import { track } from "@/lib/analytics";
 import { useState, useEffect } from "react";
 import {
