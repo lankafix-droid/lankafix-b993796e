@@ -402,6 +402,29 @@ const V2BookingPage = () => {
                   <LocationPicker onContinue={goNext} showTravelFee={true} />
                 </div>
               )}
+              {currentStepName === "device_identification" && (
+                <DeviceIdentificationStep
+                  categoryCode={flow.code}
+                  onDeviceIdentified={(device) => {
+                    updateBooking({
+                      deviceAnswers: {
+                        ...booking.deviceAnswers,
+                        brand: device.brand,
+                        model: device.model,
+                        device_type: device.device_type,
+                        ...(device.purchase_year ? { purchase_year: String(device.purchase_year) } : {}),
+                      },
+                    });
+                    track("diagnosis_device_identified", { category: flow.code, brand: device.brand, fromRegistry: !!device.device_registry_id });
+                    goNext();
+                  }}
+                  onSkip={() => {
+                    track("diagnosis_device_skipped", { category: flow.code });
+                    goNext();
+                  }}
+                  initialAnswers={booking.deviceAnswers}
+                />
+              )}
               {currentStepName === "device_details" && (
                 <V2DeviceDetails
                   questions={flow.deviceQuestions}
