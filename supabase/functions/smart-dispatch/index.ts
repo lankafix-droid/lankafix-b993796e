@@ -752,8 +752,11 @@ serve(async (req) => {
       dispatch_mode: requiredTechs > 1 ? "multi_tech" : dispatchMode,
       accept_window_seconds: acceptWindowSec,
       multi_tech_count: requiredTechs,
+      lead_partner_id: leadPartnerId,
       required_skill_level: requiredSkill,
+      hard_skill_gate: isHardSkillGate,
       customer_priority,
+      total_excluded: exclusionLog.length,
       candidates: resultCandidates.map((c) => ({
         partner_id: c.partner_id,
         partner: {
