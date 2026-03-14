@@ -1,10 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger
+} from "@/components/ui/collapsible";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
@@ -17,7 +20,8 @@ import {
 import {
   Shield, AlertTriangle, Activity, Clock, Users, Zap, Eye,
   RefreshCw, ExternalLink, ChevronRight, Radio, TriangleAlert,
-  CheckCircle2, XCircle, TrendingUp, MapPin
+  CheckCircle2, XCircle, TrendingUp, MapPin, ChevronDown,
+  BookOpen, FileText, Phone, MessageSquare, Tag
 } from "lucide-react";
 
 // ── Types ──
@@ -274,6 +278,81 @@ export default function WarRoomPage() {
   const currentMilestone = milestones.find(m => totalCompleted < m) || 100;
   const milestoneProgress = Math.min((totalCompleted / currentMilestone) * 100, 100);
 
+  // ── Protocol state ──
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [incidentTags, setIncidentTags] = useState<Record<string, string>>({});
+
+  // Detect active issues for contextual guidance
+  const hasDispatchIssue = dispatchSuccessRate < 85 || noProviderCases.length > 0 || openEscalations.length > 0;
+  const hasQuoteDelay = staleQuotes.length > 0;
+  const hasPaymentFailure = paymentFailures.length > 0;
+  const hasPartnerIssue = criticalPartners.length > 0 || attentionPartners.length > 0;
+  const hasCustomerIssue = lowRatings.length > 0;
+  const hasSlaBreaches = slaBreaches.length > 0;
+  const hasSupplyShortage = Object.values(zoneCoverage).some(cats => Object.values(cats).reduce((s, n) => s + n, 0) < 2);
+  const isPilotProtection = totalCompleted < 25;
+  const activeAlertCount = [hasDispatchIssue, hasQuoteDelay, hasPaymentFailure, hasPartnerIssue, hasCustomerIssue, hasSlaBreaches, hasSupplyShortage].filter(Boolean).length;
+
+  const INCIDENT_TAG_OPTIONS = ["dispatch issue", "partner issue", "payment issue", "customer complaint", "system issue"];
+
+  const generateReport = useCallback(() => {
+    const completedToday = todayBookings.filter(b => b.status === "completed").length;
+    const incidentCount = todayIncidents.length;
+    const lines = [
+      `═══ LankaFix War Room Daily Report ═══`,
+      `Date: ${new Date().toLocaleDateString()}`,
+      `Time: ${new Date().toLocaleTimeString()}`,
+      ``,
+      `── Bookings ──`,
+      `Received: ${todayBookings.length}`,
+      `Completed: ${completedToday}`,
+      `Active: ${activeJobs.length}`,
+      `Cancelled: ${todayBookings.filter(b => b.status === "cancelled").length}`,
+      ``,
+      `── Dispatch ──`,
+      `Success Rate: ${dispatchSuccessRate.toFixed(1)}%`,
+      `Avg Dispatch Time: ${avgDispatchMin.toFixed(1)} min`,
+      `Escalations: ${openEscalations.length}`,
+      `No Provider: ${noProviderCases.length}`,
+      ``,
+      `── Quotes ──`,
+      `Submitted: ${quotesSubmitted.length}`,
+      `Awaiting: ${quotesAwaiting.length}`,
+      `Stale (>30m): ${staleQuotes.length}`,
+      `Rejected: ${quotesRejected.length}`,
+      ``,
+      `── Payments ──`,
+      `Successful: ${payments.filter(p => p.payment_status === "paid").length}`,
+      `Failed: ${paymentFailures.length}`,
+      `Pending: ${payments.filter(p => p.payment_status === "pending").length}`,
+      ``,
+      `── Incidents ──`,
+      `Total Today: ${incidentCount}`,
+      `Critical: ${todayIncidents.filter(i => i.severity === "critical").length}`,
+      `High: ${todayIncidents.filter(i => i.severity === "high").length}`,
+      ``,
+      `── Customer ──`,
+      `Avg Rating: ${avgRating > 0 ? avgRating.toFixed(1) : "N/A"}`,
+      `Low Ratings (<3): ${lowRatings.length}`,
+      `SLA Breaches: ${slaBreaches.length}`,
+      ``,
+      `── Launch ──`,
+      `Total Completed: ${totalCompleted} / ${currentMilestone}`,
+      `Pilot Protection: ${isPilotProtection ? "ACTIVE" : "OFF"}`,
+      ``,
+      `═══ End Report ═══`,
+    ];
+    return lines.join("\n");
+  }, [todayBookings, activeJobs, dispatchSuccessRate, avgDispatchMin, openEscalations, noProviderCases, quotesSubmitted, quotesAwaiting, staleQuotes, quotesRejected, payments, paymentFailures, todayIncidents, avgRating, lowRatings, slaBreaches, totalCompleted, currentMilestone, isPilotProtection]);
+
+  // ── Response Guide Section ──
+  const ResponseStep = ({ steps, color }: { steps: string[]; color: "red" | "yellow" }) => (
+    <ol className={`text-[11px] space-y-0.5 pl-4 list-decimal ${color === "red" ? "text-destructive" : "text-amber-700"}`}>
+      {steps.map((s, i) => <li key={i}>{s}</li>)}
+    </ol>
+  );
+
   // ── Metric Card ──
   const MetricCard = ({ label, value, icon: Icon, alert }: { label: string; value: number | string; icon: any; alert?: "green" | "yellow" | "red" }) => {
     const bg = alert === "red" ? "bg-destructive/10 border-destructive/30" : alert === "yellow" ? "bg-amber-500/10 border-amber-500/30" : "bg-emerald-500/10 border-emerald-500/30";
@@ -330,6 +409,119 @@ export default function WarRoomPage() {
           <MetricCard label="SLA Breaches" value={slaBreaches.length} icon={Shield}
             alert={slaBreaches.length > 0 ? "red" : "green"} />
         </div>
+
+        {/* ══ PILOT PROTECTION MODE BANNER ══ */}
+        {isPilotProtection && (
+          <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/10 px-4 py-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="w-4 h-4 text-amber-600" />
+              <span className="text-sm font-bold text-amber-700">PILOT PROTECTION MODE ACTIVE</span>
+              <Badge className="bg-amber-500/20 text-amber-700 text-[9px] ml-auto">{totalCompleted}/25</Badge>
+            </div>
+            <p className="text-[11px] text-amber-700/80">No booking should fail. Manual intervention required if dispatch fails.</p>
+          </div>
+        )}
+
+        {/* ══ CONTEXTUAL RESPONSE ALERTS ══ */}
+        {activeAlertCount > 0 && (
+          <div className="space-y-1.5">
+            {hasDispatchIssue && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Zap className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Dispatch Failure Detected</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Reassign nearest available technician",
+                  "Contact provider directly via WhatsApp",
+                  "Expand dispatch radius if needed",
+                  "Escalate to partner manager"
+                ]} />
+              </div>
+            )}
+            {hasQuoteDelay && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-[11px] font-semibold text-amber-700">Quote Delay ({staleQuotes.length} stale)</span>
+                </div>
+                <ResponseStep color="yellow" steps={[
+                  "Notify technician to submit quote",
+                  "Contact customer with update",
+                  "Verify repair scope clarity",
+                  "Request quote revision if excessive"
+                ]} />
+              </div>
+            )}
+            {hasPaymentFailure && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <XCircle className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Payment Failure ({paymentFailures.length})</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Retry payment processing",
+                  "Offer alternative payment method",
+                  "Verify transaction manually",
+                  "Confirm service continuation with customer"
+                ]} />
+              </div>
+            )}
+            {hasSlaBreaches && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Shield className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">SLA Breach ({slaBreaches.length})</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Contact assigned technician immediately",
+                  "Update customer with revised ETA",
+                  "Reschedule if technician unavailable",
+                  "Offer compensation if appropriate"
+                ]} />
+              </div>
+            )}
+            {hasCustomerIssue && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <MessageSquare className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Customer Issue ({lowRatings.length} low ratings)</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Contact customer within 30 minutes",
+                  "Apologize and investigate root cause",
+                  "Offer repair revisit, discount, or refund"
+                ]} />
+              </div>
+            )}
+            {hasSupplyShortage && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-[11px] font-semibold text-amber-700">Supply Shortage in Zone(s)</span>
+                </div>
+                <ResponseStep color="yellow" steps={[
+                  "Expand dispatch radius for affected zones",
+                  "Contact offline partners to come online",
+                  "Prioritize urgent bookings in low-supply zones"
+                ]} />
+              </div>
+            )}
+            {hasPartnerIssue && criticalPartners.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Users className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Critical Partner(s): {criticalPartners.map(p => p.full_name).join(", ")}</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Call partner immediately",
+                  "Pause provider if quality risk persists",
+                  "Assign alternative technician to active jobs"
+                ]} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ══ 2. LIVE BOOKINGS STREAM ══ */}
         <Card>
@@ -701,6 +893,107 @@ export default function WarRoomPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* ══ INCIDENT RESPONSE TAGS ══ */}
+        {todayIncidents.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Tag className="w-4 h-4 text-primary" /> Incident Tags
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {todayIncidents.slice(0, 8).map(inc => (
+                <div key={inc.id} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-muted/30">
+                  <Badge className={`text-[9px] shrink-0 ${inc.severity === "critical" ? "bg-destructive/10 text-destructive" : inc.severity === "high" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"}`}>
+                    {inc.severity}
+                  </Badge>
+                  <span className="truncate flex-1">{inc.event_type.replace(/_/g, " ")}</span>
+                  <select
+                    className="text-[10px] bg-background border rounded px-1 py-0.5 h-6"
+                    value={incidentTags[inc.id] || ""}
+                    onChange={e => setIncidentTags(prev => ({ ...prev, [inc.id]: e.target.value }))}
+                  >
+                    <option value="">tag…</option>
+                    {INCIDENT_TAG_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ══ WAR-ROOM RESPONSE GUIDE ══ */}
+        <Collapsible open={guideOpen} onOpenChange={setGuideOpen}>
+          <Card className="border-primary/20">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BookOpen className="w-4 h-4 text-primary" /> War-Room Response Guide
+                  <ChevronDown className={`w-4 h-4 ml-auto text-muted-foreground transition-transform ${guideOpen ? "rotate-180" : ""}`} />
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-3 pt-0">
+                {[
+                  { title: "Dispatch Failure", icon: Zap, steps: ["Reassign nearest technician", "Contact provider directly", "Expand dispatch radius", "Escalate to partner manager"] },
+                  { title: "Quote Delay (>30m)", icon: Clock, steps: ["Notify technician", "Contact customer", "Verify repair scope", "Request quote revision if excessive"] },
+                  { title: "Payment Failure", icon: XCircle, steps: ["Retry payment", "Offer alternative method", "Verify transaction manually", "Confirm service continuation"] },
+                  { title: "Partner Critical", icon: Users, steps: ["Call partner immediately", "Pause provider if necessary", "Assign alternative technician"] },
+                  { title: "Partner Attention", icon: Users, steps: ["Notify partner of metrics", "Monitor next 3 bookings closely"] },
+                  { title: "Customer Recovery", icon: MessageSquare, steps: ["Contact within 30 minutes", "Apologize and investigate", "Offer revisit / discount / refund"] },
+                  { title: "SLA Breach", icon: Shield, steps: ["Contact technician", "Update customer", "Reschedule if required", "Provide compensation if needed"] },
+                  { title: "Supply Shortage", icon: MapPin, steps: ["Expand dispatch radius", "Contact offline partners", "Prioritize urgent bookings"] },
+                ].map(({ title, icon: IIcon, steps }) => (
+                  <div key={title} className="p-2.5 rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <IIcon className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[11px] font-semibold">{title}</span>
+                    </div>
+                    <ol className="text-[10px] text-muted-foreground pl-4 list-decimal space-y-0.5">
+                      {steps.map((s, i) => <li key={i}>{s}</li>)}
+                    </ol>
+                  </div>
+                ))}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* ══ DAILY WAR ROOM REPORT ══ */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="w-4 h-4 text-primary" /> Daily Report
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-[11px] h-9 mb-2"
+              onClick={() => setReportOpen(!reportOpen)}
+            >
+              <FileText className="w-3 h-3 mr-1" /> {reportOpen ? "Hide" : "Generate"} Daily War Room Report
+            </Button>
+            {reportOpen && (
+              <div className="relative">
+                <pre className="text-[10px] bg-muted/50 rounded-lg p-3 overflow-auto max-h-[300px] whitespace-pre-wrap font-mono">
+                  {generateReport()}
+                </pre>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-1 right-1 h-6 text-[10px]"
+                  onClick={() => { navigator.clipboard.writeText(generateReport()); }}
+                >
+                  Copy
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
