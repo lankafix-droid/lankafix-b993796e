@@ -16,6 +16,7 @@ export type BookingStepId =
   | "part_grade"
   | "service_mode"
   | "location"
+  | "device_identification"
   | "device_details"
   | "smart_diagnosis"
   | "diagnosis_summary"
