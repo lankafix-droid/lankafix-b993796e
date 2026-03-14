@@ -22,9 +22,10 @@ const BANNERS = [
 ];
 
 const TRUST_PILLS = [
-  { icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "Verified Technicians" },
+  { icon: <KeyRound className="w-3.5 h-3.5" />, label: "OTP Verified Visit" },
   { icon: <Eye className="w-3.5 h-3.5" />, label: "Transparent Pricing" },
-  { icon: <Award className="w-3.5 h-3.5" />, label: "Warranty-Backed" },
+  { icon: <Award className="w-3.5 h-3.5" />, label: "Service Warranty" },
+  { icon: <Wallet className="w-3.5 h-3.5" />, label: "Pay After Service" },
   { icon: <FileText className="w-3.5 h-3.5" />, label: "Digital Invoice" },
 ];
 
