@@ -410,16 +410,20 @@ const TrackerPage = () => {
     setBookingQuote, lastMatchResult, updateTracking, startTravel,
   } = useBookingStore();
 
-  // Try Zustand first (legacy), then DB
-  const zustandBooking = getBooking(jobId || "");
+  // DB is the source of truth for real bookings (UUID format).
+  // Zustand is only used for legacy short IDs (LF-XXXXXX).
+  const isUUID = jobId && jobId.length > 10 && jobId.includes("-");
+  const zustandBooking = isUUID ? undefined : getBooking(jobId || "");
+
+  // Always try DB for UUID-style IDs, and as fallback for legacy IDs
   const { data: dbBooking, isLoading: dbLoading } = useBookingFromDB(
-    !zustandBooking ? jobId : undefined
+    isUUID ? jobId : (!zustandBooking ? jobId : undefined)
   );
   const { data: dbTimeline } = useBookingTimeline(
-    !zustandBooking ? jobId : undefined
+    isUUID ? jobId : (!zustandBooking ? jobId : undefined)
   );
 
-  // Use Zustand booking if available, otherwise show DB booking view
+  // DB booking takes priority; Zustand only for legacy short IDs
   const booking = zustandBooking;
 
   const [showCancel, setShowCancel] = useState(false);
