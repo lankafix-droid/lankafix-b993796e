@@ -48,7 +48,10 @@ const V2PopularServices = () => {
                   {service.icon}
                 </div>
                 <p className="text-sm font-bold text-foreground font-heading leading-tight mb-1">{service.label}</p>
-                <p className="text-[10px] font-semibold text-gradient bg-gradient-brand bg-clip-text text-transparent mb-2">{service.price}</p>
+                <p className="text-[10px] font-semibold text-gradient bg-gradient-brand bg-clip-text text-transparent mb-1">{service.price}</p>
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-medium mb-2">
+                  <Clock className="w-3 h-3" />{service.duration}
+                </span>
                 <div className="flex items-center gap-1 text-[11px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                   Book now <ArrowRight className="w-3 h-3" />
                 </div>
