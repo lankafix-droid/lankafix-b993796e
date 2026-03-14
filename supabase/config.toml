@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.retention-engine]
 verify_jwt = false
+
+[functions.dispatch-orchestrator]
+verify_jwt = false
+
+[functions.dispatch-offer-timer]
+verify_jwt = false
