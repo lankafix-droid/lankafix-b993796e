@@ -296,16 +296,38 @@ serve(async (req) => {
     }> = [];
 
     for (const p of partners) {
-      if (exclude_partner_ids.includes(p.id)) continue;
+      if (exclude_partner_ids.includes(p.id)) {
+        exclusionLog.push({ partner_id: p.id, reason: "explicitly_excluded" });
+        continue;
+      }
 
-      if (p.availability_status === "busy" && (p.current_job_count || 0) >= (p.max_concurrent_jobs || 1)) continue;
-      if ((p.current_job_count || 0) >= (p.max_jobs_per_day || 5)) continue;
+      if (p.availability_status === "busy" && (p.current_job_count || 0) >= (p.max_concurrent_jobs || 1)) {
+        exclusionLog.push({ partner_id: p.id, reason: "at_max_concurrent_jobs" });
+        continue;
+      }
+      if ((p.current_job_count || 0) >= (p.max_jobs_per_day || 5)) {
+        exclusionLog.push({ partner_id: p.id, reason: "at_daily_capacity" });
+        continue;
+      }
+
+      // ── HARD-BLOCK: Critical skill gate ──
+      const partnerSkillLevel = p.skill_level || 1;
+      if (isHardSkillGate && partnerSkillLevel < requiredSkill) {
+        exclusionLog.push({ partner_id: p.id, reason: `skill_too_low_L${partnerSkillLevel}_needs_L${requiredSkill}` });
+        continue;
+      }
 
       const loc = resolvePartnerLocation(p, zoneCentroids);
-      if (!loc) continue;
+      if (!loc) {
+        exclusionLog.push({ partner_id: p.id, reason: "no_location" });
+        continue;
+      }
 
       const dist = haversineKm(customer_lat, customer_lng, loc.lat, loc.lng);
-      if (dist > initialMaxDist) continue;
+      if (dist > initialMaxDist) {
+        exclusionLog.push({ partner_id: p.id, reason: `too_far_${Math.round(dist)}km` });
+        continue;
+      }
 
       const staleness = getStalenessFactor(p.last_location_ping_at);
 
