@@ -247,11 +247,17 @@ serve(async (req) => {
     // Determine required skill level
     const requiredSkill = skill_level_required || inferSkillLevel(service_type);
 
+    // ── CRITICAL SKILL HARD-BLOCK: severity ≥ 3 excludes under-skilled partners entirely ──
+    const isHardSkillGate = requiredSkill >= 3;
+
     // Determine multi-tech count
     const requiredTechs = multi_tech_count || 1;
 
     // Repeat partner preference from customer history
     const repeatPartnerIds = new Set(customer_service_history?.repeat_partner_ids || []);
+
+    // Track excluded partners for decision log
+    const exclusionLog: Array<{ partner_id: string; reason: string }> = [];
 
     // 2. Query eligible partners
     let query = supabase
