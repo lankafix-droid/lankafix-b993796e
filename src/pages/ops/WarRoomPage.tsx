@@ -1106,13 +1106,24 @@ export default function WarRoomPage() {
             </div>
 
             {/* Actionable booking list */}
-            {(jobsMissingEvidence.length > 0 || activeDisputes.length > 0 || pendingConfirmations.length > 0) && (
+            {(jobsMissingBefore.length > 0 || jobsMissingAfter.length > 0 || activeDisputes.length > 0 || pendingOver24h.length > 0) && (
               <div className="space-y-1 mt-2">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Action Required</p>
-                {jobsMissingEvidence.slice(0, 5).map(b => (
-                  <div key={`me-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
+                {jobsMissingBefore.slice(0, 3).map(b => (
+                  <div key={`mb-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
                     onClick={() => navigate(`/track/${b.id}`)}>
-                    <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">missing</Badge>
+                    <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">no before</Badge>
+                    <span className="font-mono">{b.id.slice(0, 6)}</span>
+                    <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
+                    <span className="text-muted-foreground">{zoneLabel(b.zone_code)}</span>
+                    <span className="text-muted-foreground ml-auto truncate max-w-[60px]">{b.partner_id ? (partnerMap[b.partner_id] || "—") : "—"}</span>
+                    <Eye className="w-3 h-3 text-muted-foreground shrink-0" />
+                  </div>
+                ))}
+                {jobsMissingAfter.slice(0, 3).map(b => (
+                  <div key={`ma-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
+                    onClick={() => navigate(`/track/${b.id}`)}>
+                    <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">no after</Badge>
                     <span className="font-mono">{b.id.slice(0, 6)}</span>
                     <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
                     <span className="text-muted-foreground">{zoneLabel(b.zone_code)}</span>
