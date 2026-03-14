@@ -1065,29 +1065,41 @@ export default function WarRoomPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-2 mb-3">
-              <div className={`p-2 rounded-lg border text-center ${jobsMissingEvidence.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
-                <p className={`text-lg font-bold ${jobsMissingEvidence.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingEvidence.length}</p>
-                <p className="text-[10px] text-muted-foreground">Missing Evidence</p>
+              <div className={`p-2 rounded-lg border text-center ${jobsMissingBefore.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${jobsMissingBefore.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingBefore.length}</p>
+                <p className="text-[10px] text-muted-foreground">Missing Before</p>
+              </div>
+              <div className={`p-2 rounded-lg border text-center ${jobsMissingAfter.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${jobsMissingAfter.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingAfter.length}</p>
+                <p className="text-[10px] text-muted-foreground">Missing After</p>
               </div>
               <div className={`p-2 rounded-lg border text-center ${activeDisputes.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
                 <p className={`text-lg font-bold ${activeDisputes.length > 0 ? "text-destructive" : "text-foreground"}`}>{activeDisputes.length}</p>
                 <p className="text-[10px] text-muted-foreground">Open Disputes</p>
               </div>
-              <div className={`p-2 rounded-lg border text-center ${pendingConfirmations.length > 0 ? "bg-warning/5 border-warning/20" : "bg-muted/30 border-border"}`}>
-                <p className={`text-lg font-bold ${pendingConfirmations.length > 0 ? "text-warning" : "text-foreground"}`}>{pendingConfirmations.length}</p>
-                <p className="text-[10px] text-muted-foreground">Pending Confirm</p>
+              <div className={`p-2 rounded-lg border text-center ${pendingOver24h.length > 0 ? "bg-warning/5 border-warning/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${pendingOver24h.length > 0 ? "text-warning" : "text-foreground"}`}>{pendingOver24h.length}</p>
+                <p className="text-[10px] text-muted-foreground">Review &gt;24h</p>
               </div>
               <div className="p-2 rounded-lg border bg-success/5 border-success/20 text-center">
                 <p className="text-lg font-bold text-success">{verifiedJobs.length}</p>
-                <p className="text-[10px] text-muted-foreground">Verified Jobs</p>
+                <p className="text-[10px] text-muted-foreground">Verified Today</p>
               </div>
               <div className="p-2 rounded-lg border bg-primary/5 border-primary/20 text-center">
-                <p className="text-lg font-bold text-primary">{evidenceRecords.filter(e => e.warranty_activated).length}</p>
-                <p className="text-[10px] text-muted-foreground">Warranties Active</p>
+                <p className="text-lg font-bold text-primary">{todayWarranties.length}</p>
+                <p className="text-[10px] text-muted-foreground">Warranties Today</p>
               </div>
-              <div className="p-2 rounded-lg border bg-muted/30 border-border text-center">
-                <p className="text-lg font-bold text-foreground">{evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000)).length}</p>
-                <p className="text-[10px] text-muted-foreground">Maint. Due (7d)</p>
+              <div className="p-2 rounded-lg border bg-muted/30 border-border text-center col-span-3">
+                <div className="flex items-center justify-center gap-4">
+                  <div>
+                    <p className="text-lg font-bold text-foreground">{maintenanceDueSoon.length}</p>
+                    <p className="text-[10px] text-muted-foreground">Maint. Due (7d)</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-foreground">{pendingConfirmations.length}</p>
+                    <p className="text-[10px] text-muted-foreground">Pending Confirm</p>
+                  </div>
+                </div>
               </div>
             </div>
 
