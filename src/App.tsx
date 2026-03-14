@@ -147,6 +147,11 @@ const App = () => (
             <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/service-history" element={<ServiceHistoryPage />} />
 
+            {/* ─── Property Digital Twin ─── */}
+            <Route path="/property" element={<PropertyDashboardPage />} />
+            <Route path="/property/:propertyId/assets" element={<PropertyAssetsPage />} />
+            <Route path="/property/:propertyId/asset/:assetId" element={<AssetDetailPage />} />
+
             {/* ─── Legacy V2 redirects ─── */}
             <Route path="/v2" element={<Navigate to="/" replace />} />
             <Route path="/v2/book/:category" element={<RedirectBooking />} />
