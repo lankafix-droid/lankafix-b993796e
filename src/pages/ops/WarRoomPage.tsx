@@ -1030,6 +1030,51 @@ export default function WarRoomPage() {
           </CardContent>
         </Card>
 
+        {/* ══ SERVICE PROOF MONITOR ══ */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Camera className="w-4 h-4 text-primary" /> Service Proof Monitor
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className={`p-2 rounded-lg border text-center ${jobsMissingEvidence.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${jobsMissingEvidence.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingEvidence.length}</p>
+                <p className="text-[10px] text-muted-foreground">Missing Evidence</p>
+              </div>
+              <div className={`p-2 rounded-lg border text-center ${activeDisputes.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${activeDisputes.length > 0 ? "text-destructive" : "text-foreground"}`}>{activeDisputes.length}</p>
+                <p className="text-[10px] text-muted-foreground">Open Disputes</p>
+              </div>
+              <div className={`p-2 rounded-lg border text-center ${pendingConfirmations.length > 0 ? "bg-warning/5 border-warning/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${pendingConfirmations.length > 0 ? "text-warning" : "text-foreground"}`}>{pendingConfirmations.length}</p>
+                <p className="text-[10px] text-muted-foreground">Pending Confirm</p>
+              </div>
+              <div className="p-2 rounded-lg border bg-success/5 border-success/20 text-center">
+                <p className="text-lg font-bold text-success">{verifiedJobs.length}</p>
+                <p className="text-[10px] text-muted-foreground">Verified Jobs</p>
+              </div>
+            </div>
+            {jobsMissingEvidence.length > 0 && (
+              <div className="text-[10px] text-destructive bg-destructive/5 rounded-lg p-2 mb-2">
+                ⚠ {jobsMissingEvidence.length} completed job{jobsMissingEvidence.length > 1 ? "s" : ""} missing before/after evidence.
+                {jobsMissingEvidence.slice(0, 3).map(b => (
+                  <Button key={b.id} variant="link" size="sm" className="text-[10px] h-auto p-0 ml-1 text-destructive underline"
+                    onClick={() => navigate(`/track/${b.id}`)}>
+                    {b.id.slice(0, 8)}
+                  </Button>
+                ))}
+              </div>
+            )}
+            {activeDisputes.length > 0 && (
+              <div className="text-[10px] text-destructive bg-destructive/5 rounded-lg p-2">
+                🔴 {activeDisputes.length} unresolved dispute{activeDisputes.length > 1 ? "s" : ""} — review immediately.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* ══ 12. QUICK ACTIONS ══ */}
         <Card>
           <CardHeader className="pb-2">
