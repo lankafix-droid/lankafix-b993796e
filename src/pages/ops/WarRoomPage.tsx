@@ -110,6 +110,9 @@ interface EvidenceRow {
   customer_dispute: boolean;
   before_photos: any;
   after_photos: any;
+  warranty_activated: boolean;
+  warranty_end_date: string | null;
+  maintenance_due_date: string | null;
   created_at: string;
 }
 
