@@ -103,6 +103,16 @@ interface DispatchLogRow {
   response_time_seconds: number | null;
 }
 
+interface EvidenceRow {
+  booking_id: string;
+  service_verified: boolean;
+  customer_confirmed: boolean;
+  customer_dispute: boolean;
+  before_photos: any;
+  after_photos: any;
+  created_at: string;
+}
+
 // ── SLA config per category (minutes) ──
 const CATEGORY_SLA: Record<string, number> = {
   MOBILE: 60, IT: 90, AC: 120, CCTV: 180, SOLAR: 240,
