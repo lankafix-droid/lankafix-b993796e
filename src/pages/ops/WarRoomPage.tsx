@@ -1,10 +1,13 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger
+} from "@/components/ui/collapsible";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
@@ -17,7 +20,8 @@ import {
 import {
   Shield, AlertTriangle, Activity, Clock, Users, Zap, Eye,
   RefreshCw, ExternalLink, ChevronRight, Radio, TriangleAlert,
-  CheckCircle2, XCircle, TrendingUp, MapPin
+  CheckCircle2, XCircle, TrendingUp, MapPin, ChevronDown,
+  BookOpen, FileText, Phone, MessageSquare, Tag
 } from "lucide-react";
 
 // ── Types ──
