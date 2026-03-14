@@ -1915,7 +1915,12 @@ function buildStepsFromConfig(
     steps.push("location");
   }
 
-  // 6. Device details — always present (filtered by showForServiceTypes in component)
+  // 6a. Device identification — before device details for repair flows
+  if (config.flow_type === "repair" || config.requires_smart_diagnosis) {
+    steps.push("device_identification");
+  }
+
+  // 6b. Device details — always present (filtered by showForServiceTypes in component)
   steps.push("device_details");
 
   // 7. Smart diagnosis — only if config says so AND diagnostic block exists
