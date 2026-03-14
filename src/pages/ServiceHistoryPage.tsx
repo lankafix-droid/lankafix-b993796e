@@ -67,7 +67,7 @@ export default function ServiceHistoryPage() {
           .select("id,category_code,service_type,status,created_at,completed_at,final_price_lkr,estimated_price_lkr,partner_id,customer_rating,zone_code,device_details")
           .eq("customer_id", user.id)
           .neq("booking_source", "pilot_simulation")
-          .in("status", ["completed", "rated"])
+          .eq("status", "completed")
           .order("completed_at", { ascending: false }),
         supabase
           .from("service_evidence")
