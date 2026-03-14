@@ -707,30 +707,43 @@ serve(async (req) => {
         }));
       }
 
-      // ── Dispatch decision log (for learning loop) ──
-      if (bestMatch) {
-        persistOps.push(supabase.from("job_timeline").insert({
-          booking_id,
-          status: "dispatch_decision",
-          actor: "ai_dispatch_brain",
-          note: `Ranked ${scored.length} candidates. Best: ${bestMatch.partner.full_name} (score: ${bestMatch.score.total}, skill: L${bestMatch.partner.skill_level}, ETA: ${bestMatch.eta_min}-${bestMatch.eta_max}min)`,
-          metadata: {
-            total_candidates: scored.length,
-            best_score: bestMatch.score.total,
-            dispatch_round,
-            required_skill: requiredSkill,
-            customer_priority,
-            multi_tech: requiredTechs > 1,
-            weights_used: weights,
-            top_3: scored.slice(0, 3).map(c => ({
-              id: c.partner_id,
-              score: c.score.total,
-              skill: c.partner.skill_level,
-              dist: c.distance_km,
-            })),
-          },
-        }));
-      }
+      // ── Enhanced Dispatch Decision Log (feeds War Room + Analytics + Learning Loop) ──
+      // Log EVERY dispatch attempt, not just successful ones
+      persistOps.push(supabase.from("job_timeline").insert({
+        booking_id,
+        status: bestMatch ? "dispatch_decision" : "dispatch_no_match",
+        actor: "ai_dispatch_brain",
+        note: bestMatch
+          ? `Ranked ${scored.length} candidates (${exclusionLog.length} excluded). Best: ${bestMatch.partner.full_name} (score: ${bestMatch.score.total}, skill: L${bestMatch.partner.skill_level}, ETA: ${bestMatch.eta_min}-${bestMatch.eta_max}min)${leadPartnerId ? ` | Lead: ${leadPartnerId}` : ""}`
+          : `No viable candidates. ${exclusionLog.length} partners excluded. ${partners?.length || 0} total queried.`,
+        metadata: {
+          decision_timestamp: new Date().toISOString(),
+          total_queried: partners?.length || 0,
+          total_scored: scored.length,
+          total_excluded: exclusionLog.length,
+          dispatch_round,
+          required_skill: requiredSkill,
+          hard_skill_gate: isHardSkillGate,
+          customer_priority,
+          accept_window_seconds: acceptWindowSec,
+          multi_tech: requiredTechs > 1,
+          multi_tech_count: requiredTechs,
+          lead_partner_id: leadPartnerId,
+          weights_used: weights,
+          exclusion_summary: exclusionLog.slice(0, 20), // cap for payload size
+          top_5: scored.slice(0, 5).map(c => ({
+            partner_id: c.partner_id,
+            name: c.partner.full_name,
+            score: c.score.total,
+            skill: c.partner.skill_level,
+            dist_km: c.distance_km,
+            eta: `${c.eta_min}-${c.eta_max}`,
+            score_breakdown: c.score,
+            selected: resultCandidates.some(rc => rc.partner_id === c.partner_id),
+            is_lead: c.partner_id === leadPartnerId,
+          })),
+        },
+      }));
 
       await Promise.all(persistOps);
     }
