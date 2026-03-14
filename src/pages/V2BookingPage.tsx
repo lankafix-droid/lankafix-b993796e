@@ -147,6 +147,14 @@ const V2BookingPage = () => {
     }
   }, [category, launchState]);
 
+  // Track diagnosis summary view
+  useEffect(() => {
+    const currentStep = steps[step];
+    if (currentStep === "diagnosis_summary" && flow) {
+      track("diagnosis_summary_viewed", { category: flow.code, serviceType: booking.serviceTypeId });
+    }
+  }, [step, steps, flow, booking.serviceTypeId]);
+
   // Coming soon guard — block booking
   if (launchState === "coming_soon") {
     return (
