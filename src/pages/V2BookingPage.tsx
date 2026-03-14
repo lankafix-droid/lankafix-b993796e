@@ -457,11 +457,6 @@ const V2BookingPage = () => {
                   onPhotosChange={(photos) => updateBooking({ photoUrls: photos })}
                 />
               )}
-              {currentStepName === "diagnosis_summary" && diagBlock && (() => {
-                // Fire summary_viewed analytics once
-                track("diagnosis_summary_viewed", { category: flow.code, serviceType: booking.serviceTypeId });
-                return null;
-              })()}
               {currentStepName === "diagnosis_summary" && diagBlock && (
                 <EnhancedDiagnosisSummary
                   summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
