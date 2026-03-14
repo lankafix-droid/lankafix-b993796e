@@ -370,6 +370,12 @@ export default function WarRoomPage() {
       `Low Ratings (<3): ${lowRatings.length}`,
       `SLA Breaches: ${slaBreaches.length}`,
       ``,
+      `── Service Proof ──`,
+      `Missing Evidence: ${jobsMissingEvidence.length}`,
+      `Open Disputes: ${activeDisputes.length}`,
+      `Pending Confirmations: ${pendingConfirmations.length}`,
+      `Verified Jobs: ${verifiedJobs.length}`,
+      ``,
       `── Launch ──`,
       `Total Completed: ${totalCompleted} / ${currentMilestone}`,
       `Pilot Protection: ${isPilotProtection ? "ACTIVE" : "OFF"}`,
@@ -377,7 +383,7 @@ export default function WarRoomPage() {
       `═══ End Report ═══`,
     ];
     return lines.join("\n");
-  }, [todayBookings, activeJobs, dispatchSuccessRate, avgDispatchMin, openEscalations, noProviderCases, quotesSubmitted, quotesAwaiting, staleQuotes, quotesRejected, payments, paymentFailures, todayIncidents, avgRating, lowRatings, slaBreaches, totalCompleted, currentMilestone, isPilotProtection]);
+  }, [todayBookings, activeJobs, dispatchSuccessRate, avgDispatchMin, openEscalations, noProviderCases, quotesSubmitted, quotesAwaiting, staleQuotes, quotesRejected, payments, paymentFailures, todayIncidents, avgRating, lowRatings, slaBreaches, totalCompleted, currentMilestone, isPilotProtection, jobsMissingEvidence, activeDisputes, pendingConfirmations, verifiedJobs]);
 
   // ── Response Guide Section ──
   const ResponseStep = ({ steps, color }: { steps: string[]; color: "red" | "yellow" }) => (
