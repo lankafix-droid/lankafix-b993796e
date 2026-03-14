@@ -896,6 +896,107 @@ export default function WarRoomPage() {
           </CardContent>
         </Card>
 
+        {/* ══ INCIDENT RESPONSE TAGS ══ */}
+        {todayIncidents.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Tag className="w-4 h-4 text-primary" /> Incident Tags
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1.5">
+              {todayIncidents.slice(0, 8).map(inc => (
+                <div key={inc.id} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-muted/30">
+                  <Badge className={`text-[9px] shrink-0 ${inc.severity === "critical" ? "bg-destructive/10 text-destructive" : inc.severity === "high" ? "bg-amber-500/10 text-amber-600" : "bg-muted text-muted-foreground"}`}>
+                    {inc.severity}
+                  </Badge>
+                  <span className="truncate flex-1">{inc.event_type.replace(/_/g, " ")}</span>
+                  <select
+                    className="text-[10px] bg-background border rounded px-1 py-0.5 h-6"
+                    value={incidentTags[inc.id] || ""}
+                    onChange={e => setIncidentTags(prev => ({ ...prev, [inc.id]: e.target.value }))}
+                  >
+                    <option value="">tag…</option>
+                    {INCIDENT_TAG_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ══ WAR-ROOM RESPONSE GUIDE ══ */}
+        <Collapsible open={guideOpen} onOpenChange={setGuideOpen}>
+          <Card className="border-primary/20">
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BookOpen className="w-4 h-4 text-primary" /> War-Room Response Guide
+                  <ChevronDown className={`w-4 h-4 ml-auto text-muted-foreground transition-transform ${guideOpen ? "rotate-180" : ""}`} />
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="space-y-3 pt-0">
+                {[
+                  { title: "Dispatch Failure", icon: Zap, steps: ["Reassign nearest technician", "Contact provider directly", "Expand dispatch radius", "Escalate to partner manager"] },
+                  { title: "Quote Delay (>30m)", icon: Clock, steps: ["Notify technician", "Contact customer", "Verify repair scope", "Request quote revision if excessive"] },
+                  { title: "Payment Failure", icon: XCircle, steps: ["Retry payment", "Offer alternative method", "Verify transaction manually", "Confirm service continuation"] },
+                  { title: "Partner Critical", icon: Users, steps: ["Call partner immediately", "Pause provider if necessary", "Assign alternative technician"] },
+                  { title: "Partner Attention", icon: Users, steps: ["Notify partner of metrics", "Monitor next 3 bookings closely"] },
+                  { title: "Customer Recovery", icon: MessageSquare, steps: ["Contact within 30 minutes", "Apologize and investigate", "Offer revisit / discount / refund"] },
+                  { title: "SLA Breach", icon: Shield, steps: ["Contact technician", "Update customer", "Reschedule if required", "Provide compensation if needed"] },
+                  { title: "Supply Shortage", icon: MapPin, steps: ["Expand dispatch radius", "Contact offline partners", "Prioritize urgent bookings"] },
+                ].map(({ title, icon: IIcon, steps }) => (
+                  <div key={title} className="p-2.5 rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <IIcon className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-[11px] font-semibold">{title}</span>
+                    </div>
+                    <ol className="text-[10px] text-muted-foreground pl-4 list-decimal space-y-0.5">
+                      {steps.map((s, i) => <li key={i}>{s}</li>)}
+                    </ol>
+                  </div>
+                ))}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* ══ DAILY WAR ROOM REPORT ══ */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="w-4 h-4 text-primary" /> Daily Report
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-[11px] h-9 mb-2"
+              onClick={() => setReportOpen(!reportOpen)}
+            >
+              <FileText className="w-3 h-3 mr-1" /> {reportOpen ? "Hide" : "Generate"} Daily War Room Report
+            </Button>
+            {reportOpen && (
+              <div className="relative">
+                <pre className="text-[10px] bg-muted/50 rounded-lg p-3 overflow-auto max-h-[300px] whitespace-pre-wrap font-mono">
+                  {generateReport()}
+                </pre>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute top-1 right-1 h-6 text-[10px]"
+                  onClick={() => { navigator.clipboard.writeText(generateReport()); }}
+                >
+                  Copy
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* ══ 12. QUICK ACTIONS ══ */}
         <Card>
           <CardHeader className="pb-2">
