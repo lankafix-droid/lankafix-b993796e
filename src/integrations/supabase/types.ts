@@ -2099,6 +2099,81 @@ export type Database = {
           },
         ]
       }
+      service_price_intelligence: {
+        Row: {
+          avg_duration_minutes: number | null
+          avg_price_lkr: number | null
+          category_code: string
+          common_parts: Json | null
+          complexity_modifier: number | null
+          confidence_level: string | null
+          currency: string | null
+          device_brand: string | null
+          device_type: string | null
+          id: string
+          is_active: boolean | null
+          location_modifier: number | null
+          max_duration_minutes: number | null
+          max_price_lkr: number
+          min_duration_minutes: number | null
+          min_price_lkr: number
+          notes: string | null
+          parts_cost_range: Json | null
+          price_factors: Json | null
+          sample_size: number | null
+          service_type: string
+          updated_at: string
+        }
+        Insert: {
+          avg_duration_minutes?: number | null
+          avg_price_lkr?: number | null
+          category_code: string
+          common_parts?: Json | null
+          complexity_modifier?: number | null
+          confidence_level?: string | null
+          currency?: string | null
+          device_brand?: string | null
+          device_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_modifier?: number | null
+          max_duration_minutes?: number | null
+          max_price_lkr?: number
+          min_duration_minutes?: number | null
+          min_price_lkr?: number
+          notes?: string | null
+          parts_cost_range?: Json | null
+          price_factors?: Json | null
+          sample_size?: number | null
+          service_type: string
+          updated_at?: string
+        }
+        Update: {
+          avg_duration_minutes?: number | null
+          avg_price_lkr?: number | null
+          category_code?: string
+          common_parts?: Json | null
+          complexity_modifier?: number | null
+          confidence_level?: string | null
+          currency?: string | null
+          device_brand?: string | null
+          device_type?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_modifier?: number | null
+          max_duration_minutes?: number | null
+          max_price_lkr?: number
+          min_duration_minutes?: number | null
+          min_price_lkr?: number
+          notes?: string | null
+          parts_cost_range?: Json | null
+          price_factors?: Json | null
+          sample_size?: number | null
+          service_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       service_relationships: {
         Row: {
           created_at: string
