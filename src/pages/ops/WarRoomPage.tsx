@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger
 } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
@@ -21,7 +22,7 @@ import {
   Shield, AlertTriangle, Activity, Clock, Users, Zap, Eye,
   RefreshCw, ExternalLink, ChevronRight, Radio, TriangleAlert,
   CheckCircle2, XCircle, TrendingUp, MapPin, ChevronDown,
-  BookOpen, FileText, Phone, MessageSquare, Tag
+  BookOpen, FileText, Phone, MessageSquare, Tag, Camera, Image
 } from "lucide-react";
 
 // ── Types ──
@@ -102,6 +103,16 @@ interface DispatchLogRow {
   response_time_seconds: number | null;
 }
 
+interface EvidenceRow {
+  booking_id: string;
+  service_verified: boolean;
+  customer_confirmed: boolean;
+  customer_dispute: boolean;
+  before_photos: any;
+  after_photos: any;
+  created_at: string;
+}
+
 // ── SLA config per category (minutes) ──
 const CATEGORY_SLA: Record<string, number> = {
   MOBILE: 60, IT: 90, AC: 120, CCTV: 180, SOLAR: 240,
@@ -148,6 +159,7 @@ export default function WarRoomPage() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [escalations, setEscalations] = useState<EscalationRow[]>([]);
   const [dispatchLogs, setDispatchLogs] = useState<DispatchLogRow[]>([]);
+  const [evidenceRecords, setEvidenceRecords] = useState<EvidenceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
@@ -157,7 +169,7 @@ export default function WarRoomPage() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [bk, qt, pt, inc, pay, esc, dl] = await Promise.all([
+    const [bk, qt, pt, inc, pay, esc, dl, ev] = await Promise.all([
       supabase.from("bookings").select("id,category_code,zone_code,status,dispatch_status,payment_status,customer_rating,created_at,assigned_at,partner_id,booking_source,is_emergency,sla_eta_minutes")
         .neq("booking_source", "pilot_simulation").order("created_at", { ascending: false }).limit(200),
       supabase.from("quotes").select("id,booking_id,status,created_at,submitted_at,approved_at,total_lkr").order("created_at", { ascending: false }).limit(200),
@@ -167,6 +179,7 @@ export default function WarRoomPage() {
       supabase.from("payments").select("id,booking_id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
       supabase.from("dispatch_escalations").select("id,booking_id,reason,dispatch_rounds_attempted,created_at,resolved_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("dispatch_log").select("id,booking_id,partner_id,status,response,created_at,responded_at,response_time_seconds").gte("created_at", todayStart).order("created_at", { ascending: false }).limit(500),
+      supabase.from("service_evidence").select("booking_id,service_verified,customer_confirmed,customer_dispute,before_photos,after_photos,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     const liveBookings = (bk.data || []) as BookingRow[];
     setBookings(liveBookings);
@@ -174,13 +187,14 @@ export default function WarRoomPage() {
     // Build live booking ID set for simulation isolation
     const liveBookingIds = new Set(liveBookings.map(b => b.id));
 
-    // Filter quotes, payments, escalations to only those linked to live bookings
+    // Filter quotes, payments, escalations, evidence to only those linked to live bookings
     setQuotes(((qt.data || []) as QuoteRow[]).filter(q => liveBookingIds.has(q.booking_id)));
     setPartners((pt.data || []) as PartnerRow[]);
     setIncidents(((inc.data || []) as IncidentRow[]).filter(i => !i.booking_id || liveBookingIds.has(i.booking_id)));
     setPayments(((pay.data || []) as PaymentRow[]).filter(p => liveBookingIds.has(p.booking_id)));
     setEscalations(((esc.data || []) as EscalationRow[]).filter(e => liveBookingIds.has(e.booking_id)));
     setDispatchLogs(((dl.data || []) as DispatchLogRow[]).filter(d => liveBookingIds.has(d.booking_id)));
+    setEvidenceRecords(((ev.data || []) as EvidenceRow[]).filter(e => liveBookingIds.has(e.booking_id)));
     setLoading(false);
     setLastRefresh(new Date());
   };
@@ -278,6 +292,25 @@ export default function WarRoomPage() {
   const currentMilestone = milestones.find(m => totalCompleted < m) || 100;
   const milestoneProgress = Math.min((totalCompleted / currentMilestone) * 100, 100);
 
+  // Service Proof metrics
+  const evidenceMap = useMemo(() => {
+    const m: Record<string, EvidenceRow> = {};
+    evidenceRecords.forEach(e => { m[e.booking_id] = e; });
+    return m;
+  }, [evidenceRecords]);
+  const completedBookings = bookings.filter(b => b.status === "completed");
+  const jobsMissingEvidence = completedBookings.filter(b => {
+    const ev = evidenceMap[b.id];
+    if (!ev) return true;
+    const before = Array.isArray(ev.before_photos) ? ev.before_photos : [];
+    const after = Array.isArray(ev.after_photos) ? ev.after_photos : [];
+    return before.length === 0 && after.length === 0;
+  });
+  const unresolvedDisputes = evidenceRecords.filter(e => e.customer_dispute && !evidenceMap[e.booking_id]);
+  const activeDisputes = evidenceRecords.filter(e => e.customer_dispute);
+  const pendingConfirmations = evidenceRecords.filter(e => !e.customer_confirmed && !e.customer_dispute);
+  const verifiedJobs = evidenceRecords.filter(e => e.service_verified);
+
   // ── Protocol state ──
   const [guideOpen, setGuideOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -337,6 +370,12 @@ export default function WarRoomPage() {
       `Low Ratings (<3): ${lowRatings.length}`,
       `SLA Breaches: ${slaBreaches.length}`,
       ``,
+      `── Service Proof ──`,
+      `Missing Evidence: ${jobsMissingEvidence.length}`,
+      `Open Disputes: ${activeDisputes.length}`,
+      `Pending Confirmations: ${pendingConfirmations.length}`,
+      `Verified Jobs: ${verifiedJobs.length}`,
+      ``,
       `── Launch ──`,
       `Total Completed: ${totalCompleted} / ${currentMilestone}`,
       `Pilot Protection: ${isPilotProtection ? "ACTIVE" : "OFF"}`,
@@ -344,7 +383,7 @@ export default function WarRoomPage() {
       `═══ End Report ═══`,
     ];
     return lines.join("\n");
-  }, [todayBookings, activeJobs, dispatchSuccessRate, avgDispatchMin, openEscalations, noProviderCases, quotesSubmitted, quotesAwaiting, staleQuotes, quotesRejected, payments, paymentFailures, todayIncidents, avgRating, lowRatings, slaBreaches, totalCompleted, currentMilestone, isPilotProtection]);
+  }, [todayBookings, activeJobs, dispatchSuccessRate, avgDispatchMin, openEscalations, noProviderCases, quotesSubmitted, quotesAwaiting, staleQuotes, quotesRejected, payments, paymentFailures, todayIncidents, avgRating, lowRatings, slaBreaches, totalCompleted, currentMilestone, isPilotProtection, jobsMissingEvidence, activeDisputes, pendingConfirmations, verifiedJobs]);
 
   // ── Response Guide Section ──
   const ResponseStep = ({ steps, color }: { steps: string[]; color: "red" | "yellow" }) => (
@@ -992,6 +1031,51 @@ export default function WarRoomPage() {
                 >
                   Copy
                 </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ══ SERVICE PROOF MONITOR ══ */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Camera className="w-4 h-4 text-primary" /> Service Proof Monitor
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className={`p-2 rounded-lg border text-center ${jobsMissingEvidence.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${jobsMissingEvidence.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingEvidence.length}</p>
+                <p className="text-[10px] text-muted-foreground">Missing Evidence</p>
+              </div>
+              <div className={`p-2 rounded-lg border text-center ${activeDisputes.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${activeDisputes.length > 0 ? "text-destructive" : "text-foreground"}`}>{activeDisputes.length}</p>
+                <p className="text-[10px] text-muted-foreground">Open Disputes</p>
+              </div>
+              <div className={`p-2 rounded-lg border text-center ${pendingConfirmations.length > 0 ? "bg-warning/5 border-warning/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${pendingConfirmations.length > 0 ? "text-warning" : "text-foreground"}`}>{pendingConfirmations.length}</p>
+                <p className="text-[10px] text-muted-foreground">Pending Confirm</p>
+              </div>
+              <div className="p-2 rounded-lg border bg-success/5 border-success/20 text-center">
+                <p className="text-lg font-bold text-success">{verifiedJobs.length}</p>
+                <p className="text-[10px] text-muted-foreground">Verified Jobs</p>
+              </div>
+            </div>
+            {jobsMissingEvidence.length > 0 && (
+              <div className="text-[10px] text-destructive bg-destructive/5 rounded-lg p-2 mb-2">
+                ⚠ {jobsMissingEvidence.length} completed job{jobsMissingEvidence.length > 1 ? "s" : ""} missing before/after evidence.
+                {jobsMissingEvidence.slice(0, 3).map(b => (
+                  <Button key={b.id} variant="link" size="sm" className="text-[10px] h-auto p-0 ml-1 text-destructive underline"
+                    onClick={() => navigate(`/track/${b.id}`)}>
+                    {b.id.slice(0, 8)}
+                  </Button>
+                ))}
+              </div>
+            )}
+            {activeDisputes.length > 0 && (
+              <div className="text-[10px] text-destructive bg-destructive/5 rounded-lg p-2">
+                🔴 {activeDisputes.length} unresolved dispute{activeDisputes.length > 1 ? "s" : ""} — review immediately.
               </div>
             )}
           </CardContent>
