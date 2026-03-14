@@ -340,7 +340,7 @@ export default function TechnicianJobDetailPage() {
         <Button variant="outline" className="w-full text-xs" onClick={() => setShowReportIssue(true)}>
           <AlertTriangle className="w-3 h-3 mr-1" /> Report Issue
         </Button>
-        {showReportIssue && <ReportIssueModal bookingId={booking.id} role="technician" onClose={() => setShowReportIssue(false)} />}
+        <ReportIssueModal open={showReportIssue} bookingId={booking.id} userId={partner?.user_id || ""} role="partner" onClose={() => setShowReportIssue(false)} />
       </div>
     </div>
   );
