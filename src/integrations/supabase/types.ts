@@ -1044,6 +1044,105 @@ export type Database = {
           },
         ]
       }
+      dispatch_offers: {
+        Row: {
+          accept_window_seconds: number
+          booking_id: string
+          category_code: string
+          created_at: string
+          customer_zone: string | null
+          decline_reason: string | null
+          dispatch_round: number
+          dispatch_score: number | null
+          estimated_distance_km: number | null
+          eta_max_minutes: number | null
+          eta_min_minutes: number | null
+          expires_at: string
+          id: string
+          is_emergency: boolean | null
+          is_lead_technician: boolean | null
+          multi_tech_group_id: string | null
+          offer_mode: string
+          partner_id: string
+          price_estimate_lkr: number | null
+          responded_at: string | null
+          response_time_ms: number | null
+          score_breakdown: Json | null
+          service_type: string | null
+          skill_level_required: number | null
+          status: string
+        }
+        Insert: {
+          accept_window_seconds?: number
+          booking_id: string
+          category_code: string
+          created_at?: string
+          customer_zone?: string | null
+          decline_reason?: string | null
+          dispatch_round?: number
+          dispatch_score?: number | null
+          estimated_distance_km?: number | null
+          eta_max_minutes?: number | null
+          eta_min_minutes?: number | null
+          expires_at: string
+          id?: string
+          is_emergency?: boolean | null
+          is_lead_technician?: boolean | null
+          multi_tech_group_id?: string | null
+          offer_mode?: string
+          partner_id: string
+          price_estimate_lkr?: number | null
+          responded_at?: string | null
+          response_time_ms?: number | null
+          score_breakdown?: Json | null
+          service_type?: string | null
+          skill_level_required?: number | null
+          status?: string
+        }
+        Update: {
+          accept_window_seconds?: number
+          booking_id?: string
+          category_code?: string
+          created_at?: string
+          customer_zone?: string | null
+          decline_reason?: string | null
+          dispatch_round?: number
+          dispatch_score?: number | null
+          estimated_distance_km?: number | null
+          eta_max_minutes?: number | null
+          eta_min_minutes?: number | null
+          expires_at?: string
+          id?: string
+          is_emergency?: boolean | null
+          is_lead_technician?: boolean | null
+          multi_tech_group_id?: string | null
+          offer_mode?: string
+          partner_id?: string
+          price_estimate_lkr?: number | null
+          responded_at?: string | null
+          response_time_ms?: number | null
+          score_breakdown?: Json | null
+          service_type?: string | null
+          skill_level_required?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispatch_offers_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_offers_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_timeline: {
         Row: {
           actor: string | null

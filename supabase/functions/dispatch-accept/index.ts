@@ -7,11 +7,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MAX_DISPATCH_ROUNDS = 3;
+const MAX_DISPATCH_ROUNDS = 5;
 
 interface AcceptRequest {
   booking_id: string;
   partner_id: string;
+  offer_id?: string;
   action: "accept" | "decline" | "timeout" | "ops_confirm" | "ops_override";
   decline_reason?: string;
   override_partner_id?: string;
@@ -23,7 +24,7 @@ serve(async (req) => {
 
   try {
     const body: AcceptRequest = await req.json();
-    const { booking_id, partner_id, action, decline_reason, override_partner_id, ops_user_id } = body;
+    const { booking_id, partner_id, offer_id, action, decline_reason, override_partner_id, ops_user_id } = body;
 
     if (!booking_id || !action) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -33,6 +34,7 @@ serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const now = new Date().toISOString();
+    const nowMs = Date.now();
 
     // ── Ops manual confirmation ──
     if (action === "ops_confirm") {
@@ -42,17 +44,19 @@ serve(async (req) => {
           dispatch_status: "ops_confirmed", status: "assigned",
           assigned_at: now, assignment_mode: "ops_manual",
         }).eq("id", booking_id),
+        supabase.from("dispatch_offers").update({
+          status: "accepted", responded_at: now,
+        }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending"),
         supabase.from("dispatch_log").update({
           status: "ops_confirmed", response: "ops_confirmed", responded_at: now,
-        }).eq("booking_id", booking_id).eq("partner_id", partner_id),
-        supabase.from("partner_notifications").update({
-          actioned_at: now, action_taken: "ops_confirmed",
         }).eq("booking_id", booking_id).eq("partner_id", partner_id),
         supabase.from("job_timeline").insert({
           booking_id, status: "assigned", actor: ops_user_id || "ops",
           note: "Partner confirmed manually by operations team",
           metadata: { partner_id, action: "ops_confirmed" },
         }),
+        // Availability lock
+        lockPartnerAvailability(supabase, partner_id, booking_id),
       ]);
       return new Response(JSON.stringify({ success: true, status: "ops_confirmed" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -73,159 +77,378 @@ serve(async (req) => {
           note: `Ops override: assigned partner ${assignId}`,
           metadata: { partner_id: assignId, action: "ops_override", overridden_from: partner_id },
         }),
+        lockPartnerAvailability(supabase, assignId, booking_id),
       ]);
       return new Response(JSON.stringify({ success: true, status: "ops_override" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Require partner_id for accept/decline/timeout
     if (!partner_id) {
       return new Response(JSON.stringify({ error: "partner_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── ACCEPT with race-condition guard ──
+    // ── ACCEPT ──
     if (action === "accept") {
-      // Guard 1: Only update booking if dispatch_status is still pending_acceptance
-      const { data: updatedBooking, error: bookingUpdateErr } = await supabase
-        .from("bookings")
-        .update({
-          partner_id, selected_partner_id: partner_id,
-          dispatch_status: "accepted", status: "assigned",
-          assigned_at: now, assignment_mode: "smart_dispatch",
-        })
-        .eq("id", booking_id)
-        .eq("dispatch_status", "pending_acceptance")  // Race-condition guard
-        .select("id")
-        .maybeSingle();
+      // 1. Find the offer
+      let offerQuery = supabase
+        .from("dispatch_offers")
+        .select("id, offer_mode, multi_tech_group_id, is_lead_technician, created_at")
+        .eq("booking_id", booking_id)
+        .eq("partner_id", partner_id)
+        .eq("status", "pending");
 
-      if (bookingUpdateErr || !updatedBooking) {
-        // Booking was already claimed or status changed — fail safely
-        // Also update this partner's dispatch_log to reflect the late attempt
-        await supabase.from("dispatch_log").update({
-          status: "late_accept", response: "late_accept", responded_at: now,
-        }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending_acceptance");
-
-        return new Response(JSON.stringify({
-          success: false,
-          error: "already_claimed",
-          message: "This job has already been assigned to another provider.",
-        }), {
-          status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (offer_id) {
+        offerQuery = offerQuery.eq("id", offer_id);
       }
 
-      // Guard passed — complete the accept
+      const { data: offers } = await offerQuery;
+      const offer = offers?.[0];
+
+      if (!offer) {
+        return new Response(JSON.stringify({
+          success: false, error: "no_pending_offer",
+          message: "No pending offer found. It may have expired or been claimed.",
+        }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const responseTimeMs = nowMs - new Date(offer.created_at).getTime();
+
+      // 2. Handle based on offer_mode
+      if (offer.offer_mode === "parallel") {
+        // ── PARALLEL RACE: first to accept wins ──
+        // Atomically update this offer to accepted
+        const { data: updatedOffer, error: updateErr } = await supabase
+          .from("dispatch_offers")
+          .update({ status: "accepted", responded_at: now, response_time_ms: responseTimeMs })
+          .eq("id", offer.id)
+          .eq("status", "pending") // Race guard
+          .select("id")
+          .maybeSingle();
+
+        if (updateErr || !updatedOffer) {
+          return new Response(JSON.stringify({
+            success: false, error: "already_claimed",
+            message: "This job has already been assigned to another provider.",
+          }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // Supersede all other parallel offers for this booking
+        await supabase.from("dispatch_offers")
+          .update({ status: "superseded", responded_at: now })
+          .eq("booking_id", booking_id)
+          .neq("id", offer.id)
+          .eq("status", "pending");
+
+        // Assign booking
+        const { data: updatedBooking, error: bErr } = await supabase.from("bookings")
+          .update({
+            partner_id, selected_partner_id: partner_id,
+            dispatch_status: "accepted", status: "assigned",
+            assigned_at: now, assignment_mode: "smart_dispatch_parallel",
+          })
+          .eq("id", booking_id)
+          .in("dispatch_status", ["pending_acceptance", "dispatching"])
+          .select("id")
+          .maybeSingle();
+
+        if (bErr || !updatedBooking) {
+          // Another partner already won the race
+          await supabase.from("dispatch_offers")
+            .update({ status: "late_accept" })
+            .eq("id", offer.id);
+          return new Response(JSON.stringify({
+            success: false, error: "already_claimed",
+          }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        await Promise.all([
+          // Backward compat: update dispatch_log
+          supabase.from("dispatch_log").update({
+            status: "accepted", response: "accepted", responded_at: now,
+            response_time_seconds: Math.round(responseTimeMs / 1000),
+          }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending_acceptance"),
+          supabase.from("dispatch_log").update({
+            status: "superseded", response: "parallel_race_lost", responded_at: now,
+          }).eq("booking_id", booking_id).neq("partner_id", partner_id).eq("status", "pending_acceptance"),
+          // Notifications
+          supabase.from("partner_notifications").update({
+            actioned_at: now, action_taken: "accepted",
+          }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("notification_type", "job_offer"),
+          // Timeline
+          supabase.from("job_timeline").insert({
+            booking_id, status: "job_offer_accepted", actor: "partner",
+            note: `Partner accepted (parallel race, response: ${Math.round(responseTimeMs / 1000)}s)`,
+            metadata: {
+              partner_id, action: "accept", offer_mode: "parallel",
+              response_time_ms: responseTimeMs, offer_id: offer.id,
+            },
+          }),
+          supabase.from("notification_events").insert({
+            event_type: "provider_assigned", booking_id, partner_id,
+            metadata: { response_time_ms: responseTimeMs, offer_mode: "parallel" },
+          }),
+          // Availability lock
+          lockPartnerAvailability(supabase, partner_id, booking_id),
+        ]);
+
+        return new Response(JSON.stringify({ success: true, status: "accepted", race_won: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+
+      } else if (offer.offer_mode === "multi_tech") {
+        // ── MULTI-TECH: accept this partner, check if team complete ──
+        await supabase.from("dispatch_offers")
+          .update({ status: "accepted", responded_at: now, response_time_ms: responseTimeMs })
+          .eq("id", offer.id);
+
+        // Check how many accepted in this group
+        const { data: groupOffers } = await supabase
+          .from("dispatch_offers")
+          .select("id, partner_id, status, is_lead_technician")
+          .eq("multi_tech_group_id", offer.multi_tech_group_id)
+          .eq("status", "accepted");
+
+        const acceptedCount = groupOffers?.length || 0;
+        const MULTI_TECH_DEFAULTS: Record<string, number> = { AC: 2, SOLAR: 3, CCTV: 2, SMART_HOME_OFFICE: 2 };
+
+        // Get booking category
+        const { data: booking } = await supabase.from("bookings")
+          .select("category_code")
+          .eq("id", booking_id)
+          .single();
+
+        const requiredCount = MULTI_TECH_DEFAULTS[booking?.category_code || ""] || 2;
+
+        // If lead must accept first
+        if (offer.is_lead_technician || acceptedCount >= requiredCount) {
+          // Lead accepted or team complete
+          if (acceptedCount >= requiredCount) {
+            // Team complete — assign all
+            const leadOffer = groupOffers?.find((o: any) => o.is_lead_technician);
+            const leadId = leadOffer?.partner_id || partner_id;
+
+            await Promise.all([
+              supabase.from("bookings").update({
+                partner_id: leadId, selected_partner_id: leadId,
+                dispatch_status: "team_assigned", status: "assigned",
+                assigned_at: now, assignment_mode: "multi_tech_dispatch",
+              }).eq("id", booking_id),
+              // Supersede remaining pending offers
+              supabase.from("dispatch_offers")
+                .update({ status: "superseded", responded_at: now })
+                .eq("multi_tech_group_id", offer.multi_tech_group_id)
+                .eq("status", "pending"),
+            ]);
+
+            // Lock all accepted partners
+            for (const accepted of groupOffers || []) {
+              await lockPartnerAvailability(supabase, accepted.partner_id, booking_id);
+            }
+
+            await supabase.from("job_timeline").insert({
+              booking_id, status: "team_assigned", actor: "partner",
+              note: `Technician team complete: ${acceptedCount}/${requiredCount} accepted. Lead: ${leadId.slice(0, 8)}`,
+              metadata: {
+                accepted_partners: groupOffers?.map((o: any) => o.partner_id),
+                lead_partner_id: leadId,
+                required: requiredCount,
+              },
+            });
+
+            await supabase.from("notification_events").insert({
+              event_type: "team_assigned", booking_id,
+              metadata: { team_size: acceptedCount, lead_partner_id: leadId },
+            });
+          }
+        }
+
+        // Always log this acceptance
+        await Promise.all([
+          supabase.from("dispatch_log").update({
+            status: "accepted", response: "accepted", responded_at: now,
+            response_time_seconds: Math.round(responseTimeMs / 1000),
+          }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending_acceptance"),
+          supabase.from("partner_notifications").update({
+            actioned_at: now, action_taken: "accepted",
+          }).eq("booking_id", booking_id).eq("partner_id", partner_id),
+          supabase.from("job_timeline").insert({
+            booking_id, status: "job_offer_accepted", actor: "partner",
+            note: `Tech accepted multi-tech job (${acceptedCount}/${requiredCount} confirmed${offer.is_lead_technician ? ", LEAD" : ""})`,
+            metadata: {
+              partner_id, offer_mode: "multi_tech",
+              is_lead: offer.is_lead_technician,
+              response_time_ms: responseTimeMs,
+              accepted_so_far: acceptedCount,
+              required: requiredCount,
+            },
+          }),
+          lockPartnerAvailability(supabase, partner_id, booking_id),
+        ]);
+
+        return new Response(JSON.stringify({
+          success: true,
+          status: acceptedCount >= requiredCount ? "team_assigned" : "partial_accept",
+          accepted_count: acceptedCount,
+          required_count: requiredCount,
+          is_lead: offer.is_lead_technician,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      } else {
+        // ── SEQUENTIAL: standard single-tech accept ──
+        // Atomically claim the booking
+        const { data: updatedBooking, error: bookingUpdateErr } = await supabase
+          .from("bookings")
+          .update({
+            partner_id, selected_partner_id: partner_id,
+            dispatch_status: "accepted", status: "assigned",
+            assigned_at: now, assignment_mode: "smart_dispatch",
+          })
+          .eq("id", booking_id)
+          .in("dispatch_status", ["pending_acceptance", "dispatching"])
+          .select("id")
+          .maybeSingle();
+
+        if (bookingUpdateErr || !updatedBooking) {
+          await supabase.from("dispatch_offers")
+            .update({ status: "late_accept", responded_at: now })
+            .eq("id", offer.id);
+
+          return new Response(JSON.stringify({
+            success: false, error: "already_claimed",
+            message: "This job has already been assigned.",
+          }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        // Mark offer as accepted
+        await supabase.from("dispatch_offers")
+          .update({ status: "accepted", responded_at: now, response_time_ms: responseTimeMs })
+          .eq("id", offer.id);
+
+        await Promise.all([
+          supabase.from("dispatch_log").update({
+            status: "accepted", response: "accepted", responded_at: now,
+            response_time_seconds: Math.round(responseTimeMs / 1000),
+          }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending_acceptance"),
+          supabase.from("dispatch_log").update({
+            status: "superseded", response: "another_accepted", responded_at: now,
+          }).eq("booking_id", booking_id).neq("partner_id", partner_id).eq("status", "pending_acceptance"),
+          supabase.from("partner_notifications").update({
+            actioned_at: now, action_taken: "accepted",
+          }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("notification_type", "job_offer"),
+          supabase.from("job_timeline").insert({
+            booking_id, status: "job_offer_accepted", actor: "partner",
+            note: `Partner accepted (response: ${Math.round(responseTimeMs / 1000)}s)`,
+            metadata: {
+              partner_id, action: "accept", offer_mode: "sequential",
+              response_time_ms: responseTimeMs, offer_id: offer.id,
+            },
+          }),
+          supabase.from("notification_events").insert({
+            event_type: "provider_assigned", booking_id, partner_id,
+            metadata: { response_time_ms: responseTimeMs },
+          }),
+          lockPartnerAvailability(supabase, partner_id, booking_id),
+        ]);
+
+        return new Response(JSON.stringify({ success: true, status: "accepted" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // ── DECLINE ──
+    if (action === "decline") {
+      const responseTimeMs = await getOfferResponseTime(supabase, booking_id, partner_id, nowMs);
+
       await Promise.all([
+        supabase.from("dispatch_offers")
+          .update({ status: "declined", decline_reason, responded_at: now, response_time_ms: responseTimeMs })
+          .eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending"),
         supabase.from("dispatch_log").update({
-          status: "accepted", response: "accepted", responded_at: now,
+          status: "declined", response: decline_reason || "declined", responded_at: now,
+          response_time_seconds: Math.round((responseTimeMs || 0) / 1000),
         }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending_acceptance"),
-
-        // Mark all other pending offers for this booking as superseded
-        supabase.from("dispatch_log").update({
-          status: "superseded", response: "another_accepted", responded_at: now,
-        }).eq("booking_id", booking_id).neq("partner_id", partner_id).eq("status", "pending_acceptance"),
-
         supabase.from("partner_notifications").update({
-          actioned_at: now, action_taken: "accepted",
-        }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("notification_type", "job_offer"),
-
+          actioned_at: now, action_taken: "declined",
+        }).eq("booking_id", booking_id).eq("partner_id", partner_id),
         supabase.from("job_timeline").insert({
-          booking_id, status: "assigned", actor: "system",
-          note: "Partner accepted via smart dispatch",
-          metadata: { partner_id, action: "dispatch_accepted" },
-        }),
-
-        supabase.from("notification_events").insert({
-          event_type: "provider_assigned", booking_id, partner_id,
+          booking_id, status: "job_offer_declined", actor: "partner",
+          note: `Partner declined${decline_reason ? `: ${decline_reason}` : ""}`,
+          metadata: { partner_id, reason: decline_reason, response_time_ms: responseTimeMs },
         }),
       ]);
 
-      return new Response(JSON.stringify({ success: true, status: "accepted" }), {
+      // Check if we need to re-dispatch (sequential mode only)
+      // For parallel/multi_tech, the timer worker handles advancement
+      const { data: remainingOffers } = await supabase
+        .from("dispatch_offers")
+        .select("id, offer_mode")
+        .eq("booking_id", booking_id)
+        .eq("status", "pending")
+        .limit(1);
+
+      if (!remainingOffers || remainingOffers.length === 0) {
+        // No more pending offers — trigger next round
+        const { data: booking } = await supabase.from("bookings")
+          .select("dispatch_round")
+          .eq("id", booking_id)
+          .single();
+
+        const currentRound = booking?.dispatch_round || 1;
+
+        if (currentRound >= MAX_DISPATCH_ROUNDS) {
+          await Promise.all([
+            supabase.from("bookings").update({ dispatch_status: "escalated" }).eq("id", booking_id),
+            supabase.from("dispatch_escalations").insert({
+              booking_id, reason: "all_declined", dispatch_rounds_attempted: currentRound,
+            }),
+            supabase.from("job_timeline").insert({
+              booking_id, status: "dispatch_failed", actor: "system",
+              note: `All ${MAX_DISPATCH_ROUNDS} rounds exhausted — escalated to ops`,
+            }),
+          ]);
+          return new Response(JSON.stringify({ success: true, status: "escalated" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Auto-trigger next round
+        await supabase.functions.invoke("dispatch-orchestrator", {
+          body: { booking_id, force_round: currentRound + 1 },
+        });
+
+        return new Response(JSON.stringify({
+          success: true, status: "next_round", dispatch_round: currentRound + 1,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      return new Response(JSON.stringify({ success: true, status: "declined" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ── DECLINE / TIMEOUT ──
-    if (action === "decline" || action === "timeout") {
+    // ── TIMEOUT (explicit, partner-side) ──
+    if (action === "timeout") {
       await Promise.all([
+        supabase.from("dispatch_offers")
+          .update({ status: "expired", responded_at: now })
+          .eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending"),
         supabase.from("dispatch_log").update({
-          status: action === "decline" ? "declined" : "timed_out",
-          response: action === "decline" ? (decline_reason || "declined") : "timeout",
-          responded_at: now,
+          status: "timed_out", response: "timeout", responded_at: now,
         }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("status", "pending_acceptance"),
-
-        supabase.from("partner_notifications").update({
-          actioned_at: now, action_taken: action,
-        }).eq("booking_id", booking_id).eq("partner_id", partner_id).eq("notification_type", "job_offer"),
+        supabase.from("job_timeline").insert({
+          booking_id, status: "job_offer_expired", actor: "system",
+          note: `Partner offer timed out`,
+          metadata: { partner_id },
+        }),
       ]);
 
-      // Get booking for re-dispatch
-      const { data: booking } = await supabase
-        .from("bookings")
-        .select("dispatch_round, category_code, customer_latitude, customer_longitude, zone_code, is_emergency, service_type")
-        .eq("id", booking_id).single();
-
-      const currentRound = booking?.dispatch_round || 1;
-
-      if (currentRound >= MAX_DISPATCH_ROUNDS) {
-        await Promise.all([
-          supabase.from("bookings").update({
-            dispatch_status: "escalated", dispatch_round: currentRound,
-          }).eq("id", booking_id),
-          supabase.from("dispatch_escalations").insert({
-            booking_id, reason: "all_partners_exhausted", dispatch_rounds_attempted: currentRound,
-          }),
-          supabase.from("job_timeline").insert({
-            booking_id, status: "escalated", actor: "system",
-            note: `All ${MAX_DISPATCH_ROUNDS} dispatch rounds exhausted — escalated to ops`,
-          }),
-          supabase.from("notification_events").insert({
-            event_type: "dispatch_escalated", booking_id,
-          }),
-        ]);
-
-        return new Response(JSON.stringify({
-          success: true, status: "escalated", message: "All dispatch rounds exhausted",
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      // Collect already-tried partner IDs
-      const { data: prevLogs } = await supabase
-        .from("dispatch_log").select("partner_id")
-        .eq("booking_id", booking_id).in("status", ["declined", "timed_out", "late_accept"]);
-
-      const excludeIds = [...new Set((prevLogs || []).map((l: any) => l.partner_id))];
-      const nextRound = currentRound + 1;
-
-      await supabase.from("bookings").update({
-        dispatch_status: "dispatching", dispatch_round: nextRound, selected_partner_id: null,
-      }).eq("id", booking_id);
-
-      // Fire next dispatch round
-      await supabase.functions.invoke("smart-dispatch", {
-        body: {
-          category_code: booking?.category_code,
-          service_type: booking?.service_type,
-          customer_lat: booking?.customer_latitude,
-          customer_lng: booking?.customer_longitude,
-          customer_zone: booking?.zone_code,
-          is_emergency: booking?.is_emergency || false,
-          booking_id, dispatch_round: nextRound, exclude_partner_ids: excludeIds,
-        },
+      return new Response(JSON.stringify({ success: true, status: "expired" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-
-      await supabase.from("job_timeline").insert({
-        booking_id, status: "dispatching", actor: "system",
-        note: `Partner ${action === "decline" ? "declined" : "timed out"} — dispatching round ${nextRound}`,
-        metadata: { partner_id, action, round: nextRound },
-      });
-
-      return new Response(JSON.stringify({
-        success: true, status: "next_round", dispatch_round: nextRound,
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     return new Response(JSON.stringify({ error: "Invalid action" }), {
@@ -239,3 +462,47 @@ serve(async (req) => {
     });
   }
 });
+
+/** Lock partner availability after accepting a job */
+async function lockPartnerAvailability(supabase: any, partnerId: string, bookingId: string) {
+  try {
+    // Fetch current state
+    const { data: partner } = await supabase
+      .from("partners")
+      .select("current_job_count, max_concurrent_jobs")
+      .eq("id", partnerId)
+      .single();
+
+    if (!partner) return;
+
+    const newJobCount = (partner.current_job_count || 0) + 1;
+    const maxConcurrent = partner.max_concurrent_jobs || 1;
+    const newStatus = newJobCount >= maxConcurrent ? "busy" : "online";
+
+    await supabase.from("partners").update({
+      current_job_count: newJobCount,
+      availability_status: newStatus,
+      active_job_id: bookingId,
+    }).eq("id", partnerId);
+
+    console.log(`[AvailabilityLock] Partner ${partnerId}: jobs=${newJobCount}/${maxConcurrent}, status=${newStatus}`);
+  } catch (e) {
+    console.error("[AvailabilityLock] Failed:", e);
+  }
+}
+
+/** Get response time from offer creation */
+async function getOfferResponseTime(supabase: any, bookingId: string, partnerId: string, nowMs: number): Promise<number | null> {
+  const { data } = await supabase
+    .from("dispatch_offers")
+    .select("created_at")
+    .eq("booking_id", bookingId)
+    .eq("partner_id", partnerId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (data?.created_at) {
+    return nowMs - new Date(data.created_at).getTime();
+  }
+  return null;
+}
