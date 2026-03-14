@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, FileText, MapPin, CheckCircle2, Clock, Snowflake, Smartphone, Monitor, Tv } from "lucide-react";
+import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, FileText, MapPin, CheckCircle2, Clock, Snowflake, Smartphone, Monitor, Tv, KeyRound, Wallet } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
@@ -22,9 +22,10 @@ const BANNERS = [
 ];
 
 const TRUST_PILLS = [
-  { icon: <ShieldCheck className="w-3.5 h-3.5" />, label: "Verified Technicians" },
+  { icon: <KeyRound className="w-3.5 h-3.5" />, label: "OTP Verified Visit" },
   { icon: <Eye className="w-3.5 h-3.5" />, label: "Transparent Pricing" },
-  { icon: <Award className="w-3.5 h-3.5" />, label: "Warranty-Backed" },
+  { icon: <Award className="w-3.5 h-3.5" />, label: "Service Warranty" },
+  { icon: <Wallet className="w-3.5 h-3.5" />, label: "Pay After Service" },
   { icon: <FileText className="w-3.5 h-3.5" />, label: "Digital Invoice" },
 ];
 

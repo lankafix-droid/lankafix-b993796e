@@ -9,6 +9,7 @@ import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
 
 // Lazy-load below-fold sections for mobile performance
+const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
 const V2NearbyTechnicians = lazy(() => import("@/components/v2/V2NearbyTechnicians"));
 const V2BookAgain = lazy(() => import("@/components/v2/V2BookAgain"));
 const V2WhyLankaFix = lazy(() => import("@/components/v2/V2WhyLankaFix"));
@@ -16,7 +17,6 @@ const V2HowItWorks = lazy(() => import("@/components/v2/V2HowItWorks"));
 const V2SocialProof = lazy(() => import("@/components/v2/V2SocialProof"));
 const V2HomeFAQ = lazy(() => import("@/components/v2/V2HomeFAQ"));
 const V2SupportEntry = lazy(() => import("@/components/v2/V2SupportEntry"));
-const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
 
 const SectionFallback = () => <div className="h-24" aria-hidden />;
 
@@ -48,50 +48,50 @@ const V2HomePage = () => {
         {/* 1. Hero — search, location, emergency, trust pills */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
-        {/* 2. Popular Services — high-conversion quick links */}
-        <V2PopularServices />
-
-        {/* 3. Category Grid — Phase-1 launch categories prioritized */}
-        <V2CategoryGrid />
-
-        {/* 4. Nearby Verified Technicians — trust + social proof */}
+        {/* 2. Trust Strip — immediate confidence builder */}
         <Suspense fallback={<SectionFallback />}>
-          <V2NearbyTechnicians />
+          <V2TrustStrip />
         </Suspense>
 
-        {/* 5. Book Again — returning users only */}
+        {/* 3. Popular Services — high-conversion quick links */}
+        <V2PopularServices />
+
+        {/* 4. Book Again — returning users only */}
         <Suspense fallback={<SectionFallback />}>
           <V2BookAgain />
         </Suspense>
 
-        {/* 6. Why LankaFix — trust differentiators */}
+        {/* 5. Category Grid — Launch → More Solutions → Coming Soon */}
+        <V2CategoryGrid />
+
+        {/* 6. Nearby Verified Technicians — trust + social proof */}
+        <Suspense fallback={<SectionFallback />}>
+          <V2NearbyTechnicians />
+        </Suspense>
+
+        {/* 7. Why LankaFix — trust differentiators */}
         <Suspense fallback={<SectionFallback />}>
           <V2WhyLankaFix />
         </Suspense>
 
-        {/* 7. How It Works — 4-step explainer */}
+        {/* 8. How It Works — 5-step booking explainer */}
         <Suspense fallback={<SectionFallback />}>
           <V2HowItWorks />
         </Suspense>
 
-        {/* 8. Social Proof — testimonials + stats */}
-        <Suspense fallback={<SectionFallback />}>
-          <V2SocialProof />
-        </Suspense>
-
-        {/* 9. FAQ */}
-        <Suspense fallback={<SectionFallback />}>
-          <V2HomeFAQ />
-        </Suspense>
-
-        {/* 10. Support — WhatsApp, help, track */}
+        {/* 9. Support — WhatsApp, help, track */}
         <Suspense fallback={<SectionFallback />}>
           <V2SupportEntry />
         </Suspense>
 
-        {/* 11. Trust Strip — final confidence builder */}
+        {/* 10. Social Proof — testimonials */}
         <Suspense fallback={<SectionFallback />}>
-          <V2TrustStrip />
+          <V2SocialProof />
+        </Suspense>
+
+        {/* 11. FAQ */}
+        <Suspense fallback={<SectionFallback />}>
+          <V2HomeFAQ />
         </Suspense>
       </main>
 
