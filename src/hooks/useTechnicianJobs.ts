@@ -33,12 +33,17 @@ export function useTechnicianJobs() {
       if (!partner?.id) return [];
       const { data, error } = await supabase
         .from("dispatch_offers")
-        .select("*, bookings(id, category_code, service_type, zone_code, is_emergency, estimated_price_lkr, service_mode, created_at)")
+        .select("*, bookings(id, category_code, service_type, zone_code, is_emergency, estimated_price_lkr, service_mode, created_at, status)")
         .eq("partner_id", partner.id)
         .eq("status", "pending")
+        .gte("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      // Filter out offers linked to cancelled/completed bookings
+      return (data || []).filter((o: any) => {
+        const bs = o.bookings?.status;
+        return !bs || !["completed", "cancelled", "no_show"].includes(bs);
+      });
     },
     enabled: !!partner?.id,
     refetchInterval: 10_000,
