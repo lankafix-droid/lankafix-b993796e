@@ -802,6 +802,144 @@ export type Database = {
           },
         ]
       }
+      diagnosis_outcomes: {
+        Row: {
+          booking_id: string | null
+          booking_path: string | null
+          category_code: string
+          confidence_score: number | null
+          converted_to_booking: boolean | null
+          created_at: string
+          customer_id: string | null
+          device_age_years: number | null
+          device_brand: string | null
+          device_model: string | null
+          device_registry_id: string | null
+          device_type: string | null
+          diagnosis_duration_seconds: number | null
+          diagnosis_method: string | null
+          estimated_duration_minutes: number | null
+          estimated_max_price: number | null
+          estimated_min_price: number | null
+          estimated_parts_cost_max: number | null
+          estimated_parts_cost_min: number | null
+          id: string
+          key_findings: Json | null
+          parts_probability: number | null
+          possible_parts: Json | null
+          price_confidence: string | null
+          probabilities: Json | null
+          probable_issue: string | null
+          problem_key: string | null
+          recommended_service_type: string | null
+          self_fix_tips: Json | null
+          service_type: string | null
+          session_id: string | null
+          severity_level: string | null
+          skipped: boolean | null
+          technician_actual_issue: string | null
+          technician_actual_price: number | null
+          technician_diagnosis_accuracy: string | null
+          technician_feedback_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          booking_path?: string | null
+          category_code: string
+          confidence_score?: number | null
+          converted_to_booking?: boolean | null
+          created_at?: string
+          customer_id?: string | null
+          device_age_years?: number | null
+          device_brand?: string | null
+          device_model?: string | null
+          device_registry_id?: string | null
+          device_type?: string | null
+          diagnosis_duration_seconds?: number | null
+          diagnosis_method?: string | null
+          estimated_duration_minutes?: number | null
+          estimated_max_price?: number | null
+          estimated_min_price?: number | null
+          estimated_parts_cost_max?: number | null
+          estimated_parts_cost_min?: number | null
+          id?: string
+          key_findings?: Json | null
+          parts_probability?: number | null
+          possible_parts?: Json | null
+          price_confidence?: string | null
+          probabilities?: Json | null
+          probable_issue?: string | null
+          problem_key?: string | null
+          recommended_service_type?: string | null
+          self_fix_tips?: Json | null
+          service_type?: string | null
+          session_id?: string | null
+          severity_level?: string | null
+          skipped?: boolean | null
+          technician_actual_issue?: string | null
+          technician_actual_price?: number | null
+          technician_diagnosis_accuracy?: string | null
+          technician_feedback_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          booking_path?: string | null
+          category_code?: string
+          confidence_score?: number | null
+          converted_to_booking?: boolean | null
+          created_at?: string
+          customer_id?: string | null
+          device_age_years?: number | null
+          device_brand?: string | null
+          device_model?: string | null
+          device_registry_id?: string | null
+          device_type?: string | null
+          diagnosis_duration_seconds?: number | null
+          diagnosis_method?: string | null
+          estimated_duration_minutes?: number | null
+          estimated_max_price?: number | null
+          estimated_min_price?: number | null
+          estimated_parts_cost_max?: number | null
+          estimated_parts_cost_min?: number | null
+          id?: string
+          key_findings?: Json | null
+          parts_probability?: number | null
+          possible_parts?: Json | null
+          price_confidence?: string | null
+          probabilities?: Json | null
+          probable_issue?: string | null
+          problem_key?: string | null
+          recommended_service_type?: string | null
+          self_fix_tips?: Json | null
+          service_type?: string | null
+          session_id?: string | null
+          severity_level?: string | null
+          skipped?: boolean | null
+          technician_actual_issue?: string | null
+          technician_actual_price?: number | null
+          technician_diagnosis_accuracy?: string | null
+          technician_feedback_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnosis_outcomes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnosis_outcomes_device_registry_id_fkey"
+            columns: ["device_registry_id"]
+            isOneToOne: false
+            referencedRelation: "device_registry"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispatch_escalations: {
         Row: {
           booking_id: string
