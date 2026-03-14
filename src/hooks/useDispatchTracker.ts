@@ -1,15 +1,13 @@
 /**
  * useDispatchTracker — Real-time customer-facing dispatch status tracker.
  *
- * Subscribes to:
- * - bookings (dispatch_status, status changes)
- * - dispatch_offers (offer lifecycle)
- * - job_timeline (event log for secondary signals)
+ * Subscribes to bookings, dispatch_offers, job_timeline via Supabase Realtime.
  *
- * Normalizes into clear customer-facing phases:
- * SEARCHING_TECHNICIAN → OFFER_SENT → AWAITING_ACCEPTANCE →
- * TECHNICIAN_ACCEPTED → TEAM_FORMING → TECHNICIAN_EN_ROUTE →
- * TECHNICIAN_ARRIVING → DISPATCH_ESCALATED → DISPATCH_FAILED
+ * Customer-facing phases:
+ * SEARCHING_TECHNICIAN → AWAITING_ACCEPTANCE → TECHNICIAN_ACCEPTED →
+ * SEARCHING_TEAM → LEAD_ASSIGNED → TEAM_FORMING → TEAM_ASSIGNED →
+ * TECHNICIAN_EN_ROUTE → TECHNICIAN_ARRIVING →
+ * DISPATCH_ESCALATED → DISPATCH_FAILED
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,9 +15,10 @@ import { supabase } from "@/integrations/supabase/client";
 export type DispatchPhase =
   | "IDLE"
   | "SEARCHING_TECHNICIAN"
-  | "OFFER_SENT"
   | "AWAITING_ACCEPTANCE"
   | "TECHNICIAN_ACCEPTED"
+  | "SEARCHING_TEAM"
+  | "LEAD_ASSIGNED"
   | "TEAM_FORMING"
   | "TEAM_ASSIGNED"
   | "TECHNICIAN_EN_ROUTE"
@@ -43,14 +42,6 @@ export interface DispatchTrackerState {
   team_members: TechnicianInfo[];
   dispatch_round: number;
   escalation_flag: boolean;
-  // Extended data
-  offers_pending: number;
-  offers_total: number;
-  accepted_count: number;
-  multi_tech_required: number;
-  is_multi_tech: boolean;
-  last_event: string | null;
-  error: string | null;
 }
 
 const INITIAL_STATE: DispatchTrackerState = {
@@ -60,13 +51,6 @@ const INITIAL_STATE: DispatchTrackerState = {
   team_members: [],
   dispatch_round: 0,
   escalation_flag: false,
-  offers_pending: 0,
-  offers_total: 0,
-  accepted_count: 0,
-  multi_tech_required: 1,
-  is_multi_tech: false,
-  last_event: null,
-  error: null,
 };
 
 const MULTI_TECH_DEFAULTS: Record<string, number> = { AC: 2, SOLAR: 3, CCTV: 2, SMART_HOME_OFFICE: 2 };
@@ -84,20 +68,15 @@ export function useDispatchTracker(bookingId: string | undefined) {
     if (!bookingId || !mountedRef.current) return;
 
     try {
-      const [bookingRes, offersRes, timelineRes] = await Promise.all([
+      const [bookingRes, offersRes] = await Promise.all([
         supabase.from("bookings")
           .select("dispatch_status, dispatch_round, dispatch_mode, promised_eta_minutes, partner_id, status, category_code, is_emergency")
           .eq("id", bookingId)
           .single(),
         supabase.from("dispatch_offers")
-          .select("id, partner_id, status, offer_mode, is_lead_technician, eta_min_minutes, eta_max_minutes, dispatch_score, accept_window_seconds, created_at, expires_at, multi_tech_group_id, category_code")
+          .select("id, partner_id, status, offer_mode, is_lead_technician, eta_min_minutes, eta_max_minutes, multi_tech_group_id")
           .eq("booking_id", bookingId)
           .order("created_at", { ascending: false }),
-        supabase.from("job_timeline")
-          .select("status, note, created_at")
-          .eq("booking_id", bookingId)
-          .order("created_at", { ascending: false })
-          .limit(5),
       ]);
 
       if (!mountedRef.current) return;
@@ -106,79 +85,68 @@ export function useDispatchTracker(bookingId: string | undefined) {
       if (!booking) return;
 
       const offers = offersRes.data || [];
-      const timeline = timelineRes.data || [];
-
       const pendingOffers = offers.filter((o: any) => o.status === "pending");
       const acceptedOffers = offers.filter((o: any) => o.status === "accepted");
       const isMultiTech = offers.some((o: any) => o.offer_mode === "multi_tech");
-      const multiTechRequired = isMultiTech
-        ? MULTI_TECH_DEFAULTS[booking.category_code] || 2
-        : 1;
+      const multiTechRequired = isMultiTech ? MULTI_TECH_DEFAULTS[booking.category_code] || 2 : 1;
+      const hasAcceptedLead = acceptedOffers.some((o: any) => o.is_lead_technician);
 
       // ═══ PHASE RESOLUTION ═══
       let phase: DispatchPhase = "IDLE";
 
-      // Check booking-level status first
       if (booking.status === "cancelled") {
         phase = "DISPATCH_FAILED";
       } else if (["tech_en_route"].includes(booking.status)) {
         phase = "TECHNICIAN_EN_ROUTE";
       } else if (["tech_arrived", "inspecting"].includes(booking.status)) {
         phase = "TECHNICIAN_ARRIVING";
-      } else {
-        // Dispatch-status based
-        switch (booking.dispatch_status) {
-          case "dispatching":
-            phase = "SEARCHING_TECHNICIAN";
-            break;
-
-          case "pending_acceptance":
-            if (pendingOffers.length > 0) {
-              phase = "AWAITING_ACCEPTANCE";
-            } else {
-              phase = "OFFER_SENT";
-            }
-            break;
-
-          case "accepted":
-          case "ops_confirmed":
-            phase = "TECHNICIAN_ACCEPTED";
-            break;
-
-          case "team_assigned":
-            phase = "TEAM_ASSIGNED";
-            break;
-
-          case "escalated":
-          case "no_provider_found":
-            phase = "DISPATCH_ESCALATED";
-            break;
-
-          default:
-            if (booking.partner_id && ["assigned", "tech_en_route"].includes(booking.status)) {
-              phase = "TECHNICIAN_ACCEPTED";
-            } else if (booking.dispatch_status) {
-              phase = "SEARCHING_TECHNICIAN";
-            }
-            break;
+      } else if (booking.dispatch_status === "escalated" || booking.dispatch_status === "no_provider_found") {
+        phase = "DISPATCH_ESCALATED";
+      } else if (booking.dispatch_status === "team_assigned") {
+        phase = "TEAM_ASSIGNED";
+      } else if (booking.dispatch_status === "accepted" || booking.dispatch_status === "ops_confirmed") {
+        phase = isMultiTech ? "TEAM_ASSIGNED" : "TECHNICIAN_ACCEPTED";
+      } else if (isMultiTech) {
+        // Multi-tech specific sub-phases
+        if (hasAcceptedLead && acceptedOffers.length < multiTechRequired && pendingOffers.length > 0) {
+          phase = "TEAM_FORMING";
+        } else if (hasAcceptedLead && acceptedOffers.length < multiTechRequired) {
+          phase = "SEARCHING_TEAM";
+        } else if (hasAcceptedLead) {
+          phase = "LEAD_ASSIGNED";
+        } else if (pendingOffers.length > 0) {
+          phase = "AWAITING_ACCEPTANCE";
+        } else if (booking.dispatch_status === "dispatching") {
+          phase = "SEARCHING_TECHNICIAN";
+        } else if (booking.dispatch_status) {
+          phase = "SEARCHING_TECHNICIAN";
         }
-      }
-
-      // Multi-tech team forming detection
-      if (isMultiTech && acceptedOffers.length > 0 && acceptedOffers.length < multiTechRequired && pendingOffers.length > 0) {
-        phase = "TEAM_FORMING";
+      } else {
+        // Single-tech phases
+        if (booking.dispatch_status === "pending_acceptance") {
+          phase = pendingOffers.length > 0 ? "AWAITING_ACCEPTANCE" : "SEARCHING_TECHNICIAN";
+        } else if (booking.dispatch_status === "dispatching") {
+          phase = "SEARCHING_TECHNICIAN";
+        } else if (booking.partner_id && ["assigned", "tech_en_route"].includes(booking.status)) {
+          phase = "TECHNICIAN_ACCEPTED";
+        } else if (booking.dispatch_status) {
+          phase = "SEARCHING_TECHNICIAN";
+        }
       }
 
       // ═══ TECHNICIAN DETAILS ═══
       let technician: TechnicianInfo | null = null;
       let teamMembers: TechnicianInfo[] = [];
 
-      if (acceptedOffers.length > 0) {
-        const partnerIds = [...new Set(acceptedOffers.map((o: any) => o.partner_id))];
+      const partnerIdsToFetch = acceptedOffers.length > 0
+        ? [...new Set(acceptedOffers.map((o: any) => o.partner_id))]
+        : booking.partner_id ? [booking.partner_id] : [];
+
+      if (partnerIdsToFetch.length > 0 && mountedRef.current) {
         const { data: partners } = await supabase
           .from("partners")
           .select("id, full_name, rating_average, vehicle_type, profile_photo_url")
-          .in("id", partnerIds);
+          .in("id", partnerIdsToFetch);
 
         if (mountedRef.current && partners) {
           teamMembers = partners.map((p: any) => {
@@ -189,45 +157,22 @@ export function useDispatchTracker(bookingId: string | undefined) {
               rating_average: p.rating_average || 0,
               vehicle_type: p.vehicle_type || "motorcycle",
               profile_photo_url: p.profile_photo_url,
-              is_lead: offer?.is_lead_technician || false,
+              is_lead: offer?.is_lead_technician || (partnerIdsToFetch.length === 1),
             };
           });
 
-          // Primary technician = lead or first accepted
           const lead = teamMembers.find(t => t.is_lead);
           technician = lead || teamMembers[0] || null;
-        }
-      } else if (booking.partner_id) {
-        // Fallback: fetch from booking.partner_id
-        const { data: assignedPartner } = await supabase
-          .from("partners")
-          .select("id, full_name, rating_average, vehicle_type, profile_photo_url")
-          .eq("id", booking.partner_id)
-          .single();
-
-        if (mountedRef.current && assignedPartner) {
-          technician = {
-            partner_id: assignedPartner.id,
-            full_name: assignedPartner.full_name,
-            rating_average: assignedPartner.rating_average || 0,
-            vehicle_type: assignedPartner.vehicle_type || "motorcycle",
-            profile_photo_url: assignedPartner.profile_photo_url,
-            is_lead: true,
-          };
-          teamMembers = [technician];
         }
       }
 
       // ═══ ETA ═══
       const bestOffer = acceptedOffers[0] || pendingOffers[0];
-      const eta = bestOffer
+      const eta = bestOffer?.eta_min_minutes != null
         ? { min: bestOffer.eta_min_minutes, max: bestOffer.eta_max_minutes }
         : booking.promised_eta_minutes
           ? { min: Math.round(booking.promised_eta_minutes * 0.7), max: Math.round(booking.promised_eta_minutes * 1.3) }
           : null;
-
-      // Last meaningful event
-      const lastEvent = timeline[0]?.status || null;
 
       if (mountedRef.current) {
         setState({
@@ -237,48 +182,25 @@ export function useDispatchTracker(bookingId: string | undefined) {
           team_members: teamMembers,
           dispatch_round: booking.dispatch_round || 0,
           escalation_flag: booking.dispatch_status === "escalated",
-          offers_pending: pendingOffers.length,
-          offers_total: offers.length,
-          accepted_count: acceptedOffers.length,
-          multi_tech_required: multiTechRequired,
-          is_multi_tech: isMultiTech,
-          last_event: lastEvent,
-          error: null,
         });
       }
     } catch (e) {
-      if (mountedRef.current) {
-        setState(prev => ({ ...prev, error: e instanceof Error ? e.message : "Unknown error" }));
-      }
+      console.error("[DispatchTracker] Error:", e);
     }
   }, [bookingId]);
 
   // Initial fetch
-  useEffect(() => {
-    fetchState();
-  }, [fetchState]);
+  useEffect(() => { fetchState(); }, [fetchState]);
 
-  // Real-time subscriptions: bookings + dispatch_offers + job_timeline
+  // Real-time subscriptions
   useEffect(() => {
     if (!bookingId) return;
 
     const channel = supabase
       .channel(`dispatch-tracker-${bookingId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "bookings", filter: `id=eq.${bookingId}` },
-        () => { fetchState(); }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "dispatch_offers", filter: `booking_id=eq.${bookingId}` },
-        () => { fetchState(); }
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "job_timeline", filter: `booking_id=eq.${bookingId}` },
-        () => { fetchState(); }
-      )
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "bookings", filter: `id=eq.${bookingId}` }, () => fetchState())
+      .on("postgres_changes", { event: "*", schema: "public", table: "dispatch_offers", filter: `booking_id=eq.${bookingId}` }, () => fetchState())
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "job_timeline", filter: `booking_id=eq.${bookingId}` }, () => fetchState())
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
