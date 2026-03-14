@@ -53,11 +53,15 @@ const ServiceEvidencePanel = ({
           evidence={evidence}
           rule={rule}
           role={isActiveService ? role : "customer"}
+          bookingId={bookingId}
+          categoryCode={categoryCode}
           onUploadBefore={(photos, notes) =>
             upsertEvidence({
               before_photos: photos,
               before_notes: notes,
               before_uploaded_at: new Date().toISOString(),
+              category_code: categoryCode,
+              uploaded_by_role: role,
             } as any)
           }
           onUploadAfter={(photos, notes) =>
@@ -66,6 +70,8 @@ const ServiceEvidencePanel = ({
               after_notes: notes,
               after_uploaded_at: new Date().toISOString(),
               technician_notes: notes,
+              category_code: categoryCode,
+              uploaded_by_role: role,
             } as any)
           }
         />
@@ -75,6 +81,7 @@ const ServiceEvidencePanel = ({
       {isReviewable && evidence && (
         <CustomerReviewPanel
           evidence={evidence}
+          categoryCode={categoryCode}
           onConfirm={confirmService}
           onDispute={openDispute}
         />

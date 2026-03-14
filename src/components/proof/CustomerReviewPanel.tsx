@@ -1,23 +1,54 @@
 /**
  * Customer review panel for confirming service or opening disputes.
- * Shows before/after evidence, technician notes, and action buttons.
+ * Shows before/after evidence, technician notes, warranty info, and action buttons.
+ * Confirmation activates warranty + schedules maintenance reminder.
  */
-import { useState } from "react";
-import { CheckCircle2, AlertTriangle, MessageSquare, Shield } from "lucide-react";
+import { useState, useEffect } from "react";
+import { CheckCircle2, AlertTriangle, MessageSquare, Shield, Calendar, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import ServiceProofBadge from "./ServiceProofBadge";
+import { getEvidencePhotoUrl } from "@/hooks/useServiceEvidence";
 import type { ServiceEvidenceData } from "@/hooks/useServiceEvidence";
 
 interface CustomerReviewPanelProps {
   evidence: ServiceEvidenceData | null;
-  onConfirm: () => Promise<any>;
+  categoryCode?: string;
+  onConfirm: (categoryCode?: string) => Promise<any>;
   onDispute: (reason: string) => Promise<any>;
 }
 
-const CustomerReviewPanel = ({ evidence, onConfirm, onDispute }: CustomerReviewPanelProps) => {
+function ReviewPhotoGrid({ paths, label }: { paths: string[]; label: string }) {
+  const [urls, setUrls] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(paths.map(p => getEvidencePhotoUrl(p))).then(r => {
+      if (!cancelled) setUrls(r);
+    });
+    return () => { cancelled = true; };
+  }, [paths]);
+
+  return (
+    <div>
+      <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">{label}</p>
+      <div className="space-y-1.5">
+        {urls.length > 0 ? urls.map((url, i) => (
+          <div key={i} className="aspect-video rounded-lg overflow-hidden bg-muted">
+            <img src={url} alt={`${label} ${i + 1}`} className="w-full h-full object-cover" />
+          </div>
+        )) : (
+          <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">No photos</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const CustomerReviewPanel = ({ evidence, categoryCode, onConfirm, onDispute }: CustomerReviewPanelProps) => {
   const [showDispute, setShowDispute] = useState(false);
   const [disputeReason, setDisputeReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,8 +62,8 @@ const CustomerReviewPanel = ({ evidence, onConfirm, onDispute }: CustomerReviewP
 
   const handleConfirm = async () => {
     setSubmitting(true);
-    await onConfirm();
-    toast.success("Service confirmed! Thank you.");
+    await onConfirm(categoryCode);
+    toast.success("Service confirmed! Warranty activated.");
     setSubmitting(false);
   };
 
@@ -61,36 +92,8 @@ const CustomerReviewPanel = ({ evidence, onConfirm, onDispute }: CustomerReviewP
       {/* Before/After comparison */}
       {(beforePhotos.length > 0 || afterPhotos.length > 0) && (
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">Before</p>
-            <div className="space-y-1.5">
-              {beforePhotos.map((url, i) => (
-                <div key={i} className="aspect-video rounded-lg overflow-hidden bg-muted">
-                  <img src={url} alt={`Before ${i + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {beforePhotos.length === 0 && (
-                <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground">No photos</span>
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <p className="text-[10px] font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">After</p>
-            <div className="space-y-1.5">
-              {afterPhotos.map((url, i) => (
-                <div key={i} className="aspect-video rounded-lg overflow-hidden bg-muted">
-                  <img src={url} alt={`After ${i + 1}`} className="w-full h-full object-cover" />
-                </div>
-              ))}
-              {afterPhotos.length === 0 && (
-                <div className="aspect-video rounded-lg bg-muted flex items-center justify-center">
-                  <span className="text-xs text-muted-foreground">No photos</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <ReviewPhotoGrid paths={beforePhotos} label="Before" />
+          <ReviewPhotoGrid paths={afterPhotos} label="After" />
         </div>
       )}
 
@@ -102,7 +105,32 @@ const CustomerReviewPanel = ({ evidence, onConfirm, onDispute }: CustomerReviewP
         </div>
       )}
 
-      {/* Status & Actions */}
+      {/* Warranty info when confirmed */}
+      {isConfirmed && evidence.warranty_activated && evidence.warranty_text && (
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <Award className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-foreground">Warranty Active</p>
+            <p className="text-[11px] text-muted-foreground">{evidence.warranty_text}</p>
+            {evidence.warranty_end_date && (
+              <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Expires: {new Date(evidence.warranty_end_date).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Maintenance reminder */}
+      {isConfirmed && evidence.maintenance_due_date && (
+        <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border text-xs text-muted-foreground">
+          <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+          Next maintenance due: {new Date(evidence.maintenance_due_date).toLocaleDateString()}
+        </div>
+      )}
+
+      {/* Status */}
       {isConfirmed && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-success/5 border border-success/20">
           <CheckCircle2 className="w-4 h-4 text-success" />
@@ -125,6 +153,7 @@ const CustomerReviewPanel = ({ evidence, onConfirm, onDispute }: CustomerReviewP
         </div>
       )}
 
+      {/* Actions */}
       {!isConfirmed && !isDisputed && (
         <>
           {showDispute ? (
@@ -146,11 +175,7 @@ const CustomerReviewPanel = ({ evidence, onConfirm, onDispute }: CustomerReviewP
                   <AlertTriangle className="w-4 h-4 mr-1" />
                   Submit Dispute
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDispute(false)}
-                >
+                <Button variant="outline" size="sm" onClick={() => setShowDispute(false)}>
                   Cancel
                 </Button>
               </div>
