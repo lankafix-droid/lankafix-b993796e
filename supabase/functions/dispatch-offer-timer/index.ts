@@ -128,14 +128,12 @@ serve(async (req) => {
         const requiredCount = MULTI_TECH_DEFAULTS[booking.category_code] || 2;
         const acceptedCount = acceptedOffers?.length || 0;
         const hasLead = acceptedOffers?.some((o: any) => o.is_lead_technician) || false;
-
-        // Check if lead expired (was in our expired list)
         const leadExpired = offers.some((o: any) => o.is_lead_technician);
+        const currentRound = booking.dispatch_round || 1;
 
         if (leadExpired && !hasLead) {
           // ── Lead expired: promote highest-scored accepted tech to lead, or re-dispatch ──
           if (acceptedCount > 0) {
-            // Promote first accepted to lead
             const newLead = acceptedOffers![0];
             await supabase.from("dispatch_offers")
               .update({ is_lead_technician: true })
@@ -150,7 +148,6 @@ serve(async (req) => {
             });
             leadReselected++;
 
-            // If we have enough techs now, complete
             if (acceptedCount >= requiredCount) {
               const leadId = newLead.partner_id;
               await supabase.from("bookings").update({
@@ -170,29 +167,49 @@ serve(async (req) => {
               continue;
             }
 
-            // Need more techs — re-dispatch for support only
-            await triggerNextRound(supabase, bookingId, booking.dispatch_round || 1);
+            // Need more support — check if rounds exhausted
+            if (currentRound >= MAX_DISPATCH_ROUNDS) {
+              // Release all accepted partners since team cannot be completed
+              await releasePartners(supabase, acceptedOffers!, bookingId);
+              await escalateMultiTech(supabase, bookingId, currentRound, acceptedCount, requiredCount);
+              escalated++;
+              continue;
+            }
+
+            await triggerNextRound(supabase, bookingId, currentRound);
             retriggered++;
             continue;
           }
 
           // No accepted at all — full re-dispatch
-          await triggerNextRound(supabase, bookingId, booking.dispatch_round || 1);
+          if (currentRound >= MAX_DISPATCH_ROUNDS) {
+            await escalateMultiTech(supabase, bookingId, currentRound, 0, requiredCount);
+            escalated++;
+            continue;
+          }
+          await triggerNextRound(supabase, bookingId, currentRound);
           retriggered++;
           continue;
         }
 
         // Lead accepted but not enough support
         if (hasLead && acceptedCount >= requiredCount) {
-          // Team complete
+          // Team complete — expire any extra pending offers
           const leadOffer = acceptedOffers!.find((o: any) => o.is_lead_technician);
           const leadId = leadOffer?.partner_id || acceptedOffers![0].partner_id;
 
-          await supabase.from("bookings").update({
-            partner_id: leadId, selected_partner_id: leadId,
-            dispatch_status: "team_assigned", status: "assigned",
-            assigned_at: now, assignment_mode: "multi_tech_dispatch",
-          }).eq("id", bookingId);
+          await Promise.all([
+            supabase.from("bookings").update({
+              partner_id: leadId, selected_partner_id: leadId,
+              dispatch_status: "team_assigned", status: "assigned",
+              assigned_at: now, assignment_mode: "multi_tech_dispatch",
+            }).eq("id", bookingId),
+            // Expire any remaining pending multi-tech offers
+            supabase.from("dispatch_offers")
+              .update({ status: "expired_by_accept", responded_at: now })
+              .eq("multi_tech_group_id", groupId)
+              .eq("status", "pending"),
+          ]);
 
           await supabase.from("job_timeline").insert({
             booking_id: bookingId,
@@ -205,8 +222,18 @@ serve(async (req) => {
           continue;
         }
 
-        // Not enough — try next round for support slots
-        await triggerNextRound(supabase, bookingId, booking.dispatch_round || 1);
+        // Partial team, not enough support — retry or escalate+release
+        if (currentRound >= MAX_DISPATCH_ROUNDS) {
+          // Release all accepted partners — team formation failed
+          if (acceptedOffers && acceptedOffers.length > 0) {
+            await releasePartners(supabase, acceptedOffers, bookingId);
+          }
+          await escalateMultiTech(supabase, bookingId, currentRound, acceptedCount, requiredCount);
+          escalated++;
+          continue;
+        }
+
+        await triggerNextRound(supabase, bookingId, currentRound);
         retriggered++;
         continue;
       }
@@ -261,6 +288,62 @@ serve(async (req) => {
     });
   }
 });
+
+/** Release partner availability locks when multi-tech team formation fails */
+async function releasePartners(supabase: any, partners: { partner_id: string }[], bookingId: string) {
+  for (const p of partners) {
+    try {
+      const { data: partner } = await supabase
+        .from("partners")
+        .select("current_job_count")
+        .eq("id", p.partner_id)
+        .single();
+
+      if (partner) {
+        const newCount = Math.max(0, (partner.current_job_count || 1) - 1);
+        await supabase.from("partners").update({
+          current_job_count: newCount,
+          availability_status: newCount === 0 ? "online" : "busy",
+          active_job_id: null,
+        }).eq("id", p.partner_id);
+      }
+    } catch (e) {
+      console.error(`[ReleasePartner] Failed for ${p.partner_id}:`, e);
+    }
+  }
+
+  await supabase.from("job_timeline").insert({
+    booking_id: bookingId,
+    status: "partners_released",
+    actor: "offer_timer",
+    note: `Released ${partners.length} partner(s) from incomplete multi-tech team`,
+    metadata: { partner_ids: partners.map(p => p.partner_id) },
+  });
+}
+
+/** Escalate a failed multi-tech dispatch */
+async function escalateMultiTech(supabase: any, bookingId: string, round: number, accepted: number, required: number) {
+  await Promise.all([
+    supabase.from("bookings").update({ dispatch_status: "escalated" }).eq("id", bookingId),
+    supabase.from("dispatch_escalations").insert({
+      booking_id: bookingId,
+      reason: "multi_tech_team_incomplete",
+      dispatch_rounds_attempted: round,
+    }),
+    supabase.from("job_timeline").insert({
+      booking_id: bookingId,
+      status: "dispatch_failed",
+      actor: "offer_timer",
+      note: `Multi-tech team incomplete (${accepted}/${required}) after ${round} rounds — escalated`,
+      metadata: { accepted, required, round },
+    }),
+    supabase.from("notification_events").insert({
+      event_type: "dispatch_escalated",
+      booking_id: bookingId,
+      metadata: { reason: "multi_tech_team_incomplete", accepted, required, round },
+    }),
+  ]);
+}
 
 /** Trigger next dispatch round via orchestrator */
 async function triggerNextRound(supabase: any, bookingId: string, currentRound: number) {
