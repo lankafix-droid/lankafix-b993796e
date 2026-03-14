@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger
 } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from "@/components/ui/table";
