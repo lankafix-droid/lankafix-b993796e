@@ -378,6 +378,8 @@ export default function WarRoomPage() {
       `Open Disputes: ${activeDisputes.length}`,
       `Pending Confirmations: ${pendingConfirmations.length}`,
       `Verified Jobs: ${verifiedJobs.length}`,
+      `Warranties Activated: ${evidenceRecords.filter(e => e.warranty_activated).length}`,
+      `Maintenance Due (7d): ${evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000)).length}`,
       ``,
       `── Launch ──`,
       `Total Completed: ${totalCompleted} / ${currentMilestone}`,
