@@ -169,7 +169,7 @@ export default function WarRoomPage() {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [bk, qt, pt, inc, pay, esc, dl] = await Promise.all([
+    const [bk, qt, pt, inc, pay, esc, dl, ev] = await Promise.all([
       supabase.from("bookings").select("id,category_code,zone_code,status,dispatch_status,payment_status,customer_rating,created_at,assigned_at,partner_id,booking_source,is_emergency,sla_eta_minutes")
         .neq("booking_source", "pilot_simulation").order("created_at", { ascending: false }).limit(200),
       supabase.from("quotes").select("id,booking_id,status,created_at,submitted_at,approved_at,total_lkr").order("created_at", { ascending: false }).limit(200),
@@ -179,6 +179,7 @@ export default function WarRoomPage() {
       supabase.from("payments").select("id,booking_id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
       supabase.from("dispatch_escalations").select("id,booking_id,reason,dispatch_rounds_attempted,created_at,resolved_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("dispatch_log").select("id,booking_id,partner_id,status,response,created_at,responded_at,response_time_seconds").gte("created_at", todayStart).order("created_at", { ascending: false }).limit(500),
+      supabase.from("service_evidence").select("booking_id,service_verified,customer_confirmed,customer_dispute,before_photos,after_photos,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     const liveBookings = (bk.data || []) as BookingRow[];
     setBookings(liveBookings);
@@ -186,13 +187,14 @@ export default function WarRoomPage() {
     // Build live booking ID set for simulation isolation
     const liveBookingIds = new Set(liveBookings.map(b => b.id));
 
-    // Filter quotes, payments, escalations to only those linked to live bookings
+    // Filter quotes, payments, escalations, evidence to only those linked to live bookings
     setQuotes(((qt.data || []) as QuoteRow[]).filter(q => liveBookingIds.has(q.booking_id)));
     setPartners((pt.data || []) as PartnerRow[]);
     setIncidents(((inc.data || []) as IncidentRow[]).filter(i => !i.booking_id || liveBookingIds.has(i.booking_id)));
     setPayments(((pay.data || []) as PaymentRow[]).filter(p => liveBookingIds.has(p.booking_id)));
     setEscalations(((esc.data || []) as EscalationRow[]).filter(e => liveBookingIds.has(e.booking_id)));
     setDispatchLogs(((dl.data || []) as DispatchLogRow[]).filter(d => liveBookingIds.has(d.booking_id)));
+    setEvidenceRecords(((ev.data || []) as EvidenceRow[]).filter(e => liveBookingIds.has(e.booking_id)));
     setLoading(false);
     setLastRefresh(new Date());
   };
