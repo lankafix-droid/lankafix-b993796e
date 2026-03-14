@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowRight, CheckCircle2, AlertTriangle, Stethoscope, FileText,
   Clock, DollarSign, Wrench, TrendingUp, ShieldAlert, Package,
