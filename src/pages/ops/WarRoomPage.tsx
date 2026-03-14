@@ -1075,20 +1075,47 @@ export default function WarRoomPage() {
                 <p className="text-[10px] text-muted-foreground">Maint. Due (7d)</p>
               </div>
             </div>
-            {jobsMissingEvidence.length > 0 && (
-              <div className="text-[10px] text-destructive bg-destructive/5 rounded-lg p-2 mb-2">
-                ⚠ {jobsMissingEvidence.length} completed job{jobsMissingEvidence.length > 1 ? "s" : ""} missing before/after evidence.
-                {jobsMissingEvidence.slice(0, 3).map(b => (
-                  <Button key={b.id} variant="link" size="sm" className="text-[10px] h-auto p-0 ml-1 text-destructive underline"
+
+            {/* Actionable booking list */}
+            {(jobsMissingEvidence.length > 0 || activeDisputes.length > 0 || pendingConfirmations.length > 0) && (
+              <div className="space-y-1 mt-2">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Action Required</p>
+                {jobsMissingEvidence.slice(0, 5).map(b => (
+                  <div key={`me-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
                     onClick={() => navigate(`/track/${b.id}`)}>
-                    {b.id.slice(0, 8)}
-                  </Button>
+                    <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">missing</Badge>
+                    <span className="font-mono">{b.id.slice(0, 6)}</span>
+                    <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
+                    <span className="text-muted-foreground">{zoneLabel(b.zone_code)}</span>
+                    <span className="text-muted-foreground ml-auto truncate max-w-[60px]">{b.partner_id ? (partnerMap[b.partner_id] || "—") : "—"}</span>
+                    <Eye className="w-3 h-3 text-muted-foreground shrink-0" />
+                  </div>
                 ))}
-              </div>
-            )}
-            {activeDisputes.length > 0 && (
-              <div className="text-[10px] text-destructive bg-destructive/5 rounded-lg p-2">
-                🔴 {activeDisputes.length} unresolved dispute{activeDisputes.length > 1 ? "s" : ""} — review immediately.
+                {activeDisputes.slice(0, 5).map(e => {
+                  const bk = bookings.find(b => b.id === e.booking_id);
+                  return (
+                    <div key={`dp-${e.booking_id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
+                      onClick={() => navigate(`/track/${e.booking_id}`)}>
+                      <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">dispute</Badge>
+                      <span className="font-mono">{e.booking_id.slice(0, 6)}</span>
+                      <span className="text-muted-foreground">{bk ? catLabel(bk.category_code) : "—"}</span>
+                      <span className="text-muted-foreground">{bk ? zoneLabel(bk.zone_code) : "—"}</span>
+                      <Eye className="w-3 h-3 text-muted-foreground shrink-0 ml-auto" />
+                    </div>
+                  );
+                })}
+                {pendingConfirmations.slice(0, 3).map(e => {
+                  const bk = bookings.find(b => b.id === e.booking_id);
+                  return (
+                    <div key={`pc-${e.booking_id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-warning/5 cursor-pointer hover:bg-warning/10"
+                      onClick={() => navigate(`/track/${e.booking_id}`)}>
+                      <Badge className="text-[9px] bg-warning/10 text-warning shrink-0">pending</Badge>
+                      <span className="font-mono">{e.booking_id.slice(0, 6)}</span>
+                      <span className="text-muted-foreground">{bk ? catLabel(bk.category_code) : "—"}</span>
+                      <Eye className="w-3 h-3 text-muted-foreground shrink-0 ml-auto" />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>

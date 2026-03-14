@@ -1,44 +1,56 @@
 /**
  * Unified Service Evidence Panel used in the TrackerPage.
- * Orchestrates the full proof workflow: before evidence → service → after evidence → customer review.
+ * Orchestrates the full proof workflow: before → service → after → customer review.
+ * Enforces evidence completion before technician can mark job done.
  */
-import { useServiceEvidence } from "@/hooks/useServiceEvidence";
+import { useServiceEvidence, isEvidenceComplete } from "@/hooks/useServiceEvidence";
 import { getEvidenceRule } from "@/config/evidenceRules";
 import BeforeAfterEvidence from "./BeforeAfterEvidence";
 import CustomerReviewPanel from "./CustomerReviewPanel";
 import ServiceProofBadge from "./ServiceProofBadge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertTriangle } from "lucide-react";
 
 interface ServiceEvidencePanelProps {
   bookingId: string;
   categoryCode: string;
   bookingStatus: string;
+  serviceType?: string | null;
   role?: "technician" | "customer";
+  /** Callback to inform parent whether completion is blocked */
+  onCompletionBlocked?: (blocked: boolean) => void;
 }
 
 const ServiceEvidencePanel = ({
   bookingId,
   categoryCode,
   bookingStatus,
+  serviceType,
   role = "customer",
+  onCompletionBlocked,
 }: ServiceEvidencePanelProps) => {
   const { evidence, loading, upsertEvidence, confirmService, openDispute } = useServiceEvidence(bookingId);
   const rule = getEvidenceRule(categoryCode);
+
+  // Compute if evidence blocks completion
+  const evidenceBlocked = role === "technician" && !isEvidenceComplete(evidence, categoryCode);
+
+  // Notify parent
+  if (onCompletionBlocked) {
+    onCompletionBlocked(evidenceBlocked);
+  }
 
   if (loading) {
     return <Skeleton className="h-40 rounded-xl" />;
   }
 
-  // Show evidence capture for technicians during active service
   const isActiveService = [
     "assigned", "tech_en_route", "arrived", "inspection_started",
     "in_progress", "repair_started",
   ].includes(bookingStatus);
 
-  // Show review for customers after service
   const isReviewable = ["completed", "rated"].includes(bookingStatus);
 
-  // Show evidence photos always if they exist
   const hasEvidence = evidence && (
     (evidence.before_photos?.length > 0) || (evidence.after_photos?.length > 0)
   );
@@ -47,6 +59,21 @@ const ServiceEvidencePanel = ({
 
   return (
     <div className="space-y-3">
+      {/* Evidence completion enforcement banner for technicians */}
+      {role === "technician" && isActiveService && evidenceBlocked && (
+        <div className="flex items-start gap-2 p-3 rounded-xl bg-warning/10 border border-warning/30 text-xs text-warning">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">Before/After evidence required before completion</p>
+            <p className="text-warning/80 mt-0.5">
+              Upload {rule.requiresBefore ? `min ${rule.minBeforePhotos} before photo(s)` : ""}
+              {rule.requiresBefore && rule.requiresAfter ? " and " : ""}
+              {rule.requiresAfter ? `min ${rule.minAfterPhotos} after photo(s)` : ""} to proceed.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Evidence capture or display */}
       {(isActiveService || hasEvidence) && (
         <BeforeAfterEvidence
@@ -82,6 +109,7 @@ const ServiceEvidencePanel = ({
         <CustomerReviewPanel
           evidence={evidence}
           categoryCode={categoryCode}
+          serviceType={serviceType}
           onConfirm={confirmService}
           onDispute={openDispute}
         />
