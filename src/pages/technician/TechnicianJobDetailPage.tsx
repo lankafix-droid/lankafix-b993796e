@@ -107,7 +107,7 @@ export default function TechnicianJobDetailPage() {
   const canInspect = status === "arrived";
   const canSubmitQuote = ["inspection_started", "in_progress"].includes(status) && booking.pricing.quoteRequired;
   const canStartRepair = ["quote_approved", "inspection_started", "in_progress"].includes(status);
-  const canComplete = ["repair_started", "in_progress"].includes(status);
+  const canComplete = ["repair_started", "in_progress"].includes(status) && !evidenceBlocked;
 
   return (
     <div className="min-h-screen bg-background pb-24">
