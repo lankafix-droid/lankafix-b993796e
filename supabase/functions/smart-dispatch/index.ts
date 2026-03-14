@@ -247,11 +247,17 @@ serve(async (req) => {
     // Determine required skill level
     const requiredSkill = skill_level_required || inferSkillLevel(service_type);
 
+    // ── CRITICAL SKILL HARD-BLOCK: severity ≥ 3 excludes under-skilled partners entirely ──
+    const isHardSkillGate = requiredSkill >= 3;
+
     // Determine multi-tech count
     const requiredTechs = multi_tech_count || 1;
 
     // Repeat partner preference from customer history
     const repeatPartnerIds = new Set(customer_service_history?.repeat_partner_ids || []);
+
+    // Track excluded partners for decision log
+    const exclusionLog: Array<{ partner_id: string; reason: string }> = [];
 
     // 2. Query eligible partners
     let query = supabase
@@ -290,16 +296,38 @@ serve(async (req) => {
     }> = [];
 
     for (const p of partners) {
-      if (exclude_partner_ids.includes(p.id)) continue;
+      if (exclude_partner_ids.includes(p.id)) {
+        exclusionLog.push({ partner_id: p.id, reason: "explicitly_excluded" });
+        continue;
+      }
 
-      if (p.availability_status === "busy" && (p.current_job_count || 0) >= (p.max_concurrent_jobs || 1)) continue;
-      if ((p.current_job_count || 0) >= (p.max_jobs_per_day || 5)) continue;
+      if (p.availability_status === "busy" && (p.current_job_count || 0) >= (p.max_concurrent_jobs || 1)) {
+        exclusionLog.push({ partner_id: p.id, reason: "at_max_concurrent_jobs" });
+        continue;
+      }
+      if ((p.current_job_count || 0) >= (p.max_jobs_per_day || 5)) {
+        exclusionLog.push({ partner_id: p.id, reason: "at_daily_capacity" });
+        continue;
+      }
+
+      // ── HARD-BLOCK: Critical skill gate ──
+      const partnerSkillLevel = p.skill_level || 1;
+      if (isHardSkillGate && partnerSkillLevel < requiredSkill) {
+        exclusionLog.push({ partner_id: p.id, reason: `skill_too_low_L${partnerSkillLevel}_needs_L${requiredSkill}` });
+        continue;
+      }
 
       const loc = resolvePartnerLocation(p, zoneCentroids);
-      if (!loc) continue;
+      if (!loc) {
+        exclusionLog.push({ partner_id: p.id, reason: "no_location" });
+        continue;
+      }
 
       const dist = haversineKm(customer_lat, customer_lng, loc.lat, loc.lng);
-      if (dist > initialMaxDist) continue;
+      if (dist > initialMaxDist) {
+        exclusionLog.push({ partner_id: p.id, reason: `too_far_${Math.round(dist)}km` });
+        continue;
+      }
 
       const staleness = getStalenessFactor(p.last_location_ping_at);
 
@@ -439,8 +467,18 @@ serve(async (req) => {
       if ((p.late_arrival_count || 0) > 3) penalty += 10;
       if (cancelRate > 20) penalty += 15;
 
-      // Customer priority boost
-      const custPriorityBoost = CUSTOMER_PRIORITY_BOOST[customer_priority] || 0;
+      // Customer priority boost — CAPPED and gated by quality floors
+      // VIP boost MUST NOT override: skill mismatch, poor reliability, excessive distance
+      let custPriorityBoost = CUSTOMER_PRIORITY_BOOST[customer_priority] || 0;
+
+      // Gate 1: Skill mismatch — zero boost if underqualified
+      if (skillMatchRaw < 40) custPriorityBoost = 0;
+      // Gate 2: Poor reliability — halve boost
+      if (reliabilityRaw < 30) custPriorityBoost = Math.floor(custPriorityBoost / 2);
+      // Gate 3: Excessive distance — halve boost
+      if (dist > 12) custPriorityBoost = Math.floor(custPriorityBoost / 2);
+      // Hard cap: never exceed 10 additive points regardless of tier
+      custPriorityBoost = Math.min(custPriorityBoost, 10);
 
       const breakdown: ScoreBreakdown = {
         proximity: Math.round(proximityRaw * weights.proximity),
@@ -519,11 +557,30 @@ serve(async (req) => {
 
     scored.sort((a, b) => b.score.total - a.score.total);
 
-    // ── Multi-technician dispatch ──
+    // ── Multi-technician dispatch (deduplicated, availability-verified, lead-designated) ──
     let resultCandidates = scored;
+    let leadPartnerId: string | null = null;
+
     if (requiredTechs > 1) {
-      // Return top N technicians for multi-tech jobs
-      resultCandidates = scored.slice(0, Math.max(requiredTechs + 2, 5));
+      // Select distinct available partners only; skip any at capacity
+      const selectedIds = new Set<string>();
+      const multiCandidates: typeof scored = [];
+
+      for (const c of scored) {
+        if (selectedIds.has(c.partner_id)) continue; // dedup
+        // Verify not overloaded (double-check: may have gained a job since query)
+        const remainingCapacity = (c.partner.max_concurrent_jobs || 1) - (c.partner.current_job_count || 0);
+        if (remainingCapacity <= 0 && c.partner.availability_status === "busy") continue;
+
+        selectedIds.add(c.partner_id);
+        multiCandidates.push(c);
+        if (multiCandidates.length >= requiredTechs + 2) break; // buffer of 2 extras
+      }
+
+      resultCandidates = multiCandidates;
+      // Lead technician = highest scored with skill >= required
+      const leadCandidate = multiCandidates.find(c => (c.partner.skill_level || 1) >= requiredSkill);
+      leadPartnerId = leadCandidate?.partner_id || multiCandidates[0]?.partner_id || null;
     } else if (dispatchMode === "auto") {
       resultCandidates = scored.slice(0, 1);
     } else if (dispatchMode === "top_3") {
@@ -650,30 +707,43 @@ serve(async (req) => {
         }));
       }
 
-      // ── Dispatch decision log (for learning loop) ──
-      if (bestMatch) {
-        persistOps.push(supabase.from("job_timeline").insert({
-          booking_id,
-          status: "dispatch_decision",
-          actor: "ai_dispatch_brain",
-          note: `Ranked ${scored.length} candidates. Best: ${bestMatch.partner.full_name} (score: ${bestMatch.score.total}, skill: L${bestMatch.partner.skill_level}, ETA: ${bestMatch.eta_min}-${bestMatch.eta_max}min)`,
-          metadata: {
-            total_candidates: scored.length,
-            best_score: bestMatch.score.total,
-            dispatch_round,
-            required_skill: requiredSkill,
-            customer_priority,
-            multi_tech: requiredTechs > 1,
-            weights_used: weights,
-            top_3: scored.slice(0, 3).map(c => ({
-              id: c.partner_id,
-              score: c.score.total,
-              skill: c.partner.skill_level,
-              dist: c.distance_km,
-            })),
-          },
-        }));
-      }
+      // ── Enhanced Dispatch Decision Log (feeds War Room + Analytics + Learning Loop) ──
+      // Log EVERY dispatch attempt, not just successful ones
+      persistOps.push(supabase.from("job_timeline").insert({
+        booking_id,
+        status: bestMatch ? "dispatch_decision" : "dispatch_no_match",
+        actor: "ai_dispatch_brain",
+        note: bestMatch
+          ? `Ranked ${scored.length} candidates (${exclusionLog.length} excluded). Best: ${bestMatch.partner.full_name} (score: ${bestMatch.score.total}, skill: L${bestMatch.partner.skill_level}, ETA: ${bestMatch.eta_min}-${bestMatch.eta_max}min)${leadPartnerId ? ` | Lead: ${leadPartnerId}` : ""}`
+          : `No viable candidates. ${exclusionLog.length} partners excluded. ${partners?.length || 0} total queried.`,
+        metadata: {
+          decision_timestamp: new Date().toISOString(),
+          total_queried: partners?.length || 0,
+          total_scored: scored.length,
+          total_excluded: exclusionLog.length,
+          dispatch_round,
+          required_skill: requiredSkill,
+          hard_skill_gate: isHardSkillGate,
+          customer_priority,
+          accept_window_seconds: acceptWindowSec,
+          multi_tech: requiredTechs > 1,
+          multi_tech_count: requiredTechs,
+          lead_partner_id: leadPartnerId,
+          weights_used: weights,
+          exclusion_summary: exclusionLog.slice(0, 20), // cap for payload size
+          top_5: scored.slice(0, 5).map(c => ({
+            partner_id: c.partner_id,
+            name: c.partner.full_name,
+            score: c.score.total,
+            skill: c.partner.skill_level,
+            dist_km: c.distance_km,
+            eta: `${c.eta_min}-${c.eta_max}`,
+            score_breakdown: c.score,
+            selected: resultCandidates.some(rc => rc.partner_id === c.partner_id),
+            is_lead: c.partner_id === leadPartnerId,
+          })),
+        },
+      }));
 
       await Promise.all(persistOps);
     }
@@ -682,8 +752,11 @@ serve(async (req) => {
       dispatch_mode: requiredTechs > 1 ? "multi_tech" : dispatchMode,
       accept_window_seconds: acceptWindowSec,
       multi_tech_count: requiredTechs,
+      lead_partner_id: leadPartnerId,
       required_skill_level: requiredSkill,
+      hard_skill_gate: isHardSkillGate,
       customer_priority,
+      total_excluded: exclusionLog.length,
       candidates: resultCandidates.map((c) => ({
         partner_id: c.partner_id,
         partner: {
