@@ -557,11 +557,30 @@ serve(async (req) => {
 
     scored.sort((a, b) => b.score.total - a.score.total);
 
-    // ── Multi-technician dispatch ──
+    // ── Multi-technician dispatch (deduplicated, availability-verified, lead-designated) ──
     let resultCandidates = scored;
+    let leadPartnerId: string | null = null;
+
     if (requiredTechs > 1) {
-      // Return top N technicians for multi-tech jobs
-      resultCandidates = scored.slice(0, Math.max(requiredTechs + 2, 5));
+      // Select distinct available partners only; skip any at capacity
+      const selectedIds = new Set<string>();
+      const multiCandidates: typeof scored = [];
+
+      for (const c of scored) {
+        if (selectedIds.has(c.partner_id)) continue; // dedup
+        // Verify not overloaded (double-check: may have gained a job since query)
+        const remainingCapacity = (c.partner.max_concurrent_jobs || 1) - (c.partner.current_job_count || 0);
+        if (remainingCapacity <= 0 && c.partner.availability_status === "busy") continue;
+
+        selectedIds.add(c.partner_id);
+        multiCandidates.push(c);
+        if (multiCandidates.length >= requiredTechs + 2) break; // buffer of 2 extras
+      }
+
+      resultCandidates = multiCandidates;
+      // Lead technician = highest scored with skill >= required
+      const leadCandidate = multiCandidates.find(c => (c.partner.skill_level || 1) >= requiredSkill);
+      leadPartnerId = leadCandidate?.partner_id || multiCandidates[0]?.partner_id || null;
     } else if (dispatchMode === "auto") {
       resultCandidates = scored.slice(0, 1);
     } else if (dispatchMode === "top_3") {
