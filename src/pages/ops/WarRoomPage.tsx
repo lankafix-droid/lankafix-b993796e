@@ -159,6 +159,7 @@ export default function WarRoomPage() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [escalations, setEscalations] = useState<EscalationRow[]>([]);
   const [dispatchLogs, setDispatchLogs] = useState<DispatchLogRow[]>([]);
+  const [evidenceRecords, setEvidenceRecords] = useState<EvidenceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
