@@ -72,15 +72,17 @@ export default function TechnicianJobDetailPage() {
   const isMyJob = booking.partner_id === partner?.id;
   const latestQuote = quotes[0];
 
-  // Action availability
-  const canAccept = !isMyJob && ["matching", "awaiting_partner_confirmation", "requested"].includes(status);
+  // Action availability — fully DB-gated
+  const canAccept = !isMyJob && ["matching", "awaiting_partner_confirmation", "requested"].includes(status)
+    && !["completed", "cancelled", "no_show"].includes(status);
   const canStartTravel = isMyJob && status === "assigned";
   const canMarkArrived = isMyJob && status === "tech_en_route";
   const canStartWork = isMyJob && status === "arrived";
   const canCreateQuote = isMyJob && ["arrived", "inspection_started", "quote_rejected"].includes(status);
-  const canStartRepair = isMyJob && status === "quote_approved";
+  const canStartRepair = isMyJob && status === "quote_approved" && latestQuote?.status === "approved";
   const canCompleteRepair = isMyJob && status === "repair_started" && !evidenceBlocked;
-  const canRecordPayment = isMyJob && status === "completed" && latestQuote?.status === "approved";
+  const canRecordPayment = isMyJob && status === "completed" && latestQuote?.status === "approved"
+    && booking.payment_status !== "paid";
 
   const handleAccept = async () => {
     if (!jobId || !partner?.id) return;
