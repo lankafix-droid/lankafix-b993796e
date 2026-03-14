@@ -3,67 +3,59 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useBookingStore } from "@/store/bookingStore";
-import { useProviderERPStore } from "@/store/providerERPStore";
-import {
-  BOOKING_STATUS_LABELS, BOOKING_STATUS_COLORS, SERVICE_MODE_LABELS,
-  TECH_REJECTION_LABELS,
-} from "@/types/booking";
-import type { TechRejectionReason, JobOutcome } from "@/types/booking";
-import { JOB_OUTCOME_LABELS } from "@/types/booking";
-import { DISPUTE_REASONS } from "@/types/provider";
-import TimelineEventLog from "@/components/tracker/TimelineEventLog";
-import QuoteBuilder from "@/components/technician/QuoteBuilder";
+import { useTechnicianJobDetail } from "@/hooks/useTechnicianJobs";
+import { acceptJob, declineJob, updateJobStatus, startRepair, completeRepair, recordPayment } from "@/services/dispatchService";
+import { notifyTechnicianAssigned, notifyTechnicianEnRoute, notifyJobCompleted } from "@/services/notificationService";
+import { BOOKING_STATUS_LABELS, CATEGORY_LABELS, SERVICE_MODE_LABELS } from "@/types/booking";
+import QuoteForm from "@/components/quotes/QuoteForm";
 import ServiceEvidencePanel from "@/components/proof/ServiceEvidencePanel";
+import ReportIssueModal from "@/components/support/ReportIssueModal";
 import { track } from "@/lib/analytics";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
-  ArrowLeft, MapPin, Camera, Wrench, CheckCircle2,
-  XCircle, Navigation, Eye, ClipboardList, ShieldCheck,
-  AlertTriangle, Flag,
+  ArrowLeft, MapPin, Wrench, CheckCircle2,
+  ShieldCheck, AlertTriangle, Loader2,
+  FileText, Navigation, Play, XCircle,
+  ThumbsUp, ThumbsDown, Banknote, CircleCheck, Clock,
 } from "lucide-react";
+
+const DECLINE_REASONS = [
+  "Too far away",
+  "Currently busy",
+  "Outside my expertise",
+  "Schedule conflict",
+  "Other",
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  ...BOOKING_STATUS_LABELS,
+  tech_en_route: "On the Way",
+  arrived: "Arrived",
+  inspection_started: "Inspecting",
+  repair_started: "Repair In Progress",
+};
 
 export default function TechnicianJobDetailPage() {
   const { jobId } = useParams();
   const navigate = useNavigate();
-  const booking = useBookingStore((s) => s.getBooking(jobId || ""));
-  const acceptJob = useBookingStore((s) => s.acceptJob);
-  const rejectJob = useBookingStore((s) => s.rejectJob);
-  const markDispatched = useBookingStore((s) => s.markDispatched);
-  const markArrived = useBookingStore((s) => s.markArrived);
-  const startInspection = useBookingStore((s) => s.startInspection);
-  const startRepair = useBookingStore((s) => s.startRepair);
-  const markCompleted = useBookingStore((s) => s.markCompleted);
-  const attachTechnicianPhoto = useBookingStore((s) => s.attachTechnicianPhoto);
-  const setInternalNote = useBookingStore((s) => s.setInternalNote);
-  const updateBookingStatus = useBookingStore((s) => s.updateBookingStatus);
-  const addChatMessage = useBookingStore((s) => s.addChatMessage);
-  const setJobOutcome = useBookingStore((s) => s.setJobOutcome);
-  const startTravel = useBookingStore((s) => s.startTravel);
+  const { booking, partner, timeline, quotes, isLoading, refetchAll } = useTechnicianJobDetail(jobId);
 
-  const {
-    initJobChecklist, getJobChecklist, toggleChecklistItem, isChecklistComplete,
-    raiseDispute, getDisputesForJob,
-  } = useProviderERPStore();
-
-  const [showRejectReasons, setShowRejectReasons] = useState(false);
-  const [showQuoteBuilder, setShowQuoteBuilder] = useState(false);
-  const [showDispute, setShowDispute] = useState(false);
-  const [disputeReason, setDisputeReason] = useState("");
-  const [disputeDesc, setDisputeDesc] = useState("");
-  const [techNote, setTechNote] = useState("");
-  const [chatMsg, setChatMsg] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showDeclineReasons, setShowDeclineReasons] = useState(false);
+  const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
   const [evidenceBlocked, setEvidenceBlocked] = useState(false);
 
   useEffect(() => { if (jobId) track("technician_job_detail_view", { jobId }); }, [jobId]);
 
-  // Init checklist when job arrives
-  useEffect(() => {
-    if (booking && getJobChecklist(booking.jobId).length === 0) {
-      initJobChecklist(booking.jobId, booking.categoryCode);
-    }
-  }, [booking?.jobId]);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!booking) {
     return (
@@ -77,37 +69,88 @@ export default function TechnicianJobDetailPage() {
   }
 
   const status = booking.status;
-  const checklist = getJobChecklist(booking.jobId);
-  const checklistDone = isChecklistComplete(booking.jobId);
-  const disputes = getDisputesForJob(booking.jobId);
+  const isMyJob = booking.partner_id === partner?.id;
+  const latestQuote = quotes[0];
 
-  const handlePhotoUpload = (type: "before" | "after") => {
-    const mockUrl = `https://placeholder.co/400x300?text=${type}_photo_${Date.now()}`;
-    attachTechnicianPhoto(booking.jobId, type, mockUrl);
-    track(type === "before" ? "technician_before_photo" : "technician_after_photo", { jobId: booking.jobId });
+  // Action availability
+  const canAccept = !isMyJob && ["matching", "awaiting_partner_confirmation", "requested"].includes(status);
+  const canStartTravel = isMyJob && status === "assigned";
+  const canMarkArrived = isMyJob && status === "tech_en_route";
+  const canStartWork = isMyJob && status === "arrived";
+  const canCreateQuote = isMyJob && ["arrived", "inspection_started", "quote_rejected"].includes(status);
+  const canStartRepair = isMyJob && status === "quote_approved";
+  const canCompleteRepair = isMyJob && status === "repair_started" && !evidenceBlocked;
+  const canRecordPayment = isMyJob && status === "completed" && latestQuote?.status === "approved";
+
+  const handleAccept = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("accept");
+    const result = await acceptJob(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) {
+      toast.success("Job accepted!");
+      if (booking.customer_id) notifyTechnicianAssigned(booking.customer_id, jobId, partner.full_name || "Your technician").catch(() => {});
+      refetchAll();
+    } else toast.error(result.error || "Failed to accept");
   };
 
-  const handleReject = (reason: TechRejectionReason) => {
-    rejectJob(booking.jobId, reason);
-    setShowRejectReasons(false);
+  const handleDecline = async (reason: string) => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("decline");
+    const result = await declineJob(jobId, partner.id, reason);
+    setActionLoading(null);
+    setShowDeclineReasons(false);
+    if (result.success) { toast.info("Job declined."); refetchAll(); }
+    else toast.error(result.error || "Failed to decline");
   };
 
-  const handleRaiseDispute = () => {
-    if (!disputeReason || !disputeDesc) return;
-    raiseDispute(booking.jobId, "technician", disputeReason, disputeDesc);
-    setShowDispute(false);
-    setDisputeReason("");
-    setDisputeDesc("");
+  const handleStatusUpdate = async (action: "start_travel" | "arrived" | "start_work") => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading(action);
+    const result = await updateJobStatus(jobId, partner.id, action);
+    setActionLoading(null);
+    if (result.success) {
+      const msgs = { start_travel: "Travel started!", arrived: "Arrival confirmed.", start_work: "Work started!" };
+      toast.success(msgs[action]);
+      if (action === "start_travel" && booking.customer_id) {
+        notifyTechnicianEnRoute(booking.customer_id, jobId, partner.full_name || "Your technician", booking.promised_eta_minutes || 30).catch(() => {});
+      }
+      refetchAll();
+    } else toast.error(result.error || "Failed");
   };
 
-  const canAccept = ["matching", "awaiting_partner_confirmation", "assigned"].includes(status);
-  const canStartTravel = status === "assigned" && !booking.trackingData?.isTracking;
-  const canDispatch = status === "assigned";
-  const canArrive = status === "tech_en_route";
-  const canInspect = status === "arrived";
-  const canSubmitQuote = ["inspection_started", "in_progress"].includes(status) && booking.pricing.quoteRequired;
-  const canStartRepair = ["quote_approved", "inspection_started", "in_progress"].includes(status);
-  const canComplete = ["repair_started", "in_progress"].includes(status) && !evidenceBlocked;
+  const handleStartRepair = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("start_repair");
+    const result = await startRepair(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) { toast.success("Repair started!"); refetchAll(); }
+    else toast.error(result.error || "Failed");
+  };
+
+  const handleCompleteRepair = async () => {
+    if (!jobId || !partner?.id) return;
+    setActionLoading("complete_repair");
+    const result = await completeRepair(jobId, partner.id);
+    setActionLoading(null);
+    if (result.success) {
+      toast.success("Job completed!");
+      if (booking.customer_id) notifyJobCompleted(booking.customer_id, jobId).catch(() => {});
+      refetchAll();
+    } else toast.error(result.error || "Failed");
+  };
+
+  const handleRecordPayment = async () => {
+    if (!jobId || !latestQuote) return;
+    setActionLoading("record_payment");
+    const result = await recordPayment(jobId, latestQuote.id, latestQuote.total_lkr || 0, "cash");
+    setActionLoading(null);
+    if (result.success) { toast.success("Payment recorded!"); refetchAll(); }
+    else toast.error(result.error || "Failed");
+  };
+
+  const catLabel = CATEGORY_LABELS[booking.category_code as keyof typeof CATEGORY_LABELS] || booking.category_code;
+  const modeLabel = SERVICE_MODE_LABELS[booking.service_mode as keyof typeof SERVICE_MODE_LABELS] || (booking.service_mode || "on_site").replace(/_/g, " ");
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -116,286 +159,188 @@ export default function TechnicianJobDetailPage() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-lg font-bold text-foreground">{booking.jobId}</h1>
-          <Badge className={`text-[10px] ${BOOKING_STATUS_COLORS[status]}`}>{BOOKING_STATUS_LABELS[status]}</Badge>
+          <h1 className="text-lg font-bold text-foreground">Job {booking.id.slice(0, 8).toUpperCase()}</h1>
+          <Badge variant="outline" className="text-[10px]">{STATUS_LABELS[status] || status.replace(/_/g, " ")}</Badge>
         </div>
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Job Summary */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Job Summary</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium">{booking.categoryName}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span className="font-medium">{booking.serviceName}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium">{SERVICE_MODE_LABELS[booking.serviceMode]}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Emergency</span><span className={booking.isEmergency ? "text-destructive font-medium" : ""}>{booking.isEmergency ? "Yes" : "No"}</span></div>
-            <div className="flex items-center gap-1 text-muted-foreground"><MapPin className="w-3 h-3" /> {booking.zone || "Not specified"}</div>
-          </CardContent>
-        </Card>
-
-        {/* Service Checklist */}
-        {checklist.length > 0 && (
-          <Card className={!checklistDone && canComplete ? "border-warning/40" : ""}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ClipboardList className="w-4 h-4 text-primary" /> Service Checklist
-                <Badge variant="outline" className={`text-[10px] ${checklistDone ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
-                  {checklist.filter((c) => c.completed).length}/{checklist.length}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {checklist.map((item) => (
-                <div key={item.id} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={item.completed}
-                    onCheckedChange={() => toggleChecklistItem(booking.jobId, item.id)}
-                    id={item.id}
-                  />
-                  <label htmlFor={item.id} className={`text-sm cursor-pointer ${item.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                    {item.label}
-                  </label>
+        {/* Accept / Decline */}
+        {canAccept && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="font-bold text-sm text-foreground">New Job Offer</p>
+                  <p className="text-xs text-muted-foreground">Accept or decline within 5 minutes</p>
                 </div>
-              ))}
-              {!checklistDone && canComplete && (
-                <p className="text-[10px] text-warning mt-1">⚠ Complete all checklist items before marking job done</p>
+              </div>
+              {!showDeclineReasons ? (
+                <div className="flex gap-3">
+                  <Button className="flex-1 h-11 rounded-xl" onClick={handleAccept} disabled={!!actionLoading}>
+                    {actionLoading === "accept" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ThumbsUp className="w-4 h-4 mr-2" />}
+                    Accept Job
+                  </Button>
+                  <Button variant="outline" className="flex-1 h-11 rounded-xl" onClick={() => setShowDeclineReasons(true)} disabled={!!actionLoading}>
+                    <ThumbsDown className="w-4 h-4 mr-2" /> Decline
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-foreground">Why are you declining?</p>
+                  {DECLINE_REASONS.map((reason) => (
+                    <Button key={reason} variant="outline" size="sm" className="w-full justify-start text-xs h-9" onClick={() => handleDecline(reason)} disabled={!!actionLoading}>
+                      {reason}
+                    </Button>
+                  ))}
+                  <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setShowDeclineReasons(false)}>Cancel</Button>
+                </div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Precheck */}
-        {Object.keys(booking.precheckAnswers).length > 0 && (
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><ClipboardList className="w-4 h-4 text-primary" /> Customer Precheck</CardTitle></CardHeader>
-            <CardContent className="space-y-1">
-              {Object.entries(booking.precheckAnswers).map(([key, val]) => (
-                <div key={key} className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
-                  <span className="font-medium">{String(val)}</span>
-                </div>
-              ))}
+        {/* Status Update Actions */}
+        {(canStartTravel || canMarkArrived || canStartWork) && (
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-4 space-y-3">
+              {canStartTravel && (
+                <Button className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90" onClick={() => handleStatusUpdate("start_travel")} disabled={!!actionLoading}>
+                  {actionLoading === "start_travel" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Navigation className="w-4 h-4 mr-2" />}
+                  Start Travel
+                </Button>
+              )}
+              {canMarkArrived && (
+                <Button className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90" onClick={() => handleStatusUpdate("arrived")} disabled={!!actionLoading}>
+                  {actionLoading === "arrived" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <MapPin className="w-4 h-4 mr-2" />}
+                  Mark Arrived
+                </Button>
+              )}
+              {canStartWork && (
+                <Button className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90" onClick={() => handleStatusUpdate("start_work")} disabled={!!actionLoading}>
+                  {actionLoading === "start_work" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                  Start Work
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Customer Photos */}
-        {booking.photos.length > 0 && (
+        {/* Repair / Complete / Payment */}
+        {(canStartRepair || canCompleteRepair || canRecordPayment) && (
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-4 space-y-3">
+              {canStartRepair && (
+                <Button className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90" onClick={handleStartRepair} disabled={!!actionLoading}>
+                  {actionLoading === "start_repair" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wrench className="w-4 h-4 mr-2" />}
+                  Start Repair
+                </Button>
+              )}
+              {canCompleteRepair && (
+                <Button className="w-full h-11 rounded-xl bg-success hover:bg-success/90 text-success-foreground" onClick={handleCompleteRepair} disabled={!!actionLoading}>
+                  {actionLoading === "complete_repair" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CircleCheck className="w-4 h-4 mr-2" />}
+                  Mark Job Complete
+                </Button>
+              )}
+              {canRecordPayment && (
+                <Button className="w-full h-11 rounded-xl" variant="outline" onClick={handleRecordPayment} disabled={!!actionLoading}>
+                  {actionLoading === "record_payment" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Banknote className="w-4 h-4 mr-2" />}
+                  Record Payment (Cash)
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Quote Form */}
+        {canCreateQuote && !showQuoteForm && (
+          <Button className="w-full h-11 rounded-xl" variant="outline" onClick={() => setShowQuoteForm(true)}>
+            <FileText className="w-4 h-4 mr-2" /> Create Quote
+          </Button>
+        )}
+        {showQuoteForm && jobId && partner?.id && (
+          <QuoteForm bookingId={jobId} partnerId={partner.id} onSubmitted={() => { setShowQuoteForm(false); refetchAll(); }} />
+        )}
+
+        {/* Job Summary */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Job Details</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium">{catLabel}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span className="font-medium">{booking.service_type || "General"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Mode</span><span className="font-medium">{modeLabel}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Emergency</span><span className={booking.is_emergency ? "text-destructive font-medium" : ""}>{booking.is_emergency ? "Yes" : "No"}</span></div>
+            <div className="flex items-center gap-1 text-muted-foreground"><MapPin className="w-3 h-3" /> {booking.zone_code || "Not specified"}</div>
+            {booking.estimated_price_lkr && (
+              <div className="flex justify-between"><span className="text-muted-foreground">Estimate</span><span className="font-medium">LKR {booking.estimated_price_lkr.toLocaleString()}</span></div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Trust Badge */}
+        <div className="flex items-center gap-2 bg-success/5 border border-success/20 rounded-lg p-3">
+          <ShieldCheck className="w-4 h-4 text-success shrink-0" />
+          <p className="text-xs text-success">No work starts without customer approval. Payment only after completion.</p>
+        </div>
+
+        {/* Latest Quote Status */}
+        {latestQuote && (
           <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Eye className="w-4 h-4 text-primary" /> Evidence</CardTitle></CardHeader>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">Latest Quote</CardTitle></CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Status</span>
+                <Badge variant="outline" className="text-[10px]">{latestQuote.status}</Badge>
+              </div>
+              {latestQuote.total_lkr && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total</span>
+                  <span className="font-medium">LKR {latestQuote.total_lkr.toLocaleString()}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Timeline */}
+        {timeline.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> Timeline</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-2">
-                {booking.photos.map((p, i) => (
-                  <div key={i} className="aspect-square bg-muted rounded-lg flex items-center justify-center text-[10px] text-muted-foreground">{p.type}</div>
+              <div className="space-y-2">
+                {timeline.map((evt: any) => (
+                  <div key={evt.id} className="flex gap-2 text-xs">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-foreground">{evt.status.replace(/_/g, " ")}</p>
+                      {evt.note && <p className="text-muted-foreground">{evt.note}</p>}
+                      <p className="text-[10px] text-muted-foreground">{new Date(evt.created_at).toLocaleString()}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </CardContent>
           </Card>
         )}
 
-        <div className="flex items-center gap-2 bg-success/5 border border-success/20 rounded-lg p-3">
-          <ShieldCheck className="w-4 h-4 text-success shrink-0" />
-          <p className="text-xs text-success">No work starts without customer approval. Payment only after completion.</p>
-        </div>
-
-        {/* Quote Builder */}
-        {showQuoteBuilder && (
-          <QuoteBuilder jobId={booking.jobId} categoryCode={booking.categoryCode} onClose={() => setShowQuoteBuilder(false)} />
-        )}
-
-        {/* Chat */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">💬 Customer Chat</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {(booking.chatMessages || []).map((m) => (
-              <div key={m.id} className={`text-xs p-2 rounded-lg ${m.sender === "technician" ? "bg-primary/10 ml-4" : "bg-muted mr-4"}`}>
-                <span className="font-medium">{m.sender === "technician" ? "You" : "Customer"}: </span>{m.message}
-              </div>
-            ))}
-            <div className="flex gap-2">
-              <Textarea placeholder="Message customer..." value={chatMsg} onChange={(e) => setChatMsg(e.target.value)} rows={1} className="text-sm flex-1" />
-              <Button size="sm" variant="outline" disabled={!chatMsg.trim()} onClick={() => {
-                addChatMessage(booking.jobId, { id: Date.now().toString(), sender: "technician", message: chatMsg, timestamp: new Date().toISOString() });
-                setChatMsg("");
-              }}>Send</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Internal Note */}
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">My Notes</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            {booking.technicianInternalNote && <p className="text-xs bg-muted rounded p-2">{booking.technicianInternalNote}</p>}
-            <Textarea placeholder="Add note..." value={techNote} onChange={(e) => setTechNote(e.target.value)} rows={2} className="text-sm" />
-            <Button size="sm" variant="outline" disabled={!techNote.trim()} onClick={() => { setInternalNote(booking.jobId, "technician", techNote); setTechNote(""); }}>Save</Button>
-          </CardContent>
-        </Card>
-
-        {/* Disputes */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Flag className="w-4 h-4 text-destructive" /> Disputes
-              {disputes.length > 0 && <Badge variant="outline" className="text-[10px]">{disputes.length}</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {disputes.map((d) => (
-              <div key={d.id} className="text-xs border rounded p-2">
-                <div className="flex justify-between mb-1">
-                  <span className="font-medium">{d.reason.replace(/_/g, " ")}</span>
-                  <Badge variant="outline" className={`text-[9px] ${d.status === "resolved" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>{d.status}</Badge>
-                </div>
-                <p className="text-muted-foreground">{d.description}</p>
-              </div>
-            ))}
-            {showDispute ? (
-              <div className="border rounded-lg p-3 space-y-2">
-                <div className="flex flex-wrap gap-1">
-                  {DISPUTE_REASONS.map((r) => (
-                    <Button key={r.value} size="sm" className="text-[10px] h-6"
-                      variant={disputeReason === r.value ? "default" : "outline"}
-                      onClick={() => setDisputeReason(r.value)}>
-                      {r.label}
-                    </Button>
-                  ))}
-                </div>
-                <Textarea placeholder="Describe the issue..." value={disputeDesc} onChange={(e) => setDisputeDesc(e.target.value)} rows={2} className="text-sm" />
-                <div className="flex gap-2">
-                  <Button size="sm" variant="destructive" onClick={handleRaiseDispute} disabled={!disputeReason || !disputeDesc}>Submit</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setShowDispute(false)}>Cancel</Button>
-                </div>
-              </div>
-            ) : (
-              <Button size="sm" variant="outline" className="w-full text-xs" onClick={() => setShowDispute(true)}>
-                <Flag className="w-3 h-3 mr-1" /> Raise Dispute
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Job Outcome */}
-        {["completed", "rated"].includes(status) && (
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm">Job Outcome</CardTitle></CardHeader>
-            <CardContent className="space-y-1">
-              {booking.jobOutcome ? (
-                <Badge variant="outline">{JOB_OUTCOME_LABELS[booking.jobOutcome]}</Badge>
-              ) : (
-                <div className="flex flex-wrap gap-1">
-                  {(Object.entries(JOB_OUTCOME_LABELS) as [JobOutcome, string][]).map(([key, label]) => (
-                    <Button key={key} variant="ghost" size="sm" className="text-xs h-7" onClick={() => setJobOutcome(booking.jobId, key)}>{label}</Button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        <TimelineEventLog events={booking.timelineEvents} />
-
-        {/* Service Evidence Panel — enforces completion lock */}
-        {booking.categoryCode && ["assigned", "tech_en_route", "arrived", "inspection_started", "in_progress", "repair_started"].includes(status) && (
+        {/* Service Evidence */}
+        {isMyJob && ["assigned", "tech_en_route", "arrived", "inspection_started", "in_progress", "repair_started"].includes(status) && (
           <ServiceEvidencePanel
-            bookingId={booking.jobId}
-            categoryCode={booking.categoryCode}
+            bookingId={booking.id}
+            categoryCode={booking.category_code}
             bookingStatus={status}
-            serviceType={booking.serviceCode}
+            serviceType={booking.service_type || undefined}
             role="technician"
             onCompletionBlocked={setEvidenceBlocked}
           />
         )}
 
-        {showRejectReasons && (
-          <Card className="border-destructive/30">
-            <CardHeader className="pb-2"><CardTitle className="text-sm text-destructive">Reject Reason</CardTitle></CardHeader>
-            <CardContent className="space-y-1">
-              {(Object.entries(TECH_REJECTION_LABELS) as [TechRejectionReason, string][]).map(([key, label]) => (
-                <Button key={key} variant="ghost" size="sm" className="w-full justify-start text-xs h-8" onClick={() => handleReject(key)}>{label}</Button>
-              ))}
-              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => setShowRejectReasons(false)}>Cancel</Button>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Sticky Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t p-4 space-y-2 z-50">
-        <div className="flex gap-2">
-          {canAccept && !showRejectReasons && (
-            <>
-              <Button className="flex-1" size="sm" onClick={() => { acceptJob(booking.jobId, booking.technician?.technicianId || "T001"); }}>
-                <CheckCircle2 className="w-4 h-4 mr-1" /> Accept
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => setShowRejectReasons(true)}>
-                <XCircle className="w-4 h-4 mr-1" /> Reject
-              </Button>
-            </>
-          )}
-          {canStartTravel && (
-            <Button className="flex-1 bg-primary" size="sm" onClick={() => {
-              const techGeo = { lat: 6.9090 + Math.random() * 0.02, lng: 79.8620 + Math.random() * 0.02 };
-              const custGeo = { lat: 6.8720 + Math.random() * 0.02, lng: 79.8890 + Math.random() * 0.02 };
-              startTravel(booking.jobId, techGeo.lat, techGeo.lng, custGeo.lat, custGeo.lng);
-            }}>
-              <Navigation className="w-4 h-4 mr-1" /> Start Travel
-            </Button>
-          )}
-          {canDispatch && !canStartTravel && (
-            <Button className="flex-1" size="sm" onClick={() => markDispatched(booking.jobId)}>
-              <Navigation className="w-4 h-4 mr-1" /> Mark Dispatched
-            </Button>
-          )}
-          {canArrive && (
-            <Button className="flex-1" size="sm" onClick={() => { markArrived(booking.jobId); updateBookingStatus(booking.jobId, "arrived"); }}>
-              <MapPin className="w-4 h-4 mr-1" /> Mark Arrived
-            </Button>
-          )}
-          {canInspect && (
-            <Button className="flex-1" size="sm" onClick={() => startInspection(booking.jobId)}>
-              <Eye className="w-4 h-4 mr-1" /> Start Inspection
-            </Button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {["arrived", "inspection_started", "repair_started"].includes(status) && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => handlePhotoUpload("before")}>
-              <Camera className="w-4 h-4 mr-1" /> Before Photo
-            </Button>
-          )}
-          {canSubmitQuote && !showQuoteBuilder && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowQuoteBuilder(true)}>
-              <ClipboardList className="w-4 h-4 mr-1" /> Submit Quote
-            </Button>
-          )}
-          {canStartRepair && (
-            <Button size="sm" className="flex-1" onClick={() => startRepair(booking.jobId)}>
-              <Wrench className="w-4 h-4 mr-1" /> Start Repair
-            </Button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          {["repair_started", "in_progress"].includes(status) && (
-            <Button variant="outline" size="sm" className="flex-1" onClick={() => handlePhotoUpload("after")}>
-              <Camera className="w-4 h-4 mr-1" /> After Photo
-            </Button>
-          )}
-          {canComplete && (
-            <Button size="sm" variant="default" className={`flex-1 ${checklistDone ? "bg-success hover:bg-success/90" : ""}`}
-              disabled={!checklistDone}
-              onClick={() => markCompleted(booking.jobId)}>
-              <CheckCircle2 className="w-4 h-4 mr-1" /> {checklistDone ? "Mark Complete" : "Complete Checklist First"}
-            </Button>
-          )}
-          {["repair_started", "in_progress"].includes(status) && !canComplete && evidenceBlocked && (
-            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30 text-xs text-warning">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>Upload required evidence before completing</span>
-            </div>
-          )}
-        </div>
+        {/* Report Issue */}
+        <Button variant="outline" className="w-full text-xs" onClick={() => setShowReportIssue(true)}>
+          <AlertTriangle className="w-3 h-3 mr-1" /> Report Issue
+        </Button>
+        {showReportIssue && <ReportIssueModal bookingId={booking.id} role="technician" onClose={() => setShowReportIssue(false)} />}
       </div>
     </div>
   );
