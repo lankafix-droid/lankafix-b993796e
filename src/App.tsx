@@ -161,7 +161,7 @@ const App = () => (
             <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
             <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
             <Route path="/sme" element={<SMEServicesPage />} />
-            <Route path="/referral" element={<ReferralPage />} />
+            <Route path="/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
             <Route path="/corporate" element={<CorporateServicesPage />} />
             <Route path="/supplies" element={<ConsumablesPage />} />
             <Route path="/home-health" element={<ProtectedRoute><HomeHealthPage /></ProtectedRoute>} />

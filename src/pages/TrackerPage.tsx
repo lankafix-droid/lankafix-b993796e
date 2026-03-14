@@ -423,8 +423,8 @@ const TrackerPage = () => {
     isUUID ? jobId : (!zustandBooking ? jobId : undefined)
   );
 
-  // DB booking takes priority; Zustand only for legacy short IDs
-  const booking = zustandBooking;
+  // DB booking takes absolute priority; Zustand only for legacy short IDs with no DB match
+  const booking = dbBooking ? undefined : zustandBooking;
 
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
