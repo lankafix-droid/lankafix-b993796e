@@ -389,6 +389,12 @@ export default function TechnicianJobDetailPage() {
               <CheckCircle2 className="w-4 h-4 mr-1" /> {checklistDone ? "Mark Complete" : "Complete Checklist First"}
             </Button>
           )}
+          {["repair_started", "in_progress"].includes(status) && !canComplete && evidenceBlocked && (
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30 text-xs text-warning">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Upload required evidence before completing</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

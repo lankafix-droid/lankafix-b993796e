@@ -339,7 +339,7 @@ export default function ServiceHistoryPage() {
                         >
                           <RotateCcw className="w-3.5 h-3.5 mr-1" /> Rebook
                         </Button>
-                        {warrantyStatus === "active" && (
+                         {(warrantyStatus === "active" || warrantyStatus === "expiring_soon") && (
                           <Button
                             variant="outline"
                             size="sm"
