@@ -18,7 +18,7 @@ import V2PartGradeSelection from "@/components/v2/booking/V2PartGradeSelection";
 import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
 import SmartDiagnosisStep from "@/components/v2/booking/SmartDiagnosisStep";
 import EnhancedDiagnosisSummary from "@/components/v2/booking/EnhancedDiagnosisSummary";
-import DiagnosisSummaryCard from "@/components/v2/booking/DiagnosisSummaryCard";
+
 import DeviceIdentificationStep from "@/components/v2/booking/DeviceIdentificationStep";
 import LocationPicker from "@/components/v2/location/LocationPicker";
 import BookingProtectionCard from "@/components/v2/booking/BookingProtectionCard";
@@ -427,8 +427,12 @@ const V2BookingPage = () => {
                 />
               )}
               {currentStepName === "diagnosis_summary" && diagBlock && (
-                <DiagnosisSummaryCard
+                <EnhancedDiagnosisSummary
                   summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
+                  categoryCode={flow?.code || category || ""}
+                  problemKey={booking.issueId}
+                  serviceType={booking.serviceTypeId}
+                  deviceBrand={booking.deviceAnswers?.brand as string}
                   onContinue={goNext}
                 />
               )}
