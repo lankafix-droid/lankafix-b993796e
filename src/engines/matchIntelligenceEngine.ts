@@ -32,13 +32,17 @@ export interface MatchIntelligence {
 
 // ─── Weight Config (matches memory: 30/20/15/10/10/10/5) ────
 const WEIGHTS = {
-  proximity:       0.30,
-  specialization:  0.20,
-  rating:          0.15,
-  response_speed:  0.10,
-  workload:        0.10,
-  completion_rate: 0.10,
+  proximity:       0.20,
+  specialization:  0.12,
+  rating:          0.10,
+  response_speed:  0.08,
+  workload:        0.05,
+  completion_rate: 0.08,
   emergency:       0.05,
+  skill_match:     0.15,
+  customer_pref:   0.05,
+  reliability:     0.05,
+  quote_comp:      0.02,
 } as const;
 
 function tierFromScore(score: number): { tier: ConfidenceTier; label: string; color: string } {
