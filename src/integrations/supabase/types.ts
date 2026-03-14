@@ -255,6 +255,7 @@ export type Database = {
           dispatch_status: string | null
           emergency_surcharge_lkr: number | null
           estimated_price_lkr: number | null
+          evidence_status: string | null
           final_price_lkr: number | null
           id: string
           is_emergency: boolean | null
@@ -314,6 +315,7 @@ export type Database = {
           dispatch_status?: string | null
           emergency_surcharge_lkr?: number | null
           estimated_price_lkr?: number | null
+          evidence_status?: string | null
           final_price_lkr?: number | null
           id?: string
           is_emergency?: boolean | null
@@ -373,6 +375,7 @@ export type Database = {
           dispatch_status?: string | null
           emergency_surcharge_lkr?: number | null
           estimated_price_lkr?: number | null
+          evidence_status?: string | null
           final_price_lkr?: number | null
           id?: string
           is_emergency?: boolean | null
@@ -1915,6 +1918,105 @@ export type Database = {
           },
           {
             foreignKeyName: "ratings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_evidence: {
+        Row: {
+          after_notes: string | null
+          after_photos: Json
+          after_uploaded_at: string | null
+          before_notes: string | null
+          before_photos: Json
+          before_uploaded_at: string | null
+          booking_id: string
+          completion_notes: string | null
+          created_at: string
+          customer_confirmed: boolean | null
+          customer_confirmed_at: string | null
+          customer_dispute: boolean | null
+          customer_id: string | null
+          dispute_opened_at: string | null
+          dispute_reason: string | null
+          dispute_resolved_at: string | null
+          evidence_required: boolean | null
+          id: string
+          min_after_photos: number | null
+          min_before_photos: number | null
+          partner_id: string | null
+          photo_consent: string | null
+          service_verified: boolean | null
+          technician_notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          after_notes?: string | null
+          after_photos?: Json
+          after_uploaded_at?: string | null
+          before_notes?: string | null
+          before_photos?: Json
+          before_uploaded_at?: string | null
+          booking_id: string
+          completion_notes?: string | null
+          created_at?: string
+          customer_confirmed?: boolean | null
+          customer_confirmed_at?: string | null
+          customer_dispute?: boolean | null
+          customer_id?: string | null
+          dispute_opened_at?: string | null
+          dispute_reason?: string | null
+          dispute_resolved_at?: string | null
+          evidence_required?: boolean | null
+          id?: string
+          min_after_photos?: number | null
+          min_before_photos?: number | null
+          partner_id?: string | null
+          photo_consent?: string | null
+          service_verified?: boolean | null
+          technician_notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          after_notes?: string | null
+          after_photos?: Json
+          after_uploaded_at?: string | null
+          before_notes?: string | null
+          before_photos?: Json
+          before_uploaded_at?: string | null
+          booking_id?: string
+          completion_notes?: string | null
+          created_at?: string
+          customer_confirmed?: boolean | null
+          customer_confirmed_at?: string | null
+          customer_dispute?: boolean | null
+          customer_id?: string | null
+          dispute_opened_at?: string | null
+          dispute_reason?: string | null
+          dispute_resolved_at?: string | null
+          evidence_required?: boolean | null
+          id?: string
+          min_after_photos?: number | null
+          min_before_photos?: number | null
+          partner_id?: string | null
+          photo_consent?: string | null
+          service_verified?: boolean | null
+          technician_notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_evidence_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_evidence_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
