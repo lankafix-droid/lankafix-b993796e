@@ -278,6 +278,81 @@ export default function WarRoomPage() {
   const currentMilestone = milestones.find(m => totalCompleted < m) || 100;
   const milestoneProgress = Math.min((totalCompleted / currentMilestone) * 100, 100);
 
+  // ── Protocol state ──
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [incidentTags, setIncidentTags] = useState<Record<string, string>>({});
+
+  // Detect active issues for contextual guidance
+  const hasDispatchIssue = dispatchSuccessRate < 85 || noProviderCases.length > 0 || openEscalations.length > 0;
+  const hasQuoteDelay = staleQuotes.length > 0;
+  const hasPaymentFailure = paymentFailures.length > 0;
+  const hasPartnerIssue = criticalPartners.length > 0 || attentionPartners.length > 0;
+  const hasCustomerIssue = lowRatings.length > 0;
+  const hasSlaBreaches = slaBreaches.length > 0;
+  const hasSupplyShortage = Object.values(zoneCoverage).some(cats => Object.values(cats).reduce((s, n) => s + n, 0) < 2);
+  const isPilotProtection = totalCompleted < 25;
+  const activeAlertCount = [hasDispatchIssue, hasQuoteDelay, hasPaymentFailure, hasPartnerIssue, hasCustomerIssue, hasSlaBreaches, hasSupplyShortage].filter(Boolean).length;
+
+  const INCIDENT_TAG_OPTIONS = ["dispatch issue", "partner issue", "payment issue", "customer complaint", "system issue"];
+
+  const generateReport = useCallback(() => {
+    const completedToday = todayBookings.filter(b => b.status === "completed").length;
+    const incidentCount = todayIncidents.length;
+    const lines = [
+      `═══ LankaFix War Room Daily Report ═══`,
+      `Date: ${new Date().toLocaleDateString()}`,
+      `Time: ${new Date().toLocaleTimeString()}`,
+      ``,
+      `── Bookings ──`,
+      `Received: ${todayBookings.length}`,
+      `Completed: ${completedToday}`,
+      `Active: ${activeJobs.length}`,
+      `Cancelled: ${todayBookings.filter(b => b.status === "cancelled").length}`,
+      ``,
+      `── Dispatch ──`,
+      `Success Rate: ${dispatchSuccessRate.toFixed(1)}%`,
+      `Avg Dispatch Time: ${avgDispatchMin.toFixed(1)} min`,
+      `Escalations: ${openEscalations.length}`,
+      `No Provider: ${noProviderCases.length}`,
+      ``,
+      `── Quotes ──`,
+      `Submitted: ${quotesSubmitted.length}`,
+      `Awaiting: ${quotesAwaiting.length}`,
+      `Stale (>30m): ${staleQuotes.length}`,
+      `Rejected: ${quotesRejected.length}`,
+      ``,
+      `── Payments ──`,
+      `Successful: ${payments.filter(p => p.payment_status === "paid").length}`,
+      `Failed: ${paymentFailures.length}`,
+      `Pending: ${payments.filter(p => p.payment_status === "pending").length}`,
+      ``,
+      `── Incidents ──`,
+      `Total Today: ${incidentCount}`,
+      `Critical: ${todayIncidents.filter(i => i.severity === "critical").length}`,
+      `High: ${todayIncidents.filter(i => i.severity === "high").length}`,
+      ``,
+      `── Customer ──`,
+      `Avg Rating: ${avgRating > 0 ? avgRating.toFixed(1) : "N/A"}`,
+      `Low Ratings (<3): ${lowRatings.length}`,
+      `SLA Breaches: ${slaBreaches.length}`,
+      ``,
+      `── Launch ──`,
+      `Total Completed: ${totalCompleted} / ${currentMilestone}`,
+      `Pilot Protection: ${isPilotProtection ? "ACTIVE" : "OFF"}`,
+      ``,
+      `═══ End Report ═══`,
+    ];
+    return lines.join("\n");
+  }, [todayBookings, activeJobs, dispatchSuccessRate, avgDispatchMin, openEscalations, noProviderCases, quotesSubmitted, quotesAwaiting, staleQuotes, quotesRejected, payments, paymentFailures, todayIncidents, avgRating, lowRatings, slaBreaches, totalCompleted, currentMilestone, isPilotProtection]);
+
+  // ── Response Guide Section ──
+  const ResponseStep = ({ steps, color }: { steps: string[]; color: "red" | "yellow" }) => (
+    <ol className={`text-[11px] space-y-0.5 pl-4 list-decimal ${color === "red" ? "text-destructive" : "text-amber-700"}`}>
+      {steps.map((s, i) => <li key={i}>{s}</li>)}
+    </ol>
+  );
+
   // ── Metric Card ──
   const MetricCard = ({ label, value, icon: Icon, alert }: { label: string; value: number | string; icon: any; alert?: "green" | "yellow" | "red" }) => {
     const bg = alert === "red" ? "bg-destructive/10 border-destructive/30" : alert === "yellow" ? "bg-amber-500/10 border-amber-500/30" : "bg-emerald-500/10 border-emerald-500/30";
