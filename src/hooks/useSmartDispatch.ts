@@ -134,18 +134,22 @@ export function useSmartDispatch(
     setState(prev => ({ ...prev, phase: "searching", error: null }));
 
     try {
-      const { data, error } = await supabase.functions.invoke("smart-dispatch", {
-        body: {
-          category_code: category,
-          service_type: serviceType,
-          brand,
-          customer_lat: custLat,
-          customer_lng: custLng,
-          customer_zone: custZone,
-          is_emergency: isEmergency,
-          booking_id: bookingId,
-        },
-      });
+      // Use orchestrator if booking exists, otherwise direct smart-dispatch for preview
+      const functionName = bookingId ? "dispatch-orchestrator" : "smart-dispatch";
+      const body = bookingId
+        ? { booking_id: bookingId }
+        : {
+            category_code: category,
+            service_type: serviceType,
+            brand,
+            customer_lat: custLat,
+            customer_lng: custLng,
+            customer_zone: custZone,
+            is_emergency: isEmergency,
+            booking_id: bookingId,
+          };
+
+      const { data, error } = await supabase.functions.invoke(functionName, { body });
 
       if (error) throw error;
       if (!mountedRef.current) return;
