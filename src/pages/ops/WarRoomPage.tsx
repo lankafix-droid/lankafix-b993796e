@@ -1047,7 +1047,7 @@ export default function WarRoomPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="grid grid-cols-3 gap-2 mb-3">
               <div className={`p-2 rounded-lg border text-center ${jobsMissingEvidence.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
                 <p className={`text-lg font-bold ${jobsMissingEvidence.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingEvidence.length}</p>
                 <p className="text-[10px] text-muted-foreground">Missing Evidence</p>
@@ -1063,6 +1063,14 @@ export default function WarRoomPage() {
               <div className="p-2 rounded-lg border bg-success/5 border-success/20 text-center">
                 <p className="text-lg font-bold text-success">{verifiedJobs.length}</p>
                 <p className="text-[10px] text-muted-foreground">Verified Jobs</p>
+              </div>
+              <div className="p-2 rounded-lg border bg-primary/5 border-primary/20 text-center">
+                <p className="text-lg font-bold text-primary">{evidenceRecords.filter(e => e.warranty_activated).length}</p>
+                <p className="text-[10px] text-muted-foreground">Warranties Active</p>
+              </div>
+              <div className="p-2 rounded-lg border bg-muted/30 border-border text-center">
+                <p className="text-lg font-bold text-foreground">{evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000)).length}</p>
+                <p className="text-[10px] text-muted-foreground">Maint. Due (7d)</p>
               </div>
             </div>
             {jobsMissingEvidence.length > 0 && (
