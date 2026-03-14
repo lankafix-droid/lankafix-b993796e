@@ -110,6 +110,9 @@ interface EvidenceRow {
   customer_dispute: boolean;
   before_photos: any;
   after_photos: any;
+  warranty_activated: boolean;
+  warranty_end_date: string | null;
+  maintenance_due_date: string | null;
   created_at: string;
 }
 
@@ -179,7 +182,7 @@ export default function WarRoomPage() {
       supabase.from("payments").select("id,booking_id,payment_status,amount_lkr,created_at").gte("created_at", todayStart).order("created_at", { ascending: false }),
       supabase.from("dispatch_escalations").select("id,booking_id,reason,dispatch_rounds_attempted,created_at,resolved_at").order("created_at", { ascending: false }).limit(50),
       supabase.from("dispatch_log").select("id,booking_id,partner_id,status,response,created_at,responded_at,response_time_seconds").gte("created_at", todayStart).order("created_at", { ascending: false }).limit(500),
-      supabase.from("service_evidence").select("booking_id,service_verified,customer_confirmed,customer_dispute,before_photos,after_photos,created_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("service_evidence").select("booking_id,service_verified,customer_confirmed,customer_dispute,before_photos,after_photos,warranty_activated,warranty_end_date,maintenance_due_date,created_at").order("created_at", { ascending: false }).limit(200),
     ]);
     const liveBookings = (bk.data || []) as BookingRow[];
     setBookings(liveBookings);
@@ -375,6 +378,8 @@ export default function WarRoomPage() {
       `Open Disputes: ${activeDisputes.length}`,
       `Pending Confirmations: ${pendingConfirmations.length}`,
       `Verified Jobs: ${verifiedJobs.length}`,
+      `Warranties Activated: ${evidenceRecords.filter(e => e.warranty_activated).length}`,
+      `Maintenance Due (7d): ${evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000)).length}`,
       ``,
       `── Launch ──`,
       `Total Completed: ${totalCompleted} / ${currentMilestone}`,
@@ -1044,7 +1049,7 @@ export default function WarRoomPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="grid grid-cols-3 gap-2 mb-3">
               <div className={`p-2 rounded-lg border text-center ${jobsMissingEvidence.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
                 <p className={`text-lg font-bold ${jobsMissingEvidence.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingEvidence.length}</p>
                 <p className="text-[10px] text-muted-foreground">Missing Evidence</p>
@@ -1060,6 +1065,14 @@ export default function WarRoomPage() {
               <div className="p-2 rounded-lg border bg-success/5 border-success/20 text-center">
                 <p className="text-lg font-bold text-success">{verifiedJobs.length}</p>
                 <p className="text-[10px] text-muted-foreground">Verified Jobs</p>
+              </div>
+              <div className="p-2 rounded-lg border bg-primary/5 border-primary/20 text-center">
+                <p className="text-lg font-bold text-primary">{evidenceRecords.filter(e => e.warranty_activated).length}</p>
+                <p className="text-[10px] text-muted-foreground">Warranties Active</p>
+              </div>
+              <div className="p-2 rounded-lg border bg-muted/30 border-border text-center">
+                <p className="text-lg font-bold text-foreground">{evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000)).length}</p>
+                <p className="text-[10px] text-muted-foreground">Maint. Due (7d)</p>
               </div>
             </div>
             {jobsMissingEvidence.length > 0 && (
