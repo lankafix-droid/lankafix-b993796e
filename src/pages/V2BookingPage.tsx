@@ -77,6 +77,7 @@ const STEP_LABELS: Record<string, string> = {
   part_grade: "Part Quality",
   service_mode: "Mode",
   location: "Location",
+  device_identification: "Device",
   device_details: "Details",
   smart_diagnosis: "Diagnosis",
   diagnosis_summary: "Summary",
