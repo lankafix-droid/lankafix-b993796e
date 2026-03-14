@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
-import { Snowflake, Smartphone, Monitor, Tv, ArrowRight, TrendingUp } from "lucide-react";
+import { Snowflake, Smartphone, Monitor, Tv, ArrowRight, TrendingUp, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { track } from "@/lib/analytics";
 
 const POPULAR = [
-  { icon: <Snowflake className="w-5 h-5" />, label: "AC Gas Top-Up", price: "From Rs 4,500", link: "/book/AC", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
-  { icon: <Smartphone className="w-5 h-5" />, label: "Phone Screen Fix", price: "From Rs 5,000", link: "/book/MOBILE", gradient: "from-destructive/15 to-destructive/5", color: "text-destructive" },
-  { icon: <Monitor className="w-5 h-5" />, label: "Laptop Repair", price: "From Rs 3,000", link: "/book/IT", gradient: "from-accent/15 to-accent/5", color: "text-accent" },
-  { icon: <Tv className="w-5 h-5" />, label: "TV / Electronics", price: "Diagnosis first", link: "/book/CONSUMER_ELEC", gradient: "from-warning/15 to-warning/5", color: "text-warning" },
+  { icon: <Snowflake className="w-5 h-5" />, label: "AC Gas Top-Up", price: "From Rs 4,500", duration: "60–90 min", link: "/book/AC", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
+  { icon: <Smartphone className="w-5 h-5" />, label: "Phone Screen Fix", price: "From Rs 5,000", duration: "45–90 min", link: "/book/MOBILE", gradient: "from-destructive/15 to-destructive/5", color: "text-destructive" },
+  { icon: <Monitor className="w-5 h-5" />, label: "Laptop Repair", price: "From Rs 3,000", duration: "60–120 min", link: "/book/IT", gradient: "from-accent/15 to-accent/5", color: "text-accent" },
+  { icon: <Tv className="w-5 h-5" />, label: "TV / Electronics", price: "Diagnosis first", duration: "60–120 min", link: "/book/CONSUMER_ELEC", gradient: "from-warning/15 to-warning/5", color: "text-warning" },
 ];
 
 const V2PopularServices = () => {
