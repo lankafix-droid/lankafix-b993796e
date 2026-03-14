@@ -648,6 +648,14 @@ const TrackerPage = () => {
               </motion.div>
             )}
 
+            {/* Service Evidence Panel (V2 Proof Layer) */}
+            <ServiceEvidencePanel
+              bookingId={dbBooking.id}
+              categoryCode={dbBooking.category_code}
+              bookingStatus={dbBooking.status}
+              role="customer"
+            />
+
             {/* Completion state — premium */}
             {isCompleted && (
               <motion.div
