@@ -9,8 +9,16 @@ import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
 import ChatWidget from "./components/chat/ChatWidget";
 import PilotModeBanner from "./components/ops/PilotModeBanner";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import PartnerRoute from "@/components/auth/PartnerRoute";
 // Eager-load homepage for fast first paint
 import HomePage from "./pages/V2HomePage";
+
+// Auth pages
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const SignupPage = lazy(() => import("./pages/auth/SignupPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
 
 // Lazy-load all other routes
 const BookingPage = lazy(() => import("./pages/V2BookingPage"));
@@ -113,6 +121,11 @@ const PageLoader = () => (
   </div>
 );
 
+// Helper wrapper for ops routes
+const OpsRoute = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute requiredRole="admin">{children}</ProtectedRoute>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -125,6 +138,12 @@ const App = () => (
         <TermsGuard>
         <Suspense fallback={<PageLoader />}>
           <Routes>
+            {/* ─── Auth Routes ─── */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+
             {/* ─── V3 Customer Marketplace ─── */}
             <Route path="/" element={<HomePage />} />
             <Route path="/book/:category" element={<BookingPage />} />
@@ -134,23 +153,23 @@ const App = () => (
             <Route path="/track/:jobId" element={<TrackerPage />} />
             <Route path="/track" element={<TrackJob />} />
             <Route path="/waitlist" element={<WaitlistPage />} />
-            <Route path="/account" element={<AccountPage />} />
-            <Route path="/account/delete" element={<AccountDeletionPage />} />
+            <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/account/delete" element={<ProtectedRoute><AccountDeletionPage /></ProtectedRoute>} />
             <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
             <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
             <Route path="/sme" element={<SMEServicesPage />} />
             <Route path="/referral" element={<ReferralPage />} />
             <Route path="/corporate" element={<CorporateServicesPage />} />
             <Route path="/supplies" element={<ConsumablesPage />} />
-            <Route path="/home-health" element={<HomeHealthPage />} />
-            <Route path="/reminders" element={<RemindersPage />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/service-history" element={<ServiceHistoryPage />} />
+            <Route path="/home-health" element={<ProtectedRoute><HomeHealthPage /></ProtectedRoute>} />
+            <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+            <Route path="/service-history" element={<ProtectedRoute><ServiceHistoryPage /></ProtectedRoute>} />
 
             {/* ─── Property Digital Twin ─── */}
-            <Route path="/property" element={<PropertyDashboardPage />} />
-            <Route path="/property/:propertyId/assets" element={<PropertyAssetsPage />} />
-            <Route path="/property/:propertyId/asset/:assetId" element={<AssetDetailPage />} />
+            <Route path="/property" element={<ProtectedRoute><PropertyDashboardPage /></ProtectedRoute>} />
+            <Route path="/property/:propertyId/assets" element={<ProtectedRoute><PropertyAssetsPage /></ProtectedRoute>} />
+            <Route path="/property/:propertyId/asset/:assetId" element={<ProtectedRoute><AssetDetailPage /></ProtectedRoute>} />
 
             {/* ─── Legacy V2 redirects ─── */}
             <Route path="/v2" element={<Navigate to="/" replace />} />
@@ -164,61 +183,61 @@ const App = () => (
             {/* ─── Provider onboarding ─── */}
             <Route path="/join" element={<ProviderOnboardingPage />} />
 
-            {/* ─── Partner routes ─── */}
-            <Route path="/partner" element={<PartnerDashboardPage />} />
-            <Route path="/partner/jobs" element={<PartnerJobsPage />} />
-            <Route path="/partner/job/:jobId" element={<PartnerJobDetailPage />} />
-            <Route path="/partner/technicians" element={<TechniciansPage />} />
-            <Route path="/partner/profile" element={<PartnerProfilePage />} />
-            <Route path="/partner/wallet" element={<PartnerWalletPage />} />
-            <Route path="/partner/quotes" element={<PartnerQuoteHistoryPage />} />
-            <Route path="/partner/performance" element={<PartnerPerformancePage />} />
-            <Route path="/partner/premium" element={<PartnerPremiumPage />} />
+            {/* ─── Partner routes (requires partner record) ─── */}
+            <Route path="/partner" element={<PartnerRoute><PartnerDashboardPage /></PartnerRoute>} />
+            <Route path="/partner/jobs" element={<PartnerRoute><PartnerJobsPage /></PartnerRoute>} />
+            <Route path="/partner/job/:jobId" element={<PartnerRoute><PartnerJobDetailPage /></PartnerRoute>} />
+            <Route path="/partner/technicians" element={<PartnerRoute><TechniciansPage /></PartnerRoute>} />
+            <Route path="/partner/profile" element={<PartnerRoute><PartnerProfilePage /></PartnerRoute>} />
+            <Route path="/partner/wallet" element={<PartnerRoute><PartnerWalletPage /></PartnerRoute>} />
+            <Route path="/partner/quotes" element={<PartnerRoute><PartnerQuoteHistoryPage /></PartnerRoute>} />
+            <Route path="/partner/performance" element={<PartnerRoute><PartnerPerformancePage /></PartnerRoute>} />
+            <Route path="/partner/premium" element={<PartnerRoute><PartnerPremiumPage /></PartnerRoute>} />
 
-            {/* ─── Technician routes ─── */}
-            <Route path="/technician" element={<TechnicianDashboardPage />} />
-            <Route path="/technician/jobs" element={<TechnicianJobsPage />} />
-            <Route path="/technician/job/:jobId" element={<TechnicianJobDetailPage />} />
-            <Route path="/technician/earnings" element={<TechnicianEarningsPage />} />
-            <Route path="/technician/parts" element={<TechnicianPartsPage />} />
-            <Route path="/technician/training" element={<TechnicianTrainingPage />} />
-            <Route path="/technician/support" element={<TechnicianSupportPage />} />
-            <Route path="/technician/safety" element={<TechnicianSafetyPage />} />
+            {/* ─── Technician routes (requires partner record) ─── */}
+            <Route path="/technician" element={<PartnerRoute><TechnicianDashboardPage /></PartnerRoute>} />
+            <Route path="/technician/jobs" element={<PartnerRoute><TechnicianJobsPage /></PartnerRoute>} />
+            <Route path="/technician/job/:jobId" element={<PartnerRoute><TechnicianJobDetailPage /></PartnerRoute>} />
+            <Route path="/technician/earnings" element={<PartnerRoute><TechnicianEarningsPage /></PartnerRoute>} />
+            <Route path="/technician/parts" element={<PartnerRoute><TechnicianPartsPage /></PartnerRoute>} />
+            <Route path="/technician/training" element={<PartnerRoute><TechnicianTrainingPage /></PartnerRoute>} />
+            <Route path="/technician/support" element={<PartnerRoute><TechnicianSupportPage /></PartnerRoute>} />
+            <Route path="/technician/safety" element={<PartnerRoute><TechnicianSafetyPage /></PartnerRoute>} />
 
             {/* ─── Care / Subscription ─── */}
             <Route path="/care" element={<CarePlansPage />} />
-            <Route path="/care/subscribe/:planId" element={<SubscribePage />} />
-            <Route path="/care/dashboard" element={<CareDashboardPage />} />
-            <Route path="/care/device/:deviceId" element={<DeviceTimelinePage />} />
+            <Route path="/care/subscribe/:planId" element={<ProtectedRoute><SubscribePage /></ProtectedRoute>} />
+            <Route path="/care/dashboard" element={<ProtectedRoute><CareDashboardPage /></ProtectedRoute>} />
+            <Route path="/care/device/:deviceId" element={<ProtectedRoute><DeviceTimelinePage /></ProtectedRoute>} />
 
             {/* ─── Device Passport ─── */}
-            <Route path="/devices" element={<DevicesDashboardPage />} />
-            <Route path="/device/:passportId" element={<DevicePassportPage />} />
+            <Route path="/devices" element={<ProtectedRoute><DevicesDashboardPage /></ProtectedRoute>} />
+            <Route path="/device/:passportId" element={<ProtectedRoute><DevicePassportPage /></ProtectedRoute>} />
 
-            {/* ─── Ops Dashboard ─── */}
-            <Route path="/ops/dispatch" element={<DispatchBoardPage />} />
-            <Route path="/ops/finance" element={<FinanceBoardPage />} />
-            <Route path="/ops/subscriptions" element={<SubscriptionAnalyticsPage />} />
-            <Route path="/ops/diagnose-analytics" element={<DiagnoseAnalyticsPage />} />
-            <Route path="/ops/dispatch-analytics" element={<DispatchAnalyticsPage />} />
-            <Route path="/ops/control-tower" element={<ControlTowerPage />} />
-            <Route path="/ops/pricing" element={<PricingEditorPage />} />
-            <Route path="/ops/bypass-monitor" element={<BypassMonitorPage />} />
-            <Route path="/ops/ai-growth" element={<AIGrowthEnginePage />} />
-            <Route path="/ops/ai-intelligence" element={<AIIntelligencePage />} />
-            <Route path="/ops/expansion" element={<ExpansionRoadmapPage />} />
-            <Route path="/ops/revenue" element={<RevenueEnginePage />} />
-            <Route path="/ops/intelligence" element={<MarketplaceIntelligencePage />} />
-            <Route path="/ops/retention" element={<RetentionDashboardPage />} />
-            <Route path="/ops/launch" element={<LaunchReadinessPage />} />
-            <Route path="/ops/pilot-simulation" element={<PilotSimulationPage />} />
-            <Route path="/ops/provider-readiness" element={<ProviderReadinessPage />} />
-            <Route path="/ops/pilot-bookings" element={<PilotBookingMonitorPage />} />
-            <Route path="/ops/incidents" element={<IncidentTrackerPage />} />
-            <Route path="/ops/partner-readiness" element={<PartnerPilotReadinessPage />} />
-            <Route path="/ops/war-room" element={<WarRoomPage />} />
-            <Route path="/ops/dispatch-war-room" element={<DispatchWarRoomPage />} />
-            <Route path="/ops/support" element={<SupportCasesPage />} />
+            {/* ─── Ops Dashboard (admin only) ─── */}
+            <Route path="/ops/dispatch" element={<OpsRoute><DispatchBoardPage /></OpsRoute>} />
+            <Route path="/ops/finance" element={<OpsRoute><FinanceBoardPage /></OpsRoute>} />
+            <Route path="/ops/subscriptions" element={<OpsRoute><SubscriptionAnalyticsPage /></OpsRoute>} />
+            <Route path="/ops/diagnose-analytics" element={<OpsRoute><DiagnoseAnalyticsPage /></OpsRoute>} />
+            <Route path="/ops/dispatch-analytics" element={<OpsRoute><DispatchAnalyticsPage /></OpsRoute>} />
+            <Route path="/ops/control-tower" element={<OpsRoute><ControlTowerPage /></OpsRoute>} />
+            <Route path="/ops/pricing" element={<OpsRoute><PricingEditorPage /></OpsRoute>} />
+            <Route path="/ops/bypass-monitor" element={<OpsRoute><BypassMonitorPage /></OpsRoute>} />
+            <Route path="/ops/ai-growth" element={<OpsRoute><AIGrowthEnginePage /></OpsRoute>} />
+            <Route path="/ops/ai-intelligence" element={<OpsRoute><AIIntelligencePage /></OpsRoute>} />
+            <Route path="/ops/expansion" element={<OpsRoute><ExpansionRoadmapPage /></OpsRoute>} />
+            <Route path="/ops/revenue" element={<OpsRoute><RevenueEnginePage /></OpsRoute>} />
+            <Route path="/ops/intelligence" element={<OpsRoute><MarketplaceIntelligencePage /></OpsRoute>} />
+            <Route path="/ops/retention" element={<OpsRoute><RetentionDashboardPage /></OpsRoute>} />
+            <Route path="/ops/launch" element={<OpsRoute><LaunchReadinessPage /></OpsRoute>} />
+            <Route path="/ops/pilot-simulation" element={<OpsRoute><PilotSimulationPage /></OpsRoute>} />
+            <Route path="/ops/provider-readiness" element={<OpsRoute><ProviderReadinessPage /></OpsRoute>} />
+            <Route path="/ops/pilot-bookings" element={<OpsRoute><PilotBookingMonitorPage /></OpsRoute>} />
+            <Route path="/ops/incidents" element={<OpsRoute><IncidentTrackerPage /></OpsRoute>} />
+            <Route path="/ops/partner-readiness" element={<OpsRoute><PartnerPilotReadinessPage /></OpsRoute>} />
+            <Route path="/ops/war-room" element={<OpsRoute><WarRoomPage /></OpsRoute>} />
+            <Route path="/ops/dispatch-war-room" element={<OpsRoute><DispatchWarRoomPage /></OpsRoute>} />
+            <Route path="/ops/support" element={<OpsRoute><SupportCasesPage /></OpsRoute>} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />
