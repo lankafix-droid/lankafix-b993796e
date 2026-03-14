@@ -22,7 +22,7 @@ import {
   Shield, AlertTriangle, Activity, Clock, Users, Zap, Eye,
   RefreshCw, ExternalLink, ChevronRight, Radio, TriangleAlert,
   CheckCircle2, XCircle, TrendingUp, MapPin, ChevronDown,
-  BookOpen, FileText, Phone, MessageSquare, Tag
+  BookOpen, FileText, Phone, MessageSquare, Tag, Camera, Image
 } from "lucide-react";
 
 // ── Types ──
