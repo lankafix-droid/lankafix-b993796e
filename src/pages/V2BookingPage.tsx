@@ -443,12 +443,25 @@ const V2BookingPage = () => {
                 <SmartDiagnosisStep
                   block={diagBlock}
                   answers={booking.diagnosticAnswers || {}}
-                  onUpdate={(answers) => updateBooking({ diagnosticAnswers: answers })}
-                  onContinue={goNext}
+                  onUpdate={(answers) => {
+                    updateBooking({ diagnosticAnswers: answers });
+                    if (Object.keys(booking.diagnosticAnswers || {}).length === 0) {
+                      track("diagnosis_started", { category: flow.code, serviceType: booking.serviceTypeId });
+                    }
+                  }}
+                  onContinue={() => {
+                    track("diagnosis_completed", { category: flow.code, serviceType: booking.serviceTypeId, answersCount: Object.keys(booking.diagnosticAnswers || {}).length });
+                    goNext();
+                  }}
                   photos={booking.photoUrls}
                   onPhotosChange={(photos) => updateBooking({ photoUrls: photos })}
                 />
               )}
+              {currentStepName === "diagnosis_summary" && diagBlock && (() => {
+                // Fire summary_viewed analytics once
+                track("diagnosis_summary_viewed", { category: flow.code, serviceType: booking.serviceTypeId });
+                return null;
+              })()}
               {currentStepName === "diagnosis_summary" && diagBlock && (
                 <EnhancedDiagnosisSummary
                   summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
@@ -456,7 +469,10 @@ const V2BookingPage = () => {
                   problemKey={booking.issueId}
                   serviceType={booking.serviceTypeId}
                   deviceBrand={booking.deviceAnswers?.brand as string}
-                  onContinue={goNext}
+                  onContinue={() => {
+                    track("diagnosis_continue_to_booking", { category: flow.code, serviceType: booking.serviceTypeId });
+                    goNext();
+                  }}
                 />
               )}
               {currentStepName === "ac_install_addons" && (
