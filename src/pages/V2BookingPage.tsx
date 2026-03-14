@@ -147,6 +147,14 @@ const V2BookingPage = () => {
     }
   }, [category, launchState]);
 
+  // Track diagnosis summary view
+  useEffect(() => {
+    const currentStep = steps[step];
+    if (currentStep === "diagnosis_summary" && flow) {
+      track("diagnosis_summary_viewed", { category: flow.code, serviceType: booking.serviceTypeId });
+    }
+  }, [step, steps, flow, booking.serviceTypeId]);
+
   // Coming soon guard — block booking
   if (launchState === "coming_soon") {
     return (
@@ -402,6 +410,29 @@ const V2BookingPage = () => {
                   <LocationPicker onContinue={goNext} showTravelFee={true} />
                 </div>
               )}
+              {currentStepName === "device_identification" && (
+                <DeviceIdentificationStep
+                  categoryCode={flow.code}
+                  onDeviceIdentified={(device) => {
+                    updateBooking({
+                      deviceAnswers: {
+                        ...booking.deviceAnswers,
+                        brand: device.brand,
+                        model: device.model,
+                        device_type: device.device_type,
+                        ...(device.purchase_year ? { purchase_year: String(device.purchase_year) } : {}),
+                      },
+                    });
+                    track("diagnosis_device_identified", { category: flow.code, brand: device.brand, fromRegistry: !!device.device_registry_id });
+                    goNext();
+                  }}
+                  onSkip={() => {
+                    track("diagnosis_device_skipped", { category: flow.code });
+                    goNext();
+                  }}
+                  initialAnswers={booking.deviceAnswers}
+                />
+              )}
               {currentStepName === "device_details" && (
                 <V2DeviceDetails
                   questions={flow.deviceQuestions}
@@ -420,8 +451,16 @@ const V2BookingPage = () => {
                 <SmartDiagnosisStep
                   block={diagBlock}
                   answers={booking.diagnosticAnswers || {}}
-                  onUpdate={(answers) => updateBooking({ diagnosticAnswers: answers })}
-                  onContinue={goNext}
+                  onUpdate={(answers) => {
+                    updateBooking({ diagnosticAnswers: answers });
+                    if (Object.keys(booking.diagnosticAnswers || {}).length === 0) {
+                      track("diagnosis_started", { category: flow.code, serviceType: booking.serviceTypeId });
+                    }
+                  }}
+                  onContinue={() => {
+                    track("diagnosis_completed", { category: flow.code, serviceType: booking.serviceTypeId, answersCount: Object.keys(booking.diagnosticAnswers || {}).length });
+                    goNext();
+                  }}
                   photos={booking.photoUrls}
                   onPhotosChange={(photos) => updateBooking({ photoUrls: photos })}
                 />
@@ -433,7 +472,10 @@ const V2BookingPage = () => {
                   problemKey={booking.issueId}
                   serviceType={booking.serviceTypeId}
                   deviceBrand={booking.deviceAnswers?.brand as string}
-                  onContinue={goNext}
+                  onContinue={() => {
+                    track("diagnosis_continue_to_booking", { category: flow.code, serviceType: booking.serviceTypeId });
+                    goNext();
+                  }}
                 />
               )}
               {currentStepName === "ac_install_addons" && (

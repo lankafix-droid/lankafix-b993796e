@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowRight, CheckCircle2, AlertTriangle, Stethoscope, FileText,
   Clock, DollarSign, Wrench, TrendingUp, ShieldAlert, Package,
@@ -108,7 +109,17 @@ export default function EnhancedDiagnosisSummary({ summary, categoryCode, proble
       </div>
 
       {/* Price Estimate Card */}
-      {priceEstimate && priceEstimate.minPrice > 0 && (
+      {loading && (
+        <div className="bg-card border rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">Estimating Price…</h3>
+          </div>
+          <Skeleton className="h-12 w-full rounded-lg" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+      )}
+      {!loading && priceEstimate && priceEstimate.minPrice > 0 && (
         <div className="bg-card border rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-primary" />
@@ -137,6 +148,17 @@ export default function EnhancedDiagnosisSummary({ summary, categoryCode, proble
               </div>
             </div>
           )}
+        </div>
+      )}
+      {!loading && priceEstimate && priceEstimate.minPrice === 0 && priceEstimate.maxPrice === 0 && (
+        <div className="bg-card border rounded-xl p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">Pricing</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Quote available after technician inspection. No work starts without your approval.
+          </p>
         </div>
       )}
 
