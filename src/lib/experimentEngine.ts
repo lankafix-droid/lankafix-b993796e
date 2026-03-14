@@ -5,7 +5,7 @@
  * Assigns users to experiment variants deterministically based on user ID hash.
  * 
  * Usage:
- *   const variant = getVariant("diagnosis_flow_v2", userId);
+ *   const variant = await getVariant("diagnosis_flow_v2", userId);
  *   if (variant === "treatment") { ... }
  */
 
