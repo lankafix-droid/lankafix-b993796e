@@ -1561,6 +1561,7 @@ export type Database = {
           business_name: string | null
           cancellation_rate: number | null
           categories_supported: string[]
+          communication_rating: number | null
           completed_jobs_count: number | null
           created_at: string
           current_job_count: number | null
@@ -1589,6 +1590,7 @@ export type Database = {
           reliability_tier: string
           service_types_supported: string[] | null
           service_zones: string[] | null
+          skill_level: number
           specializations: string[] | null
           strike_count: number | null
           tools_declared: string[] | null
@@ -1608,6 +1610,7 @@ export type Database = {
           business_name?: string | null
           cancellation_rate?: number | null
           categories_supported?: string[]
+          communication_rating?: number | null
           completed_jobs_count?: number | null
           created_at?: string
           current_job_count?: number | null
@@ -1636,6 +1639,7 @@ export type Database = {
           reliability_tier?: string
           service_types_supported?: string[] | null
           service_zones?: string[] | null
+          skill_level?: number
           specializations?: string[] | null
           strike_count?: number | null
           tools_declared?: string[] | null
@@ -1655,6 +1659,7 @@ export type Database = {
           business_name?: string | null
           cancellation_rate?: number | null
           categories_supported?: string[]
+          communication_rating?: number | null
           completed_jobs_count?: number | null
           created_at?: string
           current_job_count?: number | null
@@ -1683,6 +1688,7 @@ export type Database = {
           reliability_tier?: string
           service_types_supported?: string[] | null
           service_zones?: string[] | null
+          skill_level?: number
           specializations?: string[] | null
           strike_count?: number | null
           tools_declared?: string[] | null

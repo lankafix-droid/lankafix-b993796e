@@ -19,6 +19,12 @@ export interface DispatchScoreBreakdown {
   new_partner_boost: number;
   vehicle_bonus: number;
   zone_preference: number;
+  performance_signal: number;
+  tier_signal: number;
+  skill_match: number;
+  customer_preference: number;
+  reliability: number;
+  quote_competence: number;
   total: number;
 }
 
@@ -41,6 +47,9 @@ export interface SmartDispatchCandidate {
     profile_photo_url: string | null;
     acceptance_rate: number;
     cancellation_rate: number;
+    skill_level: number;
+    quote_approval_rate: number;
+    inspection_capable: boolean;
   };
   distance_km: number;
   eta_minutes: number;
