@@ -302,6 +302,16 @@ export default function WarRoomPage() {
     return m;
   }, [evidenceRecords]);
   const completedBookings = bookings.filter(b => b.status === "completed");
+  const jobsMissingBefore = completedBookings.filter(b => {
+    const ev = evidenceMap[b.id];
+    const before = ev ? (Array.isArray(ev.before_photos) ? ev.before_photos : []) : [];
+    return before.length === 0;
+  });
+  const jobsMissingAfter = completedBookings.filter(b => {
+    const ev = evidenceMap[b.id];
+    const after = ev ? (Array.isArray(ev.after_photos) ? ev.after_photos : []) : [];
+    return after.length === 0;
+  });
   const jobsMissingEvidence = completedBookings.filter(b => {
     const ev = evidenceMap[b.id];
     if (!ev) return true;
@@ -309,10 +319,15 @@ export default function WarRoomPage() {
     const after = Array.isArray(ev.after_photos) ? ev.after_photos : [];
     return before.length === 0 && after.length === 0;
   });
-  const unresolvedDisputes = evidenceRecords.filter(e => e.customer_dispute && !evidenceMap[e.booking_id]);
   const activeDisputes = evidenceRecords.filter(e => e.customer_dispute);
   const pendingConfirmations = evidenceRecords.filter(e => !e.customer_confirmed && !e.customer_dispute);
+  const pendingOver24h = pendingConfirmations.filter(e => {
+    const age = Date.now() - new Date(e.created_at).getTime();
+    return age > 24 * 60 * 60 * 1000;
+  });
   const verifiedJobs = evidenceRecords.filter(e => e.service_verified);
+  const todayWarranties = evidenceRecords.filter(e => e.warranty_activated && e.created_at >= todayStart);
+  const maintenanceDueSoon = evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000));
 
   // ── Protocol state ──
   const [guideOpen, setGuideOpen] = useState(false);
