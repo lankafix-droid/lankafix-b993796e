@@ -26,6 +26,7 @@ const QuoteApprovalPage = lazy(() => import("./pages/V2QuoteApprovalPage"));
 const DiagnosePage = lazy(() => import("./pages/DiagnosePage"));
 const TrackJob = lazy(() => import("./pages/TrackJob"));
 const TrackerPage = lazy(() => import("./pages/TrackerPage"));
+// BookingTracker removed — TrackerPage is the unified tracker with DB-first state
 const WaitlistPage = lazy(() => import("./pages/WaitlistPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DispatchBoardPage = lazy(() => import("./pages/ops/DispatchBoardPage"));
@@ -160,7 +161,7 @@ const App = () => (
             <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
             <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
             <Route path="/sme" element={<SMEServicesPage />} />
-            <Route path="/referral" element={<ReferralPage />} />
+            <Route path="/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
             <Route path="/corporate" element={<CorporateServicesPage />} />
             <Route path="/supplies" element={<ConsumablesPage />} />
             <Route path="/home-health" element={<ProtectedRoute><HomeHealthPage /></ProtectedRoute>} />
