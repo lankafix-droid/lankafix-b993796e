@@ -427,8 +427,12 @@ const V2BookingPage = () => {
                 />
               )}
               {currentStepName === "diagnosis_summary" && diagBlock && (
-                <DiagnosisSummaryCard
+                <EnhancedDiagnosisSummary
                   summary={generateDiagnosisSummary(diagBlock, booking.diagnosticAnswers || {}, booking.deviceAnswers)}
+                  categoryCode={categoryCode || ""}
+                  problemKey={booking.issueId}
+                  serviceType={booking.serviceTypeId}
+                  deviceBrand={booking.deviceAnswers?.brand as string}
                   onContinue={goNext}
                 />
               )}
