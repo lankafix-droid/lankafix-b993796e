@@ -467,8 +467,18 @@ serve(async (req) => {
       if ((p.late_arrival_count || 0) > 3) penalty += 10;
       if (cancelRate > 20) penalty += 15;
 
-      // Customer priority boost
-      const custPriorityBoost = CUSTOMER_PRIORITY_BOOST[customer_priority] || 0;
+      // Customer priority boost — CAPPED and gated by quality floors
+      // VIP boost MUST NOT override: skill mismatch, poor reliability, excessive distance
+      let custPriorityBoost = CUSTOMER_PRIORITY_BOOST[customer_priority] || 0;
+
+      // Gate 1: Skill mismatch — zero boost if underqualified
+      if (skillMatchRaw < 40) custPriorityBoost = 0;
+      // Gate 2: Poor reliability — halve boost
+      if (reliabilityRaw < 30) custPriorityBoost = Math.floor(custPriorityBoost / 2);
+      // Gate 3: Excessive distance — halve boost
+      if (dist > 12) custPriorityBoost = Math.floor(custPriorityBoost / 2);
+      // Hard cap: never exceed 10 additive points regardless of tier
+      custPriorityBoost = Math.min(custPriorityBoost, 10);
 
       const breakdown: ScoreBreakdown = {
         proximity: Math.round(proximityRaw * weights.proximity),
