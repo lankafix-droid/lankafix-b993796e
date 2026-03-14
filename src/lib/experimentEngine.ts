@@ -45,14 +45,17 @@ async function loadExperiments(): Promise<void> {
   if (Date.now() - cacheLoadedAt < CACHE_TTL_MS && Object.keys(experimentCache).length > 0) return;
 
   try {
-    const { data } = await supabase
-      .from("platform_settings" as any)
-      .select("value")
-      .eq("key", "experiments")
-      .maybeSingle();
-
-    if (data?.value) {
-      const experiments: Experiment[] = typeof data.value === "string" ? JSON.parse(data.value) : (data.value as any);
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/platform_settings?key=eq.experiments&select=value`;
+    const resp = await fetch(url, {
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+    });
+    if (!resp.ok) { cacheLoadedAt = Date.now(); return; }
+    const rows = await resp.json();
+    if (rows?.[0]?.value) {
+      const experiments: Experiment[] = typeof rows[0].value === "string" ? JSON.parse(rows[0].value) : rows[0].value;
       experimentCache = {};
       for (const exp of experiments) {
         if (exp.active) experimentCache[exp.key] = exp;
@@ -61,6 +64,7 @@ async function loadExperiments(): Promise<void> {
     cacheLoadedAt = Date.now();
   } catch {
     // Silent fail — experiments are non-critical
+    cacheLoadedAt = Date.now();
   }
 }
 
