@@ -302,6 +302,16 @@ export default function WarRoomPage() {
     return m;
   }, [evidenceRecords]);
   const completedBookings = bookings.filter(b => b.status === "completed");
+  const jobsMissingBefore = completedBookings.filter(b => {
+    const ev = evidenceMap[b.id];
+    const before = ev ? (Array.isArray(ev.before_photos) ? ev.before_photos : []) : [];
+    return before.length === 0;
+  });
+  const jobsMissingAfter = completedBookings.filter(b => {
+    const ev = evidenceMap[b.id];
+    const after = ev ? (Array.isArray(ev.after_photos) ? ev.after_photos : []) : [];
+    return after.length === 0;
+  });
   const jobsMissingEvidence = completedBookings.filter(b => {
     const ev = evidenceMap[b.id];
     if (!ev) return true;
@@ -309,10 +319,15 @@ export default function WarRoomPage() {
     const after = Array.isArray(ev.after_photos) ? ev.after_photos : [];
     return before.length === 0 && after.length === 0;
   });
-  const unresolvedDisputes = evidenceRecords.filter(e => e.customer_dispute && !evidenceMap[e.booking_id]);
   const activeDisputes = evidenceRecords.filter(e => e.customer_dispute);
   const pendingConfirmations = evidenceRecords.filter(e => !e.customer_confirmed && !e.customer_dispute);
+  const pendingOver24h = pendingConfirmations.filter(e => {
+    const age = Date.now() - new Date(e.created_at).getTime();
+    return age > 24 * 60 * 60 * 1000;
+  });
   const verifiedJobs = evidenceRecords.filter(e => e.service_verified);
+  const todayWarranties = evidenceRecords.filter(e => e.warranty_activated && e.created_at >= todayStart);
+  const maintenanceDueSoon = evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000));
 
   // ── Protocol state ──
   const [guideOpen, setGuideOpen] = useState(false);
@@ -374,12 +389,14 @@ export default function WarRoomPage() {
       `SLA Breaches: ${slaBreaches.length}`,
       ``,
       `── Service Proof ──`,
-      `Missing Evidence: ${jobsMissingEvidence.length}`,
+      `Missing Before Evidence: ${jobsMissingBefore.length}`,
+      `Missing After Evidence: ${jobsMissingAfter.length}`,
       `Open Disputes: ${activeDisputes.length}`,
+      `Review Pending >24h: ${pendingOver24h.length}`,
       `Pending Confirmations: ${pendingConfirmations.length}`,
       `Verified Jobs: ${verifiedJobs.length}`,
-      `Warranties Activated: ${evidenceRecords.filter(e => e.warranty_activated).length}`,
-      `Maintenance Due (7d): ${evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000)).length}`,
+      `Warranties Activated Today: ${todayWarranties.length}`,
+      `Maintenance Due (7d): ${maintenanceDueSoon.length}`,
       ``,
       `── Launch ──`,
       `Total Completed: ${totalCompleted} / ${currentMilestone}`,
@@ -1050,40 +1067,63 @@ export default function WarRoomPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-2 mb-3">
-              <div className={`p-2 rounded-lg border text-center ${jobsMissingEvidence.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
-                <p className={`text-lg font-bold ${jobsMissingEvidence.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingEvidence.length}</p>
-                <p className="text-[10px] text-muted-foreground">Missing Evidence</p>
+              <div className={`p-2 rounded-lg border text-center ${jobsMissingBefore.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${jobsMissingBefore.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingBefore.length}</p>
+                <p className="text-[10px] text-muted-foreground">Missing Before</p>
+              </div>
+              <div className={`p-2 rounded-lg border text-center ${jobsMissingAfter.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${jobsMissingAfter.length > 0 ? "text-destructive" : "text-foreground"}`}>{jobsMissingAfter.length}</p>
+                <p className="text-[10px] text-muted-foreground">Missing After</p>
               </div>
               <div className={`p-2 rounded-lg border text-center ${activeDisputes.length > 0 ? "bg-destructive/5 border-destructive/20" : "bg-muted/30 border-border"}`}>
                 <p className={`text-lg font-bold ${activeDisputes.length > 0 ? "text-destructive" : "text-foreground"}`}>{activeDisputes.length}</p>
                 <p className="text-[10px] text-muted-foreground">Open Disputes</p>
               </div>
-              <div className={`p-2 rounded-lg border text-center ${pendingConfirmations.length > 0 ? "bg-warning/5 border-warning/20" : "bg-muted/30 border-border"}`}>
-                <p className={`text-lg font-bold ${pendingConfirmations.length > 0 ? "text-warning" : "text-foreground"}`}>{pendingConfirmations.length}</p>
-                <p className="text-[10px] text-muted-foreground">Pending Confirm</p>
+              <div className={`p-2 rounded-lg border text-center ${pendingOver24h.length > 0 ? "bg-warning/5 border-warning/20" : "bg-muted/30 border-border"}`}>
+                <p className={`text-lg font-bold ${pendingOver24h.length > 0 ? "text-warning" : "text-foreground"}`}>{pendingOver24h.length}</p>
+                <p className="text-[10px] text-muted-foreground">Review &gt;24h</p>
               </div>
               <div className="p-2 rounded-lg border bg-success/5 border-success/20 text-center">
                 <p className="text-lg font-bold text-success">{verifiedJobs.length}</p>
-                <p className="text-[10px] text-muted-foreground">Verified Jobs</p>
+                <p className="text-[10px] text-muted-foreground">Verified Today</p>
               </div>
               <div className="p-2 rounded-lg border bg-primary/5 border-primary/20 text-center">
-                <p className="text-lg font-bold text-primary">{evidenceRecords.filter(e => e.warranty_activated).length}</p>
-                <p className="text-[10px] text-muted-foreground">Warranties Active</p>
+                <p className="text-lg font-bold text-primary">{todayWarranties.length}</p>
+                <p className="text-[10px] text-muted-foreground">Warranties Today</p>
               </div>
-              <div className="p-2 rounded-lg border bg-muted/30 border-border text-center">
-                <p className="text-lg font-bold text-foreground">{evidenceRecords.filter(e => e.maintenance_due_date && new Date(e.maintenance_due_date) <= new Date(Date.now() + 7 * 86400000)).length}</p>
-                <p className="text-[10px] text-muted-foreground">Maint. Due (7d)</p>
+              <div className="p-2 rounded-lg border bg-muted/30 border-border text-center col-span-3">
+                <div className="flex items-center justify-center gap-4">
+                  <div>
+                    <p className="text-lg font-bold text-foreground">{maintenanceDueSoon.length}</p>
+                    <p className="text-[10px] text-muted-foreground">Maint. Due (7d)</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-foreground">{pendingConfirmations.length}</p>
+                    <p className="text-[10px] text-muted-foreground">Pending Confirm</p>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Actionable booking list */}
-            {(jobsMissingEvidence.length > 0 || activeDisputes.length > 0 || pendingConfirmations.length > 0) && (
+            {(jobsMissingBefore.length > 0 || jobsMissingAfter.length > 0 || activeDisputes.length > 0 || pendingOver24h.length > 0) && (
               <div className="space-y-1 mt-2">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Action Required</p>
-                {jobsMissingEvidence.slice(0, 5).map(b => (
-                  <div key={`me-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
+                {jobsMissingBefore.slice(0, 3).map(b => (
+                  <div key={`mb-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
                     onClick={() => navigate(`/track/${b.id}`)}>
-                    <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">missing</Badge>
+                    <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">no before</Badge>
+                    <span className="font-mono">{b.id.slice(0, 6)}</span>
+                    <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
+                    <span className="text-muted-foreground">{zoneLabel(b.zone_code)}</span>
+                    <span className="text-muted-foreground ml-auto truncate max-w-[60px]">{b.partner_id ? (partnerMap[b.partner_id] || "—") : "—"}</span>
+                    <Eye className="w-3 h-3 text-muted-foreground shrink-0" />
+                  </div>
+                ))}
+                {jobsMissingAfter.slice(0, 3).map(b => (
+                  <div key={`ma-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
+                    onClick={() => navigate(`/track/${b.id}`)}>
+                    <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">no after</Badge>
                     <span className="font-mono">{b.id.slice(0, 6)}</span>
                     <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
                     <span className="text-muted-foreground">{zoneLabel(b.zone_code)}</span>
@@ -1104,14 +1144,15 @@ export default function WarRoomPage() {
                     </div>
                   );
                 })}
-                {pendingConfirmations.slice(0, 3).map(e => {
+                {pendingOver24h.slice(0, 3).map(e => {
                   const bk = bookings.find(b => b.id === e.booking_id);
                   return (
                     <div key={`pc-${e.booking_id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-warning/5 cursor-pointer hover:bg-warning/10"
                       onClick={() => navigate(`/track/${e.booking_id}`)}>
-                      <Badge className="text-[9px] bg-warning/10 text-warning shrink-0">pending</Badge>
+                      <Badge className="text-[9px] bg-warning/10 text-warning shrink-0">review &gt;24h</Badge>
                       <span className="font-mono">{e.booking_id.slice(0, 6)}</span>
                       <span className="text-muted-foreground">{bk ? catLabel(bk.category_code) : "—"}</span>
+                      <span className="text-muted-foreground">{bk ? zoneLabel(bk.zone_code) : "—"}</span>
                       <Eye className="w-3 h-3 text-muted-foreground shrink-0 ml-auto" />
                     </div>
                   );

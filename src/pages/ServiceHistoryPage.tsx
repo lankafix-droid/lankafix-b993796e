@@ -202,7 +202,18 @@ export default function ServiceHistoryPage() {
   };
 
   const getMatchingDevices = (record: ServiceRecord) => {
-    return devices.filter(d => d.category_code === record.category_code);
+    // Match by category + brand/model when available
+    const deviceDetails = record.device_details || {};
+    const brand = (deviceDetails.brand || "").toString().toLowerCase();
+    const model = (deviceDetails.model || "").toString().toLowerCase();
+    return devices.filter(d => {
+      if (d.category_code !== record.category_code) return false;
+      // If booking has brand/model, prefer exact match
+      if (brand && d.brand.toLowerCase() === brand) return true;
+      if (model && d.model.toLowerCase() === model) return true;
+      // Fallback: category-only match
+      return !brand && !model;
+    });
   };
 
   return (
@@ -339,7 +350,7 @@ export default function ServiceHistoryPage() {
                         >
                           <RotateCcw className="w-3.5 h-3.5 mr-1" /> Rebook
                         </Button>
-                        {warrantyStatus === "active" && (
+                         {(warrantyStatus === "active" || warrantyStatus === "expiring_soon") && (
                           <Button
                             variant="outline"
                             size="sm"

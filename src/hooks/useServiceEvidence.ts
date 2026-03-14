@@ -263,7 +263,7 @@ export function useServiceEvidence(bookingId: string | undefined) {
       console.warn("Support case creation failed (table may not exist):", e);
     }
 
-    // Auto-create incident event for ops visibility
+    // Auto-create incident event for ops visibility — standardized taxonomy
     try {
       await supabase.from("automation_event_log").insert({
         event_type: "service_dispute_opened",
@@ -272,6 +272,7 @@ export function useServiceEvidence(bookingId: string | undefined) {
         action_taken: "support_case_created",
         booking_id: bookingId,
         customer_id: evidence?.customer_id ?? null,
+        metadata: { category: "trust_service_proof", dispute_reason: reason },
       } as any);
     } catch (e) {
       console.warn("Incident log failed:", e);

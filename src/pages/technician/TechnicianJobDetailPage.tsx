@@ -15,6 +15,7 @@ import { JOB_OUTCOME_LABELS } from "@/types/booking";
 import { DISPUTE_REASONS } from "@/types/provider";
 import TimelineEventLog from "@/components/tracker/TimelineEventLog";
 import QuoteBuilder from "@/components/technician/QuoteBuilder";
+import ServiceEvidencePanel from "@/components/proof/ServiceEvidencePanel";
 import { track } from "@/lib/analytics";
 import { useState, useEffect } from "react";
 import {
@@ -53,6 +54,7 @@ export default function TechnicianJobDetailPage() {
   const [disputeDesc, setDisputeDesc] = useState("");
   const [techNote, setTechNote] = useState("");
   const [chatMsg, setChatMsg] = useState("");
+  const [evidenceBlocked, setEvidenceBlocked] = useState(false);
 
   useEffect(() => { if (jobId) track("technician_job_detail_view", { jobId }); }, [jobId]);
 
@@ -105,7 +107,7 @@ export default function TechnicianJobDetailPage() {
   const canInspect = status === "arrived";
   const canSubmitQuote = ["inspection_started", "in_progress"].includes(status) && booking.pricing.quoteRequired;
   const canStartRepair = ["quote_approved", "inspection_started", "in_progress"].includes(status);
-  const canComplete = ["repair_started", "in_progress"].includes(status);
+  const canComplete = ["repair_started", "in_progress"].includes(status) && !evidenceBlocked;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -294,6 +296,18 @@ export default function TechnicianJobDetailPage() {
 
         <TimelineEventLog events={booking.timelineEvents} />
 
+        {/* Service Evidence Panel — enforces completion lock */}
+        {booking.categoryCode && ["assigned", "tech_en_route", "arrived", "inspection_started", "in_progress", "repair_started"].includes(status) && (
+          <ServiceEvidencePanel
+            bookingId={booking.jobId}
+            categoryCode={booking.categoryCode}
+            bookingStatus={status}
+            serviceType={booking.serviceCode}
+            role="technician"
+            onCompletionBlocked={setEvidenceBlocked}
+          />
+        )}
+
         {showRejectReasons && (
           <Card className="border-destructive/30">
             <CardHeader className="pb-2"><CardTitle className="text-sm text-destructive">Reject Reason</CardTitle></CardHeader>
@@ -374,6 +388,12 @@ export default function TechnicianJobDetailPage() {
               onClick={() => markCompleted(booking.jobId)}>
               <CheckCircle2 className="w-4 h-4 mr-1" /> {checklistDone ? "Mark Complete" : "Complete Checklist First"}
             </Button>
+          )}
+          {["repair_started", "in_progress"].includes(status) && !canComplete && evidenceBlocked && (
+            <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30 text-xs text-warning">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Upload required evidence before completing</span>
+            </div>
           )}
         </div>
       </div>
