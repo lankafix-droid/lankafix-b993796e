@@ -289,6 +289,62 @@ serve(async (req) => {
   }
 });
 
+/** Release partner availability locks when multi-tech team formation fails */
+async function releasePartners(supabase: any, partners: { partner_id: string }[], bookingId: string) {
+  for (const p of partners) {
+    try {
+      const { data: partner } = await supabase
+        .from("partners")
+        .select("current_job_count")
+        .eq("id", p.partner_id)
+        .single();
+
+      if (partner) {
+        const newCount = Math.max(0, (partner.current_job_count || 1) - 1);
+        await supabase.from("partners").update({
+          current_job_count: newCount,
+          availability_status: newCount === 0 ? "online" : "busy",
+          active_job_id: null,
+        }).eq("id", p.partner_id);
+      }
+    } catch (e) {
+      console.error(`[ReleasePartner] Failed for ${p.partner_id}:`, e);
+    }
+  }
+
+  await supabase.from("job_timeline").insert({
+    booking_id: bookingId,
+    status: "partners_released",
+    actor: "offer_timer",
+    note: `Released ${partners.length} partner(s) from incomplete multi-tech team`,
+    metadata: { partner_ids: partners.map(p => p.partner_id) },
+  });
+}
+
+/** Escalate a failed multi-tech dispatch */
+async function escalateMultiTech(supabase: any, bookingId: string, round: number, accepted: number, required: number) {
+  await Promise.all([
+    supabase.from("bookings").update({ dispatch_status: "escalated" }).eq("id", bookingId),
+    supabase.from("dispatch_escalations").insert({
+      booking_id: bookingId,
+      reason: "multi_tech_team_incomplete",
+      dispatch_rounds_attempted: round,
+    }),
+    supabase.from("job_timeline").insert({
+      booking_id: bookingId,
+      status: "dispatch_failed",
+      actor: "offer_timer",
+      note: `Multi-tech team incomplete (${accepted}/${required}) after ${round} rounds — escalated`,
+      metadata: { accepted, required, round },
+    }),
+    supabase.from("notification_events").insert({
+      event_type: "dispatch_escalated",
+      booking_id: bookingId,
+      metadata: { reason: "multi_tech_team_incomplete", accepted, required, round },
+    }),
+  ]);
+}
+
 /** Trigger next dispatch round via orchestrator */
 async function triggerNextRound(supabase: any, bookingId: string, currentRound: number) {
   if (currentRound >= MAX_DISPATCH_ROUNDS) {
