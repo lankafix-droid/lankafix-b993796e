@@ -114,7 +114,7 @@ export async function analyzeSupplyDemandBalance(): Promise<CategorySupplyDemand
       b.dispatch_status === "failed" || b.dispatch_status === "escalated"
     );
     const pendingBookings = categoryBookings.filter(b =>
-      b.status === "requested" || b.status === "finding_provider"
+      b.status === "requested" || b.status === "matching"
     );
 
     const dailyBookings = categoryBookings.length / 30;
