@@ -9,7 +9,6 @@
  *   if (variant === "treatment") { ... }
  */
 
-import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 
 export interface Experiment {
