@@ -9,6 +9,7 @@ import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
 
 // Lazy-load below-fold sections for mobile performance
+const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
 const V2NearbyTechnicians = lazy(() => import("@/components/v2/V2NearbyTechnicians"));
 const V2BookAgain = lazy(() => import("@/components/v2/V2BookAgain"));
 const V2WhyLankaFix = lazy(() => import("@/components/v2/V2WhyLankaFix"));
@@ -16,7 +17,6 @@ const V2HowItWorks = lazy(() => import("@/components/v2/V2HowItWorks"));
 const V2SocialProof = lazy(() => import("@/components/v2/V2SocialProof"));
 const V2HomeFAQ = lazy(() => import("@/components/v2/V2HomeFAQ"));
 const V2SupportEntry = lazy(() => import("@/components/v2/V2SupportEntry"));
-const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
 
 const SectionFallback = () => <div className="h-24" aria-hidden />;
 
