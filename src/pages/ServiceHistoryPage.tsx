@@ -19,8 +19,10 @@ import ServiceProofBadge from "@/components/proof/ServiceProofBadge";
 import {
   ArrowLeft, Calendar, FileText, Shield, RotateCcw,
   Wrench, Download, ChevronRight, Image, History, Award, AlertTriangle,
+  Smartphone, Plus, Link2,
 } from "lucide-react";
 import { CATEGORY_LABELS, type CategoryCode } from "@/types/booking";
+import { toast } from "sonner";
 
 interface ServiceRecord {
   id: string;
@@ -50,6 +52,7 @@ interface EvidenceRecord {
   warranty_start_date: string | null;
   warranty_end_date: string | null;
   maintenance_due_date: string | null;
+  device_id: string | null;
 }
 
 interface PartnerInfo {
@@ -57,21 +60,62 @@ interface PartnerInfo {
   full_name: string;
 }
 
+interface DeviceInfo {
+  id: string;
+  device_type: string;
+  brand: string;
+  model: string;
+  category_code: string;
+}
+
+type WarrantyStatus = "active" | "expiring_soon" | "expired" | "disputed" | "none";
+
+function getWarrantyStatus(ev: EvidenceRecord | undefined): WarrantyStatus {
+  if (!ev?.warranty_activated) return "none";
+  if (ev.customer_dispute) return "disputed";
+  if (!ev.warranty_end_date) return "none";
+  const now = new Date();
+  const end = new Date(ev.warranty_end_date);
+  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000);
+  if (daysLeft <= 0) return "expired";
+  if (daysLeft <= 7) return "expiring_soon";
+  return "active";
+}
+
 function WarrantyBadge({ ev }: { ev: EvidenceRecord | undefined }) {
-  if (!ev?.warranty_activated) return null;
-  const expired = ev.warranty_end_date && new Date(ev.warranty_end_date) < new Date();
-  if (expired) {
-    return (
-      <Badge className="bg-muted text-muted-foreground text-[10px] gap-1">
-        <Shield className="w-3 h-3" /> Warranty Expired
-      </Badge>
-    );
+  const status = getWarrantyStatus(ev);
+  switch (status) {
+    case "active":
+      return (
+        <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] gap-1">
+          <Shield className="w-3 h-3" /> Warranty Active
+        </Badge>
+      );
+    case "expiring_soon": {
+      const daysLeft = ev?.warranty_end_date
+        ? Math.ceil((new Date(ev.warranty_end_date).getTime() - Date.now()) / 86400000)
+        : 0;
+      return (
+        <Badge className="bg-warning/10 text-warning border-warning/20 text-[10px] gap-1">
+          <AlertTriangle className="w-3 h-3" /> Expiring ({daysLeft}d)
+        </Badge>
+      );
+    }
+    case "expired":
+      return (
+        <Badge className="bg-muted text-muted-foreground text-[10px] gap-1">
+          <Shield className="w-3 h-3" /> Warranty Expired
+        </Badge>
+      );
+    case "disputed":
+      return (
+        <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-[10px] gap-1">
+          <AlertTriangle className="w-3 h-3" /> Disputed
+        </Badge>
+      );
+    default:
+      return null;
   }
-  return (
-    <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] gap-1">
-      <Shield className="w-3 h-3" /> Warranty Active
-    </Badge>
-  );
 }
 
 function EvidenceThumbnails({ paths, label }: { paths: string[]; label: string }) {
@@ -99,6 +143,7 @@ export default function ServiceHistoryPage() {
   const [records, setRecords] = useState<ServiceRecord[]>([]);
   const [evidence, setEvidence] = useState<Record<string, EvidenceRecord>>({});
   const [partners, setPartners] = useState<Record<string, string>>({});
+  const [devices, setDevices] = useState<DeviceInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -106,7 +151,7 @@ export default function ServiceHistoryPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const [bk, ev, pt] = await Promise.all([
+      const [bk, ev, pt, dv] = await Promise.all([
         supabase
           .from("bookings")
           .select("id,category_code,service_type,status,created_at,completed_at,final_price_lkr,estimated_price_lkr,partner_id,customer_rating,zone_code,device_details")
@@ -116,9 +161,10 @@ export default function ServiceHistoryPage() {
           .order("completed_at", { ascending: false }),
         supabase
           .from("service_evidence")
-          .select("booking_id,before_photos,after_photos,service_verified,customer_confirmed,customer_dispute,technician_notes,warranty_activated,warranty_text,warranty_start_date,warranty_end_date,maintenance_due_date")
+          .select("booking_id,before_photos,after_photos,service_verified,customer_confirmed,customer_dispute,technician_notes,warranty_activated,warranty_text,warranty_start_date,warranty_end_date,maintenance_due_date,device_id")
           .eq("customer_id", user.id),
         supabase.from("partners").select("id,full_name"),
+        supabase.from("device_registry").select("id,device_type,brand,model,category_code").eq("user_id", user.id),
       ]);
 
       setRecords((bk.data || []) as ServiceRecord[]);
@@ -136,10 +182,28 @@ export default function ServiceHistoryPage() {
       const pMap: Record<string, string> = {};
       ((pt.data || []) as PartnerInfo[]).forEach(p => { pMap[p.id] = p.full_name; });
       setPartners(pMap);
+      setDevices((dv.data || []) as DeviceInfo[]);
       setLoading(false);
     }
     load();
   }, []);
+
+  const linkDevice = async (bookingId: string, deviceId: string) => {
+    const { error } = await supabase
+      .from("service_evidence")
+      .update({ device_id: deviceId } as any)
+      .eq("booking_id", bookingId);
+    if (error) { toast.error("Failed to link device"); return; }
+    setEvidence(prev => ({
+      ...prev,
+      [bookingId]: { ...prev[bookingId], device_id: deviceId },
+    }));
+    toast.success("Device linked to service record");
+  };
+
+  const getMatchingDevices = (record: ServiceRecord) => {
+    return devices.filter(d => d.category_code === record.category_code);
+  };
 
   return (
     <PageTransition>
@@ -178,6 +242,9 @@ export default function ServiceHistoryPage() {
                 const catLabel = CATEGORY_LABELS[record.category_code as CategoryCode] || record.category_code;
                 const price = record.final_price_lkr || record.estimated_price_lkr;
                 const completedDate = record.completed_at ? new Date(record.completed_at) : null;
+                const warrantyStatus = getWarrantyStatus(ev);
+                const matchingDevices = getMatchingDevices(record);
+                const linkedDevice = ev?.device_id ? devices.find(d => d.id === ev.device_id) : null;
 
                 return (
                   <Card key={record.id} className="overflow-hidden">
@@ -192,11 +259,6 @@ export default function ServiceHistoryPage() {
                         <div className="flex items-center gap-1.5 flex-wrap justify-end">
                           {ev?.service_verified && <ServiceProofBadge verified size="sm" />}
                           <WarrantyBadge ev={ev} />
-                          {ev?.customer_dispute && (
-                            <Badge className="bg-destructive/10 text-destructive border-destructive/20 text-[10px] gap-1">
-                              <AlertTriangle className="w-3 h-3" /> Disputed
-                            </Badge>
-                          )}
                           {record.customer_rating && (
                             <Badge className="bg-warning/10 text-warning border-warning/20 text-[10px]">
                               ★ {record.customer_rating}
@@ -204,6 +266,24 @@ export default function ServiceHistoryPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Warranty details */}
+                      {ev?.warranty_text && (
+                        <div className="text-[11px] text-muted-foreground mb-2 p-2 rounded-lg bg-muted/30">
+                          <span className="font-medium text-foreground">{ev.warranty_text}</span>
+                          {ev.warranty_end_date && (
+                            <span className="ml-1">· Expires {new Date(ev.warranty_end_date).toLocaleDateString()}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Linked device */}
+                      {linkedDevice && (
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2 p-1.5 rounded bg-primary/5 border border-primary/10">
+                          <Smartphone className="w-3 h-3 text-primary" />
+                          <span>{linkedDevice.brand} {linkedDevice.model}</span>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                         {completedDate && (
@@ -221,12 +301,6 @@ export default function ServiceHistoryPage() {
                         {price && (
                           <div className="flex items-center gap-1.5 text-foreground font-medium">
                             Rs. {price.toLocaleString()}
-                          </div>
-                        )}
-                        {ev?.warranty_text && (
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <Award className="w-3 h-3" />
-                            <span className="truncate">{ev.warranty_text}</span>
                           </div>
                         )}
                       </div>
@@ -248,7 +322,7 @@ export default function ServiceHistoryPage() {
                       )}
 
                       {/* Actions */}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button
                           variant="outline"
                           size="sm"
@@ -265,6 +339,39 @@ export default function ServiceHistoryPage() {
                         >
                           <RotateCcw className="w-3.5 h-3.5 mr-1" /> Rebook
                         </Button>
+                        {warrantyStatus === "active" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs text-primary border-primary/30"
+                            onClick={() => {
+                              toast.info("Warranty claim started — our team will contact you.");
+                            }}
+                          >
+                            <Shield className="w-3.5 h-3.5 mr-1" /> Claim Warranty
+                          </Button>
+                        )}
+                        {/* Device linking */}
+                        {!linkedDevice && matchingDevices.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-primary"
+                            onClick={() => linkDevice(record.id, matchingDevices[0].id)}
+                          >
+                            <Link2 className="w-3.5 h-3.5 mr-1" /> Attach Device
+                          </Button>
+                        )}
+                        {!linkedDevice && matchingDevices.length === 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-muted-foreground"
+                            onClick={() => navigate("/devices")}
+                          >
+                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Device
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
