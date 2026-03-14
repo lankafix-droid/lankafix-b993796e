@@ -1144,14 +1144,15 @@ export default function WarRoomPage() {
                     </div>
                   );
                 })}
-                {pendingConfirmations.slice(0, 3).map(e => {
+                {pendingOver24h.slice(0, 3).map(e => {
                   const bk = bookings.find(b => b.id === e.booking_id);
                   return (
                     <div key={`pc-${e.booking_id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-warning/5 cursor-pointer hover:bg-warning/10"
                       onClick={() => navigate(`/track/${e.booking_id}`)}>
-                      <Badge className="text-[9px] bg-warning/10 text-warning shrink-0">pending</Badge>
+                      <Badge className="text-[9px] bg-warning/10 text-warning shrink-0">review &gt;24h</Badge>
                       <span className="font-mono">{e.booking_id.slice(0, 6)}</span>
                       <span className="text-muted-foreground">{bk ? catLabel(bk.category_code) : "—"}</span>
+                      <span className="text-muted-foreground">{bk ? zoneLabel(bk.zone_code) : "—"}</span>
                       <Eye className="w-3 h-3 text-muted-foreground shrink-0 ml-auto" />
                     </div>
                   );
