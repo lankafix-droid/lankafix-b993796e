@@ -410,6 +410,119 @@ export default function WarRoomPage() {
             alert={slaBreaches.length > 0 ? "red" : "green"} />
         </div>
 
+        {/* ══ PILOT PROTECTION MODE BANNER ══ */}
+        {isPilotProtection && (
+          <div className="rounded-xl border-2 border-amber-500/50 bg-amber-500/10 px-4 py-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Shield className="w-4 h-4 text-amber-600" />
+              <span className="text-sm font-bold text-amber-700">PILOT PROTECTION MODE ACTIVE</span>
+              <Badge className="bg-amber-500/20 text-amber-700 text-[9px] ml-auto">{totalCompleted}/25</Badge>
+            </div>
+            <p className="text-[11px] text-amber-700/80">No booking should fail. Manual intervention required if dispatch fails.</p>
+          </div>
+        )}
+
+        {/* ══ CONTEXTUAL RESPONSE ALERTS ══ */}
+        {activeAlertCount > 0 && (
+          <div className="space-y-1.5">
+            {hasDispatchIssue && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Zap className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Dispatch Failure Detected</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Reassign nearest available technician",
+                  "Contact provider directly via WhatsApp",
+                  "Expand dispatch radius if needed",
+                  "Escalate to partner manager"
+                ]} />
+              </div>
+            )}
+            {hasQuoteDelay && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-[11px] font-semibold text-amber-700">Quote Delay ({staleQuotes.length} stale)</span>
+                </div>
+                <ResponseStep color="yellow" steps={[
+                  "Notify technician to submit quote",
+                  "Contact customer with update",
+                  "Verify repair scope clarity",
+                  "Request quote revision if excessive"
+                ]} />
+              </div>
+            )}
+            {hasPaymentFailure && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <XCircle className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Payment Failure ({paymentFailures.length})</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Retry payment processing",
+                  "Offer alternative payment method",
+                  "Verify transaction manually",
+                  "Confirm service continuation with customer"
+                ]} />
+              </div>
+            )}
+            {hasSlaBreaches && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Shield className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">SLA Breach ({slaBreaches.length})</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Contact assigned technician immediately",
+                  "Update customer with revised ETA",
+                  "Reschedule if technician unavailable",
+                  "Offer compensation if appropriate"
+                ]} />
+              </div>
+            )}
+            {hasCustomerIssue && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <MessageSquare className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Customer Issue ({lowRatings.length} low ratings)</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Contact customer within 30 minutes",
+                  "Apologize and investigate root cause",
+                  "Offer repair revisit, discount, or refund"
+                ]} />
+              </div>
+            )}
+            {hasSupplyShortage && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-[11px] font-semibold text-amber-700">Supply Shortage in Zone(s)</span>
+                </div>
+                <ResponseStep color="yellow" steps={[
+                  "Expand dispatch radius for affected zones",
+                  "Contact offline partners to come online",
+                  "Prioritize urgent bookings in low-supply zones"
+                ]} />
+              </div>
+            )}
+            {hasPartnerIssue && criticalPartners.length > 0 && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Users className="w-3.5 h-3.5 text-destructive" />
+                  <span className="text-[11px] font-semibold text-destructive">Critical Partner(s): {criticalPartners.map(p => p.full_name).join(", ")}</span>
+                </div>
+                <ResponseStep color="red" steps={[
+                  "Call partner immediately",
+                  "Pause provider if quality risk persists",
+                  "Assign alternative technician to active jobs"
+                ]} />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ══ 2. LIVE BOOKINGS STREAM ══ */}
         <Card>
           <CardHeader className="pb-2">
