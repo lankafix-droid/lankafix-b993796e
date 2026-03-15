@@ -1182,6 +1182,11 @@ export default function WarRoomPage() {
           const enRouteCount = arrivalBookings.filter(b => b.status === "tech_en_route").length;
           const arrivedCount = arrivalBookings.filter(b => b.status === "arrived").length;
           const workingCount = arrivalBookings.filter(b => ["inspection_started", "repair_started", "in_progress"].includes(b.status)).length;
+          const delayedCount = arrivalBookings.filter(b => {
+            if (b.status !== "assigned" || !b.assigned_at) return false;
+            const elapsed = (Date.now() - new Date(b.assigned_at).getTime()) / 60000;
+            return elapsed > 30;
+          }).length;
 
           return (
             <Card>
@@ -1194,7 +1199,7 @@ export default function WarRoomPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="grid grid-cols-4 gap-2 mb-3">
                   <div className="text-center p-2 bg-accent/5 rounded-lg border border-accent/10">
                     <p className="text-lg font-bold text-accent">{enRouteCount}</p>
                     <p className="text-[9px] text-muted-foreground">En Route</p>
@@ -1207,6 +1212,10 @@ export default function WarRoomPage() {
                     <p className="text-lg font-bold text-warning">{workingCount}</p>
                     <p className="text-[9px] text-muted-foreground">Working</p>
                   </div>
+                  <div className="text-center p-2 bg-destructive/5 rounded-lg border border-destructive/10">
+                    <p className="text-lg font-bold text-destructive">{delayedCount}</p>
+                    <p className="text-[9px] text-muted-foreground">Delayed</p>
+                  </div>
                 </div>
                 <Table>
                   <TableHeader>
@@ -1215,19 +1224,26 @@ export default function WarRoomPage() {
                       <TableHead className="text-[10px]">Technician</TableHead>
                       <TableHead className="text-[10px]">Zone</TableHead>
                       <TableHead className="text-[10px]">State</TableHead>
+                      <TableHead className="text-[10px]">ETA</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {arrivalBookings.slice(0, 10).map(b => {
                       const state = ARRIVAL_LABELS[b.status] || ARRIVAL_LABELS.assigned;
+                      const etaDisplay = b.sla_eta_minutes ? `~${b.sla_eta_minutes}m` : "—";
+                      const isDelayed = b.status === "assigned" && b.assigned_at &&
+                        (Date.now() - new Date(b.assigned_at).getTime()) / 60000 > 30;
                       return (
                         <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/tracker/${b.id}`)}>
                           <TableCell className="text-[10px] font-mono">{b.id.slice(0, 8)}</TableCell>
                           <TableCell className="text-[10px]">{b.partner_id ? (partnerMap[b.partner_id] || b.partner_id.slice(0, 8)) : "—"}</TableCell>
                           <TableCell className="text-[10px]">{zoneLabel(b.zone_code)}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={`text-[9px] ${state.color}`}>{state.label}</Badge>
+                            <Badge variant="outline" className={`text-[9px] ${isDelayed ? "bg-destructive/10 text-destructive" : state.color}`}>
+                              {isDelayed ? "Delayed" : state.label}
+                            </Badge>
                           </TableCell>
+                          <TableCell className="text-[10px] text-muted-foreground">{etaDisplay}</TableCell>
                         </TableRow>
                       );
                     })}
