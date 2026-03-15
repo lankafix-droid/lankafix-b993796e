@@ -338,7 +338,7 @@ export default function ServiceHistoryPage() {
                           variant="outline"
                           size="sm"
                           className="flex-1 text-xs"
-                          onClick={() => navigate(`/track/${record.id}`)}
+                          onClick={() => navigate(`/tracker/${record.id}`)}
                         >
                           <FileText className="w-3.5 h-3.5 mr-1" /> View Details
                         </Button>

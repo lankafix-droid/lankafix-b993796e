@@ -2,6 +2,7 @@
  * TrackerContactOptions — Protected communication options for assigned bookings.
  * Shows call and message options only after technician assignment.
  * Phone numbers are masked; uses existing BookingChatPanel.
+ * Logs communication events to booking_contact_events.
  */
 import { useState } from "react";
 import { Phone, MessageCircle, Shield, Lock } from "lucide-react";
@@ -10,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import BookingChatPanel from "@/components/chat/BookingChatPanel";
 import { SUPPORT_WHATSAPP, whatsappLink } from "@/config/contact";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TrackerContactOptionsProps {
   bookingId: string;
@@ -20,6 +22,15 @@ interface TrackerContactOptionsProps {
 
 const CONTACT_STATUSES = ["assigned", "tech_en_route", "arrived", "inspection_started", "repair_started", "in_progress", "quote_submitted", "quote_approved"];
 
+/** Fire-and-forget event logging */
+function logContactEvent(bookingId: string, eventType: string, userRole: string = "customer") {
+  supabase.from("booking_contact_events").insert({
+    booking_id: bookingId,
+    event_type: eventType,
+    user_role: userRole,
+  } as any).then(() => {});
+}
+
 export default function TrackerContactOptions({
   bookingId,
   bookingStatus,
@@ -29,6 +40,17 @@ export default function TrackerContactOptions({
   const [showChat, setShowChat] = useState(false);
 
   if (!CONTACT_STATUSES.includes(bookingStatus)) return null;
+
+  const handleCall = () => {
+    logContactEvent(bookingId, "call_technician");
+  };
+
+  const handleToggleChat = () => {
+    if (!showChat) {
+      logContactEvent(bookingId, "open_chat");
+    }
+    setShowChat(!showChat);
+  };
 
   return (
     <motion.div
@@ -62,6 +84,7 @@ export default function TrackerContactOptions({
             href={whatsappLink(SUPPORT_WHATSAPP, `Hi, I need to contact my technician for booking ${bookingId.slice(0, 8).toUpperCase()}`)}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={handleCall}
           >
             <Phone className="w-3.5 h-3.5" />
             Call via LankaFix
@@ -71,7 +94,7 @@ export default function TrackerContactOptions({
           variant={showChat ? "default" : "outline"}
           size="sm"
           className="flex-1 rounded-xl h-10 text-xs gap-1.5"
-          onClick={() => setShowChat(!showChat)}
+          onClick={handleToggleChat}
         >
           <MessageCircle className="w-3.5 h-3.5" />
           {showChat ? "Hide Chat" : "Message"}

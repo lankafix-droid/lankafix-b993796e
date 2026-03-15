@@ -541,6 +541,21 @@ const TrackerPage = () => {
       manual: { label: "Under Review", description: "Our team is reviewing your request and will assign the right specialist.", icon: ClipboardList },
     };
 
+    // Exception state messages
+    const EXCEPTION_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType; color: string }> = {
+      technician_delayed: { label: "Technician Delayed", description: "Technician delayed due to traffic. Updated ETA will appear shortly.", icon: AlertTriangle, color: "bg-warning/10 text-warning border-warning/20" },
+      technician_reassigned: { label: "Technician Reassigned", description: "Your technician has been reassigned. A new technician is being dispatched.", icon: UserCheck, color: "bg-accent/10 text-accent border-accent/20" },
+      technician_cancelled: { label: "Technician Unavailable", description: "Your assigned technician is no longer available. Our team is finding a replacement.", icon: AlertTriangle, color: "bg-destructive/10 text-destructive border-destructive/20" },
+      customer_unreachable: { label: "Unable to Reach You", description: "We couldn't reach you. Please check your phone and try contacting your technician.", icon: Phone, color: "bg-warning/10 text-warning border-warning/20" },
+      ops_intervention: { label: "Team Assisting", description: "Our operations team is personally handling your booking to ensure the best outcome.", icon: Headphones, color: "bg-primary/10 text-primary border-primary/20" },
+    };
+
+    // Check timeline for exception events
+    const exceptionEvent = dbTimeline?.find(evt =>
+      Object.keys(EXCEPTION_MESSAGES).includes(evt.status)
+    );
+    const exceptionInfo = exceptionEvent ? EXCEPTION_MESSAGES[exceptionEvent.status] : null;
+
     const dispatchInfo = DISPATCH_MESSAGES[dbBooking.dispatch_status || "pending"] || DISPATCH_MESSAGES.pending;
     const StatusIcon = dbBooking.status === "assigned" ? CheckCircle2 : dispatchInfo.icon;
     const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (BOOKING_STATUS_LABELS[dbBooking.status as keyof typeof BOOKING_STATUS_LABELS] || dispatchInfo.label);
@@ -628,12 +643,30 @@ const TrackerPage = () => {
               </div>
             </motion.div>
 
+            {/* Exception state banner */}
+            {exceptionInfo && (
+              <motion.div
+                className={`rounded-2xl border p-4 shadow-[var(--shadow-card)] ${exceptionInfo.color}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex items-start gap-3">
+                  <exceptionInfo.icon className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold">{exceptionInfo.label}</p>
+                    <p className="text-xs mt-0.5 opacity-80">{exceptionEvent?.note || exceptionInfo.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Technician Arrival Card — trust-building profile */}
             {dbBooking.partner_id && ["assigned", "tech_en_route", "arrived", "inspection_started", "repair_started", "in_progress", "quote_submitted", "quote_approved"].includes(dbBooking.status) && (
               <TechnicianArrivalCard
                 partnerId={dbBooking.partner_id}
                 bookingStatus={dbBooking.status}
                 promisedEtaMinutes={dbBooking.promised_eta_minutes}
+                lastPingAt={(dbBooking as any).updated_at}
               />
             )}
 
@@ -789,8 +822,8 @@ const TrackerPage = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
-                      <RotateCcw className="w-3.5 h-3.5" /> Book Again
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}${dbBooking.partner_id ? `?preferred_partner=${dbBooking.partner_id}` : ""}`)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> {dbBooking.partner_id ? "Book Same Tech" : "Book Again"}
                     </Button>
                     <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
                       <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">

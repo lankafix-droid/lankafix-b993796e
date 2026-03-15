@@ -159,21 +159,21 @@ export default function TechnicianArrivalCard({
           <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-muted-foreground">Arriving in</span>
-              {etaConfidence && (
-                <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
-                  etaConfidence === "high" ? "bg-success/10 text-success" :
-                  etaConfidence === "medium" ? "bg-warning/10 text-warning" :
-                  "bg-muted text-muted-foreground"
-                }`}>
-                  {etaConfidence === "high" ? "High accuracy" : etaConfidence === "medium" ? "Estimated" : "Approximate"}
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {etaConfidence && (
+                  <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+                    etaConfidence === "high" ? "bg-success/10 text-success" :
+                    etaConfidence === "medium" ? "bg-warning/10 text-warning" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {etaConfidence === "high" ? "High accuracy" : etaConfidence === "medium" ? "Estimated" : "Approximate"}
+                  </span>
+                )}
+              </div>
             </div>
             <p className="text-lg font-bold text-primary">{etaRange}</p>
             {lastPingAt && (
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                Updated {getTimeAgo(lastPingAt)}
-              </p>
+              <ETAFreshnessIndicator lastPingAt={lastPingAt} />
             )}
           </div>
         )}
@@ -187,6 +187,30 @@ export default function TechnicianArrivalCard({
         )}
       </div>
     </motion.div>
+  );
+}
+
+/** ETA freshness indicator — shows last updated time with stale warning */
+function ETAFreshnessIndicator({ lastPingAt }: { lastPingAt: string }) {
+  const diffSeconds = Math.round((Date.now() - new Date(lastPingAt).getTime()) / 1000);
+  const isStale = diffSeconds > 300; // 5 minutes
+
+  if (isStale) {
+    return (
+      <p className="text-[10px] text-warning mt-0.5 flex items-center gap-1">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-warning" />
+        </span>
+        ETA updating…
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-[10px] text-muted-foreground mt-0.5">
+      Updated {getTimeAgo(lastPingAt)}
+    </p>
   );
 }
 
