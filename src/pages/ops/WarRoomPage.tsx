@@ -1123,7 +1123,7 @@ export default function WarRoomPage() {
                 ))}
                 {jobsMissingAfter.slice(0, 3).map(b => (
                   <div key={`ma-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
-                    onClick={() => navigate(`/track/${b.id}`)}>
+                    onClick={() => navigate(`/tracker/${b.id}`)}>
                     <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">no after</Badge>
                     <span className="font-mono">{b.id.slice(0, 6)}</span>
                     <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
