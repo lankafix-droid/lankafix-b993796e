@@ -5,8 +5,9 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calculateETA, detectTrafficLevel } from "@/lib/etaEngine";
+import { detectTrafficLevel } from "@/lib/etaEngine";
 import type { TrafficLevel } from "@/lib/etaEngine";
+import { predictETA, type ETAPrediction } from "@/engines/etaPredictionEngine";
 import { isProductionMode } from "@/config/productionMode";
 
 export interface LiveTrackingData {
@@ -17,29 +18,17 @@ export interface LiveTrackingData {
   distanceKm: number;
   etaMinutes: number;
   etaRange: string;
+  etaConfidence: ETAPrediction["confidence"];
+  etaTravelType: ETAPrediction["travelType"];
+  etaMinMinutes: number;
+  etaMaxMinutes: number;
   trafficLevel: TrafficLevel;
+  trafficLabel: string;
   lastPingAt: string | null;
   isLive: boolean;
   partnerName: string;
   partnerRating: number;
   vehicleType: string;
-}
-
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function getETARange(etaMinutes: number): string {
-  if (etaMinutes <= 10) return "~10 minutes";
-  if (etaMinutes <= 15) return "10-15 minutes";
-  if (etaMinutes <= 25) return "15-25 minutes";
-  if (etaMinutes <= 40) return "25-40 minutes";
-  if (etaMinutes <= 60) return "40-60 minutes";
-  return "1+ hours";
 }
 
 /** Statuses where live tracking polling is active */
