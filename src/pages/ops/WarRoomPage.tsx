@@ -1255,6 +1255,9 @@ export default function WarRoomPage() {
           );
         })()}
 
+        {/* ══ PILOT RELIABILITY ══ */}
+        <PilotReliabilityPanel />
+
         {/* ══ 12. QUICK ACTIONS ══ */}
         <Card>
           <CardHeader className="pb-2">
