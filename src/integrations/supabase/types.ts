@@ -2610,6 +2610,45 @@ export type Database = {
           },
         ]
       }
+      reliability_snapshots: {
+        Row: {
+          circuit_break_count: number
+          confidence_score: number
+          created_at: string
+          escalation_rate: number
+          executive_verdict: string
+          id: string
+          reliability_score: number
+          risk_probability: number
+          success_rate: number
+          zone_summary_json: Json | null
+        }
+        Insert: {
+          circuit_break_count?: number
+          confidence_score?: number
+          created_at?: string
+          escalation_rate?: number
+          executive_verdict?: string
+          id?: string
+          reliability_score?: number
+          risk_probability?: number
+          success_rate?: number
+          zone_summary_json?: Json | null
+        }
+        Update: {
+          circuit_break_count?: number
+          confidence_score?: number
+          created_at?: string
+          escalation_rate?: number
+          executive_verdict?: string
+          id?: string
+          reliability_score?: number
+          risk_probability?: number
+          success_rate?: number
+          zone_summary_json?: Json | null
+        }
+        Relationships: []
+      }
       self_healing_events: {
         Row: {
           attempt_number: number
