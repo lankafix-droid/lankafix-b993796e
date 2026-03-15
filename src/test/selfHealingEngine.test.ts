@@ -496,6 +496,73 @@ describe("Boundary & Rounding", () => {
     const stats = computeHealingStats(events, FIXED_NOW);
     expect(stats.successRate).toBe(56);
   });
+
+  it("Math.round boundary: 62.49 rounds to 62 (below .5)", () => {
+    // 312 success out of 500 = 62.4% → rounds to 62
+    // Actually need exact: use direct stats
+    const stats = computeHealingStats([
+      ...makeEvents(312, { status: "success" }),
+      ...makeEvents(188, { status: "failed" }),
+    ], FIXED_NOW);
+    // 312/500 = 62.4 → Math.round = 62
+    expect(stats.successRate).toBe(62);
+  });
+
+  it("Math.round boundary: 62.5 rounds to 63 (at .5)", () => {
+    // 5 success out of 8 = 62.5% → rounds to 63
+    const stats = computeHealingStats([
+      ...makeEvents(5, { status: "success" }),
+      ...makeEvents(3, { status: "failed" }),
+    ], FIXED_NOW);
+    expect(stats.successRate).toBe(63);
+  });
+
+  it("confidence cap precedence: circuit_broken overrides escalation_mode cap", () => {
+    const stats: HealingStats = {
+      successCount: 50, failedCount: 0, escalatedCount: 50,
+      totalActions: 100, successRate: 50, escalationRate: 50,
+    };
+    // Both escalation_mode and circuit_broken could apply — circuit_broken wins (lower cap)
+    const confCircuit = computeHealingConfidence(stats, "circuit_broken");
+    const confEscalation = computeHealingConfidence(stats, "escalation_mode");
+    expect(confCircuit).toBeLessThanOrEqual(40);
+    expect(confEscalation).toBeLessThanOrEqual(50);
+    expect(confCircuit).toBeLessThan(confEscalation);
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// TEST SUITE: Root Cause Tie-Breaking Stability
+// ═══════════════════════════════════════════════════
+
+describe("Root Cause Tie-Breaking", () => {
+  it("returns alphabetically first entity type on tie", () => {
+    const events = [
+      ...makeEvents(3, { entity_type: "dispatch" }),
+      ...makeEvents(3, { entity_type: "booking" }),
+    ];
+    const insights = computeRootCauseInsights(events, FIXED_NOW);
+    // Equal counts → "booking" < "dispatch" alphabetically
+    expect(insights?.topEntity?.entity).toBe("booking");
+  });
+
+  it("returns alphabetically first recovery type on tie", () => {
+    const events = [
+      ...makeEvents(2, { recovery_type: "payment_retry" }),
+      ...makeEvents(2, { recovery_type: "dispatch_offer_expiry" }),
+    ];
+    const insights = computeRootCauseInsights(events, FIXED_NOW);
+    expect(insights?.topRecoveryType?.type).toBe("dispatch_offer_expiry");
+  });
+
+  it("returns alphabetically first failure reason on tie", () => {
+    const events = [
+      ...makeEvents(2, { metadata: { reason: "Timeout" } }),
+      ...makeEvents(2, { metadata: { reason: "Cooldown" } }),
+    ];
+    const insights = computeRootCauseInsights(events, FIXED_NOW);
+    expect(insights?.topReason?.reason).toBe("Cooldown");
+  });
 });
 
 // ═══════════════════════════════════════════════════
