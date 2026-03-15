@@ -338,7 +338,7 @@ async function runStaleBookingHealing() {
   const { data: staleBookings } = await supabase
     .from("bookings")
     .select("id, partner_id, status, dispatch_round")
-    .in("status", STALE_STATUSES as unknown as string[])
+    .in("status", ["assigned", "tech_en_route"])
     .lt("updated_at", cutoff)
     .limit(10);
 
