@@ -700,6 +700,9 @@ export default function LaunchCommandCenterPage() {
             </CardContent>
           </Card>
 
+          {/* ── RELIABILITY STATUS (display-only) ── */}
+          <ReliabilityStatusPanel />
+
           {/* ── OPERATOR NOTE ── */}
           <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-primary" /> Operator Note
