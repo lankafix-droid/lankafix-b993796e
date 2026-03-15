@@ -551,6 +551,7 @@ export default function LaunchCommandCenterPage() {
                 <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" /> {zonesRisky} risky</span>
                 <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-3.5 h-3.5" /> {safeLen(data.activePartners)} active partners</span>
                 <span className="flex items-center gap-1 text-muted-foreground"><Target className="w-3.5 h-3.5" /> {safeLen(data.bookingsToday)} bookings today</span>
+                <SelfHealingStatusBadge />
               </div>
 
               <p className="text-sm text-muted-foreground mt-3">{recommendation}</p>
@@ -781,5 +782,42 @@ function MetricTile({ label, value, threshold, inverted, formatFn }: {
       </p>
       <p className="text-[9px] text-muted-foreground">{label}</p>
     </div>
+  );
+}
+
+// ── Self-Healing Status Badge (read-only, lightweight) ──
+function SelfHealingStatusBadge() {
+  const { data } = useQuery({
+    queryKey: ["self-healing-status-badge"],
+    queryFn: async () => {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: events } = await supabase
+        .from("self_healing_events")
+        .select("status")
+        .gte("created_at", cutoff)
+        .limit(50);
+      if (!events || events.length === 0) return { status: "healthy" as const, count: 0 };
+      const escalated = events.filter((e: any) => e.status === "escalated").length;
+      const total = events.length;
+      if (escalated >= 3) return { status: "escalation" as const, count: total };
+      if (total > 0) return { status: "active" as const, count: total };
+      return { status: "healthy" as const, count: 0 };
+    },
+    staleTime: 60_000,
+  });
+
+  if (!data) return null;
+
+  const cfg = {
+    healthy: { color: "text-success", label: "Self-Healing: Healthy", icon: Heart },
+    active: { color: "text-primary", label: `Self-Healing: Active (${data.count})`, icon: Heart },
+    escalation: { color: "text-warning", label: `Self-Healing: Escalation (${data.count})`, icon: AlertTriangle },
+  }[data.status];
+
+  const Icon = cfg.icon;
+  return (
+    <span className={`flex items-center gap-1 ${cfg.color}`}>
+      <Icon className="w-3.5 h-3.5" /> {cfg.label}
+    </span>
   );
 }

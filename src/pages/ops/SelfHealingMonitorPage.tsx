@@ -1,29 +1,35 @@
 /**
- * LankaFix Self-Healing Monitor
- * Ops page showing healing events, success rate, escalations, and manual trigger.
+ * LankaFix Self-Healing Monitor — Production Grade
+ * Includes: Healing Confidence, Predictive Warnings, Guarded Auto Mode,
+ * Circuit Breaker, Root Cause Insights, Observability Hardening.
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, RefreshCw, Shield, CheckCircle2, AlertTriangle, XCircle,
   Activity, Clock, Zap, CreditCard, Cpu, Heart, TrendingUp,
+  AlertOctagon, Eye, ShieldOff, BarChart3, Info,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import {
   COOLDOWN_MINUTES, MAX_RETRIES, RECOVERY_TYPE_LABELS, STALE_BOOKING_MINUTES,
-  STALE_STATUSES, type HealingEntityType, type HealingRecoveryType, type HealingStatus,
+  type HealingEntityType, type HealingRecoveryType, type HealingStatus,
 } from "@/config/selfHealingConfig";
-import {
-  MAX_PAYMENT_FAILURES_CHECKLIST, MAX_ESCALATIONS_CHECKLIST,
-  MAX_STALE_BOOKINGS_CHECKLIST,
-} from "@/config/launchReadinessConfig";
+
+// ── Circuit Breaker Config ──
+const CIRCUIT_BREAKER_WINDOW_MS = 30 * 60 * 1000; // 30 min
+const CIRCUIT_BREAKER_ESCALATION_LIMIT = 5;
+const CIRCUIT_BREAKER_PAYMENT_LIMIT = 3;
+const AUTO_MODE_INTERVAL_MS = 10 * 60 * 1000; // 10 min
+const ESCALATION_RATE_HALT_THRESHOLD = 30; // %
 
 // ── Types ──
 interface HealingEvent {
@@ -38,7 +44,16 @@ interface HealingEvent {
   created_at: string;
 }
 
-// ── Status styles ──
+type HealingSystemStatus = "healthy" | "active_recovery" | "escalation_mode" | "circuit_broken";
+
+interface PredictiveWarning {
+  level: "info" | "warning";
+  title: string;
+  description: string;
+  metric: string;
+}
+
+// ── Styles ──
 const STATUS_CFG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
   success: { color: "text-success", icon: CheckCircle2, label: "Success" },
   failed: { color: "text-destructive", icon: XCircle, label: "Failed" },
@@ -53,9 +68,19 @@ const ENTITY_ICONS: Record<string, React.ElementType> = {
   automation: Cpu,
 };
 
+const SYSTEM_STATUS_CFG: Record<HealingSystemStatus, { color: string; bg: string; border: string; label: string; icon: React.ElementType }> = {
+  healthy: { color: "text-success", bg: "bg-success/5", border: "border-success/20", label: "Healthy", icon: CheckCircle2 },
+  active_recovery: { color: "text-primary", bg: "bg-primary/5", border: "border-primary/20", label: "Active Recovery", icon: RefreshCw },
+  escalation_mode: { color: "text-warning", bg: "bg-warning/5", border: "border-warning/20", label: "Escalation Mode", icon: AlertTriangle },
+  circuit_broken: { color: "text-destructive", bg: "bg-destructive/5", border: "border-destructive/20", label: "Circuit Broken", icon: ShieldOff },
+};
+
 export default function SelfHealingMonitorPage() {
   const queryClient = useQueryClient();
   const [healing, setHealing] = useState(false);
+  const [autoMode, setAutoMode] = useState(false);
+  const [circuitBroken, setCircuitBroken] = useState(false);
+  const autoModeRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Fetch recent healing events ──
   const { data: events = [], isLoading } = useQuery({
@@ -65,38 +90,191 @@ export default function SelfHealingMonitorPage() {
         .from("self_healing_events")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(100);
       return (data || []) as HealingEvent[];
     },
-    refetchInterval: 30_000,
+    refetchInterval: 20_000,
   });
 
-  // ── Compute stats ──
-  const last24h = events.filter(e => {
-    const age = Date.now() - new Date(e.created_at).getTime();
-    return age < 24 * 60 * 60 * 1000;
-  });
+  // ── Compute 24h stats ──
+  const last24h = events.filter(e => Date.now() - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000);
   const successCount = last24h.filter(e => e.status === "success").length;
   const failedCount = last24h.filter(e => e.status === "failed").length;
   const escalatedCount = last24h.filter(e => e.status === "escalated").length;
-  const skippedCount = last24h.filter(e => e.status === "skipped_cooldown").length;
-  const totalActions = last24h.length;
+  const totalActions = last24h.filter(e => e.status !== "skipped_cooldown").length;
   const successRate = totalActions > 0 ? Math.round((successCount / totalActions) * 100) : 100;
+  const escalationRate = totalActions > 0 ? Math.round((escalatedCount / totalActions) * 100) : 0;
+
+  // ── 1: Healing Confidence Score ──
+  const healingConfidence = Math.max(0, Math.min(100,
+    Math.round(successRate * 0.6 + (100 - escalationRate) * 0.3 + (failedCount === 0 ? 10 : 0))
+  ));
+
+  // ── System Status ──
+  const systemStatus: HealingSystemStatus = circuitBroken
+    ? "circuit_broken"
+    : escalationRate > ESCALATION_RATE_HALT_THRESHOLD
+      ? "escalation_mode"
+      : totalActions > 0
+        ? "active_recovery"
+        : "healthy";
+
+  // ── 3: Circuit Breaker Check ──
+  const checkCircuitBreaker = useCallback((): boolean => {
+    const windowStart = Date.now() - CIRCUIT_BREAKER_WINDOW_MS;
+    const recentEvents = events.filter(e => new Date(e.created_at).getTime() > windowStart);
+    const recentEscalations = recentEvents.filter(e => e.status === "escalated");
+    const paymentEscalations = recentEscalations.filter(e => e.entity_type === "payment");
+
+    if (recentEscalations.length >= CIRCUIT_BREAKER_ESCALATION_LIMIT || paymentEscalations.length >= CIRCUIT_BREAKER_PAYMENT_LIMIT) {
+      return true;
+    }
+    return false;
+  }, [events]);
+
+  // ── 2: Predictive Early Warnings ──
+  const predictiveWarnings: PredictiveWarning[] = (() => {
+    const warnings: PredictiveWarning[] = [];
+    if (events.length < 4) return warnings;
+
+    // Compare first half vs second half of recent events to detect trends
+    const recent = events.slice(0, 20);
+    const halfLen = Math.floor(recent.length / 2);
+    const newerHalf = recent.slice(0, halfLen);
+    const olderHalf = recent.slice(halfLen);
+
+    const newerEscalations = newerHalf.filter(e => e.status === "escalated").length;
+    const olderEscalations = olderHalf.filter(e => e.status === "escalated").length;
+    if (newerEscalations > olderEscalations && newerEscalations >= 2) {
+      warnings.push({
+        level: "warning",
+        title: "Escalation Trend Rising",
+        description: `${newerEscalations} escalations in recent window vs ${olderEscalations} previously`,
+        metric: "escalation_trend",
+      });
+    }
+
+    const newerFails = newerHalf.filter(e => e.status === "failed").length;
+    const olderFails = olderHalf.filter(e => e.status === "failed").length;
+    if (newerFails > olderFails && newerFails >= 2) {
+      warnings.push({
+        level: "info",
+        title: "Recovery Failure Rate Increasing",
+        description: `${newerFails} failures in recent window — monitor for systemic issue`,
+        metric: "failure_trend",
+      });
+    }
+
+    // Payment-specific trend
+    const paymentEvents = events.filter(e => e.entity_type === "payment").slice(0, 10);
+    const paymentFails = paymentEvents.filter(e => e.status === "failed" || e.status === "escalated").length;
+    if (paymentFails >= 2) {
+      warnings.push({
+        level: "warning",
+        title: "Payment Recovery Instability",
+        description: `${paymentFails} payment failures/escalations detected in recent window`,
+        metric: "payment_health",
+      });
+    }
+
+    return warnings;
+  })();
+
+  // ── 5: Root Cause Insights ──
+  const rootCauseInsights = (() => {
+    if (last24h.length === 0) return null;
+
+    // Top recurring recovery type
+    const typeCounts: Record<string, number> = {};
+    last24h.forEach(e => { typeCounts[e.recovery_type] = (typeCounts[e.recovery_type] || 0) + 1; });
+    const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+
+    // Most common failure reason
+    const failReasons: Record<string, number> = {};
+    last24h.filter(e => e.metadata?.reason).forEach(e => {
+      failReasons[e.metadata.reason] = (failReasons[e.metadata.reason] || 0) + 1;
+    });
+    const topReason = Object.entries(failReasons).sort((a, b) => b[1] - a[1])[0];
+
+    // Most affected entity type
+    const entityCounts: Record<string, number> = {};
+    last24h.forEach(e => { entityCounts[e.entity_type] = (entityCounts[e.entity_type] || 0) + 1; });
+    const topEntity = Object.entries(entityCounts).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      topRecoveryType: topType ? { type: RECOVERY_TYPE_LABELS[topType[0] as HealingRecoveryType] || topType[0], count: topType[1] } : null,
+      topReason: topReason ? { reason: topReason[0], count: topReason[1] } : null,
+      topEntity: topEntity ? { entity: topEntity[0], count: topEntity[1] } : null,
+    };
+  })();
 
   // ── Manual healing cycle trigger ──
-  const runHealingCycle = useCallback(async () => {
+  const runHealingCycle = useCallback(async (triggeredBy: "manual" | "auto" = "manual") => {
+    if (circuitBroken) {
+      console.warn("[SelfHealing] Circuit broken — healing blocked");
+      return;
+    }
+
+    // Check circuit breaker before running
+    if (checkCircuitBreaker()) {
+      setCircuitBroken(true);
+      setAutoMode(false);
+      // Create critical incident
+      await escalateToIncident(
+        "self_healing_circuit_break",
+        "Self-healing circuit breaker triggered — too many escalations in 30min window",
+        "escalation_count"
+      );
+      return;
+    }
+
+    // Check escalation rate halt
+    if (escalationRate > ESCALATION_RATE_HALT_THRESHOLD && triggeredBy === "auto") {
+      console.warn("[SelfHealing] Escalation rate too high, auto-mode halted");
+      setAutoMode(false);
+      return;
+    }
+
     setHealing(true);
     try {
-      await runStaleBookingHealing();
-      await runExpiredDispatchHealing();
-      await runPaymentRetryHealing();
+      await runStaleBookingHealing(triggeredBy);
+      await runExpiredDispatchHealing(triggeredBy);
+      await runPaymentRetryHealing(triggeredBy);
       queryClient.invalidateQueries({ queryKey: ["self-healing-events"] });
     } catch (e) {
       console.warn("[SelfHealing] Cycle error:", e);
     } finally {
       setHealing(false);
     }
-  }, [queryClient]);
+  }, [queryClient, circuitBroken, checkCircuitBreaker, escalationRate]);
+
+  // ── 3: Guarded Auto Mode ──
+  useEffect(() => {
+    if (autoMode && !circuitBroken) {
+      autoModeRef.current = setInterval(() => {
+        runHealingCycle("auto");
+      }, AUTO_MODE_INTERVAL_MS);
+    }
+    return () => {
+      if (autoModeRef.current) {
+        clearInterval(autoModeRef.current);
+        autoModeRef.current = null;
+      }
+    };
+  }, [autoMode, circuitBroken, runHealingCycle]);
+
+  const handleAutoModeToggle = (checked: boolean) => {
+    if (circuitBroken) return;
+    setAutoMode(checked);
+  };
+
+  const handleCircuitReset = () => {
+    setCircuitBroken(false);
+    setAutoMode(false);
+  };
+
+  const ssCfg = SYSTEM_STATUS_CFG[systemStatus];
+  const SSIcon = ssCfg.icon;
 
   return (
     <div className="min-h-screen bg-background flex flex-col safe-area-top">
@@ -104,7 +282,7 @@ export default function SelfHealingMonitorPage() {
       <main className="flex-1 pb-24">
         <div className="max-w-2xl mx-auto px-4 py-6">
           {/* ── Header ── */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4">
             <Link to="/ops/command-center">
               <Button variant="ghost" size="icon" className="h-8 w-8">
                 <ArrowLeft className="w-4 h-4" />
@@ -115,29 +293,135 @@ export default function SelfHealingMonitorPage() {
                 <Heart className="w-5 h-5 text-primary" />
                 Self-Healing Monitor
               </h1>
-              <p className="text-xs text-muted-foreground">Controlled recovery engine for operational failures</p>
+              <p className="text-xs text-muted-foreground">Autonomous recovery with circuit protection</p>
             </div>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={runHealingCycle} disabled={healing}>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => runHealingCycle("manual")} disabled={healing || circuitBroken}>
               <RefreshCw className={`w-3.5 h-3.5 ${healing ? "animate-spin" : ""}`} />
               {healing ? "Healing…" : "Run Cycle"}
             </Button>
           </div>
 
+          {/* ── System Status Hero ── */}
+          <Card className={`mb-4 ${ssCfg.border} border ${ssCfg.bg}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <SSIcon className={`w-6 h-6 ${ssCfg.color}`} />
+                  <div>
+                    <p className={`text-sm font-bold ${ssCfg.color}`}>{ssCfg.label}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Confidence: {healingConfidence}% · Escalation Rate: {escalationRate}%
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {circuitBroken ? (
+                    <Button size="sm" variant="destructive" className="text-xs gap-1" onClick={handleCircuitReset}>
+                      <ShieldOff className="w-3 h-3" /> Reset Breaker
+                    </Button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">Auto</span>
+                      <Switch checked={autoMode} onCheckedChange={handleAutoModeToggle} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Circuit Breaker Warning ── */}
+          {circuitBroken && (
+            <Card className="mb-4 border-destructive/30 border bg-destructive/5">
+              <CardContent className="p-3">
+                <div className="flex items-start gap-2">
+                  <AlertOctagon className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold text-destructive">Circuit Breaker Activated</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Too many escalations within 30 minutes. Auto-healing disabled.
+                      Manual reset required after investigating root cause.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── 2: Predictive Warnings ── */}
+          {predictiveWarnings.length > 0 && (
+            <div className="mb-4">
+              <h2 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-primary" /> Predictive Early Warnings
+              </h2>
+              <div className="space-y-1.5">
+                {predictiveWarnings.map((w, i) => (
+                  <Card key={i} className={`border ${w.level === "warning" ? "border-warning/20 bg-warning/5" : "border-primary/20 bg-primary/5"}`}>
+                    <CardContent className="p-2.5">
+                      <div className="flex items-center gap-2">
+                        <Info className={`w-3.5 h-3.5 shrink-0 ${w.level === "warning" ? "text-warning" : "text-primary"}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[11px] font-semibold ${w.level === "warning" ? "text-warning" : "text-primary"}`}>{w.title}</p>
+                          <p className="text-[10px] text-muted-foreground">{w.description}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[8px] shrink-0">{w.level.toUpperCase()}</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Summary Stats ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <StatCard label="Success Rate" value={`${successRate}%`} icon={TrendingUp} color="text-success" />
             <StatCard label="Recovered" value={successCount} icon={CheckCircle2} color="text-success" />
             <StatCard label="Escalated" value={escalatedCount} icon={AlertTriangle} color="text-warning" />
-            <StatCard label="Failed" value={failedCount} icon={XCircle} color="text-destructive" />
+            <StatCard label="Confidence" value={`${healingConfidence}%`} icon={Heart} color={healingConfidence >= 70 ? "text-success" : healingConfidence >= 40 ? "text-warning" : "text-destructive"} />
           </div>
 
+          {/* ── 5: Root Cause Insights ── */}
+          {rootCauseInsights && (
+            <Card className="mb-4">
+              <CardContent className="p-4">
+                <h2 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-3.5 h-3.5 text-primary" /> Root Cause Insights (24h)
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                  {rootCauseInsights.topRecoveryType && (
+                    <div className="bg-muted/50 rounded-lg p-2.5">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">Top Recovery Type</p>
+                      <p className="font-semibold text-foreground text-[11px]">{rootCauseInsights.topRecoveryType.type}</p>
+                      <p className="text-[9px] text-muted-foreground">{rootCauseInsights.topRecoveryType.count} occurrences</p>
+                    </div>
+                  )}
+                  {rootCauseInsights.topEntity && (
+                    <div className="bg-muted/50 rounded-lg p-2.5">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">Most Affected Domain</p>
+                      <p className="font-semibold text-foreground text-[11px] capitalize">{rootCauseInsights.topEntity.entity}</p>
+                      <p className="text-[9px] text-muted-foreground">{rootCauseInsights.topEntity.count} events</p>
+                    </div>
+                  )}
+                  {rootCauseInsights.topReason && (
+                    <div className="bg-muted/50 rounded-lg p-2.5">
+                      <p className="text-[9px] text-muted-foreground mb-0.5">Top Failure Reason</p>
+                      <p className="font-semibold text-foreground text-[11px] truncate">{rootCauseInsights.topReason.reason}</p>
+                      <p className="text-[9px] text-muted-foreground">{rootCauseInsights.topReason.count} occurrences</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* ── Config Reference ── */}
-          <Card className="mb-6">
+          <Card className="mb-4">
             <CardContent className="p-4">
               <h2 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5 text-primary" /> Recovery Limits & Cooldowns
+                <Shield className="w-3.5 h-3.5 text-primary" /> Recovery Limits & Safety
               </h2>
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                 <div className="bg-muted/50 rounded-lg p-2">
                   <span className="text-muted-foreground">Booking retries:</span>{" "}
                   <span className="font-semibold">{MAX_RETRIES.booking}</span>
@@ -153,6 +437,14 @@ export default function SelfHealingMonitorPage() {
                 <div className="bg-muted/50 rounded-lg p-2">
                   <span className="text-muted-foreground">Cooldown:</span>{" "}
                   <span className="font-semibold">{COOLDOWN_MINUTES} min</span>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-2">
+                  <span className="text-muted-foreground">Circuit break:</span>{" "}
+                  <span className="font-semibold">{CIRCUIT_BREAKER_ESCALATION_LIMIT} esc/30m</span>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-2">
+                  <span className="text-muted-foreground">Auto interval:</span>{" "}
+                  <span className="font-semibold">10 min</span>
                 </div>
               </div>
             </CardContent>
@@ -176,7 +468,7 @@ export default function SelfHealingMonitorPage() {
             </Card>
           ) : (
             <div className="space-y-2">
-              {events.map(ev => (
+              {events.slice(0, 30).map(ev => (
                 <HealingEventCard key={ev.id} event={ev} />
               ))}
             </div>
@@ -201,13 +493,14 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: s
   );
 }
 
-// ── Event Card ──
+// ── Event Card with enhanced observability ──
 function HealingEventCard({ event }: { event: HealingEvent }) {
   const statusCfg = STATUS_CFG[event.status] || STATUS_CFG.failed;
   const StatusIcon = statusCfg.icon;
   const EntityIcon = ENTITY_ICONS[event.entity_type] || Activity;
   const recoveryLabel = RECOVERY_TYPE_LABELS[event.recovery_type as HealingRecoveryType] || event.recovery_type;
   const ago = getRelativeTime(event.created_at);
+  const triggeredBy = event.metadata?.triggered_by || "manual";
 
   return (
     <Card className="border">
@@ -223,8 +516,11 @@ function HealingEventCard({ event }: { event: HealingEvent }) {
                 <StatusIcon className="w-2.5 h-2.5 mr-0.5" />
                 {statusCfg.label}
               </Badge>
+              {triggeredBy === "auto" && (
+                <Badge variant="outline" className="text-[8px] px-1 py-0 text-primary">AUTO</Badge>
+              )}
             </div>
-            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
               <span>Attempt #{event.attempt_number}</span>
               <span>•</span>
               <span>{event.entity_type}/{event.entity_id.slice(0, 8)}</span>
@@ -233,6 +529,11 @@ function HealingEventCard({ event }: { event: HealingEvent }) {
             </div>
             {event.metadata?.reason && (
               <p className="text-[10px] text-muted-foreground mt-1 italic">{event.metadata.reason}</p>
+            )}
+            {event.metadata?.previous_state_snapshot && (
+              <p className="text-[9px] text-muted-foreground mt-0.5">
+                State: {event.metadata.previous_state_snapshot} → {event.metadata.next_state_snapshot || "recovered"}
+              </p>
             )}
           </div>
         </div>
@@ -253,8 +554,7 @@ function getRelativeTime(iso: string): string {
 }
 
 // ══════════════════════════════════════════════════
-// HEALING RECOVERY FUNCTIONS
-// Safe, idempotent, cooldown-aware, retry-limited
+// HEALING RECOVERY FUNCTIONS (with observability)
 // ══════════════════════════════════════════════════
 
 async function checkCooldown(entityType: string, entityId: string, recoveryType: string): Promise<{ allowed: boolean; attempts: number }> {
@@ -270,11 +570,9 @@ async function checkCooldown(entityType: string, entityId: string, recoveryType:
   if (!data || data.length === 0) return { allowed: true, attempts: 0 };
 
   const last = data[0];
-  // Check cooldown
   if (last.cooldown_until && new Date(last.cooldown_until) > new Date()) {
     return { allowed: false, attempts: last.attempt_number };
   }
-  // Check if escalated
   if (last.status === "escalated") return { allowed: false, attempts: last.attempt_number };
 
   return { allowed: true, attempts: last.attempt_number };
@@ -301,7 +599,6 @@ async function logHealingEvent(
 }
 
 async function escalateToIncident(incidentType: string, description: string, triggerMetric: string) {
-  // Check for existing open incident of same type (dedup)
   const { data: existing } = await supabase
     .from("incident_playbooks")
     .select("id")
@@ -310,7 +607,6 @@ async function escalateToIncident(incidentType: string, description: string, tri
     .limit(1);
 
   if (existing && existing.length > 0) {
-    // Just refresh last_detected_at
     await supabase.from("incident_playbooks")
       .update({ last_detected_at: new Date().toISOString() })
       .eq("id", existing[0].id);
@@ -333,7 +629,7 @@ async function escalateToIncident(incidentType: string, description: string, tri
 }
 
 // ── 1: Stale Booking Reassignment ──
-async function runStaleBookingHealing() {
+async function runStaleBookingHealing(triggeredBy: "manual" | "auto" = "manual") {
   const cutoff = new Date(Date.now() - STALE_BOOKING_MINUTES * 60 * 1000).toISOString();
   const { data: staleBookings } = await supabase
     .from("bookings")
@@ -347,19 +643,25 @@ async function runStaleBookingHealing() {
   for (const booking of staleBookings) {
     const { allowed, attempts } = await checkCooldown("booking", booking.id, "stale_booking_reassignment");
     if (!allowed) {
-      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", attempts, "skipped_cooldown", { reason: "Cooldown active or already escalated" });
+      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", attempts, "skipped_cooldown", {
+        reason: "Cooldown active or already escalated",
+        triggered_by: triggeredBy,
+      });
       continue;
     }
 
     const nextAttempt = attempts + 1;
     if (nextAttempt > MAX_RETRIES.booking) {
-      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", nextAttempt, "escalated", { reason: "Max retries exceeded" });
+      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", nextAttempt, "escalated", {
+        reason: "Max retries exceeded",
+        triggered_by: triggeredBy,
+        previous_state_snapshot: booking.status,
+      });
       await escalateToIncident("service_delivery_delay", `Booking ${booking.id.slice(0, 8)} stuck after ${MAX_RETRIES.booking} healing retries`, "staleBookingCount");
       continue;
     }
 
     try {
-      // Clear partner and set to dispatch_retry
       await supabase.from("bookings").update({
         partner_id: null,
         status: "requested" as any,
@@ -371,20 +673,28 @@ async function runStaleBookingHealing() {
         booking_id: booking.id,
         status: "dispatch_retry",
         actor: "system",
-        note: `Self-healing: reassignment attempt #${nextAttempt}`,
-        metadata: { healing: true, attempt: nextAttempt },
+        note: `Self-healing: reassignment attempt #${nextAttempt} (${triggeredBy})`,
+        metadata: { healing: true, attempt: nextAttempt, triggered_by: triggeredBy },
       });
 
-      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", nextAttempt, "success", { previous_partner: booking.partner_id });
+      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", nextAttempt, "success", {
+        previous_partner: booking.partner_id,
+        previous_state_snapshot: booking.status,
+        next_state_snapshot: "requested",
+        triggered_by: triggeredBy,
+      });
     } catch (e: any) {
-      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", nextAttempt, "failed", { error: e.message });
+      await logHealingEvent("booking", booking.id, "stale_booking_reassignment", nextAttempt, "failed", {
+        error: e.message,
+        triggered_by: triggeredBy,
+        previous_state_snapshot: booking.status,
+      });
     }
   }
 }
 
 // ── 2: Dispatch Offer Expiry Recovery ──
-async function runExpiredDispatchHealing() {
-  // Find bookings with all offers expired and no assignment
+async function runExpiredDispatchHealing(triggeredBy: "manual" | "auto" = "manual") {
   const { data: expiredOffers } = await supabase
     .from("dispatch_offers")
     .select("booking_id")
@@ -394,14 +704,12 @@ async function runExpiredDispatchHealing() {
 
   if (!expiredOffers || expiredOffers.length === 0) return;
 
-  // Get unique booking IDs
   const bookingIds = [...new Set(expiredOffers.map(o => o.booking_id))];
 
   for (const bookingId of bookingIds.slice(0, 5)) {
-    // Check booking isn't already assigned
     const { data: booking } = await supabase
       .from("bookings")
-      .select("id, status, partner_id, dispatch_round")
+      .select("id, status, partner_id, dispatch_round, dispatch_status")
       .eq("id", bookingId)
       .single();
 
@@ -412,7 +720,11 @@ async function runExpiredDispatchHealing() {
 
     const nextAttempt = attempts + 1;
     if (nextAttempt > MAX_RETRIES.dispatch) {
-      await logHealingEvent("dispatch", bookingId, "dispatch_offer_expiry", nextAttempt, "escalated", { reason: "Max dispatch retries exceeded" });
+      await logHealingEvent("dispatch", bookingId, "dispatch_offer_expiry", nextAttempt, "escalated", {
+        reason: "Max dispatch retries exceeded",
+        triggered_by: triggeredBy,
+        previous_state_snapshot: booking.status,
+      });
       await escalateToIncident("dispatch_reliability_degradation", `Dispatch for booking ${bookingId.slice(0, 8)} failed after ${MAX_RETRIES.dispatch} healing retries`, "dispatchAcceptRate");
       continue;
     }
@@ -423,15 +735,23 @@ async function runExpiredDispatchHealing() {
         dispatch_round: (booking.dispatch_round || 0) + 1,
       }).eq("id", bookingId);
 
-      await logHealingEvent("dispatch", bookingId, "dispatch_offer_expiry", nextAttempt, "success", { round: (booking.dispatch_round || 0) + 1 });
+      await logHealingEvent("dispatch", bookingId, "dispatch_offer_expiry", nextAttempt, "success", {
+        round: (booking.dispatch_round || 0) + 1,
+        triggered_by: triggeredBy,
+        previous_state_snapshot: booking.dispatch_status || "expired",
+        next_state_snapshot: "pending",
+      });
     } catch (e: any) {
-      await logHealingEvent("dispatch", bookingId, "dispatch_offer_expiry", nextAttempt, "failed", { error: e.message });
+      await logHealingEvent("dispatch", bookingId, "dispatch_offer_expiry", nextAttempt, "failed", {
+        error: e.message,
+        triggered_by: triggeredBy,
+      });
     }
   }
 }
 
 // ── 3: Payment Retry Recovery ──
-async function runPaymentRetryHealing() {
+async function runPaymentRetryHealing(triggeredBy: "manual" | "auto" = "manual") {
   const { data: failedPayments } = await supabase
     .from("payments")
     .select("id, booking_id, payment_status")
@@ -447,20 +767,31 @@ async function runPaymentRetryHealing() {
 
     const nextAttempt = attempts + 1;
     if (nextAttempt > MAX_RETRIES.payment) {
-      await logHealingEvent("payment", payment.id, "payment_retry", nextAttempt, "escalated", { reason: "Max payment retries exceeded" });
+      await logHealingEvent("payment", payment.id, "payment_retry", nextAttempt, "escalated", {
+        reason: "Max payment retries exceeded",
+        triggered_by: triggeredBy,
+        previous_state_snapshot: "failed",
+      });
       await escalateToIncident("payment_gateway_instability", `Payment ${payment.id.slice(0, 8)} failed after ${MAX_RETRIES.payment} retries`, "paymentFailureCount");
       continue;
     }
 
     try {
-      // Non-destructive: mark as pending for re-verification, never auto-charge
       await supabase.from("payments").update({
         payment_status: "pending" as any,
       }).eq("id", payment.id);
 
-      await logHealingEvent("payment", payment.id, "payment_retry", nextAttempt, "success", { booking_id: payment.booking_id });
+      await logHealingEvent("payment", payment.id, "payment_retry", nextAttempt, "success", {
+        booking_id: payment.booking_id,
+        triggered_by: triggeredBy,
+        previous_state_snapshot: "failed",
+        next_state_snapshot: "pending",
+      });
     } catch (e: any) {
-      await logHealingEvent("payment", payment.id, "payment_retry", nextAttempt, "failed", { error: e.message });
+      await logHealingEvent("payment", payment.id, "payment_retry", nextAttempt, "failed", {
+        error: e.message,
+        triggered_by: triggeredBy,
+      });
     }
   }
 }
