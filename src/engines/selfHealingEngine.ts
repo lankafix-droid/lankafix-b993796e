@@ -4,6 +4,9 @@
  * Zero React/Supabase dependencies. All time-sensitive functions accept optional `now`.
  */
 
+// ── Engine Version (audit traceability) ──
+export const SELF_HEALING_ENGINE_VERSION = "1.0.0-production-certified";
+
 // ── Circuit Breaker Config ──
 export const CIRCUIT_BREAKER_WINDOW_MS = 30 * 60 * 1000;
 export const CIRCUIT_BREAKER_ESCALATION_LIMIT = 5;
