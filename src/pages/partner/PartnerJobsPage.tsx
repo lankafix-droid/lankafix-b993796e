@@ -34,6 +34,56 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
+/** Countdown timer for offer expiry */
+function OfferCountdown({ expiresAt }: { expiresAt: string }) {
+  const [remaining, setRemaining] = useState("");
+  const [urgent, setUrgent] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      const diff = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+      const mins = Math.floor(diff / 60);
+      const secs = diff % 60;
+      setRemaining(`${mins}:${secs.toString().padStart(2, "0")}`);
+      setUrgent(diff < 60);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [expiresAt]);
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-mono font-semibold ${urgent ? "text-destructive" : "text-warning"}`}>
+      <Timer className="w-3 h-3" /> {remaining}
+    </span>
+  );
+}
+
+function OfferCard({ offer, booking: b, onClick }: { offer: any; booking: any; onClick: () => void }) {
+  return (
+    <div
+      className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/40 transition-colors"
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-primary" />
+          <p className="text-sm font-semibold text-foreground">{b.category_code} — {b.service_type || "General"}</p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{b.zone_code || "No zone"}{b.is_emergency ? " · 🔴 Emergency" : ""}</span>
+        {b.estimated_price_lkr && <span className="font-medium text-foreground">LKR {b.estimated_price_lkr.toLocaleString()}</span>}
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-primary font-medium">Tap to accept or decline</p>
+        {offer.expires_at && <OfferCountdown expiresAt={offer.expires_at} />}
+      </div>
+    </div>
+  );
+}
+
 export default function PartnerJobsPage() {
   const navigate = useNavigate();
   const { data: partner, isLoading } = useCurrentPartner();
