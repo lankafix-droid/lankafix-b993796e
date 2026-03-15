@@ -17,7 +17,7 @@ import {
   Shield, CheckCircle2, AlertTriangle, XCircle, MapPin, Users,
   Zap, CreditCard, Activity, Clock, ArrowLeft,
   ChevronRight, Rocket, FileText, Radio,
-  RefreshCw, MessageSquare, Target, Save,
+  RefreshCw, MessageSquare, Target, Save, TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
