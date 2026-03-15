@@ -1,0 +1,33 @@
+name: Self-Healing Engine CI
+
+on:
+  push:
+    paths:
+      - 'src/engines/selfHealingEngine.ts'
+      - 'src/test/selfHealingEngine.test.ts'
+      - 'src/config/selfHealingConfig.ts'
+  pull_request:
+    paths:
+      - 'src/engines/selfHealingEngine.ts'
+      - 'src/test/selfHealingEngine.test.ts'
+      - 'src/config/selfHealingConfig.ts'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Self-Healing Engine tests
+        run: npx vitest run src/test/selfHealingEngine.test.ts
+
+      - name: Run coverage check
+        run: |
+          npx vitest run src/test/selfHealingEngine.test.ts --coverage --coverage.include='src/engines/selfHealingEngine.ts' --coverage.thresholds.statements=95 --coverage.thresholds.branches=95 --coverage.thresholds.functions=95 --coverage.thresholds.lines=95

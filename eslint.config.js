@@ -23,4 +23,16 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  // Engine purity enforcement — no React or Supabase in pure logic files
+  {
+    files: ["src/engines/**/*.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [
+          { group: ["react", "react-dom", "react/*"], message: "Engine files must remain pure — no React imports." },
+          { group: ["@supabase/*", "**/supabase/**"], message: "Engine files must remain pure — no Supabase imports." },
+        ],
+      }],
+    },
+  },
 );
