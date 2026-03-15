@@ -442,6 +442,12 @@ describe("Idempotency Fingerprint", () => {
     const fp2 = generateRecoveryFingerprint("entity-b", "payment_retry", 1);
     expect(fp1).not.toBe(fp2);
   });
+
+  it("differs for different recovery types", () => {
+    const fp1 = generateRecoveryFingerprint("abc-123", "payment_retry", 1);
+    const fp2 = generateRecoveryFingerprint("abc-123", "stale_booking_reassignment", 1);
+    expect(fp1).not.toBe(fp2);
+  });
 });
 
 // ═══════════════════════════════════════════════════
