@@ -39,23 +39,47 @@ export default function PartnerJobsPage() {
   const { data: partner, isLoading } = useCurrentPartner();
   const { data: bookings = [] } = usePartnerBookings(partner?.id);
 
-  // Pending job offers (dispatch_log with pending_acceptance)
+  const queryClient = useQueryClient();
+
+  // Pending job offers from dispatch_offers (preferred) with expiry filtering
   const { data: pendingOffers = [] } = useQuery({
     queryKey: ["partner-pending-offers", partner?.id],
     queryFn: async () => {
       if (!partner?.id) return [];
+      const now = new Date().toISOString();
       const { data, error } = await supabase
-        .from("dispatch_log")
-        .select("*, bookings(id, category_code, service_type, zone_code, is_emergency, estimated_price_lkr, created_at)")
+        .from("dispatch_offers")
+        .select("*, bookings(id, category_code, service_type, zone_code, is_emergency, estimated_price_lkr, created_at, status)")
         .eq("partner_id", partner.id)
-        .eq("status", "pending_acceptance")
+        .eq("status", "pending")
+        .gte("expires_at", now)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      // Exclude offers for terminal bookings
+      return (data || []).filter((o: any) =>
+        o.bookings && !["completed", "cancelled", "no_show"].includes(o.bookings.status)
+      );
     },
     enabled: !!partner?.id,
-    refetchInterval: 10_000, // Poll for new offers
+    refetchInterval: 5_000, // Poll frequently for time-sensitive offers
   });
+
+  // Realtime subscription for dispatch_offers changes
+  useEffect(() => {
+    if (!partner?.id) return;
+    const channel = supabase
+      .channel(`partner-offers-${partner.id}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "dispatch_offers",
+        filter: `partner_id=eq.${partner.id}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["partner-pending-offers", partner.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [partner?.id, queryClient]);
 
   useEffect(() => { track("partner_jobs_view"); }, []);
 
