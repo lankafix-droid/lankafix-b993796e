@@ -152,7 +152,8 @@ function usePilotMode() {
           .select("value")
           .eq("key", "pilot_mode")
           .maybeSingle();
-        if (data?.value === "paused" || data?.value === false || data?.value === "false") return "PAUSED" as const;
+        const val = (data as any)?.value;
+        if (val === "paused" || val === false || val === "false") return "PAUSED" as const;
         return "ACTIVE" as const;
       } catch {
         return "ACTIVE" as const;
