@@ -622,7 +622,7 @@ export default function WarRoomPage() {
                       return (
                         <TableRow key={b.id}
                           className={`cursor-pointer ${isCancelled ? "bg-destructive/5" : isLowRated ? "bg-amber-500/5" : sla === "breached" ? "bg-destructive/5" : ""}`}
-                          onClick={() => navigate(`/track/${b.id}`)}
+                          onClick={() => navigate(`/tracker/${b.id}`)}
                         >
                           <TableCell className="text-[10px] font-mono">{b.id.slice(0, 6)}</TableCell>
                           <TableCell className="text-[10px]">{catLabel(b.category_code)}</TableCell>
