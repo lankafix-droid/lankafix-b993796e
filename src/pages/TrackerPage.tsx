@@ -541,6 +541,21 @@ const TrackerPage = () => {
       manual: { label: "Under Review", description: "Our team is reviewing your request and will assign the right specialist.", icon: ClipboardList },
     };
 
+    // Exception state messages
+    const EXCEPTION_MESSAGES: Record<string, { label: string; description: string; icon: React.ElementType; color: string }> = {
+      technician_delayed: { label: "Technician Delayed", description: "Technician delayed due to traffic. Updated ETA will appear shortly.", icon: AlertTriangle, color: "bg-warning/10 text-warning border-warning/20" },
+      technician_reassigned: { label: "Technician Reassigned", description: "Your technician has been reassigned. A new technician is being dispatched.", icon: UserCheck, color: "bg-accent/10 text-accent border-accent/20" },
+      technician_cancelled: { label: "Technician Unavailable", description: "Your assigned technician is no longer available. Our team is finding a replacement.", icon: AlertTriangle, color: "bg-destructive/10 text-destructive border-destructive/20" },
+      customer_unreachable: { label: "Unable to Reach You", description: "We couldn't reach you. Please check your phone and try contacting your technician.", icon: Phone, color: "bg-warning/10 text-warning border-warning/20" },
+      ops_intervention: { label: "Team Assisting", description: "Our operations team is personally handling your booking to ensure the best outcome.", icon: Headphones, color: "bg-primary/10 text-primary border-primary/20" },
+    };
+
+    // Check timeline for exception events
+    const exceptionEvent = dbTimeline?.find(evt =>
+      Object.keys(EXCEPTION_MESSAGES).includes(evt.status)
+    );
+    const exceptionInfo = exceptionEvent ? EXCEPTION_MESSAGES[exceptionEvent.status] : null;
+
     const dispatchInfo = DISPATCH_MESSAGES[dbBooking.dispatch_status || "pending"] || DISPATCH_MESSAGES.pending;
     const StatusIcon = dbBooking.status === "assigned" ? CheckCircle2 : dispatchInfo.icon;
     const statusLabel = dbBooking.status === "assigned" ? "Provider Assigned" : (BOOKING_STATUS_LABELS[dbBooking.status as keyof typeof BOOKING_STATUS_LABELS] || dispatchInfo.label);
