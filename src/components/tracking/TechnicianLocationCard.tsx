@@ -6,9 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TechnicianInfo } from "@/types/booking";
 import type { TrackingData } from "@/lib/trackingEngine";
-import { TECHNICIAN_CAPABILITIES } from "@/lib/dispatchEngine";
-import { getTrafficLabel } from "@/lib/etaEngine";
-import { getETARange } from "@/lib/etaEngine";
+import { predictETA } from "@/engines/etaPredictionEngine";
 import { Star, MapPin, Clock, Car, Bike, Truck, Monitor, CheckCircle2, ShieldCheck } from "lucide-react";
 
 interface TechnicianLocationCardProps {
