@@ -88,7 +88,7 @@ export default function TechnicianLocationCard({ technician, tracking }: Technic
             <Clock className="w-4 h-4 text-primary" />
             <div>
               <p className="text-sm font-bold text-primary">ETA: {etaRange}</p>
-              <p className="text-[10px] text-muted-foreground">{getTrafficLabel(tracking.trafficLevel)}</p>
+              <p className="text-[10px] text-muted-foreground">{trafficLabel}</p>
             </div>
           </div>
           {tracking.isTracking && (
