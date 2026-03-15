@@ -247,7 +247,7 @@ const PilotSimulationPage = () => {
                         <span className="flex items-center gap-1">
                           Booking: <code className="text-[10px]">{result.booking_id.slice(0, 8)}…</code>
                           <button
-                            onClick={() => navigate(`/track/${result.booking_id}`)}
+                            onClick={() => navigate(`/tracker/${result.booking_id}`)}
                             className="text-primary hover:underline inline-flex items-center gap-0.5"
                           >
                             <ExternalLink className="w-3 h-3" />
