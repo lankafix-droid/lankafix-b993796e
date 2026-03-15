@@ -1163,6 +1163,9 @@ export default function WarRoomPage() {
           </CardContent>
         </Card>
 
+        {/* ══ ETA INTELLIGENCE ══ */}
+        <ETAIntelligencePanel />
+
         {/* ══ 12. QUICK ACTIONS ══ */}
         <Card>
           <CardHeader className="pb-2">
