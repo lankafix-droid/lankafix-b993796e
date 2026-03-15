@@ -132,6 +132,36 @@ function safeLen(data: any[] | null | undefined): number {
   return Array.isArray(data) ? data.length : 0;
 }
 
+// ── Trend helper ──
+function computeTrend(current: number, previous: number, inverted = false): Trend {
+  if (previous === 0 && current === 0) return "stable";
+  const diff = current - previous;
+  if (Math.abs(diff) <= 1) return "stable";
+  if (inverted) return diff > 0 ? "deteriorating" : "improving";
+  return diff > 0 ? "improving" : "deteriorating";
+}
+
+// ── Pilot mode hook ──
+function usePilotMode() {
+  return useQuery({
+    queryKey: ["pilot-mode-status"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase
+          .from("platform_settings" as any)
+          .select("value")
+          .eq("key", "pilot_mode")
+          .maybeSingle();
+        if (data?.value === "paused" || data?.value === false || data?.value === "false") return "PAUSED" as const;
+        return "ACTIVE" as const;
+      } catch {
+        return "ACTIVE" as const;
+      }
+    },
+    staleTime: 60_000,
+  });
+}
+
 // ── Data hook with graceful fallbacks ──
 function useLaunchData() {
   const todayStart = new Date();
@@ -139,6 +169,7 @@ function useLaunchData() {
   const todayISO = todayStart.toISOString();
   const staleThreshold = new Date(Date.now() - STALE_BOOKING_THRESHOLD_MINUTES * 60_000).toISOString();
   const autoWindow = new Date(Date.now() - AUTOMATION_MONITOR_WINDOW_MINUTES * 60_000).toISOString();
+  const prevWindowStart = new Date(Date.now() - AUTOMATION_MONITOR_WINDOW_MINUTES * 2 * 60_000).toISOString();
 
   return useQuery({
     queryKey: ["launch-command-center"],
@@ -160,9 +191,13 @@ function useLaunchData() {
         supabase.from("support_cases" as any).select("id").in("status", ["open", "in_progress"]),
         supabase.from("dispatch_offers").select("id").eq("status", "accepted").gte("created_at", todayISO),
         supabase.from("dispatch_offers").select("id").gte("created_at", todayISO),
+        // ── Previous-window trend queries (indices 13-16) ──
+        supabase.from("payments" as any).select("id").eq("payment_status", "failed").gte("created_at", prevWindowStart).lt("created_at", autoWindow),
+        supabase.from("automation_event_log").select("id").in("severity", ["error", "critical"]).gte("created_at", prevWindowStart).lt("created_at", autoWindow),
+        supabase.from("dispatch_escalations").select("id").gte("created_at", prevWindowStart).lt("created_at", autoWindow).is("resolved_at", null),
+        supabase.from("dispatch_offers").select("id").in("status", ["expired", "expired_by_accept"]).gte("created_at", prevWindowStart).lt("created_at", autoWindow),
       ]);
 
-      // Extract data safely from each settled result
       const extract = (idx: number): any[] => {
         const r = results[idx];
         if (r.status === "fulfilled") return (r.value as any)?.data || [];
@@ -183,6 +218,12 @@ function useLaunchData() {
       const supportOpen = extract(10);
       const dispatchAccepted = extract(11);
       const dispatchTotal = extract(12);
+
+      // Previous window for trends
+      const prevPaymentFailures = extract(13);
+      const prevAutomationErrors = extract(14);
+      const prevEscalations = extract(15);
+      const prevExpiredOffers = extract(16);
 
       const verifiedPartners = partners.filter((p: any) => p.verification_status === "verified");
       const activePartners = verifiedPartners.filter((p: any) => p.availability_status !== "offline");
@@ -209,6 +250,11 @@ function useLaunchData() {
         dispatchAcceptRate,
         bookingsByZone: groupBy(bookingsToday, "zone_code"),
         staleByZone: groupBy(staleBookings, "zone_code"),
+        // Trend previous-window counts
+        prevPaymentFailureCount: prevPaymentFailures.length,
+        prevAutomationErrorCount: prevAutomationErrors.length,
+        prevEscalationCount: prevEscalations.length,
+        prevExpiredOfferCount: prevExpiredOffers.length,
       };
     },
     refetchInterval: 30_000,
