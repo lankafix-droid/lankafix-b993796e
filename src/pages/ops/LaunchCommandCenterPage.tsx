@@ -124,6 +124,7 @@ const DRILL_DOWN_LINKS = [
   { label: "Automation Health", path: "/ops/automation-health", icon: Activity },
   { label: "Support Cases", path: "/ops/support", icon: Shield },
   { label: "Incident Playbooks", path: "/ops/incident-playbooks", icon: FileText },
+  { label: "Self-Healing", path: "/ops/self-healing", icon: Heart },
 ];
 
 // ── groupBy utility ──
