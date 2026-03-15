@@ -32,6 +32,9 @@ export interface DBBooking {
   booking_source: string | null;
   dispatch_status: string | null;
   payment_status: string | null;
+  promised_eta_minutes: number | null;
+  contact_unlocked: boolean | null;
+  actual_arrival_at: string | null;
 }
 
 export interface DBTimelineEvent {
