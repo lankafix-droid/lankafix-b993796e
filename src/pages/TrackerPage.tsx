@@ -643,12 +643,30 @@ const TrackerPage = () => {
               </div>
             </motion.div>
 
+            {/* Exception state banner */}
+            {exceptionInfo && (
+              <motion.div
+                className={`rounded-2xl border p-4 shadow-[var(--shadow-card)] ${exceptionInfo.color}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex items-start gap-3">
+                  <exceptionInfo.icon className="w-5 h-5 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold">{exceptionInfo.label}</p>
+                    <p className="text-xs mt-0.5 opacity-80">{exceptionEvent?.note || exceptionInfo.description}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Technician Arrival Card — trust-building profile */}
             {dbBooking.partner_id && ["assigned", "tech_en_route", "arrived", "inspection_started", "repair_started", "in_progress", "quote_submitted", "quote_approved"].includes(dbBooking.status) && (
               <TechnicianArrivalCard
                 partnerId={dbBooking.partner_id}
                 bookingStatus={dbBooking.status}
                 promisedEtaMinutes={dbBooking.promised_eta_minutes}
+                lastPingAt={(dbBooking as any).updated_at}
               />
             )}
 
