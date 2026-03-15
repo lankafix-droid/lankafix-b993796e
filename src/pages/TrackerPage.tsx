@@ -628,8 +628,35 @@ const TrackerPage = () => {
               </div>
             </motion.div>
 
+            {/* Technician Arrival Card — trust-building profile */}
+            {dbBooking.partner_id && ["assigned", "tech_en_route", "arrived", "inspection_started", "repair_started", "in_progress", "quote_submitted", "quote_approved"].includes(dbBooking.status) && (
+              <TechnicianArrivalCard
+                partnerId={dbBooking.partner_id}
+                bookingStatus={dbBooking.status}
+                promisedEtaMinutes={dbBooking.promised_eta_minutes}
+              />
+            )}
+
+            {/* Arrival Status Timeline */}
+            <ArrivalStatusTimeline
+              bookingStatus={dbBooking.status}
+              assignedAt={dbBooking.assigned_at}
+            />
+
             {/* Live Technician Tracking */}
             <DBBookingLiveTracking bookingId={dbBooking.id} partnerId={dbBooking.partner_id} bookingStatus={dbBooking.status} />
+
+            {/* OTP Verification Display */}
+            <TrackerOTPDisplay bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
+
+            {/* Protected Communication */}
+            {dbBooking.partner_id && (
+              <TrackerContactOptions
+                bookingId={dbBooking.id}
+                bookingStatus={dbBooking.status}
+                contactUnlocked={dbBooking.contact_unlocked || false}
+              />
+            )}
 
             {/* Quote Approval Card */}
             <TrackerQuoteSection bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
