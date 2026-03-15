@@ -98,6 +98,7 @@ const DispatchWarRoomPage = lazy(() => import("./pages/ops/DispatchWarRoomPage")
 const AutomationHealthPage = lazy(() => import("./pages/ops/AutomationHealthPage"));
 const PilotReadinessPanel = lazy(() => import("./pages/ops/PilotReadinessPanel"));
 const LaunchCommandCenterPage = lazy(() => import("./pages/ops/LaunchCommandCenterPage"));
+const IncidentPlaybooksPage = lazy(() => import("./pages/ops/IncidentPlaybooksPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
