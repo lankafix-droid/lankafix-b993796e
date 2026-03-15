@@ -271,3 +271,105 @@ export function predictETAFromZones(
     isEmergency,
   });
 }
+
+// ── Phase 2: ETA Logging & Accuracy ──────────────────────────
+
+/**
+ * Log an ETA prediction to the database for accuracy tracking.
+ * Fire-and-forget — does not block caller.
+ */
+export async function logETAPrediction(
+  bookingId: string,
+  prediction: ETAPrediction,
+  partnerId?: string,
+  sourceContext: string = "tracker",
+  techZone?: string,
+  custZone?: string
+): Promise<void> {
+  try {
+    await supabase.from("eta_predictions" as any).insert({
+      booking_id: bookingId,
+      partner_id: partnerId || null,
+      eta_min_minutes: prediction.minMinutes,
+      eta_max_minutes: prediction.maxMinutes,
+      estimate_minutes: prediction.estimateMinutes,
+      confidence: prediction.confidence,
+      traffic_level: prediction.trafficLevel,
+      traffic_label: prediction.trafficLabel,
+      distance_km: prediction.distanceKm,
+      travel_type: prediction.travelType,
+      technician_zone: techZone || null,
+      customer_zone: custZone || null,
+      source_context: sourceContext,
+    });
+  } catch (e) {
+    console.warn("[ETA] Failed to log prediction:", e);
+  }
+}
+
+/**
+ * Compute ETA accuracy when technician arrives.
+ * Updates the most recent ETA prediction for this booking with accuracy data.
+ */
+export async function computeETAAccuracy(
+  bookingId: string,
+  arrivalTimestamp: string
+): Promise<{ errorMinutes: number; withinRange: boolean; accuracyClass: string } | null> {
+  try {
+    // Find the most recent prediction for this booking with source_context = 'travel_started' or latest
+    const { data: predictions } = await supabase
+      .from("eta_predictions" as any)
+      .select("*")
+      .eq("booking_id", bookingId)
+      .order("predicted_at", { ascending: false })
+      .limit(1);
+
+    if (!predictions || predictions.length === 0) return null;
+
+    const pred = predictions[0] as any;
+    const predictedAt = new Date(pred.predicted_at).getTime();
+    const arrivedAt = new Date(arrivalTimestamp).getTime();
+    const actualTravelMinutes = Math.round((arrivedAt - predictedAt) / 60_000);
+    const errorMinutes = actualTravelMinutes - pred.estimate_minutes;
+    const withinRange = actualTravelMinutes >= pred.eta_min_minutes && actualTravelMinutes <= pred.eta_max_minutes;
+
+    let accuracyClass: string;
+    if (actualTravelMinutes < pred.eta_min_minutes) {
+      accuracyClass = "early";
+    } else if (withinRange) {
+      accuracyClass = "on_time";
+    } else {
+      accuracyClass = "late";
+    }
+
+    // Update the prediction record with accuracy data
+    await supabase
+      .from("eta_predictions" as any)
+      .update({
+        actual_arrival_at: arrivalTimestamp,
+        actual_travel_minutes: actualTravelMinutes,
+        prediction_error_minutes: errorMinutes,
+        within_range: withinRange,
+        accuracy_class: accuracyClass,
+      })
+      .eq("id", pred.id);
+
+    return { errorMinutes, withinRange, accuracyClass };
+  } catch (e) {
+    console.warn("[ETA] Failed to compute accuracy:", e);
+    return null;
+  }
+}
+
+/**
+ * Check if a new ETA prediction differs materially from the previous one.
+ * Returns true if the estimate changed by more than the threshold.
+ */
+export function isETAMateriallyDifferent(
+  prev: ETAPrediction | null,
+  next: ETAPrediction,
+  thresholdMinutes: number = 5
+): boolean {
+  if (!prev) return true;
+  return Math.abs(next.estimateMinutes - prev.estimateMinutes) >= thresholdMinutes;
+}
