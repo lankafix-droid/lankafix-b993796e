@@ -5,6 +5,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logIncident } from "@/lib/errorMonitoring";
 import { logLifecycleEvent } from "@/lib/eventLogger";
+import { predictETA, logETAPrediction, computeETAAccuracy } from "@/engines/etaPredictionEngine";
 
 /**
  * Trigger the dispatch engine for a newly created booking.
@@ -158,9 +159,56 @@ export async function updateJobStatus(
     ]);
 
     if (bookingRes.error) throw bookingRes.error;
+
+    // ── ETA Intelligence: Log prediction on travel start, compute accuracy on arrival ──
+    if (action === "start_travel") {
+      // Fire-and-forget: log initial ETA prediction when travel begins
+      logTravelStartETA(bookingId, partnerId).catch(() => {});
+    }
+
+    if (action === "arrived") {
+      // Fire-and-forget: compute ETA accuracy
+      computeETAAccuracy(bookingId, new Date().toISOString()).catch(() => {});
+    }
+
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e.message || "Failed to update status" };
+  }
+}
+
+/** Log ETA prediction when technician starts travel */
+async function logTravelStartETA(bookingId: string, partnerId: string): Promise<void> {
+  try {
+    // Fetch partner + booking locations
+    const [partnerRes, bookingRes] = await Promise.all([
+      supabase.from("partners").select("current_latitude, current_longitude").eq("id", partnerId).single(),
+      supabase.from("bookings").select("customer_latitude, customer_longitude, zone_code, category_code, is_emergency").eq("id", bookingId).single(),
+    ]);
+
+    const partner = partnerRes.data;
+    const booking = bookingRes.data;
+
+    if (!partner?.current_latitude || !booking?.customer_latitude) return;
+
+    const prediction = predictETA({
+      technicianLat: partner.current_latitude,
+      technicianLng: partner.current_longitude,
+      customerLat: booking.customer_latitude,
+      customerLng: booking.customer_longitude,
+      customerZone: booking.zone_code || undefined,
+      categoryCode: booking.category_code || undefined,
+      isEmergency: booking.is_emergency || false,
+    });
+
+    await logETAPrediction(bookingId, prediction, partnerId, "travel_started", undefined, booking.zone_code || undefined);
+
+    // Also store promised ETA on booking for customer visibility
+    await supabase.from("bookings").update({
+      promised_eta_minutes: prediction.estimateMinutes,
+    }).eq("id", bookingId);
+  } catch (e) {
+    console.warn("[DispatchService] ETA logging failed:", e);
   }
 }
 
