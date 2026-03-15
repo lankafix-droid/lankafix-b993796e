@@ -186,9 +186,9 @@ export function shouldAutoModeHalt(escalationRate: number, circuitBroken: boolea
 }
 
 // ── 8: Is retry allowed? ──
-export function isRetryAllowed(attempts: number, maxRetries: number, cooldownUntil: string | null, lastStatus: string | null): boolean {
+export function isRetryAllowed(attempts: number, maxRetries: number, cooldownUntil: string | null, lastStatus: string | null, now: number = Date.now()): boolean {
   if (lastStatus === "escalated") return false;
-  if (cooldownUntil && new Date(cooldownUntil) > new Date()) return false;
+  if (cooldownUntil && new Date(cooldownUntil).getTime() > now) return false;
   if (attempts >= maxRetries) return false;
   return true;
 }

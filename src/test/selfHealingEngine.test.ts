@@ -285,32 +285,32 @@ describe("Auto-Mode Halt", () => {
 
 describe("Retry Caps", () => {
   it("allows retry when under limit", () => {
-    expect(isRetryAllowed(0, MAX_RETRIES.booking, null, null)).toBe(true);
-    expect(isRetryAllowed(2, MAX_RETRIES.booking, null, null)).toBe(true);
+    expect(isRetryAllowed(0, MAX_RETRIES.booking, null, null, FIXED_NOW)).toBe(true);
+    expect(isRetryAllowed(2, MAX_RETRIES.booking, null, null, FIXED_NOW)).toBe(true);
   });
 
   it("blocks retry at max limit", () => {
-    expect(isRetryAllowed(MAX_RETRIES.booking, MAX_RETRIES.booking, null, null)).toBe(false);
+    expect(isRetryAllowed(MAX_RETRIES.booking, MAX_RETRIES.booking, null, null, FIXED_NOW)).toBe(false);
   });
 
   it("blocks retry when escalated", () => {
-    expect(isRetryAllowed(1, MAX_RETRIES.booking, null, "escalated")).toBe(false);
+    expect(isRetryAllowed(1, MAX_RETRIES.booking, null, "escalated", FIXED_NOW)).toBe(false);
   });
 
   it("blocks retry during cooldown", () => {
     const future = new Date(FIXED_NOW + 5 * 60 * 1000).toISOString();
-    expect(isRetryAllowed(1, MAX_RETRIES.booking, future, null)).toBe(false);
+    expect(isRetryAllowed(1, MAX_RETRIES.booking, future, null, FIXED_NOW)).toBe(false);
   });
 
   it("allows retry after cooldown expires", () => {
     const past = new Date(FIXED_NOW - 1000).toISOString();
-    expect(isRetryAllowed(1, MAX_RETRIES.booking, past, null)).toBe(true);
+    expect(isRetryAllowed(1, MAX_RETRIES.booking, past, null, FIXED_NOW)).toBe(true);
   });
 
   it("respects payment retry limit (lower than booking)", () => {
     expect(MAX_RETRIES.payment).toBeLessThan(MAX_RETRIES.booking);
-    expect(isRetryAllowed(MAX_RETRIES.payment, MAX_RETRIES.payment, null, null)).toBe(false);
-    expect(isRetryAllowed(MAX_RETRIES.payment - 1, MAX_RETRIES.payment, null, null)).toBe(true);
+    expect(isRetryAllowed(MAX_RETRIES.payment, MAX_RETRIES.payment, null, null, FIXED_NOW)).toBe(false);
+    expect(isRetryAllowed(MAX_RETRIES.payment - 1, MAX_RETRIES.payment, null, null, FIXED_NOW)).toBe(true);
   });
 });
 
