@@ -460,12 +460,17 @@ export default function LaunchCommandCenterPage() {
                     <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString("en-LK", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <Badge className={`text-lg px-4 py-2 font-bold ${verdictStyle.bg} ${verdictStyle.text} border-none`}>
-                    {verdictStyle.label}
-                  </Badge>
-                  <p className="text-2xl font-bold text-foreground mt-1">{overallScore}%</p>
+                <div className="text-right space-y-1">
+                  <div className="flex items-center justify-end gap-2">
+                    <Badge className={`text-lg px-4 py-2 font-bold ${verdictStyle.bg} ${verdictStyle.text} border-none`}>
+                      {verdictStyle.label}
+                    </Badge>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{overallScore}%</p>
                   <p className="text-[11px] text-muted-foreground">Launch Readiness</p>
+                  <Badge variant="outline" className={`text-[10px] ${pilotMode === "PAUSED" ? "text-destructive border-destructive/30" : "text-success border-success/30"}`}>
+                    Pilot Mode: {pilotMode || "ACTIVE"}
+                  </Badge>
                 </div>
               </div>
 
