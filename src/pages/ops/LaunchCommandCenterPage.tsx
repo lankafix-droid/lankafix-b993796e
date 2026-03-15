@@ -3,11 +3,11 @@
  * Top-level GO/HOLD/NO-GO cockpit for daily pilot launch decisions.
  * Aggregates zone readiness, team readiness, automation health, payment stability.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -15,14 +15,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import {
   Shield, CheckCircle2, AlertTriangle, XCircle, MapPin, Users,
-  Zap, CreditCard, Activity, Clock, ArrowLeft, ExternalLink,
-  ChevronRight, Rocket, TrendingUp, FileText, Radio,
-  RefreshCw, MessageSquare, Target,
+  Zap, CreditCard, Activity, Clock, ArrowLeft,
+  ChevronRight, Rocket, FileText, Radio,
+  RefreshCw, MessageSquare, Target, Save,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
+import {
+  PILLAR_WEIGHTS, MIN_ACTIVE_PARTNERS_TARGET, MIN_ACTIVE_PARTNERS_CHECKLIST,
+  PAYMENT_FAILURE_SCORE_PENALTY, UNPAID_COMPLETED_SCORE_PENALTY, MAX_PAYMENT_FAILURES_CHECKLIST,
+  AUTOMATION_ERROR_SCORE_PENALTY, AUTOMATION_MONITOR_WINDOW_MINUTES,
+  ESCALATION_SCORE_PENALTY, STALE_BOOKING_SCORE_PENALTY, STALE_BOOKING_THRESHOLD_MINUTES,
+  MAX_ESCALATIONS_CHECKLIST, MAX_STALE_BOOKINGS_CHECKLIST,
+  EXPIRED_OFFER_THRESHOLDS, ZONE_MIN_PARTNERS_READY, MIN_READY_ZONES_CHECKLIST,
+  MAX_URGENT_OFFERS_CHECKLIST, MAX_SUPPORT_OPEN_CHECKLIST,
+  WATCH_PILLAR_THRESHOLD_FOR_HOLD, PILLAR_HEALTHY_MIN, PILLAR_WATCH_MIN,
+  UNPAID_REVENUE_THRESHOLD,
+} from "@/config/launchReadinessConfig";
 
 // ── Types ──
 type Verdict = "GO" | "HOLD" | "NO_GO";
@@ -45,8 +56,7 @@ interface ZoneReadiness {
   partners: number;
   activePartners: number;
   bookingsToday: number;
-  escalations: number;
-  paymentFailures: number;
+  staleCount: number;
   status: ZoneStatus;
 }
 
@@ -56,10 +66,10 @@ interface ChecklistItem {
   note: string;
 }
 
-// ── Pillar status helpers ──
+// ── Helpers ──
 function pillarStatus(score: number): PillarStatus {
-  if (score >= 75) return "healthy";
-  if (score >= 50) return "watch";
+  if (score >= PILLAR_HEALTHY_MIN) return "healthy";
+  if (score >= PILLAR_WATCH_MIN) return "watch";
   return "critical";
 }
 
@@ -82,7 +92,7 @@ const VERDICT_STYLES: Record<Verdict, { bg: string; text: string; label: string 
   NO_GO: { bg: "bg-destructive/15 border-destructive/30", text: "text-destructive", label: "NO-GO" },
 };
 
-// ── Phase-1 pilot zones ──
+// ── Pilot zones ──
 const PILOT_ZONE_IDS = [
   "col_01", "col_02", "col_03", "col_04", "col_05", "col_06", "col_07",
   "col_08", "col_09", "col_10", "col_11", "col_12", "col_13", "col_14", "col_15",
@@ -93,66 +103,88 @@ const PILOT_ZONE_IDS = [
 const ZONE_LABEL_MAP: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL_MAP[z.id] = z.label; });
 
-// ── Data hook ──
+// ── Drill-down links (only confirmed routes) ──
+const DRILL_DOWN_LINKS = [
+  { label: "War Room", path: "/ops/war-room", icon: Radio },
+  { label: "Launch Readiness", path: "/ops/launch", icon: Rocket },
+  { label: "Partner Readiness", path: "/ops/partner-readiness", icon: Users },
+  { label: "Dispatch Board", path: "/ops/dispatch", icon: Zap },
+  { label: "Finance Board", path: "/ops/finance", icon: CreditCard },
+  { label: "Automation Health", path: "/ops/automation-health", icon: Activity },
+  { label: "Support Cases", path: "/ops/support", icon: Shield },
+];
+
+// ── groupBy utility ──
+function groupBy(arr: any[], field: string): Record<string, any[]> {
+  const map: Record<string, any[]> = {};
+  arr.forEach(item => {
+    const key = item?.[field] || "unknown";
+    if (!map[key]) map[key] = [];
+    map[key].push(item);
+  });
+  return map;
+}
+
+// ── Safe count helper ──
+function safeLen(data: any[] | null | undefined): number {
+  return Array.isArray(data) ? data.length : 0;
+}
+
+// ── Data hook with graceful fallbacks ──
 function useLaunchData() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayISO = todayStart.toISOString();
-  const thirtyMinAgo = new Date(Date.now() - 30 * 60_000).toISOString();
+  const staleThreshold = new Date(Date.now() - STALE_BOOKING_THRESHOLD_MINUTES * 60_000).toISOString();
+  const autoWindow = new Date(Date.now() - AUTOMATION_MONITOR_WINDOW_MINUTES * 60_000).toISOString();
 
   return useQuery({
     queryKey: ["launch-command-center"],
     queryFn: async () => {
-      const [
-        partnersRes,
-        bookingsTodayRes,
-        activeBookingsRes,
-        escalationsRes,
-        paymentFailuresRes,
-        automationErrorsRes,
-        staleBookingsRes,
-        urgentOffersRes,
-        expiredOffersRes,
-        unpaidCompletedRes,
-        supportOpenRes,
-        dispatchAcceptedRes,
-        dispatchTotalRes,
-      ] = await Promise.all([
+      // Fire all queries; individual failures return empty arrays
+      const results = await Promise.allSettled([
         supabase.from("partners").select("id, verification_status, availability_status, service_zones, categories_supported"),
         supabase.from("bookings").select("id, zone_code, category_code, status, payment_status").gte("created_at", todayISO).neq("booking_source", "pilot_simulation"),
         supabase.from("bookings").select("id, zone_code, status, partner_id, assigned_at, updated_at")
           .in("status", ["assigned", "tech_en_route", "arrived", "inspection_started", "repair_started", "quote_submitted"])
           .neq("booking_source", "pilot_simulation"),
         supabase.from("dispatch_escalations").select("id, booking_id").gte("created_at", todayISO).is("resolved_at", null),
-        supabase.from("payments").select("id, booking_id").eq("payment_status", "failed").gte("created_at", todayISO),
-        supabase.from("automation_event_log").select("id").in("severity", ["error", "critical"]).gte("created_at", thirtyMinAgo),
-        supabase.from("bookings").select("id, zone_code").in("status", ["assigned", "tech_en_route"]).lt("updated_at", thirtyMinAgo).neq("booking_source", "pilot_simulation"),
+        supabase.from("payments" as any).select("id, booking_id").eq("payment_status", "failed").gte("created_at", todayISO),
+        supabase.from("automation_event_log").select("id").in("severity", ["error", "critical"]).gte("created_at", autoWindow),
+        supabase.from("bookings").select("id, zone_code").in("status", ["assigned", "tech_en_route"]).lt("updated_at", staleThreshold).neq("booking_source", "pilot_simulation"),
         supabase.from("dispatch_offers").select("id").eq("status", "pending").lte("expires_at", new Date(Date.now() + 60_000).toISOString()).gte("expires_at", new Date().toISOString()),
         supabase.from("dispatch_offers").select("id").in("status", ["expired", "expired_by_accept"]).gte("created_at", todayISO),
-        supabase.from("bookings").select("id, final_price_lkr").eq("status", "completed").eq("payment_status", "pending").gte("created_at", thirtyMinAgo),
-        supabase.from("support_tickets").select("id").in("status", ["open", "in_progress"]),
+        supabase.from("bookings").select("id, final_price_lkr").eq("status", "completed").eq("payment_status", "pending").gte("created_at", staleThreshold),
+        supabase.from("support_cases" as any).select("id").in("status", ["open", "in_progress"]),
         supabase.from("dispatch_offers").select("id").eq("status", "accepted").gte("created_at", todayISO),
         supabase.from("dispatch_offers").select("id").gte("created_at", todayISO),
       ]);
 
-      const partners = partnersRes.data || [];
-      const bookingsToday = bookingsTodayRes.data || [];
-      const activeBookings = activeBookingsRes.data || [];
-      const escalations = escalationsRes.data || [];
-      const paymentFailures = paymentFailuresRes.data || [];
-      const automationErrors = automationErrorsRes.data || [];
-      const staleBookings = staleBookingsRes.data || [];
-      const urgentOffers = urgentOffersRes.data || [];
-      const expiredOffers = expiredOffersRes.data || [];
-      const unpaidCompleted = unpaidCompletedRes.data || [];
-      const supportOpen = supportOpenRes.data || [];
-      const dispatchAccepted = dispatchAcceptedRes.data || [];
-      const dispatchTotal = dispatchTotalRes.data || [];
+      // Extract data safely from each settled result
+      const extract = (idx: number): any[] => {
+        const r = results[idx];
+        if (r.status === "fulfilled") return (r.value as any)?.data || [];
+        console.warn(`[LaunchCommand] Query ${idx} failed:`, r.reason);
+        return [];
+      };
 
-      const verifiedPartners = partners.filter(p => p.verification_status === "verified");
-      const activePartners = verifiedPartners.filter(p => p.availability_status !== "offline");
+      const partners = extract(0);
+      const bookingsToday = extract(1);
+      const activeBookings = extract(2);
+      const escalations = extract(3);
+      const paymentFailures = extract(4);
+      const automationErrors = extract(5);
+      const staleBookings = extract(6);
+      const urgentOffers = extract(7);
+      const expiredOffers = extract(8);
+      const unpaidCompleted = extract(9);
+      const supportOpen = extract(10);
+      const dispatchAccepted = extract(11);
+      const dispatchTotal = extract(12);
 
-      // Dispatch acceptance rate
+      const verifiedPartners = partners.filter((p: any) => p.verification_status === "verified");
+      const activePartners = verifiedPartners.filter((p: any) => p.availability_status !== "offline");
+
       const dispatchAcceptRate = dispatchTotal.length > 0
         ? Math.round((dispatchAccepted.length / dispatchTotal.length) * 100)
         : 100;
@@ -170,13 +202,11 @@ function useLaunchData() {
         urgentOfferCount: urgentOffers.length,
         expiredOfferCount: expiredOffers.length,
         unpaidCompletedCount: unpaidCompleted.length,
-        unpaidRevenue: unpaidCompleted.reduce((s, b: any) => s + (b.final_price_lkr || 0), 0),
+        unpaidRevenue: unpaidCompleted.reduce((s: number, b: any) => s + (b.final_price_lkr || 0), 0),
         supportOpenCount: supportOpen.length,
         dispatchAcceptRate,
-        // Zone-level data
         bookingsByZone: groupBy(bookingsToday, "zone_code"),
         staleByZone: groupBy(staleBookings, "zone_code"),
-        activeByZone: groupBy(activeBookings, "zone_code"),
       };
     },
     refetchInterval: 30_000,
@@ -184,26 +214,46 @@ function useLaunchData() {
   });
 }
 
-function groupBy(arr: any[], field: string): Record<string, any[]> {
-  const map: Record<string, any[]> = {};
-  arr.forEach(item => {
-    const key = item[field] || "unknown";
-    if (!map[key]) map[key] = [];
-    map[key].push(item);
-  });
-  return map;
+// ── Operator note persistence via automation_event_log ──
+async function persistOperatorNote(note: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.from("automation_event_log").insert({
+      event_type: "launch_operator_note",
+      severity: "info",
+      trigger_reason: note.slice(0, 500),
+      action_taken: "operator_note_saved",
+      metadata: { timestamp: new Date().toISOString(), source: "launch_command_center" },
+    });
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 // ── Main Component ──
 export default function LaunchCommandCenterPage() {
   const navigate = useNavigate();
-  const { data, isLoading, refetch } = useLaunchData();
+  const { data, isLoading, isError, refetch } = useLaunchData();
   const [opsNote, setOpsNote] = useState("");
   const [savedNote, setSavedNote] = useState<string | null>(null);
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => { track("launch_command_center_viewed"); }, []);
 
-  if (isLoading || !data) {
+  const handleSaveNote = useCallback(async () => {
+    if (!opsNote.trim()) return;
+    setSavingNote(true);
+    const ok = await persistOperatorNote(opsNote);
+    setSavingNote(false);
+    if (ok) {
+      setSavedNote(opsNote);
+      setOpsNote("");
+      track("launch_ops_note_saved", { note: opsNote.slice(0, 100) });
+    }
+  }, [opsNote]);
+
+  // Loading state
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
@@ -214,43 +264,58 @@ export default function LaunchCommandCenterPage() {
     );
   }
 
+  // Error / no data fallback
+  if (isError || !data) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 bg-background flex items-center justify-center">
+          <div className="text-center space-y-3">
+            <AlertTriangle className="w-8 h-8 text-warning mx-auto" />
+            <p className="text-sm text-muted-foreground">Unable to load launch data. Some queries may have failed.</p>
+            <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // ── Compute Pillars ──
-  const supplyScore = Math.min(100, Math.round((data.activePartners.length / Math.max(1, 10)) * 100));
+  const supplyScore = Math.min(100, Math.round((safeLen(data.activePartners) / Math.max(1, MIN_ACTIVE_PARTNERS_TARGET)) * 100));
   const dispatchScore = Math.min(100, data.dispatchAcceptRate);
-  const paymentScore = Math.max(0, 100 - (data.paymentFailureCount * 15) - (data.unpaidCompletedCount * 5));
-  const automationScore = data.automationErrorCount === 0 ? 100 : Math.max(0, 100 - (data.automationErrorCount * 20));
-  const escalationScore = Math.max(0, 100 - (data.escalationCount * 10) - (data.staleBookingCount * 8));
-  const offerScore = data.expiredOfferCount > 10 ? 40 : data.expiredOfferCount > 5 ? 65 : data.expiredOfferCount > 0 ? 85 : 100;
+  const paymentScore = Math.max(0, 100 - (data.paymentFailureCount * PAYMENT_FAILURE_SCORE_PENALTY) - (data.unpaidCompletedCount * UNPAID_COMPLETED_SCORE_PENALTY));
+  const automationScore = data.automationErrorCount === 0 ? 100 : Math.max(0, 100 - (data.automationErrorCount * AUTOMATION_ERROR_SCORE_PENALTY));
+  const escalationScore = Math.max(0, 100 - (data.escalationCount * ESCALATION_SCORE_PENALTY) - (data.staleBookingCount * STALE_BOOKING_SCORE_PENALTY));
+  const offerScore = data.expiredOfferCount > EXPIRED_OFFER_THRESHOLDS.critical ? 40
+    : data.expiredOfferCount > EXPIRED_OFFER_THRESHOLDS.watch ? 65
+    : data.expiredOfferCount > EXPIRED_OFFER_THRESHOLDS.minor ? 85 : 100;
 
   const pillars: Pillar[] = [
-    { key: "supply", label: "Supply Readiness", icon: Users, score: supplyScore, status: pillarStatus(supplyScore), detail: `${data.activePartners.length} active partners`, weight: 25 },
-    { key: "dispatch", label: "Dispatch Reliability", icon: Zap, score: dispatchScore, status: pillarStatus(dispatchScore), detail: `${dispatchScore}% acceptance rate`, weight: 20 },
-    { key: "payment", label: "Payment Stability", icon: CreditCard, score: paymentScore, status: pillarStatus(paymentScore), detail: `${data.paymentFailureCount} failures today`, weight: 15 },
-    { key: "automation", label: "Automation Health", icon: Activity, score: automationScore, status: pillarStatus(automationScore), detail: `${data.automationErrorCount} errors (30m)`, weight: 15 },
-    { key: "ops", label: "Ops Load", icon: Shield, score: escalationScore, status: pillarStatus(escalationScore), detail: `${data.escalationCount} escalations, ${data.staleBookingCount} stale`, weight: 15 },
-    { key: "offers", label: "Offer Health", icon: Clock, score: offerScore, status: pillarStatus(offerScore), detail: `${data.expiredOfferCount} expired today`, weight: 10 },
+    { key: "supply", label: "Supply Readiness", icon: Users, score: supplyScore, status: pillarStatus(supplyScore), detail: `${safeLen(data.activePartners)} active partners`, weight: PILLAR_WEIGHTS.supply },
+    { key: "dispatch", label: "Dispatch Reliability", icon: Zap, score: dispatchScore, status: pillarStatus(dispatchScore), detail: `${dispatchScore}% acceptance rate`, weight: PILLAR_WEIGHTS.dispatch },
+    { key: "payment", label: "Payment Stability", icon: CreditCard, score: paymentScore, status: pillarStatus(paymentScore), detail: `${data.paymentFailureCount} failures today`, weight: PILLAR_WEIGHTS.payment },
+    { key: "automation", label: "Automation Health", icon: Activity, score: automationScore, status: pillarStatus(automationScore), detail: `${data.automationErrorCount} errors (${AUTOMATION_MONITOR_WINDOW_MINUTES}m)`, weight: PILLAR_WEIGHTS.automation },
+    { key: "ops", label: "Ops Load", icon: Shield, score: escalationScore, status: pillarStatus(escalationScore), detail: `${data.escalationCount} escalations, ${data.staleBookingCount} stale`, weight: PILLAR_WEIGHTS.ops },
+    { key: "offers", label: "Offer Health", icon: Clock, score: offerScore, status: pillarStatus(offerScore), detail: `${data.expiredOfferCount} expired today`, weight: PILLAR_WEIGHTS.offers },
   ];
 
-  // Weighted overall
   const totalWeight = pillars.reduce((s, p) => s + p.weight, 0);
   const overallScore = Math.round(pillars.reduce((s, p) => s + (p.score * p.weight), 0) / totalWeight);
 
-  // Verdict
   const hasCritical = pillars.some(p => p.status === "critical");
   const watchCount = pillars.filter(p => p.status === "watch").length;
-  const verdict: Verdict = hasCritical ? "NO_GO" : watchCount >= 2 ? "HOLD" : "GO";
+  const verdict: Verdict = hasCritical ? "NO_GO" : watchCount >= WATCH_PILLAR_THRESHOLD_FOR_HOLD ? "HOLD" : "GO";
   const verdictStyle = VERDICT_STYLES[verdict];
 
-  // ── Zone Readiness ──
+  // ── Zone Readiness (no fake precision — omit zone-level escalation/payment metrics) ──
   const zoneReadiness: ZoneReadiness[] = PILOT_ZONE_IDS.map(zoneId => {
-    const zonePartners = data.activePartners.filter((p: any) => (p.service_zones || []).includes(zoneId));
-    const allZonePartners = data.verifiedPartners.filter((p: any) => (p.service_zones || []).includes(zoneId));
-    const zoneBookings = data.bookingsByZone[zoneId] || [];
-    const zoneStale = data.staleByZone[zoneId] || [];
-    const zoneEscalations = 0; // Would need zone-level escalation data
+    const zonePartners = (data.activePartners || []).filter((p: any) => Array.isArray(p.service_zones) && p.service_zones.includes(zoneId));
+    const allZonePartners = (data.verifiedPartners || []).filter((p: any) => Array.isArray(p.service_zones) && p.service_zones.includes(zoneId));
+    const zoneBookings = data.bookingsByZone?.[zoneId] || [];
+    const zoneStale = data.staleByZone?.[zoneId] || [];
 
     let status: ZoneStatus;
-    if (allZonePartners.length >= 3 && zoneStale.length === 0) status = "ready";
+    if (allZonePartners.length >= ZONE_MIN_PARTNERS_READY && zoneStale.length === 0) status = "ready";
     else if (allZonePartners.length >= 1) status = "watch";
     else if (allZonePartners.length === 0 && zoneBookings.length > 0) status = "risky";
     else status = "not_ready";
@@ -261,8 +326,7 @@ export default function LaunchCommandCenterPage() {
       partners: allZonePartners.length,
       activePartners: zonePartners.length,
       bookingsToday: zoneBookings.length,
-      escalations: zoneEscalations,
-      paymentFailures: 0,
+      staleCount: zoneStale.length,
       status,
     };
   });
@@ -273,24 +337,18 @@ export default function LaunchCommandCenterPage() {
 
   // ── Daily Checklist ──
   const checklist: ChecklistItem[] = [
-    { label: "Minimum partners active (≥5)", pass: data.activePartners.length >= 5, note: `${data.activePartners.length} active` },
-    { label: "Zones enabled (≥3 ready)", pass: zonesReady >= 3, note: `${zonesReady} ready` },
-    { label: "Dispatch alerts below threshold", pass: data.escalationCount <= 3, note: `${data.escalationCount} open escalations` },
-    { label: "Payment failures acceptable (≤2)", pass: data.paymentFailureCount <= 2, note: `${data.paymentFailureCount} failures` },
+    { label: `Minimum partners active (≥${MIN_ACTIVE_PARTNERS_CHECKLIST})`, pass: safeLen(data.activePartners) >= MIN_ACTIVE_PARTNERS_CHECKLIST, note: `${safeLen(data.activePartners)} active` },
+    { label: `Zones enabled (≥${MIN_READY_ZONES_CHECKLIST} ready)`, pass: zonesReady >= MIN_READY_ZONES_CHECKLIST, note: `${zonesReady} ready` },
+    { label: `Dispatch alerts below threshold (≤${MAX_ESCALATIONS_CHECKLIST})`, pass: data.escalationCount <= MAX_ESCALATIONS_CHECKLIST, note: `${data.escalationCount} open escalations` },
+    { label: `Payment failures acceptable (≤${MAX_PAYMENT_FAILURES_CHECKLIST})`, pass: data.paymentFailureCount <= MAX_PAYMENT_FAILURES_CHECKLIST, note: `${data.paymentFailureCount} failures` },
     { label: "Automations healthy", pass: data.automationErrorCount === 0, note: data.automationErrorCount === 0 ? "All healthy" : `${data.automationErrorCount} errors` },
-    { label: "Urgent offers responded to", pass: data.urgentOfferCount <= 1, note: `${data.urgentOfferCount} expiring soon` },
-    { label: "No critical unresolved incidents", pass: data.supportOpenCount <= 2, note: `${data.supportOpenCount} open tickets` },
-    { label: "Stale bookings under control", pass: data.staleBookingCount <= 1, note: `${data.staleBookingCount} stale` },
+    { label: `Urgent offers responded to (≤${MAX_URGENT_OFFERS_CHECKLIST})`, pass: data.urgentOfferCount <= MAX_URGENT_OFFERS_CHECKLIST, note: `${data.urgentOfferCount} expiring soon` },
+    { label: `No critical unresolved cases (≤${MAX_SUPPORT_OPEN_CHECKLIST})`, pass: data.supportOpenCount <= MAX_SUPPORT_OPEN_CHECKLIST, note: `${data.supportOpenCount} open cases` },
+    { label: `Stale bookings under control (≤${MAX_STALE_BOOKINGS_CHECKLIST})`, pass: data.staleBookingCount <= MAX_STALE_BOOKINGS_CHECKLIST, note: `${data.staleBookingCount} stale` },
   ];
 
   const checklistPass = checklist.filter(c => c.pass).length;
 
-  const handleSaveNote = () => {
-    setSavedNote(opsNote);
-    track("launch_ops_note_saved", { note: opsNote.slice(0, 100) });
-  };
-
-  // ── Recommendation ──
   const recommendation = verdict === "GO"
     ? "All critical pillars healthy. Pilot can proceed with standard monitoring."
     : verdict === "HOLD"
@@ -340,8 +398,8 @@ export default function LaunchCommandCenterPage() {
                 <span className="flex items-center gap-1 text-success"><CheckCircle2 className="w-3.5 h-3.5" /> {zonesReady} zones ready</span>
                 <span className="flex items-center gap-1 text-warning"><AlertTriangle className="w-3.5 h-3.5" /> {zonesWatch} watch</span>
                 <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" /> {zonesRisky} risky</span>
-                <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-3.5 h-3.5" /> {data.activePartners.length} active partners</span>
-                <span className="flex items-center gap-1 text-muted-foreground"><Target className="w-3.5 h-3.5" /> {data.bookingsToday.length} bookings today</span>
+                <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-3.5 h-3.5" /> {safeLen(data.activePartners)} active partners</span>
+                <span className="flex items-center gap-1 text-muted-foreground"><Target className="w-3.5 h-3.5" /> {safeLen(data.bookingsToday)} bookings today</span>
               </div>
 
               <p className="text-sm text-muted-foreground mt-3">{recommendation}</p>
@@ -397,6 +455,7 @@ export default function LaunchCommandCenterPage() {
                       <span>{z.partners} partners</span>
                       <span>{z.activePartners} active</span>
                       <span>{z.bookingsToday} bookings</span>
+                      {z.staleCount > 0 && <span className="text-destructive">{z.staleCount} stale</span>}
                     </div>
                   </div>
                 );
@@ -411,10 +470,10 @@ export default function LaunchCommandCenterPage() {
             <Users className="w-4 h-4 text-primary" /> Team & Operations Readiness
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <MetricTile label="Active Partners" value={data.activePartners.length} threshold={5} />
-            <MetricTile label="Open Escalations" value={data.escalationCount} threshold={3} inverted />
-            <MetricTile label="Support Tickets" value={data.supportOpenCount} threshold={3} inverted />
-            <MetricTile label="Stale Bookings" value={data.staleBookingCount} threshold={2} inverted />
+            <MetricTile label="Active Partners" value={safeLen(data.activePartners)} threshold={MIN_ACTIVE_PARTNERS_CHECKLIST} />
+            <MetricTile label="Open Escalations" value={data.escalationCount} threshold={MAX_ESCALATIONS_CHECKLIST} inverted />
+            <MetricTile label="Support Cases" value={data.supportOpenCount} threshold={MAX_SUPPORT_OPEN_CHECKLIST} inverted />
+            <MetricTile label="Stale Bookings" value={data.staleBookingCount} threshold={MAX_STALE_BOOKINGS_CHECKLIST} inverted />
           </div>
 
           {/* ── AUTOMATION HEALTH ── */}
@@ -422,10 +481,10 @@ export default function LaunchCommandCenterPage() {
             <Activity className="w-4 h-4 text-primary" /> Automation Health
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <MetricTile label="Auto Errors (30m)" value={data.automationErrorCount} threshold={1} inverted />
-            <MetricTile label="Expired Offers Today" value={data.expiredOfferCount} threshold={5} inverted />
-            <MetricTile label="Urgent Offers Now" value={data.urgentOfferCount} threshold={2} inverted />
-            <MetricTile label="Unpaid Revenue" value={data.unpaidRevenue} threshold={10000} inverted formatFn={v => `LKR ${v.toLocaleString()}`} />
+            <MetricTile label={`Auto Errors (${AUTOMATION_MONITOR_WINDOW_MINUTES}m)`} value={data.automationErrorCount} threshold={1} inverted />
+            <MetricTile label="Expired Offers Today" value={data.expiredOfferCount} threshold={EXPIRED_OFFER_THRESHOLDS.watch} inverted />
+            <MetricTile label="Urgent Offers Now" value={data.urgentOfferCount} threshold={MAX_URGENT_OFFERS_CHECKLIST + 1} inverted />
+            <MetricTile label="Unpaid Revenue" value={data.unpaidRevenue} threshold={UNPAID_REVENUE_THRESHOLD} inverted formatFn={v => `LKR ${v.toLocaleString()}`} />
           </div>
 
           {/* ── DAILY CHECKLIST ── */}
@@ -459,7 +518,7 @@ export default function LaunchCommandCenterPage() {
               {savedNote && (
                 <div className="bg-primary/5 border border-primary/10 rounded-lg p-3">
                   <p className="text-xs text-foreground">{savedNote}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Saved today</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Saved this session</p>
                 </div>
               )}
               <Textarea
@@ -469,8 +528,9 @@ export default function LaunchCommandCenterPage() {
                 rows={2}
                 className="text-xs"
               />
-              <Button size="sm" onClick={handleSaveNote} disabled={!opsNote.trim()}>
-                Save Note
+              <Button size="sm" onClick={handleSaveNote} disabled={!opsNote.trim() || savingNote} className="gap-1.5">
+                <Save className="w-3.5 h-3.5" />
+                {savingNote ? "Saving…" : "Save Note"}
               </Button>
             </CardContent>
           </Card>
@@ -478,14 +538,7 @@ export default function LaunchCommandCenterPage() {
           {/* ── DRILL-DOWN LINKS ── */}
           <h2 className="text-sm font-semibold text-foreground mb-3">Drill-Down</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
-            {[
-              { label: "War Room", path: "/ops/war-room", icon: Radio },
-              { label: "Launch Readiness", path: "/ops/launch", icon: Rocket },
-              { label: "Partner Readiness", path: "/ops/partner-readiness", icon: Users },
-              { label: "Dispatch Board", path: "/ops/dispatch", icon: Zap },
-              { label: "Finance Board", path: "/ops/finance", icon: CreditCard },
-              { label: "Automation Health", path: "/ops/automation-health", icon: Activity },
-            ].map(link => (
+            {DRILL_DOWN_LINKS.map(link => (
               <Button
                 key={link.path}
                 variant="outline"
@@ -514,11 +567,12 @@ function MetricTile({ label, value, threshold, inverted, formatFn }: {
   inverted?: boolean;
   formatFn?: (v: number) => string;
 }) {
-  const isGood = inverted ? value <= threshold : value >= threshold;
+  const safeValue = typeof value === "number" && !isNaN(value) ? value : 0;
+  const isGood = inverted ? safeValue <= threshold : safeValue >= threshold;
   return (
     <div className={`rounded-lg border p-3 text-center ${isGood ? "bg-success/5 border-success/10" : "bg-destructive/5 border-destructive/10"}`}>
       <p className={`text-lg font-bold ${isGood ? "text-success" : "text-destructive"}`}>
-        {formatFn ? formatFn(value) : value}
+        {formatFn ? formatFn(safeValue) : safeValue}
       </p>
       <p className="text-[9px] text-muted-foreground">{label}</p>
     </div>
