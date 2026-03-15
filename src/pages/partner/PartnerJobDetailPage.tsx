@@ -225,8 +225,9 @@ export default function PartnerJobDetailPage() {
 
   // Determine what actions are available
   const isMyJob = booking.partner_id === partner?.id;
-  const isPendingOffer = dispatchOffer?.status === "pending_acceptance" && !isMyJob;
-  const canAccept = isPendingOffer || (booking.selected_partner_id === partner?.id && booking.dispatch_status === "pending_acceptance");
+  const isOfferExpired = dispatchOffer?.expires_at ? new Date(dispatchOffer.expires_at) < new Date() : false;
+  const isPendingOffer = (dispatchOffer?.status === "pending_acceptance" || dispatchOffer?.status === "pending") && !isMyJob && !isOfferExpired;
+  const canAccept = isPendingOffer || (!isOfferExpired && booking.selected_partner_id === partner?.id && booking.dispatch_status === "pending_acceptance");
   const canStartTravel = isMyJob && booking.status === "assigned";
   const canMarkArrived = isMyJob && booking.status === "tech_en_route";
   const canStartWork = isMyJob && booking.status === "arrived";
