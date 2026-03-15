@@ -15,7 +15,7 @@ function usePilotReliabilityData() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayISO = todayStart.toISOString();
-  const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
+  const thirtyMinAgoAuto = new Date(Date.now() - 30 * 60_000).toISOString();
   const thirtyMinAgo = new Date(Date.now() - 30 * 60_000).toISOString();
 
   return useQuery({
@@ -59,11 +59,11 @@ function usePilotReliabilityData() {
           .in("status", ["assigned", "tech_en_route"])
           .lt("updated_at", thirtyMinAgo)
           .neq("booking_source", "pilot_simulation"),
-        // Automation errors (last 1h)
+        // Automation errors (last 30 min — realistic ops window)
         supabase.from("automation_event_log")
           .select("id, event_type, trigger_reason")
           .in("severity", ["error", "critical"])
-          .gte("created_at", fiveMinAgo),
+          .gte("created_at", thirtyMinAgoAuto),
         // Escalations today
         supabase.from("dispatch_escalations")
           .select("id")

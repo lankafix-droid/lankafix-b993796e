@@ -190,6 +190,23 @@ function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; 
 }
 
 /** Sub-component: Payment status indicator for DB-backed bookings */
+const PAYMENT_SUCCESS_STATES = ["paid", "cash_collected", "payment_verified"];
+const PAYMENT_FAIL_STATES = ["failed"];
+
+function getPaymentDisplay(status: string): { label: string; color: string; bg: string } {
+  const map: Record<string, { label: string; color: string; bg: string }> = {
+    pending: { label: "Payment Due", color: "text-warning", bg: "bg-warning/10 border-warning/20" },
+    deposit_paid: { label: "Deposit Paid", color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+    paid: { label: "Payment Received", color: "text-success", bg: "bg-success/10 border-success/20" },
+    failed: { label: "Payment Failed", color: "text-destructive", bg: "bg-destructive/10 border-destructive/20" },
+    refunded: { label: "Refunded", color: "text-muted-foreground", bg: "bg-muted border-border" },
+    partial_refund: { label: "Partially Refunded", color: "text-warning", bg: "bg-warning/10 border-warning/20" },
+    cash_collected: { label: "Cash Collected", color: "text-success", bg: "bg-success/10 border-success/20" },
+    payment_verified: { label: "Payment Verified", color: "text-success", bg: "bg-success/10 border-success/20" },
+  };
+  return map[status] || { label: status.replace(/_/g, " "), color: "text-muted-foreground", bg: "bg-muted border-border" };
+}
+
 function TrackerPaymentStatus({ bookingId, bookingStatus }: { bookingId: string; bookingStatus?: string }) {
   const { data: payment } = useQuery({
     queryKey: ["tracker-payment", bookingId],
@@ -200,11 +217,12 @@ function TrackerPaymentStatus({ bookingId, bookingStatus }: { bookingId: string;
 
   if (!payment) return null;
 
-  const isPaid = payment.payment_status === "paid";
-  const isFailed = payment.payment_status === "failed";
-  const statusColor = isPaid ? "text-success" : isFailed ? "text-destructive" : "text-warning";
-  const statusLabel = isPaid ? "Payment Received" : isFailed ? "Payment Failed" : "Payment Due";
-  const statusBg = isPaid ? "bg-success/10 border-success/20" : isFailed ? "bg-destructive/10 border-destructive/20" : "bg-warning/10 border-warning/20";
+  const isPaid = PAYMENT_SUCCESS_STATES.includes(payment.payment_status);
+  const isFailed = PAYMENT_FAIL_STATES.includes(payment.payment_status);
+  const display = getPaymentDisplay(payment.payment_status);
+  const statusColor = display.color;
+  const statusLabel = display.label;
+  const statusBg = display.bg;
 
   const typeLabels: Record<string, string> = {
     diagnostic: "Diagnostic Fee",
