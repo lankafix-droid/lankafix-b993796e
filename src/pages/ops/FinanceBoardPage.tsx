@@ -249,10 +249,15 @@ const FinanceBoardPage = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <span className={`text-sm font-bold ${p.payment_status === "paid" ? "text-success" : "text-warning"}`}>
+                    <span className={`text-sm font-bold ${
+                      ["paid", "cash_collected", "payment_verified"].includes(p.payment_status) ? "text-success" :
+                      p.payment_status === "failed" ? "text-destructive" :
+                      ["refunded", "partial_refund"].includes(p.payment_status) ? "text-muted-foreground" :
+                      "text-warning"
+                    }`}>
                       {formatLKR(p.amount_lkr || 0)}
                     </span>
-                    <p className="text-[10px] text-muted-foreground">{p.payment_status}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">{(p.payment_status || "pending").replace(/_/g, " ")}</p>
                   </div>
                 </div>
               ))}

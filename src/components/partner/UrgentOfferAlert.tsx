@@ -90,13 +90,19 @@ export default function UrgentOfferAlert({ offers, onViewOffer }: UrgentOfferAle
       return order[a.urgency] - order[b.urgency];
     });
 
-  // Fire vibration for critical offers (browser API)
+  // Dedupe vibration: only fire once per offer ID per session
+  const vibratedIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
-    const hasCritical = urgentOffers.some(o => o.urgency === "critical");
-    if (hasCritical && "vibrate" in navigator) {
+    const newCriticalIds = urgentOffers
+      .filter(o => o.urgency === "critical" && !vibratedIdsRef.current.has(o.id))
+      .map(o => o.id);
+
+    if (newCriticalIds.length > 0 && "vibrate" in navigator) {
       try { navigator.vibrate([200, 100, 200, 100, 300]); } catch {}
+      newCriticalIds.forEach(id => vibratedIdsRef.current.add(id));
     }
-  }, [urgentOffers.length]);
+  }, [urgentOffers]);
 
   if (urgentOffers.length === 0) return null;
 

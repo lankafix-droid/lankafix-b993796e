@@ -170,12 +170,20 @@ export async function recordCashCollection(opts: {
     });
   }
 
-  // No payment record — create one
+  // No payment record — create one. Fetch real customer_id from booking.
+  const { data: bookingData } = await supabase
+    .from("bookings")
+    .select("customer_id")
+    .eq("id", opts.bookingId)
+    .maybeSingle();
+
+  const realCustomerId = bookingData?.customer_id || opts.collectedBy;
+
   const { data: created, error } = await supabase
     .from("payments")
     .insert({
       booking_id: opts.bookingId,
-      customer_id: opts.collectedBy, // will be corrected by booking lookup
+      customer_id: realCustomerId,
       amount_lkr: opts.amountLkr,
       payment_type: "completion",
       payment_status: "cash_collected",
