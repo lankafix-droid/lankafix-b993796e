@@ -435,6 +435,12 @@ export default function LaunchCommandCenterPage() {
 
   const checklistPass = checklist.filter(c => c.pass).length;
 
+  const recommendation = verdict === "GO"
+    ? "All critical pillars healthy. Pilot can proceed with standard monitoring."
+    : verdict === "HOLD"
+    ? `Minor issues detected (${watchCount} pillars on watch). Pilot possible with manual ops oversight.`
+    : "Critical service risk detected. Resolve critical pillars before launching.";
+
   // ── Operational Alerts (derived from existing data, no new queries) ──
   const alerts: OperationalAlert[] = [];
 
