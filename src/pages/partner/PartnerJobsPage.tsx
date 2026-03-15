@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell, Timer } from "lucide-react";
 import { BOOKING_STATUS_LABELS, CATEGORY_LABELS } from "@/types/booking";
+import UrgentOfferAlert from "@/components/partner/UrgentOfferAlert";
 
 // Partner-specific overrides
 const STATUS_LABELS: Record<string, string> = {
@@ -171,6 +172,21 @@ export default function PartnerJobsPage() {
       </div>
 
       <div className="p-4 space-y-3 max-w-2xl mx-auto">
+        {/* Urgent Offer Alerts */}
+        <UrgentOfferAlert
+          offers={pendingOffers.map((o: any) => ({
+            id: o.id,
+            booking_id: o.booking_id,
+            category_code: o.category_code,
+            is_emergency: o.is_emergency || false,
+            expires_at: o.expires_at,
+            service_type: o.service_type,
+            zone_code: o.customer_zone,
+            price_estimate_lkr: o.price_estimate_lkr,
+          }))}
+          onViewOffer={(_, bookingId) => { track("partner_urgent_offer_tap", { bookingId }); navigate(`/partner/job/${bookingId}`); }}
+        />
+
         {/* Pending Offers */}
         {pendingOffers.length > 0 && (
           <div className="space-y-2">

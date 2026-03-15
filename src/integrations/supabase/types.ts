@@ -3122,6 +3122,9 @@ export type Database = {
         | "paid"
         | "refunded"
         | "partial_refund"
+        | "failed"
+        | "cash_collected"
+        | "payment_verified"
       pricing_archetype:
         | "fixed_price"
         | "starting_from"
@@ -3296,6 +3299,9 @@ export const Constants = {
         "paid",
         "refunded",
         "partial_refund",
+        "failed",
+        "cash_collected",
+        "payment_verified",
       ],
       pricing_archetype: [
         "fixed_price",
