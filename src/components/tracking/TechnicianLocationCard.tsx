@@ -22,10 +22,20 @@ const VEHICLE_ICONS: Record<string, typeof Car> = {
 };
 
 export default function TechnicianLocationCard({ technician, tracking }: TechnicianLocationCardProps) {
-  const caps = TECHNICIAN_CAPABILITIES[technician.technicianId || ""];
-  const vehicleType = caps?.vehicleType || "car";
+  const vehicleType = "motorcycle";
   const VehicleIcon = VEHICLE_ICONS[vehicleType] || Car;
-  const etaRange = getETARange(tracking.etaMinutes);
+
+  // Use Smart ETA prediction if we have both locations
+  const etaPrediction = tracking.technicianLocation && tracking.customerLocation
+    ? predictETA({
+        technicianLat: tracking.technicianLocation.lat,
+        technicianLng: tracking.technicianLocation.lng,
+        customerLat: tracking.customerLocation.lat,
+        customerLng: tracking.customerLocation.lng,
+      })
+    : null;
+  const etaRange = etaPrediction?.rangeLabel ?? `~${tracking.etaMinutes} minutes`;
+  const trafficLabel = etaPrediction?.trafficLabel ?? "Normal traffic";
 
   return (
     <Card className="border overflow-hidden">
