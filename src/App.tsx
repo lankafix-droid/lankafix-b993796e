@@ -101,6 +101,7 @@ const LaunchCommandCenterPage = lazy(() => import("./pages/ops/LaunchCommandCent
 const IncidentPlaybooksPage = lazy(() => import("./pages/ops/IncidentPlaybooksPage"));
 const SelfHealingMonitorPage = lazy(() => import("./pages/ops/SelfHealingMonitorPage"));
 const ChaosControlCenterPage = lazy(() => import("./pages/ops/ChaosControlCenterPage"));
+const ReliabilityArchivePage = lazy(() => import("./pages/ops/ReliabilityArchivePage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
