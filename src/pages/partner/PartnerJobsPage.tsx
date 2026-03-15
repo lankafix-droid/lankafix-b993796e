@@ -3,11 +3,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
-import { useEffect } from "react";
-import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell, Timer } from "lucide-react";
 import { BOOKING_STATUS_LABELS, CATEGORY_LABELS } from "@/types/booking";
 
 // Partner-specific overrides
@@ -34,28 +34,102 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
+/** Countdown timer for offer expiry */
+function OfferCountdown({ expiresAt }: { expiresAt: string }) {
+  const [remaining, setRemaining] = useState("");
+  const [urgent, setUrgent] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      const diff = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 1000));
+      const mins = Math.floor(diff / 60);
+      const secs = diff % 60;
+      setRemaining(`${mins}:${secs.toString().padStart(2, "0")}`);
+      setUrgent(diff < 60);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [expiresAt]);
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-[11px] font-mono font-semibold ${urgent ? "text-destructive" : "text-warning"}`}>
+      <Timer className="w-3 h-3" /> {remaining}
+    </span>
+  );
+}
+
+function OfferCard({ offer, booking: b, onClick }: { offer: any; booking: any; onClick: () => void }) {
+  return (
+    <div
+      className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/40 transition-colors"
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-primary" />
+          <p className="text-sm font-semibold text-foreground">{b.category_code} — {b.service_type || "General"}</p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{b.zone_code || "No zone"}{b.is_emergency ? " · 🔴 Emergency" : ""}</span>
+        {b.estimated_price_lkr && <span className="font-medium text-foreground">LKR {b.estimated_price_lkr.toLocaleString()}</span>}
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-primary font-medium">Tap to accept or decline</p>
+        {offer.expires_at && <OfferCountdown expiresAt={offer.expires_at} />}
+      </div>
+    </div>
+  );
+}
+
 export default function PartnerJobsPage() {
   const navigate = useNavigate();
   const { data: partner, isLoading } = useCurrentPartner();
   const { data: bookings = [] } = usePartnerBookings(partner?.id);
 
-  // Pending job offers (dispatch_log with pending_acceptance)
+  const queryClient = useQueryClient();
+
+  // Pending job offers from dispatch_offers (preferred) with expiry filtering
   const { data: pendingOffers = [] } = useQuery({
     queryKey: ["partner-pending-offers", partner?.id],
     queryFn: async () => {
       if (!partner?.id) return [];
+      const now = new Date().toISOString();
       const { data, error } = await supabase
-        .from("dispatch_log")
-        .select("*, bookings(id, category_code, service_type, zone_code, is_emergency, estimated_price_lkr, created_at)")
+        .from("dispatch_offers")
+        .select("*, bookings(id, category_code, service_type, zone_code, is_emergency, estimated_price_lkr, created_at, status)")
         .eq("partner_id", partner.id)
-        .eq("status", "pending_acceptance")
+        .eq("status", "pending")
+        .gte("expires_at", now)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      // Exclude offers for terminal bookings
+      return (data || []).filter((o: any) =>
+        o.bookings && !["completed", "cancelled", "no_show"].includes(o.bookings.status)
+      );
     },
     enabled: !!partner?.id,
-    refetchInterval: 10_000, // Poll for new offers
+    refetchInterval: 5_000, // Poll frequently for time-sensitive offers
   });
+
+  // Realtime subscription for dispatch_offers changes
+  useEffect(() => {
+    if (!partner?.id) return;
+    const channel = supabase
+      .channel(`partner-offers-${partner.id}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "dispatch_offers",
+        filter: `partner_id=eq.${partner.id}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["partner-pending-offers", partner.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [partner?.id, queryClient]);
 
   useEffect(() => { track("partner_jobs_view"); }, []);
 
@@ -109,24 +183,7 @@ export default function PartnerJobsPage() {
               const b = offer.bookings;
               if (!b) return null;
               return (
-                <div
-                  key={offer.id}
-                  className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/40 transition-colors"
-                  onClick={() => { track("partner_offer_open", { bookingId: b.id }); navigate(`/partner/job/${b.id}`); }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-primary" />
-                      <p className="text-sm font-semibold text-foreground">{b.category_code} — {b.service_type || "General"}</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{b.zone_code || "No zone"}{b.is_emergency ? " · 🔴 Emergency" : ""}</span>
-                    {b.estimated_price_lkr && <span className="font-medium text-foreground">LKR {b.estimated_price_lkr.toLocaleString()}</span>}
-                  </div>
-                  <p className="text-[10px] text-primary font-medium">Tap to accept or decline</p>
-                </div>
+                <OfferCard key={offer.id} offer={offer} booking={b} onClick={() => { track("partner_offer_open", { bookingId: b.id }); navigate(`/partner/job/${b.id}`); }} />
               );
             })}
           </div>
