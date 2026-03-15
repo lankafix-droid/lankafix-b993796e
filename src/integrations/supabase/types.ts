@@ -1319,6 +1319,51 @@ export type Database = {
           },
         ]
       }
+      incident_playbooks: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          incident_type: string
+          metadata: Json | null
+          recommended_steps: Json
+          resolved_at: string | null
+          resolved_by: string | null
+          responsible_team: string
+          severity: string
+          status: string
+          trigger_metric: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          incident_type: string
+          metadata?: Json | null
+          recommended_steps?: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responsible_team?: string
+          severity?: string
+          status?: string
+          trigger_metric?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          incident_type?: string
+          metadata?: Json | null
+          recommended_steps?: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          responsible_team?: string
+          severity?: string
+          status?: string
+          trigger_metric?: string
+        }
+        Relationships: []
+      }
       job_timeline: {
         Row: {
           actor: string | null
