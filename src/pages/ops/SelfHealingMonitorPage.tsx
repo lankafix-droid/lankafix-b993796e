@@ -84,8 +84,8 @@ export default function SelfHealingMonitorPage() {
   // ── Use engine functions for all computed values ──
   const stats = computeHealingStats(events);
   const { successCount, failedCount, escalatedCount, totalActions, successRate, escalationRate } = stats;
-  const healingConfidence = computeHealingConfidence(stats);
   const systemStatus = computeSystemStatus(stats, circuitBroken);
+  const healingConfidence = computeHealingConfidence(stats, systemStatus);
 
   // ── Circuit Breaker Check (uses engine) ──
   const checkCircuitBreaker = useCallback((): boolean => {
