@@ -252,6 +252,7 @@ const App = () => (
             <Route path="/ops/command-center" element={<OpsRoute><LaunchCommandCenterPage /></OpsRoute>} />
             <Route path="/ops/incident-playbooks" element={<OpsRoute><IncidentPlaybooksPage /></OpsRoute>} />
             <Route path="/ops/self-healing" element={<OpsRoute><SelfHealingMonitorPage /></OpsRoute>} />
+            <Route path="/ops/chaos-control" element={<OpsRoute><ChaosControlCenterPage /></OpsRoute>} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />
