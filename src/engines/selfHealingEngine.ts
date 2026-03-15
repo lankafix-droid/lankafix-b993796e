@@ -167,7 +167,7 @@ export function computeRootCauseInsights(events: HealingEventData[], now: number
   last24h.filter(e => e.metadata?.reason).forEach(e => {
     failReasons[e.metadata.reason] = (failReasons[e.metadata.reason] || 0) + 1;
   });
-  const topReason = Object.entries(failReasons).sort((a, b) => b[1] - a[1])[0];
+  const topReason = Object.entries(failReasons).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
 
   const entityCounts: Record<string, number> = {};
   last24h.forEach(e => { entityCounts[e.entity_type] = (entityCounts[e.entity_type] || 0) + 1; });
