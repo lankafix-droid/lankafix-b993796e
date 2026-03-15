@@ -359,13 +359,21 @@ export default function LaunchCommandCenterPage() {
     : data.expiredOfferCount > EXPIRED_OFFER_THRESHOLDS.watch ? 65
     : data.expiredOfferCount > EXPIRED_OFFER_THRESHOLDS.minor ? 85 : 100;
 
+  // ── Compute Trends (informational only — never affects scoring) ──
+  const supplyTrend: Trend = "stable"; // no previous-window supply data
+  const dispatchTrend: Trend = "stable"; // acceptance rate is daily aggregate
+  const paymentTrend = computeTrend(data.paymentFailureCount, data.prevPaymentFailureCount, true);
+  const automationTrend = computeTrend(data.automationErrorCount, data.prevAutomationErrorCount, true);
+  const opsTrend = computeTrend(data.escalationCount, data.prevEscalationCount, true);
+  const offerTrend = computeTrend(data.expiredOfferCount, data.prevExpiredOfferCount, true);
+
   const pillars: Pillar[] = [
-    { key: "supply", label: "Supply Readiness", icon: Users, score: supplyScore, status: pillarStatus(supplyScore), detail: `${safeLen(data.activePartners)} active partners`, weight: PILLAR_WEIGHTS.supply },
-    { key: "dispatch", label: "Dispatch Reliability", icon: Zap, score: dispatchScore, status: pillarStatus(dispatchScore), detail: `${dispatchScore}% acceptance rate`, weight: PILLAR_WEIGHTS.dispatch },
-    { key: "payment", label: "Payment Stability", icon: CreditCard, score: paymentScore, status: pillarStatus(paymentScore), detail: `${data.paymentFailureCount} failures today`, weight: PILLAR_WEIGHTS.payment },
-    { key: "automation", label: "Automation Health", icon: Activity, score: automationScore, status: pillarStatus(automationScore), detail: `${data.automationErrorCount} errors (${AUTOMATION_MONITOR_WINDOW_MINUTES}m)`, weight: PILLAR_WEIGHTS.automation },
-    { key: "ops", label: "Ops Load", icon: Shield, score: escalationScore, status: pillarStatus(escalationScore), detail: `${data.escalationCount} escalations, ${data.staleBookingCount} stale`, weight: PILLAR_WEIGHTS.ops },
-    { key: "offers", label: "Offer Health", icon: Clock, score: offerScore, status: pillarStatus(offerScore), detail: `${data.expiredOfferCount} expired today`, weight: PILLAR_WEIGHTS.offers },
+    { key: "supply", label: "Supply Readiness", icon: Users, score: supplyScore, status: pillarStatus(supplyScore), detail: `${safeLen(data.activePartners)} active partners`, weight: PILLAR_WEIGHTS.supply, trend: supplyTrend },
+    { key: "dispatch", label: "Dispatch Reliability", icon: Zap, score: dispatchScore, status: pillarStatus(dispatchScore), detail: `${dispatchScore}% acceptance rate`, weight: PILLAR_WEIGHTS.dispatch, trend: dispatchTrend },
+    { key: "payment", label: "Payment Stability", icon: CreditCard, score: paymentScore, status: pillarStatus(paymentScore), detail: `${data.paymentFailureCount} failures today`, weight: PILLAR_WEIGHTS.payment, trend: paymentTrend },
+    { key: "automation", label: "Automation Health", icon: Activity, score: automationScore, status: pillarStatus(automationScore), detail: `${data.automationErrorCount} errors (${AUTOMATION_MONITOR_WINDOW_MINUTES}m)`, weight: PILLAR_WEIGHTS.automation, trend: automationTrend },
+    { key: "ops", label: "Ops Load", icon: Shield, score: escalationScore, status: pillarStatus(escalationScore), detail: `${data.escalationCount} escalations, ${data.staleBookingCount} stale`, weight: PILLAR_WEIGHTS.ops, trend: opsTrend },
+    { key: "offers", label: "Offer Health", icon: Clock, score: offerScore, status: pillarStatus(offerScore), detail: `${data.expiredOfferCount} expired today`, weight: PILLAR_WEIGHTS.offers, trend: offerTrend },
   ];
 
   const totalWeight = pillars.reduce((s, p) => s + p.weight, 0);
