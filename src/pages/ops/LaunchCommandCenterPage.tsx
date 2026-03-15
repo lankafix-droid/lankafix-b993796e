@@ -790,7 +790,66 @@ function MetricTile({ label, value, threshold, inverted, formatFn }: {
   );
 }
 
-// ── Self-Healing Status Badge (read-only, lightweight) ──
+// ── Reliability Status Panel (display-only, does NOT affect GO/HOLD) ──
+function ReliabilityStatusPanel() {
+  const { data } = useQuery({
+    queryKey: ["reliability-governance-lcc"],
+    queryFn: async () => {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: events } = await (supabase as any)
+        .from("self_healing_events")
+        .select("status, created_at")
+        .gte("created_at", cutoff)
+        .limit(200);
+      const evts = events || [];
+      const total = evts.length;
+      const success = evts.filter((e: any) => e.status === "success").length;
+      const escalated = evts.filter((e: any) => e.status === "escalated").length;
+      const successRate = total > 0 ? Math.round((success / total) * 100) : 100;
+      const escalationRate = total > 0 ? Math.round((escalated / total) * 100) : 0;
+      // Simple governance calc (mirrors reliabilityGovernanceEngine)
+      const score = Math.max(0, Math.min(100, Math.round(successRate * 0.4 + (100 - escalationRate) * 0.25 + 100 * 0.15 + 80 * 0.10 + 10)));
+      const verdict = score >= 85 ? "STABLE" : score >= 65 ? "GUARDED" : score >= 40 ? "RISK" : "CRITICAL";
+      const riskLevel = score >= 85 ? "LOW" : score >= 65 ? "MODERATE" : score >= 40 ? "HIGH" : "CRITICAL";
+      return { score, verdict, riskLevel, successRate, escalationRate };
+    },
+    staleTime: 60_000,
+  });
+  if (!data) return null;
+  const verdictColor = { STABLE: "text-success", GUARDED: "text-warning", RISK: "text-destructive", CRITICAL: "text-destructive" }[data.verdict] || "text-muted-foreground";
+  const riskColor = { LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[data.riskLevel] || "text-muted-foreground";
+  return (
+    <>
+      <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+        <Target className="w-4 h-4 text-primary" /> Reliability Status
+        <Badge variant="outline" className="text-[9px]">Display Only</Badge>
+      </h2>
+      <Card className="mb-6">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className={`text-xl font-bold ${verdictColor}`}>{data.score}</p>
+              <p className="text-[9px] text-muted-foreground">Reliability Score</p>
+            </div>
+            <div>
+              <p className={`text-sm font-bold ${verdictColor}`}>{data.verdict}</p>
+              <p className="text-[9px] text-muted-foreground">Verdict</p>
+            </div>
+            <div>
+              <p className={`text-sm font-bold ${riskColor}`}>{data.riskLevel}</p>
+              <p className="text-[9px] text-muted-foreground">Risk Forecast</p>
+            </div>
+          </div>
+          <p className="text-[9px] text-muted-foreground text-center mt-2">
+            Informational only — does not affect GO/HOLD/NO-GO verdict
+          </p>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+
 function SelfHealingStatusBadge() {
   const { data } = useQuery({
     queryKey: ["self-healing-status-badge"],
