@@ -76,6 +76,17 @@ export default function PartnerJobDetailPage() {
     queryKey: ["partner-dispatch-offer", jobId, partner?.id],
     queryFn: async () => {
       if (!jobId || !partner?.id) return null;
+      // Check dispatch_offers first (preferred), fall back to dispatch_log
+      const { data: offerData } = await supabase
+        .from("dispatch_offers")
+        .select("*")
+        .eq("booking_id", jobId)
+        .eq("partner_id", partner.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (offerData) return { ...offerData, source: "dispatch_offers" };
+
       const { data, error } = await supabase
         .from("dispatch_log")
         .select("*")
@@ -85,9 +96,10 @@ export default function PartnerJobDetailPage() {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      return data ? { ...data, source: "dispatch_log" } : null;
     },
     enabled: !!jobId && !!partner?.id,
+    refetchInterval: 5_000,
   });
 
   const { data: quotes = [] } = useQuery({
