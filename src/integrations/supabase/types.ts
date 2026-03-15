@@ -1325,6 +1325,7 @@ export type Database = {
           description: string
           id: string
           incident_type: string
+          last_detected_at: string | null
           metadata: Json | null
           recommended_steps: Json
           resolved_at: string | null
@@ -1339,6 +1340,7 @@ export type Database = {
           description?: string
           id?: string
           incident_type: string
+          last_detected_at?: string | null
           metadata?: Json | null
           recommended_steps?: Json
           resolved_at?: string | null
@@ -1353,6 +1355,7 @@ export type Database = {
           description?: string
           id?: string
           incident_type?: string
+          last_detected_at?: string | null
           metadata?: Json | null
           recommended_steps?: Json
           resolved_at?: string | null
