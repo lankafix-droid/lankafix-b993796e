@@ -19,6 +19,7 @@ import {
   CIRCUIT_BREAKER_PAYMENT_LIMIT,
   ESCALATION_RATE_HALT_THRESHOLD,
   type HealingEventData,
+  type HealingStats,
 } from "@/engines/selfHealingEngine";
 import { MAX_RETRIES } from "@/config/selfHealingConfig";
 
