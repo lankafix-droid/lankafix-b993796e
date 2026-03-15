@@ -3,7 +3,7 @@
  * Shows pulsing banner for emergency, expiring-soon, or pilot-critical offers.
  * Designed to plug into real push notifications later.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AlertTriangle, Clock, Zap, Bell, Volume2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
