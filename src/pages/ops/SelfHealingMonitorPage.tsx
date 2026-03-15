@@ -81,40 +81,15 @@ export default function SelfHealingMonitorPage() {
     refetchInterval: 20_000,
   });
 
-  // ── Compute 24h stats ──
-  const last24h = events.filter(e => Date.now() - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000);
-  const successCount = last24h.filter(e => e.status === "success").length;
-  const failedCount = last24h.filter(e => e.status === "failed").length;
-  const escalatedCount = last24h.filter(e => e.status === "escalated").length;
-  const totalActions = last24h.filter(e => e.status !== "skipped_cooldown").length;
-  const successRate = totalActions > 0 ? Math.round((successCount / totalActions) * 100) : 100;
-  const escalationRate = totalActions > 0 ? Math.round((escalatedCount / totalActions) * 100) : 0;
+  // ── Use engine functions for all computed values ──
+  const stats = computeHealingStats(events);
+  const { successCount, failedCount, escalatedCount, totalActions, successRate, escalationRate } = stats;
+  const healingConfidence = computeHealingConfidence(stats);
+  const systemStatus = computeSystemStatus(stats, circuitBroken);
 
-  // ── 1: Healing Confidence Score ──
-  const healingConfidence = Math.max(0, Math.min(100,
-    Math.round(successRate * 0.6 + (100 - escalationRate) * 0.3 + (failedCount === 0 ? 10 : 0))
-  ));
-
-  // ── System Status ──
-  const systemStatus: HealingSystemStatus = circuitBroken
-    ? "circuit_broken"
-    : escalationRate > ESCALATION_RATE_HALT_THRESHOLD
-      ? "escalation_mode"
-      : totalActions > 0
-        ? "active_recovery"
-        : "healthy";
-
-  // ── 3: Circuit Breaker Check ──
+  // ── Circuit Breaker Check (uses engine) ──
   const checkCircuitBreaker = useCallback((): boolean => {
-    const windowStart = Date.now() - CIRCUIT_BREAKER_WINDOW_MS;
-    const recentEvents = events.filter(e => new Date(e.created_at).getTime() > windowStart);
-    const recentEscalations = recentEvents.filter(e => e.status === "escalated");
-    const paymentEscalations = recentEscalations.filter(e => e.entity_type === "payment");
-
-    if (recentEscalations.length >= CIRCUIT_BREAKER_ESCALATION_LIMIT || paymentEscalations.length >= CIRCUIT_BREAKER_PAYMENT_LIMIT) {
-      return true;
-    }
-    return false;
+    return checkCircuitBreakerFn(events);
   }, [events]);
 
   // ── 2: Predictive Early Warnings ──
