@@ -242,6 +242,38 @@ export type Database = {
           },
         ]
       }
+      booking_contact_events: {
+        Row: {
+          booking_id: string
+          created_at: string
+          event_type: string
+          id: string
+          user_role: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          user_role?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          user_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_contact_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_messages: {
         Row: {
           booking_id: string
