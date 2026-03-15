@@ -234,8 +234,12 @@ const FinanceBoardPage = () => {
               {recentPaymentsDB.slice(0, 20).map((p: any) => (
                 <div key={p.id} className="bg-card rounded-xl border p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {p.payment_status === "paid" ? (
+                    {["paid", "cash_collected", "payment_verified"].includes(p.payment_status) ? (
                       <ArrowDownRight className="w-4 h-4 text-success shrink-0" />
+                    ) : p.payment_status === "failed" ? (
+                      <XCircle className="w-4 h-4 text-destructive shrink-0" />
+                    ) : ["refunded", "partial_refund"].includes(p.payment_status) ? (
+                      <ArrowUpRight className="w-4 h-4 text-muted-foreground shrink-0" />
                     ) : (
                       <ArrowUpRight className="w-4 h-4 text-warning shrink-0" />
                     )}
