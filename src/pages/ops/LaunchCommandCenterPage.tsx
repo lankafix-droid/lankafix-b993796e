@@ -551,6 +551,7 @@ export default function LaunchCommandCenterPage() {
                 <span className="flex items-center gap-1 text-destructive"><XCircle className="w-3.5 h-3.5" /> {zonesRisky} risky</span>
                 <span className="flex items-center gap-1 text-muted-foreground"><Users className="w-3.5 h-3.5" /> {safeLen(data.activePartners)} active partners</span>
                 <span className="flex items-center gap-1 text-muted-foreground"><Target className="w-3.5 h-3.5" /> {safeLen(data.bookingsToday)} bookings today</span>
+                <SelfHealingStatusBadge />
               </div>
 
               <p className="text-sm text-muted-foreground mt-3">{recommendation}</p>
