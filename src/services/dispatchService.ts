@@ -5,6 +5,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logIncident } from "@/lib/errorMonitoring";
 import { logLifecycleEvent } from "@/lib/eventLogger";
+import { predictETA, logETAPrediction, computeETAAccuracy } from "@/engines/etaPredictionEngine";
 
 /**
  * Trigger the dispatch engine for a newly created booking.
