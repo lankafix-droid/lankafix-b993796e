@@ -6,9 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { TechnicianInfo } from "@/types/booking";
 import type { TrackingData } from "@/lib/trackingEngine";
-import { TECHNICIAN_CAPABILITIES } from "@/lib/dispatchEngine";
-import { getTrafficLabel } from "@/lib/etaEngine";
-import { getETARange } from "@/lib/etaEngine";
+import { predictETA } from "@/engines/etaPredictionEngine";
 import { Star, MapPin, Clock, Car, Bike, Truck, Monitor, CheckCircle2, ShieldCheck } from "lucide-react";
 
 interface TechnicianLocationCardProps {
@@ -24,10 +22,20 @@ const VEHICLE_ICONS: Record<string, typeof Car> = {
 };
 
 export default function TechnicianLocationCard({ technician, tracking }: TechnicianLocationCardProps) {
-  const caps = TECHNICIAN_CAPABILITIES[technician.technicianId || ""];
-  const vehicleType = caps?.vehicleType || "car";
+  const vehicleType = "motorcycle";
   const VehicleIcon = VEHICLE_ICONS[vehicleType] || Car;
-  const etaRange = getETARange(tracking.etaMinutes);
+
+  // Use Smart ETA prediction if we have both locations
+  const etaPrediction = tracking.technicianLocation && tracking.customerLocation
+    ? predictETA({
+        technicianLat: tracking.technicianLocation.lat,
+        technicianLng: tracking.technicianLocation.lng,
+        customerLat: tracking.customerLocation.lat,
+        customerLng: tracking.customerLocation.lng,
+      })
+    : null;
+  const etaRange = etaPrediction?.rangeLabel ?? `~${tracking.etaMinutes} minutes`;
+  const trafficLabel = etaPrediction?.trafficLabel ?? "Normal traffic";
 
   return (
     <Card className="border overflow-hidden">
@@ -80,7 +88,7 @@ export default function TechnicianLocationCard({ technician, tracking }: Technic
             <Clock className="w-4 h-4 text-primary" />
             <div>
               <p className="text-sm font-bold text-primary">ETA: {etaRange}</p>
-              <p className="text-[10px] text-muted-foreground">{getTrafficLabel(tracking.trafficLevel)}</p>
+              <p className="text-[10px] text-muted-foreground">{trafficLabel}</p>
             </div>
           </div>
           {tracking.isTracking && (

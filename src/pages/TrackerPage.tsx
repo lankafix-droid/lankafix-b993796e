@@ -60,7 +60,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getPaymentForBooking } from "@/services/paymentService";
 import { useTechnicianTracking } from "@/hooks/useTechnicianTracking";
-import { getTrafficLabel } from "@/lib/etaEngine";
+import { getTrafficLabel } from "@/lib/etaEngine"; // kept for legacy tracker fallback
 import RatingModal from "@/components/ratings/RatingModal";
 import { getRatingForBooking } from "@/services/ratingService";
 import { useAuth } from "@/hooks/useAuth";
@@ -90,24 +90,40 @@ function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookin
         )}
       </div>
 
+      {/* Smart ETA Display */}
+      <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-muted-foreground">Technician arriving in</span>
+          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+            tracking.etaConfidence === "high" ? "bg-success/10 text-success" :
+            tracking.etaConfidence === "medium" ? "bg-warning/10 text-warning" :
+            "bg-muted text-muted-foreground"
+          }`}>
+            {tracking.etaConfidence === "high" ? "High accuracy" : tracking.etaConfidence === "medium" ? "Estimated" : "Approximate"}
+          </span>
+        </div>
+        <p className="text-xl font-bold text-primary">{tracking.etaRange}</p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">{tracking.trafficLabel}</p>
+      </div>
+
       <div className="grid grid-cols-3 gap-2">
         <div className="text-center p-2 bg-muted/50 rounded-lg">
-          <p className="text-lg font-bold text-primary">{tracking.etaRange}</p>
-          <p className="text-[9px] text-muted-foreground">ETA</p>
-        </div>
-        <div className="text-center p-2 bg-muted/50 rounded-lg">
-          <p className="text-lg font-bold text-foreground">{tracking.distanceKm} km</p>
+          <p className="text-sm font-bold text-foreground">{tracking.distanceKm} km</p>
           <p className="text-[9px] text-muted-foreground">Away</p>
         </div>
         <div className="text-center p-2 bg-muted/50 rounded-lg">
-          <p className="text-lg font-bold text-foreground capitalize">{tracking.vehicleType}</p>
+          <p className="text-sm font-bold text-foreground capitalize">{tracking.vehicleType}</p>
           <p className="text-[9px] text-muted-foreground">Vehicle</p>
+        </div>
+        <div className="text-center p-2 bg-muted/50 rounded-lg">
+          <p className="text-sm font-bold text-foreground">⭐ {tracking.partnerRating}</p>
+          <p className="text-[9px] text-muted-foreground">Rating</p>
         </div>
       </div>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{tracking.partnerName} • ⭐ {tracking.partnerRating}</span>
-        <span>{getTrafficLabel(tracking.trafficLevel)}</span>
+        <span>{tracking.partnerName}</span>
+        <span>{tracking.trafficLabel}</span>
       </div>
     </div>
   );

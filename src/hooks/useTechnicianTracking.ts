@@ -5,8 +5,9 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { calculateETA, detectTrafficLevel } from "@/lib/etaEngine";
+import { detectTrafficLevel } from "@/lib/etaEngine";
 import type { TrafficLevel } from "@/lib/etaEngine";
+import { predictETA, type ETAPrediction } from "@/engines/etaPredictionEngine";
 import { isProductionMode } from "@/config/productionMode";
 
 export interface LiveTrackingData {
@@ -17,29 +18,17 @@ export interface LiveTrackingData {
   distanceKm: number;
   etaMinutes: number;
   etaRange: string;
+  etaConfidence: ETAPrediction["confidence"];
+  etaTravelType: ETAPrediction["travelType"];
+  etaMinMinutes: number;
+  etaMaxMinutes: number;
   trafficLevel: TrafficLevel;
+  trafficLabel: string;
   lastPingAt: string | null;
   isLive: boolean;
   partnerName: string;
   partnerRating: number;
   vehicleType: string;
-}
-
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function getETARange(etaMinutes: number): string {
-  if (etaMinutes <= 10) return "~10 minutes";
-  if (etaMinutes <= 15) return "10-15 minutes";
-  if (etaMinutes <= 25) return "15-25 minutes";
-  if (etaMinutes <= 40) return "25-40 minutes";
-  if (etaMinutes <= 60) return "40-60 minutes";
-  return "1+ hours";
 }
 
 /** Statuses where live tracking polling is active */
@@ -87,13 +76,27 @@ export function useTechnicianTracking(
       const lastPing = partner.last_location_ping_at;
       const isLive = lastPing ? (Date.now() - new Date(lastPing).getTime()) < 120_000 : false;
 
-      let distanceKm = 0;
-      let etaMinutes = 0;
+      // Use Smart ETA Prediction Engine
+      let etaPrediction: ETAPrediction | null = null;
       const traffic = detectTrafficLevel();
 
       if (techLat && techLng && custLat && custLng) {
-        distanceKm = Math.round(haversineKm(techLat, techLng, custLat, custLng) * 10) / 10;
-        etaMinutes = calculateETA(distanceKm, traffic);
+        // Fetch zone codes from booking for zone-aware ETA
+        const { data: bookingFull } = await supabase
+          .from("bookings")
+          .select("zone_code, category_code, is_emergency")
+          .eq("id", bookingId)
+          .single();
+
+        etaPrediction = predictETA({
+          technicianLat: techLat,
+          technicianLng: techLng,
+          customerLat: custLat,
+          customerLng: custLng,
+          customerZone: bookingFull?.zone_code || undefined,
+          categoryCode: bookingFull?.category_code || undefined,
+          isEmergency: bookingFull?.is_emergency || false,
+        });
       }
 
       return {
@@ -101,10 +104,15 @@ export function useTechnicianTracking(
         technicianLng: techLng,
         customerLat: custLat,
         customerLng: custLng,
-        distanceKm,
-        etaMinutes,
-        etaRange: getETARange(etaMinutes),
-        trafficLevel: traffic,
+        distanceKm: etaPrediction?.distanceKm ?? 0,
+        etaMinutes: etaPrediction?.estimateMinutes ?? 0,
+        etaRange: etaPrediction?.rangeLabel ?? "Calculating…",
+        etaConfidence: etaPrediction?.confidence ?? "low",
+        etaTravelType: etaPrediction?.travelType ?? "cross_city",
+        etaMinMinutes: etaPrediction?.minMinutes ?? 0,
+        etaMaxMinutes: etaPrediction?.maxMinutes ?? 0,
+        trafficLevel: etaPrediction?.trafficLevel ?? traffic,
+        trafficLabel: etaPrediction?.trafficLabel ?? "Normal traffic",
         lastPingAt: lastPing,
         isLive,
         partnerName: partner.full_name || "Technician",
