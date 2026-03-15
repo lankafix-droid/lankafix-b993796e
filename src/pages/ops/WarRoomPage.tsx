@@ -25,6 +25,7 @@ import {
   BookOpen, FileText, Phone, MessageSquare, Tag, Camera, Image
 } from "lucide-react";
 import ETAIntelligencePanel from "@/components/warroom/ETAIntelligencePanel";
+import PilotReliabilityPanel from "@/components/warroom/PilotReliabilityPanel";
 
 // ── Types ──
 interface BookingRow {
