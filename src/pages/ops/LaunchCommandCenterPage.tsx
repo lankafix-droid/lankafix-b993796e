@@ -435,11 +435,63 @@ export default function LaunchCommandCenterPage() {
 
   const checklistPass = checklist.filter(c => c.pass).length;
 
-  const recommendation = verdict === "GO"
-    ? "All critical pillars healthy. Pilot can proceed with standard monitoring."
-    : verdict === "HOLD"
-    ? `Minor issues detected (${watchCount} pillars on watch). Pilot possible with manual ops oversight.`
-    : "Critical service risk detected. Resolve critical pillars before launching.";
+  // ── Operational Alerts (derived from existing data, no new queries) ──
+  const alerts: OperationalAlert[] = [];
+
+  if (data.paymentFailureCount > MAX_PAYMENT_FAILURES_CHECKLIST) {
+    alerts.push({
+      level: data.paymentFailureCount > MAX_PAYMENT_FAILURES_CHECKLIST * 2 ? "critical" : "warning",
+      title: "Payment Failures Exceed Threshold",
+      description: `${data.paymentFailureCount} payment failures detected today — possible gateway instability.`,
+      action: "Check payment gateway logs. Verify webhook processing. Monitor retry queue.",
+    });
+  }
+
+  if (data.automationErrorCount > 0) {
+    alerts.push({
+      level: data.automationErrorCount >= 3 ? "critical" : data.automationErrorCount >= 1 ? "warning" : "info",
+      title: "Automation Errors Detected",
+      description: `${data.automationErrorCount} automation errors in the last ${AUTOMATION_MONITOR_WINDOW_MINUTES} minutes.`,
+      action: "Review automation event log. Check failed workers. Restart if needed.",
+    });
+  }
+
+  if (data.dispatchAcceptRate < 70) {
+    alerts.push({
+      level: data.dispatchAcceptRate < 50 ? "critical" : "warning",
+      title: "Dispatch Acceptance Rate Falling",
+      description: `Acceptance rate at ${data.dispatchAcceptRate}% — partners may not be responding to offers.`,
+      action: "Verify partner availability. Check notification delivery. Review offer expiration rates.",
+    });
+  }
+
+  if (data.escalationCount > MAX_ESCALATIONS_CHECKLIST) {
+    alerts.push({
+      level: data.escalationCount > MAX_ESCALATIONS_CHECKLIST * 2 ? "critical" : "warning",
+      title: "Dispatch Escalations Increasing",
+      description: `${data.escalationCount} open escalations — possible partner shortage in zones.`,
+      action: "Review zone partner coverage. Rebalance dispatch priority. Contact standby partners.",
+    });
+  }
+
+  if (data.staleBookingCount > MAX_STALE_BOOKINGS_CHECKLIST) {
+    alerts.push({
+      level: data.staleBookingCount > MAX_STALE_BOOKINGS_CHECKLIST * 3 ? "critical" : "warning",
+      title: "Stale Bookings Detected",
+      description: `${data.staleBookingCount} bookings stalled in active workflow — service delivery delays possible.`,
+      action: "Investigate affected bookings. Contact assigned partners. Escalate to operations manager.",
+    });
+  }
+
+  // Sort by priority: critical > warning > info, limit to 5
+  const ALERT_ORDER: Record<AlertLevel, number> = { critical: 0, warning: 1, info: 2 };
+  const sortedAlerts = alerts.sort((a, b) => ALERT_ORDER[a.level] - ALERT_ORDER[b.level]).slice(0, 5);
+
+  const ALERT_STYLES: Record<AlertLevel, { bg: string; border: string; text: string; icon: React.ElementType }> = {
+    critical: { bg: "bg-destructive/5", border: "border-destructive/20", text: "text-destructive", icon: AlertOctagon },
+    warning: { bg: "bg-warning/5", border: "border-warning/20", text: "text-warning", icon: AlertTriangle },
+    info: { bg: "bg-primary/5", border: "border-primary/20", text: "text-primary", icon: Info },
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -496,6 +548,40 @@ export default function LaunchCommandCenterPage() {
               <p className="text-sm text-muted-foreground mt-3">{recommendation}</p>
             </CardContent>
           </Card>
+
+          {/* ── CRITICAL ALERTS ── */}
+          {sortedAlerts.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <AlertOctagon className="w-4 h-4 text-destructive" /> Critical Alerts
+              </h2>
+              <div className="space-y-2">
+                {sortedAlerts.map((alert, i) => {
+                  const as = ALERT_STYLES[alert.level];
+                  const AlertIcon = as.icon;
+                  return (
+                    <Card key={i} className={`${as.border} border ${as.bg}`}>
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-2.5">
+                          <AlertIcon className={`w-4 h-4 mt-0.5 shrink-0 ${as.text}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-semibold ${as.text}`}>{alert.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">{alert.description}</p>
+                            <p className="text-[10px] text-foreground/70 mt-1">
+                              <span className="font-medium">Action:</span> {alert.action}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className={`text-[9px] shrink-0 ${as.text}`}>
+                            {alert.level.toUpperCase()}
+                          </Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* ── SCORECARD: Pillars ── */}
           <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
