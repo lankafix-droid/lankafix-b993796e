@@ -17,7 +17,7 @@ import {
   Shield, CheckCircle2, AlertTriangle, XCircle, MapPin, Users,
   Zap, CreditCard, Activity, Clock, ArrowLeft,
   ChevronRight, Rocket, FileText, Radio,
-  RefreshCw, MessageSquare, Target, Save,
+  RefreshCw, MessageSquare, Target, Save, TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -39,6 +39,7 @@ import {
 type Verdict = "GO" | "HOLD" | "NO_GO";
 type PillarStatus = "healthy" | "watch" | "critical";
 type ZoneStatus = "ready" | "watch" | "risky" | "not_ready";
+type Trend = "improving" | "stable" | "deteriorating";
 
 interface Pillar {
   key: string;
@@ -48,6 +49,7 @@ interface Pillar {
   status: PillarStatus;
   detail: string;
   weight: number;
+  trend: Trend;
 }
 
 interface ZoneReadiness {
@@ -130,6 +132,37 @@ function safeLen(data: any[] | null | undefined): number {
   return Array.isArray(data) ? data.length : 0;
 }
 
+// ── Trend helper ──
+function computeTrend(current: number, previous: number, inverted = false): Trend {
+  if (previous === 0 && current === 0) return "stable";
+  const diff = current - previous;
+  if (Math.abs(diff) <= 1) return "stable";
+  if (inverted) return diff > 0 ? "deteriorating" : "improving";
+  return diff > 0 ? "improving" : "deteriorating";
+}
+
+// ── Pilot mode hook ──
+function usePilotMode() {
+  return useQuery({
+    queryKey: ["pilot-mode-status"],
+    queryFn: async () => {
+      try {
+        const { data } = await supabase
+          .from("platform_settings" as any)
+          .select("value")
+          .eq("key", "pilot_mode")
+          .maybeSingle();
+        const val = (data as any)?.value;
+        if (val === "paused" || val === false || val === "false") return "PAUSED" as const;
+        return "ACTIVE" as const;
+      } catch {
+        return "ACTIVE" as const;
+      }
+    },
+    staleTime: 60_000,
+  });
+}
+
 // ── Data hook with graceful fallbacks ──
 function useLaunchData() {
   const todayStart = new Date();
@@ -137,6 +170,7 @@ function useLaunchData() {
   const todayISO = todayStart.toISOString();
   const staleThreshold = new Date(Date.now() - STALE_BOOKING_THRESHOLD_MINUTES * 60_000).toISOString();
   const autoWindow = new Date(Date.now() - AUTOMATION_MONITOR_WINDOW_MINUTES * 60_000).toISOString();
+  const prevWindowStart = new Date(Date.now() - AUTOMATION_MONITOR_WINDOW_MINUTES * 2 * 60_000).toISOString();
 
   return useQuery({
     queryKey: ["launch-command-center"],
@@ -158,9 +192,13 @@ function useLaunchData() {
         supabase.from("support_cases" as any).select("id").in("status", ["open", "in_progress"]),
         supabase.from("dispatch_offers").select("id").eq("status", "accepted").gte("created_at", todayISO),
         supabase.from("dispatch_offers").select("id").gte("created_at", todayISO),
+        // ── Previous-window trend queries (indices 13-16) ──
+        supabase.from("payments" as any).select("id").eq("payment_status", "failed").gte("created_at", prevWindowStart).lt("created_at", autoWindow),
+        supabase.from("automation_event_log").select("id").in("severity", ["error", "critical"]).gte("created_at", prevWindowStart).lt("created_at", autoWindow),
+        supabase.from("dispatch_escalations").select("id").gte("created_at", prevWindowStart).lt("created_at", autoWindow).is("resolved_at", null),
+        supabase.from("dispatch_offers").select("id").in("status", ["expired", "expired_by_accept"]).gte("created_at", prevWindowStart).lt("created_at", autoWindow),
       ]);
 
-      // Extract data safely from each settled result
       const extract = (idx: number): any[] => {
         const r = results[idx];
         if (r.status === "fulfilled") return (r.value as any)?.data || [];
@@ -181,6 +219,12 @@ function useLaunchData() {
       const supportOpen = extract(10);
       const dispatchAccepted = extract(11);
       const dispatchTotal = extract(12);
+
+      // Previous window for trends
+      const prevPaymentFailures = extract(13);
+      const prevAutomationErrors = extract(14);
+      const prevEscalations = extract(15);
+      const prevExpiredOffers = extract(16);
 
       const verifiedPartners = partners.filter((p: any) => p.verification_status === "verified");
       const activePartners = verifiedPartners.filter((p: any) => p.availability_status !== "offline");
@@ -207,6 +251,11 @@ function useLaunchData() {
         dispatchAcceptRate,
         bookingsByZone: groupBy(bookingsToday, "zone_code"),
         staleByZone: groupBy(staleBookings, "zone_code"),
+        // Trend previous-window counts
+        prevPaymentFailureCount: prevPaymentFailures.length,
+        prevAutomationErrorCount: prevAutomationErrors.length,
+        prevEscalationCount: prevEscalations.length,
+        prevExpiredOfferCount: prevExpiredOffers.length,
       };
     },
     refetchInterval: 30_000,
@@ -234,6 +283,7 @@ async function persistOperatorNote(note: string): Promise<boolean> {
 export default function LaunchCommandCenterPage() {
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useLaunchData();
+  const { data: pilotMode } = usePilotMode();
   const [opsNote, setOpsNote] = useState("");
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState(false);
@@ -309,13 +359,21 @@ export default function LaunchCommandCenterPage() {
     : data.expiredOfferCount > EXPIRED_OFFER_THRESHOLDS.watch ? 65
     : data.expiredOfferCount > EXPIRED_OFFER_THRESHOLDS.minor ? 85 : 100;
 
+  // ── Compute Trends (informational only — never affects scoring) ──
+  const supplyTrend: Trend = "stable"; // no previous-window supply data
+  const dispatchTrend: Trend = "stable"; // acceptance rate is daily aggregate
+  const paymentTrend = computeTrend(data.paymentFailureCount, data.prevPaymentFailureCount, true);
+  const automationTrend = computeTrend(data.automationErrorCount, data.prevAutomationErrorCount, true);
+  const opsTrend = computeTrend(data.escalationCount, data.prevEscalationCount, true);
+  const offerTrend = computeTrend(data.expiredOfferCount, data.prevExpiredOfferCount, true);
+
   const pillars: Pillar[] = [
-    { key: "supply", label: "Supply Readiness", icon: Users, score: supplyScore, status: pillarStatus(supplyScore), detail: `${safeLen(data.activePartners)} active partners`, weight: PILLAR_WEIGHTS.supply },
-    { key: "dispatch", label: "Dispatch Reliability", icon: Zap, score: dispatchScore, status: pillarStatus(dispatchScore), detail: `${dispatchScore}% acceptance rate`, weight: PILLAR_WEIGHTS.dispatch },
-    { key: "payment", label: "Payment Stability", icon: CreditCard, score: paymentScore, status: pillarStatus(paymentScore), detail: `${data.paymentFailureCount} failures today`, weight: PILLAR_WEIGHTS.payment },
-    { key: "automation", label: "Automation Health", icon: Activity, score: automationScore, status: pillarStatus(automationScore), detail: `${data.automationErrorCount} errors (${AUTOMATION_MONITOR_WINDOW_MINUTES}m)`, weight: PILLAR_WEIGHTS.automation },
-    { key: "ops", label: "Ops Load", icon: Shield, score: escalationScore, status: pillarStatus(escalationScore), detail: `${data.escalationCount} escalations, ${data.staleBookingCount} stale`, weight: PILLAR_WEIGHTS.ops },
-    { key: "offers", label: "Offer Health", icon: Clock, score: offerScore, status: pillarStatus(offerScore), detail: `${data.expiredOfferCount} expired today`, weight: PILLAR_WEIGHTS.offers },
+    { key: "supply", label: "Supply Readiness", icon: Users, score: supplyScore, status: pillarStatus(supplyScore), detail: `${safeLen(data.activePartners)} active partners`, weight: PILLAR_WEIGHTS.supply, trend: supplyTrend },
+    { key: "dispatch", label: "Dispatch Reliability", icon: Zap, score: dispatchScore, status: pillarStatus(dispatchScore), detail: `${dispatchScore}% acceptance rate`, weight: PILLAR_WEIGHTS.dispatch, trend: dispatchTrend },
+    { key: "payment", label: "Payment Stability", icon: CreditCard, score: paymentScore, status: pillarStatus(paymentScore), detail: `${data.paymentFailureCount} failures today`, weight: PILLAR_WEIGHTS.payment, trend: paymentTrend },
+    { key: "automation", label: "Automation Health", icon: Activity, score: automationScore, status: pillarStatus(automationScore), detail: `${data.automationErrorCount} errors (${AUTOMATION_MONITOR_WINDOW_MINUTES}m)`, weight: PILLAR_WEIGHTS.automation, trend: automationTrend },
+    { key: "ops", label: "Ops Load", icon: Shield, score: escalationScore, status: pillarStatus(escalationScore), detail: `${data.escalationCount} escalations, ${data.staleBookingCount} stale`, weight: PILLAR_WEIGHTS.ops, trend: opsTrend },
+    { key: "offers", label: "Offer Health", icon: Clock, score: offerScore, status: pillarStatus(offerScore), detail: `${data.expiredOfferCount} expired today`, weight: PILLAR_WEIGHTS.offers, trend: offerTrend },
   ];
 
   const totalWeight = pillars.reduce((s, p) => s + p.weight, 0);
@@ -402,12 +460,17 @@ export default function LaunchCommandCenterPage() {
                     <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString("en-LK", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <Badge className={`text-lg px-4 py-2 font-bold ${verdictStyle.bg} ${verdictStyle.text} border-none`}>
-                    {verdictStyle.label}
-                  </Badge>
-                  <p className="text-2xl font-bold text-foreground mt-1">{overallScore}%</p>
+                <div className="text-right space-y-1">
+                  <div className="flex items-center justify-end gap-2">
+                    <Badge className={`text-lg px-4 py-2 font-bold ${verdictStyle.bg} ${verdictStyle.text} border-none`}>
+                      {verdictStyle.label}
+                    </Badge>
+                  </div>
+                  <p className="text-2xl font-bold text-foreground">{overallScore}%</p>
                   <p className="text-[11px] text-muted-foreground">Launch Readiness</p>
+                  <Badge variant="outline" className={`text-[10px] ${pilotMode === "PAUSED" ? "text-destructive border-destructive/30" : "text-success border-success/30"}`}>
+                    Pilot Mode: {pilotMode || "ACTIVE"}
+                  </Badge>
                 </div>
               </div>
 
@@ -441,7 +504,10 @@ export default function LaunchCommandCenterPage() {
                         <Icon className={`w-4 h-4 ${style.text}`} />
                         <span className="text-xs font-medium text-foreground">{p.label}</span>
                       </div>
-                      <span className={`text-sm font-bold ${style.text}`}>{p.score}</span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm font-bold ${style.text}`}>{p.score}</span>
+                        <TrendIndicator trend={p.trend} />
+                      </div>
                     </div>
                     <Progress value={p.score} className="h-1.5 mb-1.5" />
                     <p className="text-[10px] text-muted-foreground">{p.detail}</p>
@@ -575,6 +641,23 @@ export default function LaunchCommandCenterPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+// ── Trend indicator ──
+const TREND_CONFIG: Record<Trend, { icon: React.ElementType; text: string; label: string }> = {
+  improving: { icon: TrendingUp, text: "text-success", label: "improving" },
+  stable: { icon: Minus, text: "text-muted-foreground", label: "stable" },
+  deteriorating: { icon: TrendingDown, text: "text-destructive", label: "worsening" },
+};
+
+function TrendIndicator({ trend }: { trend: Trend }) {
+  const cfg = TREND_CONFIG[trend];
+  const Icon = cfg.icon;
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${cfg.text}`} title={cfg.label}>
+      <Icon className="w-3 h-3" />
+    </span>
   );
 }
 
