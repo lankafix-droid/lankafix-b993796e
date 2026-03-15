@@ -504,7 +504,10 @@ export default function LaunchCommandCenterPage() {
                         <Icon className={`w-4 h-4 ${style.text}`} />
                         <span className="text-xs font-medium text-foreground">{p.label}</span>
                       </div>
-                      <span className={`text-sm font-bold ${style.text}`}>{p.score}</span>
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm font-bold ${style.text}`}>{p.score}</span>
+                        <TrendIndicator trend={p.trend} />
+                      </div>
                     </div>
                     <Progress value={p.score} className="h-1.5 mb-1.5" />
                     <p className="text-[10px] text-muted-foreground">{p.detail}</p>
