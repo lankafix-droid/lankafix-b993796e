@@ -298,12 +298,12 @@ describe("Retry Caps", () => {
   });
 
   it("blocks retry during cooldown", () => {
-    const future = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const future = new Date(FIXED_NOW + 5 * 60 * 1000).toISOString();
     expect(isRetryAllowed(1, MAX_RETRIES.booking, future, null)).toBe(false);
   });
 
   it("allows retry after cooldown expires", () => {
-    const past = new Date(Date.now() - 1000).toISOString();
+    const past = new Date(FIXED_NOW - 1000).toISOString();
     expect(isRetryAllowed(1, MAX_RETRIES.booking, past, null)).toBe(true);
   });
 
