@@ -23,35 +23,20 @@ import {
   COOLDOWN_MINUTES, MAX_RETRIES, RECOVERY_TYPE_LABELS, STALE_BOOKING_MINUTES,
   type HealingEntityType, type HealingRecoveryType, type HealingStatus,
 } from "@/config/selfHealingConfig";
+import {
+  computeHealingStats, computeHealingConfidence, computeSystemStatus,
+  checkCircuitBreaker as checkCircuitBreakerFn, computePredictiveWarnings,
+  computeRootCauseInsights, shouldAutoModeHalt,
+  CIRCUIT_BREAKER_ESCALATION_LIMIT, CIRCUIT_BREAKER_PAYMENT_LIMIT,
+  ESCALATION_RATE_HALT_THRESHOLD,
+  type HealingEventData, type HealingSystemStatus, type PredictiveWarning,
+} from "@/engines/selfHealingEngine";
 
-// ── Circuit Breaker Config ──
-const CIRCUIT_BREAKER_WINDOW_MS = 30 * 60 * 1000; // 30 min
-const CIRCUIT_BREAKER_ESCALATION_LIMIT = 5;
-const CIRCUIT_BREAKER_PAYMENT_LIMIT = 3;
+// ── Auto Mode Config ──
 const AUTO_MODE_INTERVAL_MS = 10 * 60 * 1000; // 10 min
-const ESCALATION_RATE_HALT_THRESHOLD = 30; // %
 
-// ── Types ──
-interface HealingEvent {
-  id: string;
-  entity_type: string;
-  entity_id: string;
-  recovery_type: string;
-  attempt_number: number;
-  status: string;
-  cooldown_until: string | null;
-  metadata: any;
-  created_at: string;
-}
-
-type HealingSystemStatus = "healthy" | "active_recovery" | "escalation_mode" | "circuit_broken";
-
-interface PredictiveWarning {
-  level: "info" | "warning";
-  title: string;
-  description: string;
-  metric: string;
-}
+// ── Types (reuse from engine) ──
+type HealingEvent = HealingEventData;
 
 // ── Styles ──
 const STATUS_CFG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
@@ -96,117 +81,20 @@ export default function SelfHealingMonitorPage() {
     refetchInterval: 20_000,
   });
 
-  // ── Compute 24h stats ──
-  const last24h = events.filter(e => Date.now() - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000);
-  const successCount = last24h.filter(e => e.status === "success").length;
-  const failedCount = last24h.filter(e => e.status === "failed").length;
-  const escalatedCount = last24h.filter(e => e.status === "escalated").length;
-  const totalActions = last24h.filter(e => e.status !== "skipped_cooldown").length;
-  const successRate = totalActions > 0 ? Math.round((successCount / totalActions) * 100) : 100;
-  const escalationRate = totalActions > 0 ? Math.round((escalatedCount / totalActions) * 100) : 0;
+  // ── Use engine functions for all computed values ──
+  const stats = computeHealingStats(events);
+  const { successCount, failedCount, escalatedCount, totalActions, successRate, escalationRate } = stats;
+  const healingConfidence = computeHealingConfidence(stats);
+  const systemStatus = computeSystemStatus(stats, circuitBroken);
 
-  // ── 1: Healing Confidence Score ──
-  const healingConfidence = Math.max(0, Math.min(100,
-    Math.round(successRate * 0.6 + (100 - escalationRate) * 0.3 + (failedCount === 0 ? 10 : 0))
-  ));
-
-  // ── System Status ──
-  const systemStatus: HealingSystemStatus = circuitBroken
-    ? "circuit_broken"
-    : escalationRate > ESCALATION_RATE_HALT_THRESHOLD
-      ? "escalation_mode"
-      : totalActions > 0
-        ? "active_recovery"
-        : "healthy";
-
-  // ── 3: Circuit Breaker Check ──
+  // ── Circuit Breaker Check (uses engine) ──
   const checkCircuitBreaker = useCallback((): boolean => {
-    const windowStart = Date.now() - CIRCUIT_BREAKER_WINDOW_MS;
-    const recentEvents = events.filter(e => new Date(e.created_at).getTime() > windowStart);
-    const recentEscalations = recentEvents.filter(e => e.status === "escalated");
-    const paymentEscalations = recentEscalations.filter(e => e.entity_type === "payment");
-
-    if (recentEscalations.length >= CIRCUIT_BREAKER_ESCALATION_LIMIT || paymentEscalations.length >= CIRCUIT_BREAKER_PAYMENT_LIMIT) {
-      return true;
-    }
-    return false;
+    return checkCircuitBreakerFn(events);
   }, [events]);
 
-  // ── 2: Predictive Early Warnings ──
-  const predictiveWarnings: PredictiveWarning[] = (() => {
-    const warnings: PredictiveWarning[] = [];
-    if (events.length < 4) return warnings;
-
-    // Compare first half vs second half of recent events to detect trends
-    const recent = events.slice(0, 20);
-    const halfLen = Math.floor(recent.length / 2);
-    const newerHalf = recent.slice(0, halfLen);
-    const olderHalf = recent.slice(halfLen);
-
-    const newerEscalations = newerHalf.filter(e => e.status === "escalated").length;
-    const olderEscalations = olderHalf.filter(e => e.status === "escalated").length;
-    if (newerEscalations > olderEscalations && newerEscalations >= 2) {
-      warnings.push({
-        level: "warning",
-        title: "Escalation Trend Rising",
-        description: `${newerEscalations} escalations in recent window vs ${olderEscalations} previously`,
-        metric: "escalation_trend",
-      });
-    }
-
-    const newerFails = newerHalf.filter(e => e.status === "failed").length;
-    const olderFails = olderHalf.filter(e => e.status === "failed").length;
-    if (newerFails > olderFails && newerFails >= 2) {
-      warnings.push({
-        level: "info",
-        title: "Recovery Failure Rate Increasing",
-        description: `${newerFails} failures in recent window — monitor for systemic issue`,
-        metric: "failure_trend",
-      });
-    }
-
-    // Payment-specific trend
-    const paymentEvents = events.filter(e => e.entity_type === "payment").slice(0, 10);
-    const paymentFails = paymentEvents.filter(e => e.status === "failed" || e.status === "escalated").length;
-    if (paymentFails >= 2) {
-      warnings.push({
-        level: "warning",
-        title: "Payment Recovery Instability",
-        description: `${paymentFails} payment failures/escalations detected in recent window`,
-        metric: "payment_health",
-      });
-    }
-
-    return warnings;
-  })();
-
-  // ── 5: Root Cause Insights ──
-  const rootCauseInsights = (() => {
-    if (last24h.length === 0) return null;
-
-    // Top recurring recovery type
-    const typeCounts: Record<string, number> = {};
-    last24h.forEach(e => { typeCounts[e.recovery_type] = (typeCounts[e.recovery_type] || 0) + 1; });
-    const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
-
-    // Most common failure reason
-    const failReasons: Record<string, number> = {};
-    last24h.filter(e => e.metadata?.reason).forEach(e => {
-      failReasons[e.metadata.reason] = (failReasons[e.metadata.reason] || 0) + 1;
-    });
-    const topReason = Object.entries(failReasons).sort((a, b) => b[1] - a[1])[0];
-
-    // Most affected entity type
-    const entityCounts: Record<string, number> = {};
-    last24h.forEach(e => { entityCounts[e.entity_type] = (entityCounts[e.entity_type] || 0) + 1; });
-    const topEntity = Object.entries(entityCounts).sort((a, b) => b[1] - a[1])[0];
-
-    return {
-      topRecoveryType: topType ? { type: RECOVERY_TYPE_LABELS[topType[0] as HealingRecoveryType] || topType[0], count: topType[1] } : null,
-      topReason: topReason ? { reason: topReason[0], count: topReason[1] } : null,
-      topEntity: topEntity ? { entity: topEntity[0], count: topEntity[1] } : null,
-    };
-  })();
+  // ── Use engine functions for warnings and insights ──
+  const predictiveWarnings = computePredictiveWarnings(events);
+  const rootCauseInsights = computeRootCauseInsights(events);
 
   // ── Manual healing cycle trigger ──
   const runHealingCycle = useCallback(async (triggeredBy: "manual" | "auto" = "manual") => {
