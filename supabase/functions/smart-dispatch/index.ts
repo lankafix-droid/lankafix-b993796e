@@ -438,10 +438,22 @@ serve(async (req) => {
         customerPrefRaw = 100; // strong boost for repeat technician
       }
 
-      // ── Reliability Score (NEW) ──
+      // ── Reliability Score (with ETA intelligence) ──
       const lateRate = (p.late_arrival_count || 0) / Math.max(completedJobs, 1) * 100;
       const noShowPenalty = (p.strike_count || 0) * 10;
       let reliabilityRaw = Math.max(0, 100 - lateRate * 2 - noShowPenalty - cancelRate * 3);
+
+      // ETA reliability enhancement: boost/penalize based on ETA prediction accuracy
+      // Uses eta_within_range_percent stored on partner (computed by analytics)
+      const etaWithinRange = p.eta_within_range_percent;
+      if (etaWithinRange !== null && etaWithinRange !== undefined) {
+        // Good ETA accuracy (>70%) adds up to +8 points; poor (<40%) subtracts up to -10
+        if (etaWithinRange >= 70) {
+          reliabilityRaw += Math.min(8, (etaWithinRange - 70) * 0.27);
+        } else if (etaWithinRange < 40) {
+          reliabilityRaw -= Math.min(10, (40 - etaWithinRange) * 0.25);
+        }
+      }
       reliabilityRaw = Math.min(100, Math.max(0, reliabilityRaw));
 
       // ── Quote Competence (NEW) ──
