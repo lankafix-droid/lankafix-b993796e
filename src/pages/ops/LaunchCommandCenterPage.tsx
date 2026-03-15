@@ -240,6 +240,25 @@ export default function LaunchCommandCenterPage() {
 
   useEffect(() => { track("launch_command_center_viewed"); }, []);
 
+  // Load latest operator note from DB on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data: rows } = await supabase
+          .from("automation_event_log")
+          .select("trigger_reason, created_at")
+          .eq("event_type", "launch_operator_note")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (rows && rows.length > 0) {
+          setSavedNote(rows[0].trigger_reason);
+        }
+      } catch {
+        // Silent — non-critical
+      }
+    })();
+  }, []);
+
   const handleSaveNote = useCallback(async () => {
     if (!opsNote.trim()) return;
     setSavingNote(true);
