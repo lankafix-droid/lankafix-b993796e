@@ -24,6 +24,7 @@ import {
   CheckCircle2, XCircle, TrendingUp, MapPin, ChevronDown,
   BookOpen, FileText, Phone, MessageSquare, Tag, Camera, Image
 } from "lucide-react";
+import ETAIntelligencePanel from "@/components/warroom/ETAIntelligencePanel";
 
 // ── Types ──
 interface BookingRow {
