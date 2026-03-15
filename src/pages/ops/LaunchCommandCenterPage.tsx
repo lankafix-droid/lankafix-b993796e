@@ -39,6 +39,7 @@ import {
 type Verdict = "GO" | "HOLD" | "NO_GO";
 type PillarStatus = "healthy" | "watch" | "critical";
 type ZoneStatus = "ready" | "watch" | "risky" | "not_ready";
+type Trend = "improving" | "stable" | "deteriorating";
 
 interface Pillar {
   key: string;
@@ -48,6 +49,7 @@ interface Pillar {
   status: PillarStatus;
   detail: string;
   weight: number;
+  trend: Trend;
 }
 
 interface ZoneReadiness {
