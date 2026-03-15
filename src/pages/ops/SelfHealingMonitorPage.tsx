@@ -23,13 +23,17 @@ import {
   COOLDOWN_MINUTES, MAX_RETRIES, RECOVERY_TYPE_LABELS, STALE_BOOKING_MINUTES,
   type HealingEntityType, type HealingRecoveryType, type HealingStatus,
 } from "@/config/selfHealingConfig";
+import {
+  computeHealingStats, computeHealingConfidence, computeSystemStatus,
+  checkCircuitBreaker as checkCircuitBreakerFn, computePredictiveWarnings,
+  computeRootCauseInsights, shouldAutoModeHalt,
+  CIRCUIT_BREAKER_ESCALATION_LIMIT, CIRCUIT_BREAKER_PAYMENT_LIMIT,
+  ESCALATION_RATE_HALT_THRESHOLD,
+  type HealingEventData, type HealingSystemStatus, type PredictiveWarning,
+} from "@/engines/selfHealingEngine";
 
-// ── Circuit Breaker Config ──
-const CIRCUIT_BREAKER_WINDOW_MS = 30 * 60 * 1000; // 30 min
-const CIRCUIT_BREAKER_ESCALATION_LIMIT = 5;
-const CIRCUIT_BREAKER_PAYMENT_LIMIT = 3;
+// ── Auto Mode Config ──
 const AUTO_MODE_INTERVAL_MS = 10 * 60 * 1000; // 10 min
-const ESCALATION_RATE_HALT_THRESHOLD = 30; // %
 
 // ── Types ──
 interface HealingEvent {
