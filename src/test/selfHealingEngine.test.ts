@@ -285,32 +285,32 @@ describe("Auto-Mode Halt", () => {
 
 describe("Retry Caps", () => {
   it("allows retry when under limit", () => {
-    expect(isRetryAllowed(0, MAX_RETRIES.booking, null, null)).toBe(true);
-    expect(isRetryAllowed(2, MAX_RETRIES.booking, null, null)).toBe(true);
+    expect(isRetryAllowed(0, MAX_RETRIES.booking, null, null, FIXED_NOW)).toBe(true);
+    expect(isRetryAllowed(2, MAX_RETRIES.booking, null, null, FIXED_NOW)).toBe(true);
   });
 
   it("blocks retry at max limit", () => {
-    expect(isRetryAllowed(MAX_RETRIES.booking, MAX_RETRIES.booking, null, null)).toBe(false);
+    expect(isRetryAllowed(MAX_RETRIES.booking, MAX_RETRIES.booking, null, null, FIXED_NOW)).toBe(false);
   });
 
   it("blocks retry when escalated", () => {
-    expect(isRetryAllowed(1, MAX_RETRIES.booking, null, "escalated")).toBe(false);
+    expect(isRetryAllowed(1, MAX_RETRIES.booking, null, "escalated", FIXED_NOW)).toBe(false);
   });
 
   it("blocks retry during cooldown", () => {
-    const future = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-    expect(isRetryAllowed(1, MAX_RETRIES.booking, future, null)).toBe(false);
+    const future = new Date(FIXED_NOW + 5 * 60 * 1000).toISOString();
+    expect(isRetryAllowed(1, MAX_RETRIES.booking, future, null, FIXED_NOW)).toBe(false);
   });
 
   it("allows retry after cooldown expires", () => {
-    const past = new Date(Date.now() - 1000).toISOString();
-    expect(isRetryAllowed(1, MAX_RETRIES.booking, past, null)).toBe(true);
+    const past = new Date(FIXED_NOW - 1000).toISOString();
+    expect(isRetryAllowed(1, MAX_RETRIES.booking, past, null, FIXED_NOW)).toBe(true);
   });
 
   it("respects payment retry limit (lower than booking)", () => {
     expect(MAX_RETRIES.payment).toBeLessThan(MAX_RETRIES.booking);
-    expect(isRetryAllowed(MAX_RETRIES.payment, MAX_RETRIES.payment, null, null)).toBe(false);
-    expect(isRetryAllowed(MAX_RETRIES.payment - 1, MAX_RETRIES.payment, null, null)).toBe(true);
+    expect(isRetryAllowed(MAX_RETRIES.payment, MAX_RETRIES.payment, null, null, FIXED_NOW)).toBe(false);
+    expect(isRetryAllowed(MAX_RETRIES.payment - 1, MAX_RETRIES.payment, null, null, FIXED_NOW)).toBe(true);
   });
 });
 
@@ -442,6 +442,12 @@ describe("Idempotency Fingerprint", () => {
     const fp2 = generateRecoveryFingerprint("entity-b", "payment_retry", 1);
     expect(fp1).not.toBe(fp2);
   });
+
+  it("differs for different recovery types", () => {
+    const fp1 = generateRecoveryFingerprint("abc-123", "payment_retry", 1);
+    const fp2 = generateRecoveryFingerprint("abc-123", "stale_booking_reassignment", 1);
+    expect(fp1).not.toBe(fp2);
+  });
 });
 
 // ═══════════════════════════════════════════════════
@@ -489,6 +495,73 @@ describe("Boundary & Rounding", () => {
     ];
     const stats = computeHealingStats(events, FIXED_NOW);
     expect(stats.successRate).toBe(56);
+  });
+
+  it("Math.round boundary: 62.49 rounds to 62 (below .5)", () => {
+    // 312 success out of 500 = 62.4% → rounds to 62
+    // Actually need exact: use direct stats
+    const stats = computeHealingStats([
+      ...makeEvents(312, { status: "success" }),
+      ...makeEvents(188, { status: "failed" }),
+    ], FIXED_NOW);
+    // 312/500 = 62.4 → Math.round = 62
+    expect(stats.successRate).toBe(62);
+  });
+
+  it("Math.round boundary: 62.5 rounds to 63 (at .5)", () => {
+    // 5 success out of 8 = 62.5% → rounds to 63
+    const stats = computeHealingStats([
+      ...makeEvents(5, { status: "success" }),
+      ...makeEvents(3, { status: "failed" }),
+    ], FIXED_NOW);
+    expect(stats.successRate).toBe(63);
+  });
+
+  it("confidence cap precedence: circuit_broken overrides escalation_mode cap", () => {
+    const stats: HealingStats = {
+      successCount: 50, failedCount: 0, escalatedCount: 50,
+      totalActions: 100, successRate: 50, escalationRate: 50,
+    };
+    // Both escalation_mode and circuit_broken could apply — circuit_broken wins (lower cap)
+    const confCircuit = computeHealingConfidence(stats, "circuit_broken");
+    const confEscalation = computeHealingConfidence(stats, "escalation_mode");
+    expect(confCircuit).toBeLessThanOrEqual(40);
+    expect(confEscalation).toBeLessThanOrEqual(50);
+    expect(confCircuit).toBeLessThan(confEscalation);
+  });
+});
+
+// ═══════════════════════════════════════════════════
+// TEST SUITE: Root Cause Tie-Breaking Stability
+// ═══════════════════════════════════════════════════
+
+describe("Root Cause Tie-Breaking", () => {
+  it("returns alphabetically first entity type on tie", () => {
+    const events = [
+      ...makeEvents(3, { entity_type: "dispatch" }),
+      ...makeEvents(3, { entity_type: "booking" }),
+    ];
+    const insights = computeRootCauseInsights(events, FIXED_NOW);
+    // Equal counts → "booking" < "dispatch" alphabetically
+    expect(insights?.topEntity?.entity).toBe("booking");
+  });
+
+  it("returns alphabetically first recovery type on tie", () => {
+    const events = [
+      ...makeEvents(2, { recovery_type: "payment_retry" }),
+      ...makeEvents(2, { recovery_type: "dispatch_offer_expiry" }),
+    ];
+    const insights = computeRootCauseInsights(events, FIXED_NOW);
+    expect(insights?.topRecoveryType?.type).toBe("dispatch_offer_expiry");
+  });
+
+  it("returns alphabetically first failure reason on tie", () => {
+    const events = [
+      ...makeEvents(2, { metadata: { reason: "Timeout" } }),
+      ...makeEvents(2, { metadata: { reason: "Cooldown" } }),
+    ];
+    const insights = computeRootCauseInsights(events, FIXED_NOW);
+    expect(insights?.topReason?.reason).toBe("Cooldown");
   });
 });
 

@@ -161,17 +161,17 @@ export function computeRootCauseInsights(events: HealingEventData[], now: number
 
   const typeCounts: Record<string, number> = {};
   last24h.forEach(e => { typeCounts[e.recovery_type] = (typeCounts[e.recovery_type] || 0) + 1; });
-  const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
+  const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
 
   const failReasons: Record<string, number> = {};
   last24h.filter(e => e.metadata?.reason).forEach(e => {
     failReasons[e.metadata.reason] = (failReasons[e.metadata.reason] || 0) + 1;
   });
-  const topReason = Object.entries(failReasons).sort((a, b) => b[1] - a[1])[0];
+  const topReason = Object.entries(failReasons).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
 
   const entityCounts: Record<string, number> = {};
   last24h.forEach(e => { entityCounts[e.entity_type] = (entityCounts[e.entity_type] || 0) + 1; });
-  const topEntity = Object.entries(entityCounts).sort((a, b) => b[1] - a[1])[0];
+  const topEntity = Object.entries(entityCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
 
   return {
     topRecoveryType: topType ? { type: topType[0], count: topType[1] } : null,
@@ -186,9 +186,9 @@ export function shouldAutoModeHalt(escalationRate: number, circuitBroken: boolea
 }
 
 // ── 8: Is retry allowed? ──
-export function isRetryAllowed(attempts: number, maxRetries: number, cooldownUntil: string | null, lastStatus: string | null): boolean {
+export function isRetryAllowed(attempts: number, maxRetries: number, cooldownUntil: string | null, lastStatus: string | null, now: number = Date.now()): boolean {
   if (lastStatus === "escalated") return false;
-  if (cooldownUntil && new Date(cooldownUntil) > new Date()) return false;
+  if (cooldownUntil && new Date(cooldownUntil).getTime() > now) return false;
   if (attempts >= maxRetries) return false;
   return true;
 }
