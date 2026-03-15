@@ -2610,6 +2610,42 @@ export type Database = {
           },
         ]
       }
+      self_healing_events: {
+        Row: {
+          attempt_number: number
+          cooldown_until: string | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json | null
+          recovery_type: string
+          status: string
+        }
+        Insert: {
+          attempt_number?: number
+          cooldown_until?: string | null
+          created_at?: string
+          entity_id: string
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          recovery_type?: string
+          status?: string
+        }
+        Update: {
+          attempt_number?: number
+          cooldown_until?: string | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          recovery_type?: string
+          status?: string
+        }
+        Relationships: []
+      }
       service_evidence: {
         Row: {
           after_notes: string | null
