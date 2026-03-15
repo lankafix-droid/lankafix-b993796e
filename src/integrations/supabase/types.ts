@@ -1200,6 +1200,93 @@ export type Database = {
           },
         ]
       }
+      eta_predictions: {
+        Row: {
+          accuracy_class: string | null
+          actual_arrival_at: string | null
+          actual_travel_minutes: number | null
+          booking_id: string
+          confidence: string
+          created_at: string
+          customer_zone: string | null
+          distance_km: number
+          estimate_minutes: number
+          eta_max_minutes: number
+          eta_min_minutes: number
+          id: string
+          partner_id: string | null
+          predicted_at: string
+          prediction_error_minutes: number | null
+          source_context: string
+          technician_zone: string | null
+          traffic_label: string | null
+          traffic_level: string
+          travel_type: string
+          within_range: boolean | null
+        }
+        Insert: {
+          accuracy_class?: string | null
+          actual_arrival_at?: string | null
+          actual_travel_minutes?: number | null
+          booking_id: string
+          confidence?: string
+          created_at?: string
+          customer_zone?: string | null
+          distance_km?: number
+          estimate_minutes: number
+          eta_max_minutes: number
+          eta_min_minutes: number
+          id?: string
+          partner_id?: string | null
+          predicted_at?: string
+          prediction_error_minutes?: number | null
+          source_context?: string
+          technician_zone?: string | null
+          traffic_label?: string | null
+          traffic_level?: string
+          travel_type?: string
+          within_range?: boolean | null
+        }
+        Update: {
+          accuracy_class?: string | null
+          actual_arrival_at?: string | null
+          actual_travel_minutes?: number | null
+          booking_id?: string
+          confidence?: string
+          created_at?: string
+          customer_zone?: string | null
+          distance_km?: number
+          estimate_minutes?: number
+          eta_max_minutes?: number
+          eta_min_minutes?: number
+          id?: string
+          partner_id?: string | null
+          predicted_at?: string
+          prediction_error_minutes?: number | null
+          source_context?: string
+          technician_zone?: string | null
+          traffic_label?: string | null
+          traffic_level?: string
+          travel_type?: string
+          within_range?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eta_predictions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eta_predictions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_timeline: {
         Row: {
           actor: string | null
