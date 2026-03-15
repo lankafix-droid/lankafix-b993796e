@@ -1166,6 +1166,78 @@ export default function WarRoomPage() {
         {/* ══ ETA INTELLIGENCE ══ */}
         <ETAIntelligencePanel />
 
+        {/* ══ TECHNICIAN ARRIVAL MONITOR ══ */}
+        {(() => {
+          const ARRIVAL_LABELS: Record<string, { label: string; color: string }> = {
+            assigned: { label: "Preparing", color: "bg-primary/10 text-primary" },
+            tech_en_route: { label: "En Route", color: "bg-accent/10 text-accent" },
+            arrived: { label: "Arrived", color: "bg-success/10 text-success" },
+            inspection_started: { label: "Inspecting", color: "bg-warning/10 text-warning" },
+            repair_started: { label: "Repairing", color: "bg-warning/10 text-warning" },
+            in_progress: { label: "In Progress", color: "bg-warning/10 text-warning" },
+          };
+          const arrivalBookings = bookings.filter(b => b.partner_id && Object.keys(ARRIVAL_LABELS).includes(b.status));
+          if (arrivalBookings.length === 0) return null;
+
+          const enRouteCount = arrivalBookings.filter(b => b.status === "tech_en_route").length;
+          const arrivedCount = arrivalBookings.filter(b => b.status === "arrived").length;
+          const workingCount = arrivalBookings.filter(b => ["inspection_started", "repair_started", "in_progress"].includes(b.status)).length;
+
+          return (
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" /> Technician Arrivals
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px]">{arrivalBookings.length} active</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="text-center p-2 bg-accent/5 rounded-lg border border-accent/10">
+                    <p className="text-lg font-bold text-accent">{enRouteCount}</p>
+                    <p className="text-[9px] text-muted-foreground">En Route</p>
+                  </div>
+                  <div className="text-center p-2 bg-success/5 rounded-lg border border-success/10">
+                    <p className="text-lg font-bold text-success">{arrivedCount}</p>
+                    <p className="text-[9px] text-muted-foreground">Arrived</p>
+                  </div>
+                  <div className="text-center p-2 bg-warning/5 rounded-lg border border-warning/10">
+                    <p className="text-lg font-bold text-warning">{workingCount}</p>
+                    <p className="text-[9px] text-muted-foreground">Working</p>
+                  </div>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-[10px]">Booking</TableHead>
+                      <TableHead className="text-[10px]">Technician</TableHead>
+                      <TableHead className="text-[10px]">Zone</TableHead>
+                      <TableHead className="text-[10px]">State</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {arrivalBookings.slice(0, 10).map(b => {
+                      const state = ARRIVAL_LABELS[b.status] || ARRIVAL_LABELS.assigned;
+                      return (
+                        <TableRow key={b.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/tracker/${b.id}`)}>
+                          <TableCell className="text-[10px] font-mono">{b.id.slice(0, 8)}</TableCell>
+                          <TableCell className="text-[10px]">{b.partner_id ? (partnerMap[b.partner_id] || b.partner_id.slice(0, 8)) : "—"}</TableCell>
+                          <TableCell className="text-[10px]">{zoneLabel(b.zone_code)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`text-[9px] ${state.color}`}>{state.label}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {/* ══ 12. QUICK ACTIONS ══ */}
         <Card>
           <CardHeader className="pb-2">
