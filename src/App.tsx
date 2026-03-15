@@ -254,6 +254,7 @@ const App = () => (
             <Route path="/ops/incident-playbooks" element={<OpsRoute><IncidentPlaybooksPage /></OpsRoute>} />
             <Route path="/ops/self-healing" element={<OpsRoute><SelfHealingMonitorPage /></OpsRoute>} />
             <Route path="/ops/chaos-control" element={<OpsRoute><ChaosControlCenterPage /></OpsRoute>} />
+            <Route path="/ops/reliability-archive" element={<OpsRoute><ReliabilityArchivePage /></OpsRoute>} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />

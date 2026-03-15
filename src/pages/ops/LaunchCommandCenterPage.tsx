@@ -125,6 +125,8 @@ const DRILL_DOWN_LINKS = [
   { label: "Support Cases", path: "/ops/support", icon: Shield },
   { label: "Incident Playbooks", path: "/ops/incident-playbooks", icon: FileText },
   { label: "Self-Healing", path: "/ops/self-healing", icon: Heart },
+  { label: "Reliability Archive", path: "/ops/reliability-archive", icon: Target },
+  { label: "Chaos Control", path: "/ops/chaos-control", icon: AlertOctagon },
 ];
 
 // ── groupBy utility ──

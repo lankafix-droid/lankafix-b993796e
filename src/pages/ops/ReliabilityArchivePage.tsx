@@ -40,13 +40,13 @@ export default function ReliabilityArchivePage() {
     queryKey: ["reliability-snapshots"],
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("reliability_snapshots")
         .select("*")
         .gte("created_at", cutoff)
         .order("created_at", { ascending: true })
         .limit(30);
-      return (data as unknown as Snapshot[]) || [];
+      return (data as Snapshot[]) || [];
     },
     staleTime: 5 * 60 * 1000,
   });
