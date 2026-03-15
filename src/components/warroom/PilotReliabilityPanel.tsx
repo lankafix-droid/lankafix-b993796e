@@ -15,7 +15,7 @@ function usePilotReliabilityData() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayISO = todayStart.toISOString();
-  const fiveMinAgo = new Date(Date.now() - 5 * 60_000).toISOString();
+  const thirtyMinAgoAuto = new Date(Date.now() - 30 * 60_000).toISOString();
   const thirtyMinAgo = new Date(Date.now() - 30 * 60_000).toISOString();
 
   return useQuery({
