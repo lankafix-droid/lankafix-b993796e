@@ -1,0 +1,1 @@
+ALTER TABLE public.incident_playbooks ADD COLUMN IF NOT EXISTS last_detected_at TIMESTAMP WITH TIME ZONE DEFAULT now();
