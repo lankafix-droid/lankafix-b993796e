@@ -123,6 +123,7 @@ const DRILL_DOWN_LINKS = [
   { label: "Finance Board", path: "/ops/finance", icon: CreditCard },
   { label: "Automation Health", path: "/ops/automation-health", icon: Activity },
   { label: "Support Cases", path: "/ops/support", icon: Shield },
+  { label: "Incident Playbooks", path: "/ops/incident-playbooks", icon: FileText },
 ];
 
 // ── groupBy utility ──
