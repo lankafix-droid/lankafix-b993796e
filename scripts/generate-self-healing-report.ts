@@ -69,6 +69,11 @@ const report = {
     "Immutable reliability snapshot ledger",
     "Automated governance enforcement",
     "Executive reliability verdict",
+    "SLA contract tier computation",
+    "Incident impact quantification",
+    "Cost-of-failure estimation",
+    "Board-grade reliability reporting",
+    "Multi-zone reliability heatmap",
   ],
   governanceEngine: {
     weights: {
@@ -98,6 +103,39 @@ const report = {
       circuitBreaksIn12h: 2,
     },
   },
+  slaEngine: {
+    tiers: {
+      platinum: "≥ 95 reliabilityScore",
+      gold: "≥ 85",
+      standard: "≥ 70",
+      at_risk: "< 70",
+    },
+    breachRiskFactors: [
+      "Inverse reliability score (40%)",
+      "Circuit break count penalty (3%/break, max 30%)",
+      "Error budget depletion (40% weight)",
+    ],
+  },
+  incidentImpactModel: {
+    operationalWeights: {
+      escalationRate: "2x multiplier, max 60",
+      zoneGuardrails: "8 per guardrail, max 40",
+    },
+    reputationalWeights: {
+      riskProbability: "60% factor",
+      budgetRunway: "40% factor (30-day horizon)",
+    },
+    compositeBlend: "55% operational + 45% reputational",
+  },
+  costOfFailureModel: {
+    dailyFormula: "volume × value × (escalationRate / 100)",
+    projectionFormula: "volume × value × max(current, projected) × 30",
+    severityThresholds: {
+      minimal: "< 100,000 LKR",
+      material: "100,000–499,999 LKR",
+      severe: "≥ 500,000 LKR",
+    },
+  },
   purityGuarantees: [
     "No React imports in engine",
     "No Supabase imports in engine",
@@ -106,12 +144,13 @@ const report = {
     "All time-sensitive functions accept optional now parameter",
   ],
   testCoverage: {
-    totalTests: 60,
+    totalTests: "60+ (expanding with SLA/impact/cost suites)",
     suites: [
       "Healing Stats", "Confidence Score + Integrity Guards", "System Status",
       "Circuit Breaker", "Auto-Mode Halt", "Retry Caps", "Predictive Warnings",
       "Root Cause Insights", "Idempotency Fingerprint", "Boundary & Rounding",
       "Root Cause Tie-Breaking", "Stability Envelope", "Deterministic Phase Stress",
+      "SLA Tier Boundaries", "Incident Impact Boundaries", "Cost-of-Failure Math",
     ],
   },
 };
