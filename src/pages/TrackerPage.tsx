@@ -69,6 +69,20 @@ import { useAuth } from "@/hooks/useAuth";
 function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookingId: string; partnerId: string | null; bookingStatus: string }) {
   // Only show live tracking during active travel — tech_en_route only
   const { data: tracking } = useTechnicianTracking(bookingId, partnerId, bookingStatus);
+  const [prevETA, setPrevETA] = useState<number | null>(null);
+  const [etaUpdated, setEtaUpdated] = useState(false);
+
+  // Detect material ETA changes (>5 min difference)
+  useEffect(() => {
+    if (!tracking) return;
+    const current = tracking.etaMinutes;
+    if (prevETA !== null && Math.abs(current - prevETA) >= 5) {
+      setEtaUpdated(true);
+      const timer = setTimeout(() => setEtaUpdated(false), 8000);
+      return () => clearTimeout(timer);
+    }
+    setPrevETA(current);
+  }, [tracking?.etaMinutes]);
 
   if (!tracking || !tracking.technicianLat) return null;
 
@@ -94,13 +108,20 @@ function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookin
       <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs text-muted-foreground">Technician arriving in</span>
-          <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
-            tracking.etaConfidence === "high" ? "bg-success/10 text-success" :
-            tracking.etaConfidence === "medium" ? "bg-warning/10 text-warning" :
-            "bg-muted text-muted-foreground"
-          }`}>
-            {tracking.etaConfidence === "high" ? "High accuracy" : tracking.etaConfidence === "medium" ? "Estimated" : "Approximate"}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {etaUpdated && (
+              <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-accent/10 text-accent animate-fade-in">
+                Updated
+              </span>
+            )}
+            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+              tracking.etaConfidence === "high" ? "bg-success/10 text-success" :
+              tracking.etaConfidence === "medium" ? "bg-warning/10 text-warning" :
+              "bg-muted text-muted-foreground"
+            }`}>
+              {tracking.etaConfidence === "high" ? "High accuracy" : tracking.etaConfidence === "medium" ? "Estimated" : "Approximate"}
+            </span>
+          </div>
         </div>
         <p className="text-xl font-bold text-primary">{tracking.etaRange}</p>
         <p className="text-[10px] text-muted-foreground mt-0.5">{tracking.trafficLabel}</p>
