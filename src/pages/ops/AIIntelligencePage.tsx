@@ -700,7 +700,7 @@ function AlertsTab() {
                   {e.booking_id && (
                     <button
                       className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
-                      onClick={() => navigate(`/track/${e.booking_id}`)}
+                      onClick={() => navigate(`/tracker/${e.booking_id}`)}
                     >
                       <ExternalLink className="w-3 h-3" /> Open Booking
                     </button>
