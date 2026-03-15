@@ -622,7 +622,7 @@ export default function WarRoomPage() {
                       return (
                         <TableRow key={b.id}
                           className={`cursor-pointer ${isCancelled ? "bg-destructive/5" : isLowRated ? "bg-amber-500/5" : sla === "breached" ? "bg-destructive/5" : ""}`}
-                          onClick={() => navigate(`/track/${b.id}`)}
+                          onClick={() => navigate(`/tracker/${b.id}`)}
                         >
                           <TableCell className="text-[10px] font-mono">{b.id.slice(0, 6)}</TableCell>
                           <TableCell className="text-[10px]">{catLabel(b.category_code)}</TableCell>
@@ -708,7 +708,7 @@ export default function WarRoomPage() {
                         <TableCell className="text-[10px]">{e.dispatch_rounds_attempted ?? 0}</TableCell>
                         <TableCell className="text-[10px]">{new Date(e.created_at).toLocaleTimeString()}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => navigate(`/track/${e.booking_id}`)}>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => navigate(`/tracker/${e.booking_id}`)}>
                             <Eye className="w-3 h-3 mr-1" /> View
                           </Button>
                         </TableCell>
@@ -1112,7 +1112,7 @@ export default function WarRoomPage() {
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Action Required</p>
                 {jobsMissingBefore.slice(0, 3).map(b => (
                   <div key={`mb-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
-                    onClick={() => navigate(`/track/${b.id}`)}>
+                    onClick={() => navigate(`/tracker/${b.id}`)}>
                     <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">no before</Badge>
                     <span className="font-mono">{b.id.slice(0, 6)}</span>
                     <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
@@ -1123,7 +1123,7 @@ export default function WarRoomPage() {
                 ))}
                 {jobsMissingAfter.slice(0, 3).map(b => (
                   <div key={`ma-${b.id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
-                    onClick={() => navigate(`/track/${b.id}`)}>
+                    onClick={() => navigate(`/tracker/${b.id}`)}>
                     <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">no after</Badge>
                     <span className="font-mono">{b.id.slice(0, 6)}</span>
                     <span className="text-muted-foreground">{catLabel(b.category_code)}</span>
@@ -1136,7 +1136,7 @@ export default function WarRoomPage() {
                   const bk = bookings.find(b => b.id === e.booking_id);
                   return (
                     <div key={`dp-${e.booking_id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-destructive/5 cursor-pointer hover:bg-destructive/10"
-                      onClick={() => navigate(`/track/${e.booking_id}`)}>
+                      onClick={() => navigate(`/tracker/${e.booking_id}`)}>
                       <Badge className="text-[9px] bg-destructive/10 text-destructive shrink-0">dispute</Badge>
                       <span className="font-mono">{e.booking_id.slice(0, 6)}</span>
                       <span className="text-muted-foreground">{bk ? catLabel(bk.category_code) : "—"}</span>
@@ -1149,7 +1149,7 @@ export default function WarRoomPage() {
                   const bk = bookings.find(b => b.id === e.booking_id);
                   return (
                     <div key={`pc-${e.booking_id}`} className="flex items-center gap-2 text-[11px] p-1.5 rounded bg-warning/5 cursor-pointer hover:bg-warning/10"
-                      onClick={() => navigate(`/track/${e.booking_id}`)}>
+                      onClick={() => navigate(`/tracker/${e.booking_id}`)}>
                       <Badge className="text-[9px] bg-warning/10 text-warning shrink-0">review &gt;24h</Badge>
                       <span className="font-mono">{e.booking_id.slice(0, 6)}</span>
                       <span className="text-muted-foreground">{bk ? catLabel(bk.category_code) : "—"}</span>

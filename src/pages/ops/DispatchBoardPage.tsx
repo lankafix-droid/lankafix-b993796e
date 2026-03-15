@@ -345,7 +345,7 @@ export default function DispatchBoardPage() {
                       Cancel Job
                     </Button>
                     <Button size="sm" variant="outline" className="text-[10px] h-6"
-                      onClick={() => navigate(`/track/${b.id}`)}>
+                      onClick={() => navigate(`/tracker/${b.id}`)}>
                       View Tracker
                     </Button>
                   </div>

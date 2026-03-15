@@ -180,7 +180,7 @@ export default function IncidentTrackerPage() {
                       {e.booking_id && (
                         <button
                           className="flex items-center gap-0.5 text-primary hover:underline"
-                          onClick={(ev) => { ev.stopPropagation(); navigate(`/track/${e.booking_id}`); }}
+                          onClick={(ev) => { ev.stopPropagation(); navigate(`/tracker/${e.booking_id}`); }}
                         >
                           <ExternalLink className="w-3 h-3" /> {e.booking_id.slice(0, 8)}
                         </button>

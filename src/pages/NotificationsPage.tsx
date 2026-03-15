@@ -187,7 +187,7 @@ const NotificationsPage = () => {
                         <span className="text-[11px] text-muted-foreground/60">{timeAgo(n.created_at)}</span>
                         {n.booking_id && (
                           <Link
-                            to={`/track/${n.booking_id}`}
+                            to={`/tracker/${n.booking_id}`}
                             onClick={(e) => e.stopPropagation()}
                             className="ml-2 text-[11px] text-primary font-medium hover:underline"
                           >

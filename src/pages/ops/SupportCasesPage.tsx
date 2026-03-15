@@ -128,7 +128,7 @@ export default function SupportCasesPage() {
                           {timeAgo(c.created_at)}
                         </span>
                         {c.booking_id && (
-                          <Link to={`/track/${c.booking_id}`} className="text-primary hover:underline">
+                          <Link to={`/tracker/${c.booking_id}`} className="text-primary hover:underline">
                             Booking {c.booking_id.slice(0, 8)}…
                           </Link>
                         )}

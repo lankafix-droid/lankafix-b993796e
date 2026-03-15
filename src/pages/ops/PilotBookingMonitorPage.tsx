@@ -170,7 +170,7 @@ export default function PilotBookingMonitorPage() {
                   <TableRow
                     key={b.id}
                     className={`cursor-pointer hover:bg-accent/30 ${rowHighlight(b)}`}
-                    onClick={() => navigate(`/track/${b.id}`)}
+                    onClick={() => navigate(`/tracker/${b.id}`)}
                   >
                     <TableCell className="text-[10px] font-mono text-primary">{b.id.slice(0, 8)}</TableCell>
                     <TableCell className="text-[10px]">{catLabel(b.category_code)}</TableCell>
