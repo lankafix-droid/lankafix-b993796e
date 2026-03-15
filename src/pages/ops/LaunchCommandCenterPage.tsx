@@ -18,7 +18,7 @@ import {
   Zap, CreditCard, Activity, Clock, ArrowLeft,
   ChevronRight, Rocket, FileText, Radio,
   RefreshCw, MessageSquare, Target, Save, TrendingUp, TrendingDown, Minus,
-  AlertOctagon, Info,
+  AlertOctagon, Info, Heart,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -124,6 +124,7 @@ const DRILL_DOWN_LINKS = [
   { label: "Automation Health", path: "/ops/automation-health", icon: Activity },
   { label: "Support Cases", path: "/ops/support", icon: Shield },
   { label: "Incident Playbooks", path: "/ops/incident-playbooks", icon: FileText },
+  { label: "Self-Healing", path: "/ops/self-healing", icon: Heart },
 ];
 
 // ── groupBy utility ──
