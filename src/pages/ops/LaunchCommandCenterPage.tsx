@@ -40,6 +40,14 @@ type Verdict = "GO" | "HOLD" | "NO_GO";
 type PillarStatus = "healthy" | "watch" | "critical";
 type ZoneStatus = "ready" | "watch" | "risky" | "not_ready";
 type Trend = "improving" | "stable" | "deteriorating";
+type AlertLevel = "info" | "warning" | "critical";
+
+interface OperationalAlert {
+  level: AlertLevel;
+  title: string;
+  description: string;
+  action: string;
+}
 
 interface Pillar {
   key: string;
