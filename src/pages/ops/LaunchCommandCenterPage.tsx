@@ -283,6 +283,7 @@ async function persistOperatorNote(note: string): Promise<boolean> {
 export default function LaunchCommandCenterPage() {
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useLaunchData();
+  const { data: pilotMode } = usePilotMode();
   const [opsNote, setOpsNote] = useState("");
   const [savedNote, setSavedNote] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState(false);
