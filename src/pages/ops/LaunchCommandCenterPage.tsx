@@ -644,6 +644,23 @@ export default function LaunchCommandCenterPage() {
   );
 }
 
+// ── Trend indicator ──
+const TREND_CONFIG: Record<Trend, { icon: React.ElementType; text: string; label: string }> = {
+  improving: { icon: TrendingUp, text: "text-success", label: "improving" },
+  stable: { icon: Minus, text: "text-muted-foreground", label: "stable" },
+  deteriorating: { icon: TrendingDown, text: "text-destructive", label: "worsening" },
+};
+
+function TrendIndicator({ trend }: { trend: Trend }) {
+  const cfg = TREND_CONFIG[trend];
+  const Icon = cfg.icon;
+  return (
+    <span className={`inline-flex items-center gap-0.5 ${cfg.text}`} title={cfg.label}>
+      <Icon className="w-3 h-3" />
+    </span>
+  );
+}
+
 // ── Reusable metric tile ──
 function MetricTile({ label, value, threshold, inverted, formatFn }: {
   label: string;
