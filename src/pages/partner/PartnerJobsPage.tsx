@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, AlertTriangle, Clock, CheckCircle2, Loader2, UserPlus, Briefcase, Bell, Timer } from "lucide-react";
 import { BOOKING_STATUS_LABELS, CATEGORY_LABELS } from "@/types/booking";
+import UrgentOfferAlert from "@/components/partner/UrgentOfferAlert";
 
 // Partner-specific overrides
 const STATUS_LABELS: Record<string, string> = {
