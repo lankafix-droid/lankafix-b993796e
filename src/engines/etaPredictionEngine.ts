@@ -2,11 +2,12 @@
  * LankaFix Smart ETA Prediction Engine
  * Zone-aware, traffic-adjusted, historically-calibrated arrival time estimation.
  * Produces ETA ranges instead of fixed times for trust-first UX.
+ * Phase 2: Includes logging, accuracy comparison, and analytics support.
  */
 import { calculateDistance } from "@/lib/locationUtils";
 import { detectTrafficLevel, type TrafficLevel } from "@/lib/etaEngine";
 import { COLOMBO_ZONES_DATA, ZONE_NEIGHBORS } from "@/data/colomboZones";
-import { TRAVEL_ZONES } from "@/data/travelFees";
+import { supabase } from "@/integrations/supabase/client";
 
 // ── Types ────────────────────────────────────────────────────
 
