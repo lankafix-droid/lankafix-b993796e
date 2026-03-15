@@ -104,6 +104,7 @@ const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
 const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
 const RedirectCategory = () => { const { code } = useParams(); return <Navigate to={`/book/${code}`} replace />; };
+const RedirectTracker = () => { const { jobId } = useParams(); return <Navigate to={`/tracker/${jobId}`} replace />; };
 
 const queryClient = new QueryClient();
 

@@ -822,8 +822,8 @@ const TrackerPage = () => {
                   </div>
 
                   <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}`)}>
-                      <RotateCcw className="w-3.5 h-3.5" /> Book Again
+                    <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" onClick={() => navigate(`/book/${dbBooking.category_code}${dbBooking.partner_id ? `?preferred_partner=${dbBooking.partner_id}` : ""}`)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> {dbBooking.partner_id ? "Book Same Tech" : "Book Again"}
                     </Button>
                     <Button variant="outline" className="flex-1 rounded-xl h-10 text-xs gap-1.5" asChild>
                       <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - Support needed`)} target="_blank" rel="noopener noreferrer">
