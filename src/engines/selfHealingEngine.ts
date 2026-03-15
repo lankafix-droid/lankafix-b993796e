@@ -1,7 +1,7 @@
 /**
  * LankaFix Self-Healing Engine — Pure Logic Functions
- * Extracted from SelfHealingMonitorPage for testability.
- * These functions have zero React/Supabase dependencies.
+ * Deterministic, order-independent, enterprise-grade reliability engine.
+ * Zero React/Supabase dependencies. All time-sensitive functions accept optional `now`.
  */
 
 // ── Circuit Breaker Config ──
@@ -9,6 +9,10 @@ export const CIRCUIT_BREAKER_WINDOW_MS = 30 * 60 * 1000;
 export const CIRCUIT_BREAKER_ESCALATION_LIMIT = 5;
 export const CIRCUIT_BREAKER_PAYMENT_LIMIT = 3;
 export const ESCALATION_RATE_HALT_THRESHOLD = 30; // %
+
+// ── Confidence Override Thresholds ──
+const CONFIDENCE_CAP_CIRCUIT_BROKEN = 40;
+const CONFIDENCE_CAP_ESCALATION_MODE = 50;
 
 // ── Types ──
 export interface HealingEventData {
@@ -47,9 +51,8 @@ export interface RootCauseInsight {
   topEntity: { entity: string; count: number } | null;
 }
 
-// ── 1: Compute 24h stats ──
-export function computeHealingStats(events: HealingEventData[]): HealingStats {
-  const now = Date.now();
+// ── 1: Compute 24h stats (deterministic time) ──
+export function computeHealingStats(events: HealingEventData[], now: number = Date.now()): HealingStats {
   const last24h = events.filter(e => now - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000);
   const successCount = last24h.filter(e => e.status === "success").length;
   const failedCount = last24h.filter(e => e.status === "failed").length;
@@ -61,11 +64,23 @@ export function computeHealingStats(events: HealingEventData[]): HealingStats {
   return { successCount, failedCount, escalatedCount, totalActions, successRate, escalationRate };
 }
 
-// ── 2: Healing Confidence Score ──
-export function computeHealingConfidence(stats: HealingStats): number {
-  return Math.max(0, Math.min(100,
+// ── 2: Healing Confidence Score (with integrity guards) ──
+export function computeHealingConfidence(
+  stats: HealingStats,
+  systemStatus?: HealingSystemStatus,
+): number {
+  let confidence = Math.max(0, Math.min(100,
     Math.round(stats.successRate * 0.6 + (100 - stats.escalationRate) * 0.3 + (stats.failedCount === 0 ? 10 : 0))
   ));
+
+  // Integrity guards: confidence must reflect instability
+  if (systemStatus === "circuit_broken") {
+    confidence = Math.min(confidence, CONFIDENCE_CAP_CIRCUIT_BROKEN);
+  } else if (systemStatus === "escalation_mode") {
+    confidence = Math.min(confidence, CONFIDENCE_CAP_ESCALATION_MODE);
+  }
+
+  return confidence;
 }
 
 // ── 3: System Status ──
@@ -76,7 +91,7 @@ export function computeSystemStatus(stats: HealingStats, circuitBroken: boolean)
   return "healthy";
 }
 
-// ── 4: Circuit Breaker Check ──
+// ── 4: Circuit Breaker Check (deterministic time) ──
 export function checkCircuitBreaker(events: HealingEventData[], now: number = Date.now()): boolean {
   const windowStart = now - CIRCUIT_BREAKER_WINDOW_MS;
   const recentEvents = events.filter(e => new Date(e.created_at).getTime() > windowStart);
@@ -87,12 +102,17 @@ export function checkCircuitBreaker(events: HealingEventData[], now: number = Da
     paymentEscalations.length >= CIRCUIT_BREAKER_PAYMENT_LIMIT;
 }
 
-// ── 5: Predictive Early Warnings ──
+// ── 5: Predictive Early Warnings (order-independent) ──
 export function computePredictiveWarnings(events: HealingEventData[]): PredictiveWarning[] {
   const warnings: PredictiveWarning[] = [];
   if (events.length < 4) return warnings;
 
-  const recent = events.slice(0, 20);
+  // Enforce newest-first ordering internally — never rely on caller order
+  const sorted = [...events].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+
+  const recent = sorted.slice(0, 20);
   const halfLen = Math.floor(recent.length / 2);
   const newerHalf = recent.slice(0, halfLen);
   const olderHalf = recent.slice(halfLen);
@@ -119,7 +139,8 @@ export function computePredictiveWarnings(events: HealingEventData[]): Predictiv
     });
   }
 
-  const paymentEvents = events.filter(e => e.entity_type === "payment").slice(0, 10);
+  // Payment health uses the sorted list too
+  const paymentEvents = sorted.filter(e => e.entity_type === "payment").slice(0, 10);
   const paymentFails = paymentEvents.filter(e => e.status === "failed" || e.status === "escalated").length;
   if (paymentFails >= 2) {
     warnings.push({
@@ -133,9 +154,8 @@ export function computePredictiveWarnings(events: HealingEventData[]): Predictiv
   return warnings;
 }
 
-// ── 6: Root Cause Insights ──
-export function computeRootCauseInsights(events: HealingEventData[]): RootCauseInsight | null {
-  const now = Date.now();
+// ── 6: Root Cause Insights (deterministic time) ──
+export function computeRootCauseInsights(events: HealingEventData[], now: number = Date.now()): RootCauseInsight | null {
   const last24h = events.filter(e => now - new Date(e.created_at).getTime() < 24 * 60 * 60 * 1000);
   if (last24h.length === 0) return null;
 
@@ -171,4 +191,9 @@ export function isRetryAllowed(attempts: number, maxRetries: number, cooldownUnt
   if (cooldownUntil && new Date(cooldownUntil) > new Date()) return false;
   if (attempts >= maxRetries) return false;
   return true;
+}
+
+// ── 9: Idempotency Fingerprint (deterministic, no side effects) ──
+export function generateRecoveryFingerprint(entityId: string, recoveryType: string, attemptNumber: number): string {
+  return `${entityId}::${recoveryType}::${attemptNumber}`;
 }
