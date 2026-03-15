@@ -92,81 +92,9 @@ export default function SelfHealingMonitorPage() {
     return checkCircuitBreakerFn(events);
   }, [events]);
 
-  // ── 2: Predictive Early Warnings ──
-  const predictiveWarnings: PredictiveWarning[] = (() => {
-    const warnings: PredictiveWarning[] = [];
-    if (events.length < 4) return warnings;
-
-    // Compare first half vs second half of recent events to detect trends
-    const recent = events.slice(0, 20);
-    const halfLen = Math.floor(recent.length / 2);
-    const newerHalf = recent.slice(0, halfLen);
-    const olderHalf = recent.slice(halfLen);
-
-    const newerEscalations = newerHalf.filter(e => e.status === "escalated").length;
-    const olderEscalations = olderHalf.filter(e => e.status === "escalated").length;
-    if (newerEscalations > olderEscalations && newerEscalations >= 2) {
-      warnings.push({
-        level: "warning",
-        title: "Escalation Trend Rising",
-        description: `${newerEscalations} escalations in recent window vs ${olderEscalations} previously`,
-        metric: "escalation_trend",
-      });
-    }
-
-    const newerFails = newerHalf.filter(e => e.status === "failed").length;
-    const olderFails = olderHalf.filter(e => e.status === "failed").length;
-    if (newerFails > olderFails && newerFails >= 2) {
-      warnings.push({
-        level: "info",
-        title: "Recovery Failure Rate Increasing",
-        description: `${newerFails} failures in recent window — monitor for systemic issue`,
-        metric: "failure_trend",
-      });
-    }
-
-    // Payment-specific trend
-    const paymentEvents = events.filter(e => e.entity_type === "payment").slice(0, 10);
-    const paymentFails = paymentEvents.filter(e => e.status === "failed" || e.status === "escalated").length;
-    if (paymentFails >= 2) {
-      warnings.push({
-        level: "warning",
-        title: "Payment Recovery Instability",
-        description: `${paymentFails} payment failures/escalations detected in recent window`,
-        metric: "payment_health",
-      });
-    }
-
-    return warnings;
-  })();
-
-  // ── 5: Root Cause Insights ──
-  const rootCauseInsights = (() => {
-    if (last24h.length === 0) return null;
-
-    // Top recurring recovery type
-    const typeCounts: Record<string, number> = {};
-    last24h.forEach(e => { typeCounts[e.recovery_type] = (typeCounts[e.recovery_type] || 0) + 1; });
-    const topType = Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0];
-
-    // Most common failure reason
-    const failReasons: Record<string, number> = {};
-    last24h.filter(e => e.metadata?.reason).forEach(e => {
-      failReasons[e.metadata.reason] = (failReasons[e.metadata.reason] || 0) + 1;
-    });
-    const topReason = Object.entries(failReasons).sort((a, b) => b[1] - a[1])[0];
-
-    // Most affected entity type
-    const entityCounts: Record<string, number> = {};
-    last24h.forEach(e => { entityCounts[e.entity_type] = (entityCounts[e.entity_type] || 0) + 1; });
-    const topEntity = Object.entries(entityCounts).sort((a, b) => b[1] - a[1])[0];
-
-    return {
-      topRecoveryType: topType ? { type: RECOVERY_TYPE_LABELS[topType[0] as HealingRecoveryType] || topType[0], count: topType[1] } : null,
-      topReason: topReason ? { reason: topReason[0], count: topReason[1] } : null,
-      topEntity: topEntity ? { entity: topEntity[0], count: topEntity[1] } : null,
-    };
-  })();
+  // ── Use engine functions for warnings and insights ──
+  const predictiveWarnings = computePredictiveWarnings(events);
+  const rootCauseInsights = computeRootCauseInsights(events);
 
   // ── Manual healing cycle trigger ──
   const runHealingCycle = useCallback(async (triggeredBy: "manual" | "auto" = "manual") => {
