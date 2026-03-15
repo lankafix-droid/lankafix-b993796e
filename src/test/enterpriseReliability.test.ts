@@ -177,13 +177,13 @@ describe("Cost of Failure", () => {
 
   it("uses worst rate for 30-day projection", () => {
     const r = computeCostOfFailure(100, 5000, 5, 15);
-    // projected is worse: 100 * 5000 * 15% * 30 = 22,500,000
-    expect(r.projected30DayExposure).toBe(22500000);
+    // projected is worse: 100 * 5000 * (15/100) * 30 = 2,250,000
+    expect(r.projected30DayExposure).toBe(2250000);
   });
 
   it("returns severe for high exposure", () => {
     const r = computeCostOfFailure(100, 5000, 10, 10);
-    expect(r.projected30DayExposure).toBe(15000000);
+    expect(r.projected30DayExposure).toBe(1500000);
     expect(r.costSeverityLevel).toBe("severe");
   });
 
