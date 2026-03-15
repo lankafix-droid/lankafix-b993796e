@@ -35,27 +35,8 @@ import {
 // ── Auto Mode Config ──
 const AUTO_MODE_INTERVAL_MS = 10 * 60 * 1000; // 10 min
 
-// ── Types ──
-interface HealingEvent {
-  id: string;
-  entity_type: string;
-  entity_id: string;
-  recovery_type: string;
-  attempt_number: number;
-  status: string;
-  cooldown_until: string | null;
-  metadata: any;
-  created_at: string;
-}
-
-type HealingSystemStatus = "healthy" | "active_recovery" | "escalation_mode" | "circuit_broken";
-
-interface PredictiveWarning {
-  level: "info" | "warning";
-  title: string;
-  description: string;
-  metric: string;
-}
+// ── Types (reuse from engine) ──
+type HealingEvent = HealingEventData;
 
 // ── Styles ──
 const STATUS_CFG: Record<string, { color: string; icon: React.ElementType; label: string }> = {
