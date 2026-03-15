@@ -63,7 +63,41 @@ const report = {
     "Non-destructive chaos simulation",
     "SLO compliance tracking",
     "24h reliability timeline",
+    "Predictive reliability risk forecasting",
+    "Reliability governance scoring",
+    "Zone-level reliability intelligence",
+    "Immutable reliability snapshot ledger",
+    "Automated governance enforcement",
+    "Executive reliability verdict",
   ],
+  governanceEngine: {
+    weights: {
+      healingSuccessRate: "40%",
+      escalationRateInverse: "25%",
+      circuitBreakFrequency: "15%",
+      confidenceScore: "10%",
+      autoModeStability: "10%",
+    },
+    verdictThresholds: {
+      STABLE: "≥ 85",
+      GUARDED: "65–84",
+      RISK: "40–64",
+      CRITICAL: "< 40",
+    },
+  },
+  predictiveReliability: {
+    riskInputs: [
+      "Escalation trend slope",
+      "Failure growth rate",
+      "Circuit breaker clustering",
+      "Confidence degradation velocity",
+    ],
+    governanceTriggering: {
+      riskProbabilityThreshold: 75,
+      consecutiveEscalationWindows: 2,
+      circuitBreaksIn12h: 2,
+    },
+  },
   purityGuarantees: [
     "No React imports in engine",
     "No Supabase imports in engine",
