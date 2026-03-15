@@ -171,7 +171,7 @@ export function computeRootCauseInsights(events: HealingEventData[], now: number
 
   const entityCounts: Record<string, number> = {};
   last24h.forEach(e => { entityCounts[e.entity_type] = (entityCounts[e.entity_type] || 0) + 1; });
-  const topEntity = Object.entries(entityCounts).sort((a, b) => b[1] - a[1])[0];
+  const topEntity = Object.entries(entityCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
 
   return {
     topRecoveryType: topType ? { type: topType[0], count: topType[1] } : null,
