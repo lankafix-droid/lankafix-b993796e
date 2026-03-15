@@ -100,6 +100,7 @@ const PilotReadinessPanel = lazy(() => import("./pages/ops/PilotReadinessPanel")
 const LaunchCommandCenterPage = lazy(() => import("./pages/ops/LaunchCommandCenterPage"));
 const IncidentPlaybooksPage = lazy(() => import("./pages/ops/IncidentPlaybooksPage"));
 const SelfHealingMonitorPage = lazy(() => import("./pages/ops/SelfHealingMonitorPage"));
+const ChaosControlCenterPage = lazy(() => import("./pages/ops/ChaosControlCenterPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
@@ -251,6 +252,7 @@ const App = () => (
             <Route path="/ops/command-center" element={<OpsRoute><LaunchCommandCenterPage /></OpsRoute>} />
             <Route path="/ops/incident-playbooks" element={<OpsRoute><IncidentPlaybooksPage /></OpsRoute>} />
             <Route path="/ops/self-healing" element={<OpsRoute><SelfHealingMonitorPage /></OpsRoute>} />
+            <Route path="/ops/chaos-control" element={<OpsRoute><ChaosControlCenterPage /></OpsRoute>} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />
