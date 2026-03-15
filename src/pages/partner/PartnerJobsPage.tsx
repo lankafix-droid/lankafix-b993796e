@@ -133,24 +133,7 @@ export default function PartnerJobsPage() {
               const b = offer.bookings;
               if (!b) return null;
               return (
-                <div
-                  key={offer.id}
-                  className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2 cursor-pointer hover:border-primary/40 transition-colors"
-                  onClick={() => { track("partner_offer_open", { bookingId: b.id }); navigate(`/partner/job/${b.id}`); }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4 text-primary" />
-                      <p className="text-sm font-semibold text-foreground">{b.category_code} — {b.service_type || "General"}</p>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{b.zone_code || "No zone"}{b.is_emergency ? " · 🔴 Emergency" : ""}</span>
-                    {b.estimated_price_lkr && <span className="font-medium text-foreground">LKR {b.estimated_price_lkr.toLocaleString()}</span>}
-                  </div>
-                  <p className="text-[10px] text-primary font-medium">Tap to accept or decline</p>
-                </div>
+                <OfferCard key={offer.id} offer={offer} booking={b} onClick={() => { track("partner_offer_open", { bookingId: b.id }); navigate(`/partner/job/${b.id}`); }} />
               );
             })}
           </div>
