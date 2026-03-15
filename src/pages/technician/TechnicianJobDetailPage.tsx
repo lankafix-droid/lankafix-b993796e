@@ -82,7 +82,7 @@ export default function TechnicianJobDetailPage() {
   const canStartRepair = isMyJob && status === "quote_approved" && latestQuote?.status === "approved";
   const canCompleteRepair = isMyJob && status === "repair_started" && !evidenceBlocked;
   const canRecordPayment = isMyJob && status === "completed" && latestQuote?.status === "approved"
-    && booking.payment_status !== "paid";
+    && !["paid", "cash_collected", "payment_verified"].includes(booking.payment_status || "");
 
   const handleAccept = async () => {
     if (!jobId || !partner?.id) return;
