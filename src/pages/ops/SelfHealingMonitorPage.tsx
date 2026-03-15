@@ -709,7 +709,7 @@ async function runExpiredDispatchHealing(triggeredBy: "manual" | "auto" = "manua
   for (const bookingId of bookingIds.slice(0, 5)) {
     const { data: booking } = await supabase
       .from("bookings")
-      .select("id, status, partner_id, dispatch_round")
+      .select("id, status, partner_id, dispatch_round, dispatch_status")
       .eq("id", bookingId)
       .single();
 
