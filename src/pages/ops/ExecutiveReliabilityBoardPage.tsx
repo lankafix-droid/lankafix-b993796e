@@ -22,11 +22,13 @@ import Footer from "@/components/landing/Footer";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
   fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
-  fetchDispatchPolicySimulation,
+  fetchDispatchPolicySimulation, fetchReliabilityRolloutSummary,
   computeSnapshotFreshness, FRESHNESS_COLORS,
   slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor, shadowPolicyColor,
+  rolloutReadinessColor, recommendedModeColor,
   PILOT_ASSUMPTIONS,
   type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary, type DispatchPolicyAdvisory,
+  type ReliabilityRolloutSummary,
 } from "@/services/reliabilityReadModel";
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
