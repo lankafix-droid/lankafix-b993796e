@@ -22,10 +22,11 @@ import Footer from "@/components/landing/Footer";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
   fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
+  fetchDispatchPolicySimulation,
   computeSnapshotFreshness, FRESHNESS_COLORS,
-  slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor,
+  slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor, shadowPolicyColor,
   PILOT_ASSUMPTIONS,
-  type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary,
+  type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary, type DispatchPolicyAdvisory,
 } from "@/services/reliabilityReadModel";
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -65,12 +66,21 @@ function useDispatchRisk() {
   });
 }
 
+function useShadowPolicy() {
+  return useQuery({
+    queryKey: ["exec-shadow-policy"],
+    queryFn: fetchDispatchPolicySimulation,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: snapshots = [], isLoading: loadingSnaps, refetch: refetchSnaps } = useSnapshots();
   const { data: live, isLoading: loadingLive, refetch: refetchLive } = useLiveMetrics();
   const { data: dispatchRisk } = useDispatchRisk();
+  const { data: shadowPolicy } = useShadowPolicy();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
@@ -379,9 +389,56 @@ export default function ExecutiveReliabilityBoardPage() {
                   verdict: live.verdict as ReliabilityVerdict,
                 }))} />
                 <p className="text-[9px] text-muted-foreground text-center mt-1">
-                  Pilot baseline view — per-zone scoring not yet individualized
+                  Pilot baseline view — per-zone dispatch policy simulation not yet individualized
                 </p>
               </div>
+            )}
+
+            {/* ── Shadow Dispatch Governance ── */}
+            {shadowPolicy && (
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5" /> Shadow Dispatch Governance
+                  </h2>
+                  <p className="text-[9px] text-muted-foreground">
+                    If LankaFix were to enforce reliability-aware dispatch controls, this is what would apply now.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+                    <div>
+                      <p className={`text-sm font-bold ${shadowPolicyColor(shadowPolicy.shadowPolicyMode)}`}>{shadowPolicy.shadowPolicyMode}</p>
+                      <p className="text-[9px] text-muted-foreground">Policy Mode</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{shadowPolicy.simulatedRoutingAction.replace(/_/g, " ")}</p>
+                      <p className="text-[9px] text-muted-foreground">Routing Action</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{shadowPolicy.simulatedCapacityAction.replace(/_/g, " ")}</p>
+                      <p className="text-[9px] text-muted-foreground">Capacity Action</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{shadowPolicy.simulatedPartnerLoadCapPercent}%</p>
+                      <p className="text-[9px] text-muted-foreground">Partner Load Cap</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${shadowPolicy.simulatedBookingIntakeAdvisory === "OPEN" ? "text-success" : shadowPolicy.simulatedBookingIntakeAdvisory === "RESTRICT" ? "text-destructive" : "text-warning"}`}>
+                        {shadowPolicy.simulatedBookingIntakeAdvisory}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Booking Intake</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${shadowPolicy.simulatedZoneProtection ? "text-destructive" : "text-success"}`}>
+                        {shadowPolicy.simulatedZoneProtection ? "ON" : "OFF"}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Zone Protection</p>
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground text-center italic">
+                    Board-grade simulation only — does not affect live dispatch
+                  </p>
+                </CardContent>
+              </Card>
             )}
 
             {/* ── Section 7: Historical Archive Table ── */}
