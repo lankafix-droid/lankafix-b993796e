@@ -26,9 +26,11 @@ import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
-  fetchLiveEnterpriseSummary,
+  fetchLiveEnterpriseSummary, fetchDispatchReliabilitySignal,
   verdictColor as getVerdictColor, slaColor as getSlaColor,
   impactLevelColor as getImpactColor, costSeverityColor as getCostColor,
+  dispatchRiskColor as getDispatchRiskColor,
+  type DispatchRiskSummary,
 } from "@/services/reliabilityReadModel";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
@@ -890,7 +892,54 @@ function ReliabilityStatusPanel() {
           Pilot baseline view — per-zone scoring not yet individualized
         </p>
       </div>
+
+      {/* Dispatch Reliability Intelligence */}
+      <DispatchRiskPanel />
     </>
+  );
+}
+
+function DispatchRiskPanel() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["lcc-dispatch-risk"],
+    queryFn: fetchDispatchReliabilitySignal,
+    staleTime: 60_000,
+  });
+
+  if (isLoading || !data) return null;
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="p-4 space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Radio className="w-3.5 h-3.5 text-primary" /> Dispatch Reliability Intelligence
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div>
+            <p className={`text-sm font-bold ${getDispatchRiskColor(data.dispatchRiskLevel)}`}>{data.dispatchRiskLevel}</p>
+            <p className="text-[9px] text-muted-foreground">Dispatch Risk</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.routingRecommendation}</p>
+            <p className="text-[9px] text-muted-foreground">Routing</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.technicianLoadRecommendation}</p>
+            <p className="text-[9px] text-muted-foreground">Tech Load</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.dispatchConfidence}%</p>
+            <p className="text-[9px] text-muted-foreground">Confidence</p>
+          </div>
+        </div>
+        {data.reliabilityWarning && (
+          <p className="text-[10px] text-warning text-center">{data.reliabilityWarning}</p>
+        )}
+        <p className="text-[9px] text-muted-foreground text-center">
+          Advisory reliability signal — does not alter dispatch behavior
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

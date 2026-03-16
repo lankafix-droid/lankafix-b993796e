@@ -21,11 +21,11 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
-  fetchLiveEnterpriseSummary, fetch30DaySnapshots,
+  fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
   computeSnapshotFreshness, FRESHNESS_COLORS,
-  slaColor, impactLevelColor, costSeverityColor, verdictColor,
+  slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor,
   PILOT_ASSUMPTIONS,
-  type SnapshotRow, type EnterpriseReliabilitySummary,
+  type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary,
 } from "@/services/reliabilityReadModel";
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -57,11 +57,20 @@ function useLiveMetrics() {
   });
 }
 
+function useDispatchRisk() {
+  return useQuery({
+    queryKey: ["exec-dispatch-risk"],
+    queryFn: fetchDispatchReliabilitySignal,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: snapshots = [], isLoading: loadingSnaps, refetch: refetchSnaps } = useSnapshots();
   const { data: live, isLoading: loadingLive, refetch: refetchLive } = useLiveMetrics();
+  const { data: dispatchRisk } = useDispatchRisk();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
@@ -317,6 +326,41 @@ export default function ExecutiveReliabilityBoardPage() {
                   </div>
                   <p className="text-[9px] text-muted-foreground text-center mt-2">
                     Advisory estimate based on pilot assumptions
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── Section 5.5: Operational Routing Advisory ── */}
+            {dispatchRisk && (
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5" /> Operational Routing Advisory
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div>
+                      <p className={`text-sm font-bold ${dispatchRiskColor(dispatchRisk.dispatchRiskLevel)}`}>{dispatchRisk.dispatchRiskLevel}</p>
+                      <p className="text-[9px] text-muted-foreground">Dispatch Risk</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{dispatchRisk.routingRecommendation}</p>
+                      <p className="text-[9px] text-muted-foreground">Routing</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{dispatchRisk.technicianLoadRecommendation}</p>
+                      <p className="text-[9px] text-muted-foreground">Tech Load</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{dispatchRisk.dispatchConfidence}%</p>
+                      <p className="text-[9px] text-muted-foreground">Confidence</p>
+                    </div>
+                  </div>
+                  {dispatchRisk.reliabilityWarning && (
+                    <p className="text-[10px] text-warning text-center mt-2">{dispatchRisk.reliabilityWarning}</p>
+                  )}
+                  <p className="text-[9px] text-muted-foreground text-center mt-2">
+                    Advisory signal — does not alter dispatch behavior · Dispatch advisory signals currently system-wide (zone signals coming in Phase-2)
                   </p>
                 </CardContent>
               </Card>

@@ -9,6 +9,7 @@ import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import { computeSLATier, computeSLACompliance, computeBreachRisk, computeRecommendedAction } from "@/engines/reliabilitySLAEngine";
 import { computeIncidentImpact } from "@/engines/incidentImpactModel";
 import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
+import { computeDispatchReliabilitySignal, type DispatchReliabilitySignal, type DispatchRiskInput } from "@/engines/reliabilityDispatchRiskEngine";
 import type { HealingStats } from "@/engines/selfHealingEngine";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 
@@ -149,6 +150,31 @@ export function computeEnterpriseSummary(healingStats: HealingStats): Enterprise
 export async function fetchLiveEnterpriseSummary(): Promise<EnterpriseReliabilitySummary> {
   const stats = await fetchHealingStats();
   return computeEnterpriseSummary(stats);
+}
+
+// ── Dispatch risk signal from live data ──
+export interface DispatchRiskSummary extends DispatchReliabilitySignal {
+  reliabilityScore: number;
+  verdict: string;
+}
+
+export async function fetchDispatchReliabilitySignal(): Promise<DispatchRiskSummary> {
+  const summary = await fetchLiveEnterpriseSummary();
+  const input: DispatchRiskInput = {
+    reliabilityScore: summary.score,
+    riskProbability: summary.riskProbability,
+    breachRisk: summary.breachRisk,
+    compositeImpact: summary.compositeImpact,
+    escalationRate: summary.escalationRate,
+    circuitBreakCount: PILOT_ASSUMPTIONS.circuitBreak24h,
+    zoneGuardrailCount: PILOT_ASSUMPTIONS.zoneGuardrails,
+  };
+  const signal = computeDispatchReliabilitySignal(input);
+  return { ...signal, reliabilityScore: summary.score, verdict: summary.verdict };
+}
+
+export function dispatchRiskColor(level: string): string {
+  return ({ LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[level] || "text-foreground");
 }
 
 // ── Fetch 30-day snapshots ──
