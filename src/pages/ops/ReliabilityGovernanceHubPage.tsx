@@ -40,6 +40,7 @@ import {
 } from "@/services/operatorActionsService";
 import type { GovernanceRecommendation, AutomationCandidate, OperatorLoad, AttentionLevel } from "@/engines/reliabilityGovernanceAutomationEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
+import { fetchPredictiveReliabilitySummary } from "@/services/predictiveReliabilityReadModel";
 
 const ZONE_LABEL: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL[z.id] = z.label; });
