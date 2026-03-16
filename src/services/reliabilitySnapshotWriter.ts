@@ -2,91 +2,74 @@
  * LankaFix Reliability Snapshot Writer
  * Generates append-only reliability snapshot rows using existing engines as the single source of truth.
  * No duplicate formulas. Fail-safe. Advisory pilot assumptions clearly labeled.
+ * Includes dedupe protection: skips if a snapshot exists within the last 30 minutes.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { computeReliabilityScore, computeVerdict } from "@/engines/reliabilityGovernanceEngine";
+import { fetchHealingStats, computeEnterpriseSummary, PILOT_ASSUMPTIONS } from "@/services/reliabilityReadModel";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import { computeSLATier, computeSLACompliance, computeBreachRisk } from "@/engines/reliabilitySLAEngine";
 import { computeIncidentImpact } from "@/engines/incidentImpactModel";
 import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
-import type { HealingStats } from "@/engines/selfHealingEngine";
+import { computeReliabilityScore, computeVerdict } from "@/engines/reliabilityGovernanceEngine";
 
-// Advisory pilot assumptions — clearly labeled
-const PILOT_DAILY_VOLUME = 15;
-const PILOT_AVG_VALUE = 5000; // LKR
-const PILOT_CONFIDENCE = 80;
-const PILOT_CIRCUIT_BREAK_24H = 0;
-const PILOT_ZONE_GUARDRAILS = 0;
-const PILOT_BUDGET_DAYS = 30;
+const DEDUPE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
-interface SnapshotResult {
+export interface SnapshotResult {
   success: boolean;
+  skipped?: boolean;
+  reason?: string;
   error?: string;
 }
 
 /**
- * Fetch recent self-healing events and compute a HealingStats summary.
+ * Check if a snapshot was written within the dedupe window.
  */
-async function fetchHealingStats(): Promise<HealingStats> {
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data: events } = await (supabase as any)
-    .from("self_healing_events")
-    .select("status, created_at")
-    .gte("created_at", cutoff)
-    .limit(200);
-
-  const evts = events || [];
-  const total = evts.length;
-  const success = evts.filter((e: any) => e.status === "success").length;
-  const escalated = evts.filter((e: any) => e.status === "escalated").length;
-  const failed = total - success - escalated;
-
-  return {
-    successRate: total > 0 ? Math.round((success / total) * 100) : 100,
-    escalationRate: total > 0 ? Math.round((escalated / total) * 100) : 0,
-    successCount: success,
-    failedCount: failed,
-    escalatedCount: escalated,
-    totalActions: total,
-  };
+async function hasRecentSnapshot(): Promise<boolean> {
+  try {
+    const cutoff = new Date(Date.now() - DEDUPE_WINDOW_MS).toISOString();
+    const { data } = await (supabase as any)
+      .from("reliability_snapshots")
+      .select("id")
+      .gte("created_at", cutoff)
+      .limit(1);
+    return Array.isArray(data) && data.length > 0;
+  } catch {
+    return false; // fail open — allow write if check fails
+  }
 }
 
 /**
  * Write a single append-only reliability snapshot using real engines.
- * Never updates historical rows.
+ * Never updates historical rows. Skips if recent snapshot exists.
  */
 export async function writeReliabilitySnapshot(): Promise<SnapshotResult> {
   try {
+    // Dedupe protection
+    const recent = await hasRecentSnapshot();
+    if (recent) {
+      return { success: true, skipped: true, reason: "Snapshot exists within last 30 minutes" };
+    }
+
     const healingStats = await fetchHealingStats();
-    const autoModeHalted = false;
+    const { confidence, circuitBreak24h, autoModeHalted, zoneGuardrails, budgetDays, dailyVolume, avgValueLKR } = PILOT_ASSUMPTIONS;
 
     // Governance engine
-    const score = computeReliabilityScore(healingStats, PILOT_CIRCUIT_BREAK_24H, PILOT_CONFIDENCE, autoModeHalted);
+    const score = computeReliabilityScore(healingStats, circuitBreak24h, confidence, autoModeHalted);
     const verdict = computeVerdict(score);
 
     // Predictive engine (no trend windows in pilot — returns baseline)
-    const forecast = computeRiskForecast([], healingStats, PILOT_CONFIDENCE);
+    const forecast = computeRiskForecast([], healingStats, confidence);
 
     // SLA engine
     const slaTier = computeSLATier(score);
     const slaCompliance = computeSLACompliance(healingStats.successRate, healingStats.escalationRate);
-    const breachRisk = computeBreachRisk(score, PILOT_CIRCUIT_BREAK_24H, PILOT_CONFIDENCE);
+    const breachRisk = computeBreachRisk(score, circuitBreak24h, confidence);
 
     // Impact engine
-    const impact = computeIncidentImpact(
-      healingStats.escalationRate,
-      PILOT_ZONE_GUARDRAILS,
-      breachRisk,
-      PILOT_BUDGET_DAYS,
-    );
+    const impact = computeIncidentImpact(healingStats.escalationRate, zoneGuardrails, breachRisk, budgetDays);
 
     // Cost engine
-    const cost = computeCostOfFailure(
-      PILOT_DAILY_VOLUME,
-      PILOT_AVG_VALUE,
-      healingStats.escalationRate,
-      forecast.projectedEscalationRate,
-    );
+    const cost = computeCostOfFailure(dailyVolume, avgValueLKR, healingStats.escalationRate, forecast.projectedEscalationRate);
 
     // Zone summary (pilot baseline — uniform score)
     const zoneSummary = [
@@ -100,8 +83,8 @@ export async function writeReliabilitySnapshot(): Promise<SnapshotResult> {
         reliability_score: score,
         success_rate: healingStats.successRate,
         escalation_rate: healingStats.escalationRate,
-        circuit_break_count: PILOT_CIRCUIT_BREAK_24H,
-        confidence_score: PILOT_CONFIDENCE,
+        circuit_break_count: circuitBreak24h,
+        confidence_score: confidence,
         executive_verdict: verdict,
         risk_probability: forecast.riskProbability,
         zone_summary_json: zoneSummary,
@@ -126,7 +109,7 @@ export async function writeReliabilitySnapshot(): Promise<SnapshotResult> {
       return { success: false, error: error.message };
     }
 
-    return { success: true };
+    return { success: true, skipped: false, reason: "Snapshot written successfully" };
   } catch (err: any) {
     console.error("[ReliabilitySnapshotWriter] Unexpected error:", err?.message);
     return { success: false, error: err?.message || "Unknown error" };

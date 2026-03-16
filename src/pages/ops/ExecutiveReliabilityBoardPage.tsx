@@ -1,45 +1,35 @@
 /**
  * Executive Reliability Board — Board-grade reliability posture overview.
  * Display-only. Does not affect marketplace behavior or launch verdicts.
+ * Uses reliabilityReadModel as the single source of truth for display composition.
  */
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from "@/components/ui/table";
 import {
   ArrowLeft, Shield, TrendingUp, Activity, DollarSign, MapPin,
-  BarChart3, Target, AlertTriangle, FileText,
+  BarChart3, Target, AlertTriangle, FileText, RefreshCw, Archive,
+  Camera, Clock, CheckCircle2,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
-import { computeReliabilityScore, computeVerdict } from "@/engines/reliabilityGovernanceEngine";
-import { computeSLATier, computeSLACompliance, computeBreachRisk, computeRecommendedAction } from "@/engines/reliabilitySLAEngine";
-import { computeIncidentImpact } from "@/engines/incidentImpactModel";
-import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
-import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
+import {
+  fetchLiveEnterpriseSummary, fetch30DaySnapshots,
+  computeSnapshotFreshness, FRESHNESS_COLORS,
+  slaColor, impactLevelColor, costSeverityColor, verdictColor,
+  PILOT_ASSUMPTIONS,
+  type SnapshotRow, type EnterpriseReliabilitySummary,
+} from "@/services/reliabilityReadModel";
+import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
-
-interface Snapshot {
-  id: string;
-  created_at: string;
-  reliability_score: number;
-  success_rate: number;
-  escalation_rate: number;
-  circuit_break_count: number;
-  confidence_score: number;
-  executive_verdict: string;
-  risk_probability: number;
-  zone_summary_json: any;
-  metadata: any;
-}
 
 const PILOT_ZONE_IDS = [
   "col_01","col_02","col_03","col_04","col_05","col_06","col_07",
@@ -51,29 +41,10 @@ const PILOT_ZONE_IDS = [
 const ZONE_LABEL_MAP: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL_MAP[z.id] = z.label; });
 
-const VERDICT_COLORS: Record<string, string> = {
-  STABLE: "text-success", GUARDED: "text-warning", RISK: "text-destructive", CRITICAL: "text-destructive",
-};
-
-// Advisory pilot assumptions
-const PILOT_DAILY_VOLUME = 15;
-const PILOT_AVG_VALUE = 5000;
-const PILOT_CONFIDENCE = 80;
-const PILOT_CB_24H = 0;
-
 function useSnapshots() {
   return useQuery({
     queryKey: ["exec-reliability-snapshots"],
-    queryFn: async () => {
-      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { data } = await (supabase as any)
-        .from("reliability_snapshots")
-        .select("*")
-        .gte("created_at", cutoff)
-        .order("created_at", { ascending: true })
-        .limit(30);
-      return (data as Snapshot[]) || [];
-    },
+    queryFn: fetch30DaySnapshots,
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -81,86 +52,119 @@ function useSnapshots() {
 function useLiveMetrics() {
   return useQuery({
     queryKey: ["exec-reliability-live"],
-    queryFn: async () => {
-      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: events } = await (supabase as any)
-        .from("self_healing_events")
-        .select("status, created_at")
-        .gte("created_at", cutoff)
-        .limit(200);
-      const evts = events || [];
-      const total = evts.length;
-      const success = evts.filter((e: any) => e.status === "success").length;
-      const escalated = evts.filter((e: any) => e.status === "escalated").length;
-      const successRate = total > 0 ? Math.round((success / total) * 100) : 100;
-      const escalationRate = total > 0 ? Math.round((escalated / total) * 100) : 0;
-
-      const healingStats = {
-        successRate, escalationRate,
-        successCount: success, failedCount: total - success - escalated,
-        escalatedCount: escalated, totalActions: total,
-      };
-
-      const score = computeReliabilityScore(healingStats, PILOT_CB_24H, PILOT_CONFIDENCE, false);
-      const verdict = computeVerdict(score);
-      const forecast = computeRiskForecast([], healingStats, PILOT_CONFIDENCE);
-      const slaTier = computeSLATier(score);
-      const slaCompliance = computeSLACompliance(successRate, escalationRate);
-      const breachRisk = computeBreachRisk(score, PILOT_CB_24H, PILOT_CONFIDENCE);
-      const slaAction = computeRecommendedAction(slaTier, breachRisk);
-      const impact = computeIncidentImpact(escalationRate, 0, breachRisk, 30);
-      const cost = computeCostOfFailure(PILOT_DAILY_VOLUME, PILOT_AVG_VALUE, escalationRate, forecast.projectedEscalationRate);
-
-      return {
-        score, verdict, riskProbability: forecast.riskProbability,
-        slaTier: slaTier.toUpperCase(), slaCompliance, breachRisk, slaAction,
-        impactLevel: impact.impactLevel.toUpperCase(),
-        operationalImpact: impact.operationalImpactScore,
-        reputationalRisk: impact.reputationalRiskScore,
-        compositeImpact: impact.compositeImpactScore,
-        dailyRevenueAtRisk: cost.estimatedDailyRevenueAtRisk,
-        projected30Day: cost.projected30DayExposure,
-        costSeverity: cost.costSeverityLevel.toUpperCase(),
-      };
-    },
+    queryFn: fetchLiveEnterpriseSummary,
     staleTime: 60_000,
   });
 }
 
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
-  const { data: snapshots = [], isLoading: loadingSnaps } = useSnapshots();
-  const { data: live, isLoading: loadingLive } = useLiveMetrics();
+  const queryClient = useQueryClient();
+  const { data: snapshots = [], isLoading: loadingSnaps, refetch: refetchSnaps } = useSnapshots();
+  const { data: live, isLoading: loadingLive, refetch: refetchLive } = useLiveMetrics();
+
+  const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
   const isLoading = loadingSnaps || loadingLive;
   const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
+  const freshness = computeSnapshotFreshness(latest?.created_at || null);
 
-  const slaColor = (t: string) => ({ PLATINUM: "text-primary", GOLD: "text-warning", STANDARD: "text-muted-foreground", "AT_RISK": "text-destructive", "AT RISK": "text-destructive" }[t] || "text-foreground");
-  const impactColor = (l: string) => ({ LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[l] || "text-foreground");
-  const costColor = (s: string) => ({ MINIMAL: "text-success", MATERIAL: "text-warning", SEVERE: "text-destructive" }[s] || "text-foreground");
-  const verdictColor = (v: string) => VERDICT_COLORS[v] || "text-muted-foreground";
+  const handleRefresh = useCallback(() => {
+    refetchSnaps();
+    refetchLive();
+  }, [refetchSnaps, refetchLive]);
+
+  const handleWriteSnapshot = useCallback(async () => {
+    setSnapshotAction({ loading: true, result: null });
+    const result = await writeReliabilitySnapshot();
+    setSnapshotAction({ loading: false, result });
+    if (result.success && !result.skipped) {
+      // Refresh snapshot list
+      queryClient.invalidateQueries({ queryKey: ["exec-reliability-snapshots"] });
+    }
+  }, [queryClient]);
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-6 max-w-3xl safe-area-top">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-4 gap-1.5">
-          <ArrowLeft className="w-4 h-4" /> Back
-        </Button>
 
-        <div className="flex items-center gap-2 mb-6">
+        {/* ── Top Actions Row ── */}
+        <div className="flex items-center justify-between mb-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/ops/reliability-archive")}>
+              <Archive className="w-3 h-3" /> Archive
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleRefresh}>
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Header ── */}
+        <div className="flex items-center gap-2 mb-2">
           <Shield className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground">Executive Reliability Board</h1>
           <Badge variant="outline" className="text-[10px]">Display Only</Badge>
         </div>
+        <p className="text-[10px] text-muted-foreground mb-6">
+          Advisory pilot assumptions · Does not affect GO / HOLD / NO-GO verdict
+        </p>
 
         {isLoading ? (
           <div className="text-center text-muted-foreground text-sm py-12">Loading reliability intelligence…</div>
         ) : (
           <div className="space-y-6">
 
+            {/* ── Snapshot Freshness ── */}
+            <Card>
+              <CardContent className="p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Last snapshot:</span>
+                  <span className={`text-xs font-semibold ${FRESHNESS_COLORS[freshness.freshness]}`}>
+                    {freshness.label}
+                  </span>
+                  <Badge variant="outline" className={`text-[8px] px-1 py-0 ${FRESHNESS_COLORS[freshness.freshness]}`}>
+                    {freshness.freshness === "none" ? "No data" : freshness.freshness}
+                  </Badge>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-[10px] h-7"
+                  onClick={handleWriteSnapshot}
+                  disabled={snapshotAction.loading}
+                >
+                  <Camera className="w-3 h-3" />
+                  {snapshotAction.loading ? "Writing…" : "Write Snapshot Now"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* ── Snapshot write result ── */}
+            {snapshotAction.result && (
+              <div className={`rounded-lg border p-2.5 text-xs flex items-center gap-2 ${
+                snapshotAction.result.success
+                  ? snapshotAction.result.skipped
+                    ? "bg-warning/5 border-warning/20 text-warning"
+                    : "bg-success/5 border-success/20 text-success"
+                  : "bg-destructive/5 border-destructive/20 text-destructive"
+              }`}>
+                {snapshotAction.result.success ? (
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                )}
+                <span>{snapshotAction.result.reason || snapshotAction.result.error || "Unknown"}</span>
+              </div>
+            )}
+
             {/* ── Section 1: Executive Hero ── */}
-            {live && (
+            {live ? (
               <Card className="border-primary/20">
                 <CardContent className="p-5">
                   <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
@@ -188,6 +192,12 @@ export default function ExecutiveReliabilityBoardPage() {
                       <p className="text-[9px] text-muted-foreground">30-Day Exp.</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-6 text-center text-muted-foreground text-sm">
+                  No live self-healing data available. Enterprise metrics require active system events.
                 </CardContent>
               </Card>
             )}
@@ -276,7 +286,7 @@ export default function ExecutiveReliabilityBoardPage() {
                       <p className="text-[9px] text-muted-foreground">Composite</p>
                     </div>
                     <div>
-                      <p className={`text-sm font-bold ${impactColor(live.impactLevel)}`}>{live.impactLevel}</p>
+                      <p className={`text-sm font-bold ${impactLevelColor(live.impactLevel)}`}>{live.impactLevel}</p>
                       <p className="text-[9px] text-muted-foreground">Level</p>
                     </div>
                   </div>
@@ -301,7 +311,7 @@ export default function ExecutiveReliabilityBoardPage() {
                       <p className="text-[9px] text-muted-foreground">30-Day Exposure</p>
                     </div>
                     <div>
-                      <p className={`text-sm font-bold ${costColor(live.costSeverity)}`}>{live.costSeverity}</p>
+                      <p className={`text-sm font-bold ${costSeverityColor(live.costSeverity)}`}>{live.costSeverity}</p>
                       <p className="text-[9px] text-muted-foreground">Cost Severity</p>
                     </div>
                   </div>
@@ -331,7 +341,7 @@ export default function ExecutiveReliabilityBoardPage() {
             )}
 
             {/* ── Section 7: Historical Archive Table ── */}
-            {snapshots.length > 0 && (
+            {snapshots.length > 0 ? (
               <Card>
                 <CardContent className="p-4">
                   <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
@@ -353,6 +363,11 @@ export default function ExecutiveReliabilityBoardPage() {
                       <TableBody>
                         {[...snapshots].reverse().map(s => {
                           const meta = s.metadata || {};
+                          const slaTierVal = meta.sla_tier ? String(meta.sla_tier).toUpperCase() : "—";
+                          const exposureVal = meta.projected_30day_exposure != null
+                            ? `LKR ${Number(meta.projected_30day_exposure).toLocaleString()}`
+                            : "—";
+                          const impactVal = meta.impact_level ? String(meta.impact_level).toUpperCase() : "—";
                           return (
                             <TableRow key={s.id}>
                               <TableCell className="text-[10px] py-1.5">{new Date(s.created_at).toLocaleDateString()}</TableCell>
@@ -363,15 +378,9 @@ export default function ExecutiveReliabilityBoardPage() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-[10px] py-1.5 text-center">{s.risk_probability}%</TableCell>
-                              <TableCell className="text-[10px] py-1.5 text-center">
-                                {meta.sla_tier ? String(meta.sla_tier).toUpperCase() : "—"}
-                              </TableCell>
-                              <TableCell className="text-[10px] py-1.5 text-center">
-                                {meta.projected_30day_exposure != null ? `LKR ${Number(meta.projected_30day_exposure).toLocaleString()}` : "—"}
-                              </TableCell>
-                              <TableCell className="text-[10px] py-1.5 text-center">
-                                {meta.impact_level ? String(meta.impact_level).toUpperCase() : "—"}
-                              </TableCell>
+                              <TableCell className="text-[10px] py-1.5 text-center">{slaTierVal}</TableCell>
+                              <TableCell className="text-[10px] py-1.5 text-center">{exposureVal}</TableCell>
+                              <TableCell className="text-[10px] py-1.5 text-center">{impactVal}</TableCell>
                             </TableRow>
                           );
                         })}
@@ -380,13 +389,11 @@ export default function ExecutiveReliabilityBoardPage() {
                   </div>
                 </CardContent>
               </Card>
-            )}
-
-            {snapshots.length === 0 && (
+            ) : (
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground text-sm">
                   <AlertTriangle className="w-5 h-5 mx-auto mb-2 text-warning" />
-                  No historical snapshots yet. Snapshots are generated daily for trend visibility.
+                  No historical snapshots yet. Use "Write Snapshot Now" to record the first one.
                 </CardContent>
               </Card>
             )}
