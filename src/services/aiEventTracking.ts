@@ -42,20 +42,25 @@ export async function logAIEvent(payload: AIEventPayload): Promise<void> {
   }
 }
 
+/** All supported AI analytics events */
+export type AIAnalyticsEvent =
+  | "ai_recommendation_shown"
+  | "ai_estimate_viewed"
+  | "ai_partner_rank_viewed"
+  | "ai_nudge_clicked"
+  | "ai_dropoff_recovered"
+  | "ai_photo_triage_used"
+  | "ai_search_assist_used"
+  | "ai_issue_triage_used"
+  | "blocked_by_consent"
+  | "fallback_rendered"
+  | "low_confidence_rendered"
+  | "ai_consent_granted"
+  | "ai_operator_feedback";
+
 /** Track AI analytics events through the lightweight analytics system */
 export function trackAIAnalytics(
-  event:
-    | "ai_recommendation_shown"
-    | "ai_estimate_viewed"
-    | "ai_partner_rank_viewed"
-    | "ai_nudge_clicked"
-    | "ai_dropoff_recovered"
-    | "ai_photo_triage_used"
-    | "ai_search_assist_used"
-    | "blocked_by_consent"
-    | "fallback_rendered"
-    | "low_confidence_rendered"
-    | "ai_consent_granted",
+  event: AIAnalyticsEvent,
   payload?: Record<string, unknown>
 ) {
   if (import.meta.env.DEV) {

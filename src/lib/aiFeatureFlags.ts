@@ -6,6 +6,7 @@
 
 export interface AIFeatureFlags {
   ai_photo_triage: boolean;
+  ai_issue_triage: boolean;
   ai_estimate_assist: boolean;
   ai_partner_ranking: boolean;
   ai_review_summary: boolean;
@@ -22,6 +23,7 @@ export interface AIFeatureFlags {
 const DEFAULT_FLAGS: AIFeatureFlags = {
   // Consumer-facing → OFF by default
   ai_photo_triage: false,
+  ai_issue_triage: false,
   ai_estimate_assist: false,
   ai_partner_ranking: false,
   ai_review_summary: false,

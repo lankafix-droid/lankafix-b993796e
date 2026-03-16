@@ -36,6 +36,7 @@ const DEFAULT_CONSENT: AIConsentState = {
 /** Map AI modules to their required consent capability */
 const MODULE_CONSENT_MAP: Record<string, AIConsentCapability | null> = {
   ai_photo_triage: "photo_analysis_consent",
+  ai_issue_triage: null, // text-only, no special consent
   ai_estimate_assist: null, // advisory, no special consent
   ai_partner_ranking: null,
   ai_review_summary: null,
@@ -55,7 +56,6 @@ export function getAIConsent(): AIConsentState {
     const stored = localStorage.getItem(CONSENT_KEY);
     if (stored) {
       const parsed = JSON.parse(stored) as Partial<AIConsentState>;
-      // Merge with defaults to handle newly added fields
       return { ...DEFAULT_CONSENT, ...parsed };
     }
   } catch {
@@ -88,7 +88,6 @@ export function hasAIConsent(capability: AIConsentCapability): boolean {
 /**
  * Check if an AI module has the required consent to run.
  * Modules with no consent requirement always pass.
- * Returns { allowed, requiredConsent } so UI can prompt if needed.
  */
 export function checkModuleConsent(moduleName: string): {
   allowed: boolean;

@@ -1,35 +1,37 @@
 /**
  * AIOperatorCopilot — Summary block for operator/ops detail screens.
  * Aggregates estimate, fraud, partner quality, and low-confidence warnings.
+ * Normalizes no-data states — explicitly shows when a module has no result.
  * Strictly advisory-only — never auto-executes marketplace actions.
  */
-import { Brain, TrendingUp, Shield, Users, AlertTriangle, Loader2 } from "lucide-react";
+import { Brain, TrendingUp, Shield, Users, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import AIConfidenceBadge from "./AIConfidenceBadge";
 import AIFraudRiskBadge from "./AIFraudRiskBadge";
+import AIAdvisoryFooter from "./AIAdvisoryFooter";
+import AIOperatorFeedback from "./AIOperatorFeedback";
 import type { PriceEstimate } from "@/services/aiPriceEstimation";
-import type { FraudScanResult, FraudRiskLevel } from "@/services/aiFraudDetection";
+import type { FraudScanResult } from "@/services/aiFraudDetection";
 import type { PartnerMatchScore } from "@/services/aiPartnerMatching";
 
 interface AIOperatorCopilotProps {
-  /** Price estimate advisory */
   estimate?: PriceEstimate | null;
-  /** Fraud scan result */
   fraudScan?: FraudScanResult | null;
-  /** Top partner match */
   topPartnerMatch?: PartnerMatchScore | null;
-  /** Overall loading state */
   loading?: boolean;
+  bookingId?: string;
   className?: string;
 }
 
-interface CopilotInsight {
+interface CopilotRow {
   icon: typeof Brain;
   label: string;
-  value: string;
-  confidence: number;
+  value: string | null;
+  confidence: number | null;
   fallbackUsed: boolean;
   warning?: string;
+  noData: boolean;
+  noDataMessage: string;
 }
 
 const AIOperatorCopilot = ({
@@ -37,6 +39,7 @@ const AIOperatorCopilot = ({
   fraudScan,
   topPartnerMatch,
   loading = false,
+  bookingId,
   className = "",
 }: AIOperatorCopilotProps) => {
   if (loading) {
@@ -49,66 +52,70 @@ const AIOperatorCopilot = ({
     );
   }
 
-  const insights: CopilotInsight[] = [];
   const warnings: string[] = [];
 
-  // Estimate insight
-  if (estimate) {
-    insights.push({
+  // Build rows — always show all 3 modules, even if no data
+  const rows: CopilotRow[] = [
+    // Estimate
+    {
       icon: TrendingUp,
       label: "Price Estimate",
-      value: `LKR ${estimate.estimated_min_price.toLocaleString()} – ${estimate.estimated_max_price.toLocaleString()}`,
-      confidence: estimate.confidence.confidence_score,
-      fallbackUsed: estimate.fallback_used,
-    });
-    if (estimate.confidence.confidence_score < 50) {
-      warnings.push("Low confidence on price estimate — recommend manual review");
-    }
-  }
-
-  // Fraud insight
-  if (fraudScan) {
-    const riskLabel = fraudScan.riskLevel === "safe" ? "Clear" :
-      fraudScan.riskLevel === "unknown" ? "Scan Unavailable" :
-      `${fraudScan.riskLevel.charAt(0).toUpperCase() + fraudScan.riskLevel.slice(1)} Risk`;
-    insights.push({
+      value: estimate
+        ? `LKR ${estimate.estimated_min_price.toLocaleString()} – ${estimate.estimated_max_price.toLocaleString()}`
+        : null,
+      confidence: estimate?.confidence.confidence_score ?? null,
+      fallbackUsed: estimate?.fallback_used ?? false,
+      noData: !estimate,
+      noDataMessage: "No estimate available — AI pricing module has not been run.",
+    },
+    // Fraud
+    {
       icon: Shield,
       label: "Trust Assessment",
-      value: `${riskLabel} (Score: ${fraudScan.riskScore}/100)`,
-      confidence: fraudScan.confidence.confidence_score,
-      fallbackUsed: fraudScan.fallback_used,
-      warning: fraudScan.riskLevel === "unknown" ? "Fraud scan unavailable — manual review" : undefined,
-    });
-    if (fraudScan.riskLevel === "high" || fraudScan.riskLevel === "critical") {
-      warnings.push(`Elevated fraud risk: ${fraudScan.alerts.length} alert(s) detected`);
-    }
-    if (fraudScan.riskLevel === "unknown") {
-      warnings.push("Fraud scan could not complete — recommend manual review");
-    }
-  }
-
-  // Partner match insight
-  if (topPartnerMatch) {
-    insights.push({
+      value: fraudScan
+        ? fraudScan.riskLevel === "safe" ? "Clear"
+          : fraudScan.riskLevel === "unknown" ? "Scan Unavailable"
+          : `${fraudScan.riskLevel.charAt(0).toUpperCase() + fraudScan.riskLevel.slice(1)} Risk (${fraudScan.riskScore}/100)`
+        : null,
+      confidence: fraudScan?.confidence.confidence_score ?? null,
+      fallbackUsed: fraudScan?.fallback_used ?? false,
+      warning: fraudScan?.riskLevel === "unknown" ? "Fraud scan unavailable — manual review" : undefined,
+      noData: !fraudScan,
+      noDataMessage: "No fraud signal available — trust scan has not been run.",
+    },
+    // Partner
+    {
       icon: Users,
       label: "Top Partner Match",
-      value: `${topPartnerMatch.partnerName} (Score: ${topPartnerMatch.overallScore}/100)`,
-      confidence: topPartnerMatch.confidence.confidence_score,
-      fallbackUsed: topPartnerMatch.fallback_used,
-    });
-    if (topPartnerMatch.confidence.confidence_score < 50) {
-      warnings.push("Low confidence on partner suggestion — limited data");
-    }
+      value: topPartnerMatch
+        ? `${topPartnerMatch.partnerName} (Score: ${topPartnerMatch.overallScore}/100)`
+        : null,
+      confidence: topPartnerMatch?.confidence.confidence_score ?? null,
+      fallbackUsed: topPartnerMatch?.fallback_used ?? false,
+      noData: !topPartnerMatch,
+      noDataMessage: "No partner recommendation available — ranking has not been run.",
+    },
+  ];
+
+  // Collect warnings
+  if (estimate && estimate.confidence.confidence_score < 50) {
+    warnings.push("Low confidence on price estimate — recommend manual review");
+  }
+  if (fraudScan?.riskLevel === "high" || fraudScan?.riskLevel === "critical") {
+    warnings.push(`Elevated fraud risk: ${fraudScan.alerts.length} alert(s) detected`);
+  }
+  if (fraudScan?.riskLevel === "unknown") {
+    warnings.push("Fraud scan could not complete — recommend manual review");
+  }
+  if (topPartnerMatch && topPartnerMatch.confidence.confidence_score < 50) {
+    warnings.push("Low confidence on partner suggestion — limited data");
   }
 
-  if (insights.length === 0) {
-    return (
-      <div className={`rounded-xl border border-border/40 bg-muted/20 p-4 text-center ${className}`}>
-        <Brain className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
-        <p className="text-xs text-muted-foreground">No AI insights available for this booking.</p>
-      </div>
-    );
-  }
+  // Compute aggregate confidence from available modules
+  const availableConfidences = rows.filter(r => r.confidence !== null).map(r => r.confidence!);
+  const avgConfidence = availableConfidences.length > 0
+    ? Math.round(availableConfidences.reduce((s, c) => s + c, 0) / availableConfidences.length)
+    : 0;
 
   return (
     <div className={`rounded-xl border border-border/40 bg-card p-4 space-y-3 ${className}`}>
@@ -126,23 +133,33 @@ const AIOperatorCopilot = ({
       </div>
 
       <div className="space-y-2">
-        {insights.map((insight, i) => {
-          const Icon = insight.icon;
+        {rows.map((row, i) => {
+          const Icon = row.icon;
           return (
             <div key={i} className="flex items-start gap-3 py-2 border-b border-border/20 last:border-0">
-              <Icon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${row.noData ? "text-muted-foreground/40" : "text-primary"}`} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-foreground">{insight.label}</p>
-                  <AIConfidenceBadge
-                    score={insight.confidence}
-                    fallbackUsed={insight.fallbackUsed}
-                    showScore={false}
-                  />
+                  <p className={`text-xs font-medium ${row.noData ? "text-muted-foreground" : "text-foreground"}`}>
+                    {row.label}
+                  </p>
+                  {row.confidence !== null && (
+                    <AIConfidenceBadge
+                      score={row.confidence}
+                      fallbackUsed={row.fallbackUsed}
+                      showScore={false}
+                    />
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{insight.value}</p>
-                {insight.warning && (
-                  <p className="text-[10px] text-destructive mt-0.5">{insight.warning}</p>
+                {row.noData ? (
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5 italic">{row.noDataMessage}</p>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted-foreground mt-0.5">{row.value}</p>
+                    {row.warning && (
+                      <p className="text-[10px] text-destructive mt-0.5">{row.warning}</p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -170,9 +187,15 @@ const AIOperatorCopilot = ({
         </div>
       )}
 
-      <p className="text-[10px] text-muted-foreground italic pt-1 border-t border-border/20">
-        ⚠️ All insights are advisory only — does not alter booking, dispatch, or payment state.
-      </p>
+      <AIOperatorFeedback module="ai_operator_copilot" bookingId={bookingId} />
+
+      <AIAdvisoryFooter
+        module="ai_operator_copilot"
+        confidence={avgConfidence}
+        fallbackUsed={rows.some(r => r.fallbackUsed)}
+        degraded={availableConfidences.length === 0}
+        disclaimer="All insights are advisory only — does not alter booking, dispatch, or payment state."
+      />
     </div>
   );
 };

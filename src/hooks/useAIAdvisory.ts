@@ -1,7 +1,12 @@
 /**
  * useAIAdvisory — Shared AI orchestration hook
- * Checks feature flag → consent → cache → executes advisory service → returns UI-ready result.
+ * Checks feature flag → consent → executes advisory service → returns UI-ready result.
  * NEVER mutates booking, dispatch, or payment state.
+ *
+ * HARDENED:
+ * - Stable memoization via useRef for serviceFn to prevent re-execution loops
+ * - Deduplication guard prevents duplicate analytics firing
+ * - Single explicit execute path; guarded autoExecute
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { isAIEnabled, type AIFeatureFlags } from "@/config/aiFlags";
@@ -22,25 +27,17 @@ export interface AIAdvisoryResult<T> {
 }
 
 interface UseAIAdvisoryOptions<T> {
-  /** Feature flag key for this AI module */
   featureFlag: keyof AIFeatureFlags;
-  /** Module name for consent check (maps to MODULE_CONSENT_MAP) */
   moduleName: string;
-  /** The advisory service function to execute */
   serviceFn: () => T | Promise<T>;
-  /** Extract confidence score from the result */
   getConfidence?: (data: T) => number;
-  /** Extract fallback_used from the result */
   getFallbackUsed?: (data: T) => boolean;
-  /** Extract cached flag from the result */
   getCached?: (data: T) => boolean;
-  /** Whether to auto-execute on mount (default: true) */
+  /** Whether to auto-execute on mount/deps change (default: true) */
   autoExecute?: boolean;
-  /** Dependencies that trigger re-execution */
+  /** Dependencies that trigger re-execution — use primitives only */
   deps?: unknown[];
-  /** Analytics event name to fire on render */
   analyticsEvent?: string;
-  /** Additional analytics payload */
   analyticsPayload?: Record<string, unknown>;
 }
 
@@ -63,7 +60,6 @@ export function useAIAdvisory<T>(
   const {
     featureFlag,
     moduleName,
-    serviceFn,
     getConfidence = () => 0,
     getFallbackUsed = () => false,
     getCached = () => false,
@@ -75,13 +71,36 @@ export function useAIAdvisory<T>(
 
   const [result, setResult] = useState<AIAdvisoryResult<T>>(INITIAL_RESULT);
   const mountedRef = useRef(true);
+  const executingRef = useRef(false);
+  const analyticsTrackedRef = useRef(false);
+
+  // Store serviceFn in ref to avoid re-execution loops from unstable callbacks
+  const serviceFnRef = useRef(options.serviceFn);
+  serviceFnRef.current = options.serviceFn;
+
+  // Store extractors in refs
+  const getConfidenceRef = useRef(getConfidence);
+  getConfidenceRef.current = getConfidence;
+  const getFallbackUsedRef = useRef(getFallbackUsed);
+  getFallbackUsedRef.current = getFallbackUsed;
+  const getCachedRef = useRef(getCached);
+  getCachedRef.current = getCached;
 
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
 
+  // Reset analytics dedup flag when deps change
+  const depsKey = JSON.stringify(deps);
+  useEffect(() => {
+    analyticsTrackedRef.current = false;
+  }, [depsKey]);
+
   const execute = useCallback(async () => {
+    // Prevent concurrent executions
+    if (executingRef.current) return;
+
     // 1. Feature flag check
     if (!isAIEnabled(featureFlag)) {
       setResult({
@@ -89,8 +108,9 @@ export function useAIAdvisory<T>(
         available: false,
         error: "Feature disabled",
       });
-      if (analyticsEvent) {
-        track("fallback_rendered", { module: moduleName, reason: "feature_disabled", ...analyticsPayload });
+      if (analyticsEvent && !analyticsTrackedRef.current) {
+        analyticsTrackedRef.current = true;
+        track("fallback_rendered", { module: moduleName, reason: "feature_disabled" });
       }
       return;
     }
@@ -104,20 +124,24 @@ export function useAIAdvisory<T>(
         blockedByConsent: true,
         requiredConsent: consent.requiredConsent,
       });
-      track("blocked_by_consent", { module: moduleName, requiredConsent: consent.requiredConsent });
+      if (!analyticsTrackedRef.current) {
+        analyticsTrackedRef.current = true;
+        track("blocked_by_consent", { module: moduleName, requiredConsent: consent.requiredConsent });
+      }
       return;
     }
 
     // 3. Execute service
+    executingRef.current = true;
     setResult(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      const data = await Promise.resolve(serviceFn());
-      if (!mountedRef.current) return;
+      const data = await Promise.resolve(serviceFnRef.current());
+      if (!mountedRef.current) { executingRef.current = false; return; }
 
-      const confidence = getConfidence(data);
-      const fallback_used = getFallbackUsed(data);
-      const cached = getCached(data);
+      const confidence = getConfidenceRef.current(data);
+      const fallback_used = getFallbackUsedRef.current(data);
+      const cached = getCachedRef.current(data);
 
       setResult({
         loading: false,
@@ -132,33 +156,41 @@ export function useAIAdvisory<T>(
         error: null,
       });
 
-      // Analytics
-      if (analyticsEvent) {
-        track(analyticsEvent, {
-          module: moduleName,
-          confidence,
-          fallback_used,
-          cached,
-          ...analyticsPayload,
-        });
-      }
-      if (fallback_used) {
-        track("fallback_rendered", { module: moduleName });
-      }
-      if (confidence > 0 && confidence < 50) {
-        track("low_confidence_rendered", { module: moduleName, confidence });
+      // Analytics — fire once per deps change
+      if (!analyticsTrackedRef.current) {
+        analyticsTrackedRef.current = true;
+        if (analyticsEvent) {
+          track(analyticsEvent, {
+            module: moduleName,
+            confidence,
+            fallback_used,
+            cached,
+            ...analyticsPayload,
+          });
+        }
+        if (fallback_used) {
+          track("fallback_rendered", { module: moduleName });
+        }
+        if (confidence > 0 && confidence < 50) {
+          track("low_confidence_rendered", { module: moduleName, confidence });
+        }
       }
     } catch (err: any) {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current) { executingRef.current = false; return; }
       setResult({
         ...INITIAL_RESULT,
         available: true,
         error: err?.message || "AI service error",
         fallback_used: true,
       });
-      track("fallback_rendered", { module: moduleName, reason: "error" });
+      if (!analyticsTrackedRef.current) {
+        analyticsTrackedRef.current = true;
+        track("fallback_rendered", { module: moduleName, reason: "error" });
+      }
+    } finally {
+      executingRef.current = false;
     }
-  }, [featureFlag, moduleName, serviceFn, ...deps]);
+  }, [featureFlag, moduleName, analyticsEvent, depsKey]);
 
   useEffect(() => {
     if (autoExecute) execute();
