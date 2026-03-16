@@ -262,6 +262,7 @@ const App = () => (
             <Route path="/ops/executive-reliability" element={<OpsRoute><ExecutiveReliabilityBoardPage /></OpsRoute>} />
             <Route path="/ops/reliability-scope-planner" element={<OpsRoute><ReliabilityScopePlannerPage /></OpsRoute>} />
             <Route path="/ops/reliability-action-center" element={<OpsRoute><ReliabilityActionCenterPage /></OpsRoute>} />
+            <Route path="/ops/reliability-operations-board" element={<OpsRoute><ReliabilityOperationsBoardPage /></OpsRoute>} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />
