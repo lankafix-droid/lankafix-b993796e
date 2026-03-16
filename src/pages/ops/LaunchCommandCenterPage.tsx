@@ -1240,6 +1240,9 @@ function UpcomingReliabilityRisksCard() {
         <Link to="/ops/prescriptive-reliability">
           <Button variant="outline" size="sm" className="w-full text-[10px] h-7 gap-1 mt-1"><Target className="w-2.5 h-2.5" /> Prescriptive Advice</Button>
         </Link>
+        <Link to="/ops/reliability-scenario-simulator">
+          <Button variant="ghost" size="sm" className="w-full text-[10px] h-7 gap-1"><Beaker className="w-2.5 h-2.5" /> Scenario Simulator</Button>
+        </Link>
       </CardContent>
     </Card>
   );
