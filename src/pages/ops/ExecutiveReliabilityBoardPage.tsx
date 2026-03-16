@@ -25,13 +25,15 @@ import ZoneDispatchPolicyMatrix from "@/components/ops/ZoneDispatchPolicyMatrix"
 import {
   fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
   fetchDispatchPolicySimulation, fetchReliabilityRolloutSummary, fetchPerZoneReliabilitySummary,
+  fetchPerZoneCategoryReliabilitySummary,
   computeSnapshotFreshness, FRESHNESS_COLORS,
   slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor, shadowPolicyColor,
   rolloutReadinessColor, recommendedModeColor,
   PILOT_ASSUMPTIONS,
   type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary, type DispatchPolicyAdvisory,
-  type ReliabilityRolloutSummary, type ZoneReliabilitySummary,
+  type ReliabilityRolloutSummary, type ZoneReliabilitySummary, type CategoryReliabilitySummary,
 } from "@/services/reliabilityReadModel";
+import ZoneCategoryReliabilityMatrix from "@/components/ops/ZoneCategoryReliabilityMatrix";
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
