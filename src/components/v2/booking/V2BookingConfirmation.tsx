@@ -500,6 +500,12 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         </div>
       </div>
 
+      {/* AI Advisory — estimated price guidance */}
+      <AIEstimateAssist
+        categoryCode={flow.code}
+        issueType={booking.serviceTypeId}
+      />
+
       {/* Policies */}
       <div className="bg-muted/30 rounded-2xl p-4 space-y-2.5 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
