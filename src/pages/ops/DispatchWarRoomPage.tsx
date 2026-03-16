@@ -13,6 +13,7 @@ import TechnicianPerformanceCard from "@/components/warroom/TechnicianPerformanc
 import DispatchTimelineViewer from "@/components/warroom/DispatchTimelineViewer";
 import OpsControlPanel from "@/components/warroom/OpsControlPanel";
 import DispatchFailurePanel from "@/components/warroom/DispatchFailurePanel";
+import AIOperatorCopilot from "@/components/ai/AIOperatorCopilot";
 
 interface BookingRaw {
   id: string;
