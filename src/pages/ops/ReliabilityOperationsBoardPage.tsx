@@ -621,8 +621,13 @@ export default function ReliabilityOperationsBoardPage() {
                       size="sm"
                       className="text-[9px] h-6 px-2 gap-1"
                       onClick={() => {
-                        const name = prompt("Enter your name to filter:");
-                        if (name?.trim()) updateFilter("ownerScope", name.trim());
+                        const saved = localStorage.getItem("lankafix_operator_name");
+                        if (saved) { updateFilter("ownerScope", saved); return; }
+                        const name = prompt("Enter your operator name:");
+                        if (name?.trim()) {
+                          localStorage.setItem("lankafix_operator_name", name.trim());
+                          updateFilter("ownerScope", name.trim());
+                        }
                       }}
                     ><UserCheck className="w-3 h-3" /> My Actions</Button>
                   </div>
