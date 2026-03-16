@@ -2,8 +2,13 @@
  * AI Partner Matching Intelligence
  * Advisory ranking factors for partner selection.
  * Does NOT modify dispatch — provides display-only insights.
+ *
+ * HARDENED: feature flags, fallbacks, metering, consent checks.
  */
 import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
+import { isAIEnabled } from "@/config/aiFlags";
+import { recordAIUsage } from "@/services/aiUsageMeter";
+import { logAIEvent } from "@/services/aiEventTracking";
 
 export interface PartnerMatchScore {
   partnerId: string;
@@ -12,6 +17,7 @@ export interface PartnerMatchScore {
   factors: MatchFactor[];
   explanation: string;
   confidence: AIConfidenceEnvelope;
+  fallback_used?: boolean;
 }
 
 export interface MatchFactor {
@@ -48,9 +54,54 @@ export function rankPartnersForBooking(
   categoryCode: string,
   zoneCode?: string
 ): PartnerMatchScore[] {
-  return partners
-    .map((p) => scorePartner(p, categoryCode, zoneCode))
-    .sort((a, b) => b.overallScore - a.overallScore);
+  const start = performance.now();
+
+  // Feature flag check
+  if (!isAIEnabled("ai_partner_ranking")) {
+    recordAIUsage("ai_partner_ranking", 0, true);
+    return partners.map((p) => ({
+      partnerId: p.id,
+      partnerName: p.full_name,
+      overallScore: 50,
+      factors: [],
+      explanation: `${p.full_name} is available for this service.`,
+      confidence: createConfidenceEnvelope(10, ["feature_disabled"]),
+      fallback_used: true,
+    }));
+  }
+
+  try {
+    const results = partners
+      .map((p) => scorePartner(p, categoryCode, zoneCode))
+      .sort((a, b) => b.overallScore - a.overallScore);
+
+    const latency = Math.round(performance.now() - start);
+    recordAIUsage("ai_partner_ranking", latency, false);
+
+    // Log top match (fire-and-forget)
+    if (results.length > 0) {
+      logAIEvent({
+        ai_module: "ai_partner_ranking",
+        input_summary: `${categoryCode}/${zoneCode ?? "any"} — ${partners.length} candidates`,
+        output_summary: `Top: ${results[0].partnerName} (${results[0].overallScore})`,
+        confidence_score: results[0].confidence.confidence_score,
+      });
+    }
+
+    return results;
+  } catch {
+    const latency = Math.round(performance.now() - start);
+    recordAIUsage("ai_partner_ranking", latency, true);
+    return partners.map((p) => ({
+      partnerId: p.id,
+      partnerName: p.full_name,
+      overallScore: 50,
+      factors: [],
+      explanation: `${p.full_name} is available for this service.`,
+      confidence: createConfidenceEnvelope(10, ["computation_error", "fallback_used"]),
+      fallback_used: true,
+    }));
+  }
 }
 
 function scorePartner(
@@ -60,28 +111,22 @@ function scorePartner(
 ): PartnerMatchScore {
   const factors: MatchFactor[] = [];
 
-  // Category match
   const catMatch = p.categories_supported?.includes(categoryCode) ? 100 : 0;
   factors.push({ name: "category_match", score: catMatch, weight: FACTOR_WEIGHTS.category_match, label: "Category Match" });
 
-  // Zone coverage
   const zoneMatch = !zoneCode || (p.service_zones?.includes(zoneCode) ?? false) ? 100 : 30;
   factors.push({ name: "zone_coverage", score: zoneMatch, weight: FACTOR_WEIGHTS.zone_coverage, label: "Zone Coverage" });
 
-  // Availability
   const availScore = p.availability_status === "available" ? 100 : p.availability_status === "busy" ? 40 : 0;
   factors.push({ name: "availability", score: availScore, weight: FACTOR_WEIGHTS.availability, label: "Availability" });
 
-  // Response speed
   const respTime = p.average_response_time_minutes ?? 30;
   const respScore = Math.max(0, 100 - respTime * 2);
   factors.push({ name: "response_speed", score: respScore, weight: FACTOR_WEIGHTS.response_speed, label: "Response Speed" });
 
-  // Rating
   const ratingScore = Math.min(100, ((p.rating_average ?? 3) / 5) * 100);
   factors.push({ name: "rating", score: ratingScore, weight: FACTOR_WEIGHTS.rating, label: "Customer Rating" });
 
-  // Completion reliability
   const completionScore = Math.min(100, ((p.completed_jobs_count ?? 0) / 50) * 100);
   factors.push({ name: "completion", score: completionScore, weight: FACTOR_WEIGHTS.completion, label: "Job Completion" });
 
@@ -105,6 +150,7 @@ function scorePartner(
       Math.min(90, overallScore),
       reasons.length > 0 ? reasons : ["standard_scoring"]
     ),
+    fallback_used: false,
   };
 }
 

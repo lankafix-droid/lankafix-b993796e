@@ -1,3 +1,4 @@
+import { isAIEnabled, type AIFeatureFlags } from "@/config/aiFlags";
 import AICopilotCard from "./AICopilotCard";
 
 export interface AIRecommendation {
@@ -7,6 +8,7 @@ export interface AIRecommendation {
   confidence: number;
   module: string;
   reasons?: string[];
+  fallbackUsed?: boolean;
 }
 
 interface AIRecommendationStackProps {
@@ -14,6 +16,10 @@ interface AIRecommendationStackProps {
   maxVisible?: number;
   actions?: (rec: AIRecommendation) => React.ReactNode;
   className?: string;
+  /** Feature flag key to check before rendering */
+  featureFlag?: keyof AIFeatureFlags;
+  /** Show loading state */
+  loading?: boolean;
 }
 
 const AIRecommendationStack = ({
@@ -21,7 +27,31 @@ const AIRecommendationStack = ({
   maxVisible = 5,
   actions,
   className = "",
+  featureFlag,
+  loading = false,
 }: AIRecommendationStackProps) => {
+  // Feature flag guard
+  if (featureFlag && !isAIEnabled(featureFlag)) {
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <div className={`space-y-3 ${className}`}>
+        {[1, 2].map((i) => (
+          <AICopilotCard
+            key={i}
+            title=""
+            recommendation=""
+            confidence={0}
+            module=""
+            loading
+          />
+        ))}
+      </div>
+    );
+  }
+
   const visible = recommendations.slice(0, maxVisible);
 
   if (visible.length === 0) {
@@ -43,6 +73,7 @@ const AIRecommendationStack = ({
           module={rec.module}
           reasons={rec.reasons}
           actions={actions?.(rec)}
+          fallbackUsed={rec.fallbackUsed}
         />
       ))}
       {recommendations.length > maxVisible && (
