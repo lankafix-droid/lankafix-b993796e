@@ -44,8 +44,6 @@ async function fetchHealingStats(): Promise<HealingStats> {
   return {
     successRate: total > 0 ? Math.round((success / total) * 100) : 100,
     escalationRate: total > 0 ? Math.round((escalated / total) * 100) : 0,
-    totalEvents: total,
-    lastEventAt: evts.length > 0 ? evts[evts.length - 1].created_at : new Date().toISOString(),
     successCount: success,
     failedCount: failed,
     escalatedCount: escalated,

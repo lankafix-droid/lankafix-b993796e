@@ -96,8 +96,7 @@ function useLiveMetrics() {
       const escalationRate = total > 0 ? Math.round((escalated / total) * 100) : 0;
 
       const healingStats = {
-        successRate, escalationRate, totalEvents: total,
-        lastEventAt: new Date().toISOString(),
+        successRate, escalationRate,
         successCount: success, failedCount: total - success - escalated,
         escalatedCount: escalated, totalActions: total,
       };
