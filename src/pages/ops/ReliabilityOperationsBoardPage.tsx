@@ -322,7 +322,7 @@ export default function ReliabilityOperationsBoardPage() {
     const appended = action.note ? `${action.note}\n[${ts}] ${quickNote}` : `[${ts}] ${quickNote}`;
     const updates: Parameters<typeof updateOperatorAction>[1] = { note: appended };
     // Add followup_date metadata for "Review Later"
-    if (quickNote.includes("follow-up review")) {
+    if (quickNote.toLowerCase().includes("follow-up") || quickNote.toLowerCase().includes("review tomorrow")) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(9, 0, 0, 0);
