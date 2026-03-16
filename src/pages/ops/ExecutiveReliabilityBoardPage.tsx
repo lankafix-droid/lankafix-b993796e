@@ -66,12 +66,21 @@ function useDispatchRisk() {
   });
 }
 
+function useShadowPolicy() {
+  return useQuery({
+    queryKey: ["exec-shadow-policy"],
+    queryFn: fetchDispatchPolicySimulation,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: snapshots = [], isLoading: loadingSnaps, refetch: refetchSnaps } = useSnapshots();
   const { data: live, isLoading: loadingLive, refetch: refetchLive } = useLiveMetrics();
   const { data: dispatchRisk } = useDispatchRisk();
+  const { data: shadowPolicy } = useShadowPolicy();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
