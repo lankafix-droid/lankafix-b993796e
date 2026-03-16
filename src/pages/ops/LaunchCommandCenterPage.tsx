@@ -793,7 +793,7 @@ function MetricTile({ label, value, threshold, inverted, formatFn }: {
 // ── Reliability Status Panel (display-only, does NOT affect GO/HOLD) ──
 function ReliabilityStatusPanel() {
   const { data } = useQuery({
-    queryKey: ["reliability-governance-lcc"],
+    queryKey: ["reliability-governance-lcc-enterprise"],
     queryFn: async () => {
       const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: events } = await (supabase as any)
@@ -807,25 +807,51 @@ function ReliabilityStatusPanel() {
       const escalated = evts.filter((e: any) => e.status === "escalated").length;
       const successRate = total > 0 ? Math.round((success / total) * 100) : 100;
       const escalationRate = total > 0 ? Math.round((escalated / total) * 100) : 0;
-      // Simple governance calc (mirrors reliabilityGovernanceEngine)
+
+      // Governance scoring (mirrors reliabilityGovernanceEngine)
       const score = Math.max(0, Math.min(100, Math.round(successRate * 0.4 + (100 - escalationRate) * 0.25 + 100 * 0.15 + 80 * 0.10 + 10)));
       const verdict = score >= 85 ? "STABLE" : score >= 65 ? "GUARDED" : score >= 40 ? "RISK" : "CRITICAL";
       const riskLevel = score >= 85 ? "LOW" : score >= 65 ? "MODERATE" : score >= 40 ? "HIGH" : "CRITICAL";
-      return { score, verdict, riskLevel, successRate, escalationRate };
+
+      // SLA tier (mirrors reliabilitySLAEngine)
+      const slaTier = score >= 95 ? "PLATINUM" : score >= 85 ? "GOLD" : score >= 70 ? "STANDARD" : "AT RISK";
+      // Breach risk
+      const breachRisk = Math.max(0, Math.min(100, Math.round((100 - score) * 0.4 + Math.round((100 - 80) * 0.4))));
+
+      // Incident impact (mirrors incidentImpactModel)
+      const opImpact = Math.max(0, Math.min(100, Math.round(Math.min(60, escalationRate * 2) + 0)));
+      const repRisk = Math.max(0, Math.min(100, Math.round(Math.min(60, breachRisk * 0.6) + 0)));
+      const compositeImpact = Math.max(0, Math.min(100, Math.round(opImpact * 0.55 + repRisk * 0.45)));
+      const impactLevel = compositeImpact >= 75 ? "CRITICAL" : compositeImpact >= 50 ? "HIGH" : compositeImpact >= 25 ? "MODERATE" : "LOW";
+
+      // Cost-of-failure estimate (advisory — uses placeholder volume)
+      const dailyVolume = 15; // estimated pilot daily bookings
+      const avgValue = 5000; // LKR
+      const dailyRevenueAtRisk = Math.round(dailyVolume * avgValue * (escalationRate / 100));
+      const projected30Day = Math.round(dailyVolume * avgValue * (Math.max(escalationRate, escalationRate) / 100) * 30);
+      const costSeverity = projected30Day >= 500000 ? "SEVERE" : projected30Day >= 100000 ? "MATERIAL" : "MINIMAL";
+
+      return { score, verdict, riskLevel, successRate, escalationRate, slaTier, breachRisk, impactLevel, compositeImpact, dailyRevenueAtRisk, projected30Day, costSeverity };
     },
     staleTime: 60_000,
   });
   if (!data) return null;
+
   const verdictColor = { STABLE: "text-success", GUARDED: "text-warning", RISK: "text-destructive", CRITICAL: "text-destructive" }[data.verdict] || "text-muted-foreground";
   const riskColor = { LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[data.riskLevel] || "text-muted-foreground";
+  const slaColor = { PLATINUM: "text-primary", GOLD: "text-warning", STANDARD: "text-muted-foreground", "AT RISK": "text-destructive" }[data.slaTier] || "text-muted-foreground";
+  const impactColor = { LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[data.impactLevel] || "text-muted-foreground";
+  const costColor = { MINIMAL: "text-success", MATERIAL: "text-warning", SEVERE: "text-destructive" }[data.costSeverity] || "text-muted-foreground";
+
   return (
     <>
       <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-        <Target className="w-4 h-4 text-primary" /> Reliability Status
+        <Target className="w-4 h-4 text-primary" /> Enterprise Reliability Intelligence
         <Badge variant="outline" className="text-[9px]">Display Only</Badge>
       </h2>
       <Card className="mb-6">
-        <CardContent className="p-4">
+        <CardContent className="p-4 space-y-4">
+          {/* Row 1: Core governance */}
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
               <p className={`text-xl font-bold ${verdictColor}`}>{data.score}</p>
@@ -840,11 +866,56 @@ function ReliabilityStatusPanel() {
               <p className="text-[9px] text-muted-foreground">Risk Forecast</p>
             </div>
           </div>
-          <p className="text-[9px] text-muted-foreground text-center mt-2">
+
+          <Separator />
+
+          {/* Row 2: SLA + Impact */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div>
+              <p className={`text-sm font-bold ${slaColor}`}>{data.slaTier}</p>
+              <p className="text-[9px] text-muted-foreground">SLA Tier</p>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">{data.breachRisk}%</p>
+              <p className="text-[9px] text-muted-foreground">Breach Risk</p>
+            </div>
+            <div>
+              <p className={`text-sm font-bold ${impactColor}`}>{data.impactLevel}</p>
+              <p className="text-[9px] text-muted-foreground">Impact Level</p>
+            </div>
+            <div>
+              <p className={`text-sm font-bold ${costColor}`}>{data.costSeverity}</p>
+              <p className="text-[9px] text-muted-foreground">Cost Severity</p>
+            </div>
+          </div>
+
+          {/* Row 3: Financial exposure */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border border-border/60 p-2.5 text-center">
+              <p className="text-sm font-bold text-foreground">LKR {data.dailyRevenueAtRisk.toLocaleString()}</p>
+              <p className="text-[9px] text-muted-foreground">Daily Revenue at Risk</p>
+            </div>
+            <div className="rounded-lg border border-border/60 p-2.5 text-center">
+              <p className="text-sm font-bold text-foreground">LKR {data.projected30Day.toLocaleString()}</p>
+              <p className="text-[9px] text-muted-foreground">30-Day Exposure</p>
+            </div>
+          </div>
+
+          <p className="text-[9px] text-muted-foreground text-center">
             Informational only — does not affect GO/HOLD/NO-GO verdict
           </p>
         </CardContent>
       </Card>
+
+      {/* Zone Reliability Heatmap */}
+      <div className="mb-6">
+        <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
+          zoneId,
+          label: ZONE_LABEL_MAP[zoneId] || zoneId,
+          reliabilityScore: data.score, // uniform score in pilot phase
+          verdict: data.verdict as any,
+        }))} />
+      </div>
     </>
   );
 }
