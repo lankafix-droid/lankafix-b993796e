@@ -2,7 +2,7 @@
  * Reliability Operations Board — Operator execution workflow.
  * Advisory-only. No live marketplace mutation.
  */
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,8 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import {
   ArrowLeft, Shield, Activity, Target, AlertTriangle, Clock, RefreshCw,
   CheckCircle2, XCircle, MapPin, FileText, Heart, AlertOctagon,
-  Archive, Radio, Plus, User, MessageSquare, Zap,
-  ClipboardList, ArrowUpDown, Filter,
+  Archive, Radio, Plus, User, ClipboardList, Filter, History,
+  MessageSquare, BookOpen,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -38,7 +38,14 @@ import {
   createOperatorAction,
   updateOperatorAction,
   fetchDailySummary,
+  fetchResolvedHistory,
+  fetchDecisionLog,
   severityToPriority,
+  relativeTime,
+  ACTION_TYPE_LABELS,
+  STATUS_COLORS,
+  PRIORITY_COLORS,
+  SOURCE_CONTEXT_LABELS,
   type OperatorAction,
   type OperatorActionStatus,
   type OperatorActionPriority,
@@ -51,35 +58,6 @@ import type { CategoryReliabilitySummary } from "@/engines/categoryReliabilityEn
 const ZONE_LABEL: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL[z.id] = z.label; });
 
-const STATUS_COLORS: Record<string, string> = {
-  open: "bg-primary/10 text-primary",
-  acknowledged: "bg-warning/10 text-warning",
-  in_review: "bg-accent/20 text-accent-foreground",
-  waiting: "bg-muted text-muted-foreground",
-  resolved: "bg-success/10 text-success",
-  dismissed: "bg-muted text-muted-foreground",
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: "bg-destructive/15 text-destructive",
-  high: "bg-destructive/10 text-destructive",
-  medium: "bg-warning/10 text-warning",
-  low: "bg-muted text-muted-foreground",
-};
-
-const ACTION_TYPE_LABELS: Record<string, string> = {
-  hotspot_acknowledged: "Hotspot Acknowledged",
-  hotspot_review_requested: "Hotspot Review",
-  rollout_candidate_review: "Rollout Review",
-  blocked_item_escalation: "Blocked Escalation",
-  snapshot_refresh_requested: "Snapshot Refresh",
-  reliability_note: "Note",
-  rollout_decision_logged: "Rollout Decision",
-  followup_task_created: "Follow-up Task",
-  risk_acceptance_logged: "Risk Accepted",
-  deferment_logged: "Deferred",
-};
-
 const NAV_LINKS = [
   { label: "Action Center", path: "/ops/reliability-action-center", icon: Activity },
   { label: "Executive Board", path: "/ops/executive-reliability", icon: Shield },
@@ -91,6 +69,12 @@ const NAV_LINKS = [
   { label: "Command Center", path: "/ops/command-center", icon: Radio },
 ];
 
+const PHASE1_CATEGORIES = [
+  "AC", "MOBILE", "CONSUMER_ELEC", "IT", "COPIER", "ELECTRICAL",
+  "PLUMBING", "CCTV", "SOLAR", "NETWORK", "SMART_HOME_OFFICE",
+  "HOME_SECURITY", "POWER_BACKUP", "APPLIANCE_INSTALL", "PRINT_SUPPLIES",
+];
+
 export default function ReliabilityOperationsBoardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -98,6 +82,7 @@ export default function ReliabilityOperationsBoardPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
 
   // Dialogs
@@ -105,7 +90,7 @@ export default function ReliabilityOperationsBoardPage() {
   const [showNoteDialog, setShowNoteDialog] = useState<OperatorAction | null>(null);
   const [showOwnerDialog, setShowOwnerDialog] = useState<OperatorAction | null>(null);
 
-  // Intelligence data
+  // ── Intelligence data ──
   const { data: intel, isLoading: intelLoading } = useQuery({
     queryKey: ["ops-board-intel"],
     queryFn: async () => {
@@ -135,20 +120,27 @@ export default function ReliabilityOperationsBoardPage() {
     staleTime: 30_000,
   });
 
-  // Operator actions
-  const statusArr = statusFilter === "active"
-    ? ["open", "acknowledged", "in_review", "waiting"] as OperatorActionStatus[]
-    : statusFilter === "resolved"
-      ? ["resolved", "dismissed"] as OperatorActionStatus[]
-      : undefined;
-
-  const priorityArr = priorityFilter !== "all" ? [priorityFilter as OperatorActionPriority] : undefined;
+  // ── Operator actions (filtered) ──
+  const statusArr = useMemo(() =>
+    statusFilter === "active"
+      ? ["open", "acknowledged", "in_review", "waiting"] as OperatorActionStatus[]
+      : statusFilter === "resolved"
+        ? ["resolved", "dismissed"] as OperatorActionStatus[]
+        : undefined,
+    [statusFilter]);
+  const priorityArr = useMemo(() =>
+    priorityFilter !== "all" ? [priorityFilter as OperatorActionPriority] : undefined,
+    [priorityFilter]);
+  const typeArr = useMemo(() =>
+    typeFilter !== "all" ? [typeFilter as OperatorActionType] : undefined,
+    [typeFilter]);
 
   const { data: actions, isLoading: actionsLoading } = useQuery({
-    queryKey: ["operator-actions", statusFilter, priorityFilter, sortBy],
+    queryKey: ["operator-actions", statusFilter, priorityFilter, typeFilter, sortBy],
     queryFn: () => fetchOperatorActions({
       status: statusArr,
       priority: priorityArr,
+      action_type: typeArr,
       sortBy: sortBy as any,
     }),
     staleTime: 10_000,
@@ -160,20 +152,36 @@ export default function ReliabilityOperationsBoardPage() {
     staleTime: 15_000,
   });
 
+  const { data: resolvedHistory } = useQuery({
+    queryKey: ["operator-resolved-history"],
+    queryFn: () => fetchResolvedHistory(15),
+    staleTime: 20_000,
+  });
+
+  const { data: decisionLog } = useQuery({
+    queryKey: ["operator-decision-log"],
+    queryFn: () => fetchDecisionLog(10),
+    staleTime: 20_000,
+  });
+
   const invalidate = useCallback(() => {
     qc.invalidateQueries({ queryKey: ["operator-actions"] });
     qc.invalidateQueries({ queryKey: ["operator-daily-summary"] });
+    qc.invalidateQueries({ queryKey: ["operator-resolved-history"] });
+    qc.invalidateQueries({ queryKey: ["operator-decision-log"] });
   }, [qc]);
 
   const createMut = useMutation({
     mutationFn: createOperatorAction,
     onSuccess: () => { invalidate(); toast.success("Action created"); },
+    onError: () => toast.error("Failed to create action"),
   });
 
   const updateMut = useMutation({
     mutationFn: (args: { id: string; updates: Parameters<typeof updateOperatorAction>[1] }) =>
       updateOperatorAction(args.id, args.updates),
     onSuccess: () => { invalidate(); toast.success("Action updated"); },
+    onError: () => toast.error("Failed to update action"),
   });
 
   const handleQuickStatus = (action: OperatorAction, newStatus: OperatorActionStatus) => {
@@ -181,10 +189,11 @@ export default function ReliabilityOperationsBoardPage() {
   };
 
   const handleCreateFromHotspot = (item: CategoryReliabilitySummary, type: OperatorActionType) => {
+    const zoneLabel = ZONE_LABEL[item.zoneId] || item.zoneId;
     const titleMap: Record<string, string> = {
-      hotspot_acknowledged: `Review hotspot: ${item.categoryCode} in ${ZONE_LABEL[item.zoneId] || item.zoneId}`,
-      rollout_candidate_review: `Review rollout candidate: ${item.categoryCode} in ${ZONE_LABEL[item.zoneId] || item.zoneId}`,
-      blocked_item_escalation: `Escalate blocked item: ${item.categoryCode} in ${ZONE_LABEL[item.zoneId] || item.zoneId}`,
+      hotspot_acknowledged: `Review hotspot: ${item.categoryCode} in ${zoneLabel}`,
+      rollout_candidate_review: `Review rollout candidate: ${item.categoryCode} in ${zoneLabel}`,
+      blocked_item_escalation: `Escalate blocked item: ${item.categoryCode} in ${zoneLabel}`,
     };
     createMut.mutate({
       action_type: type,
@@ -195,6 +204,12 @@ export default function ReliabilityOperationsBoardPage() {
       source_severity: item.riskLevel,
       priority: severityToPriority(item.riskLevel),
     });
+  };
+
+  const handleQuickNote = (action: OperatorAction, quickNote: string) => {
+    const ts = new Date().toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const appended = action.note ? `${action.note}\n[${ts}] ${quickNote}` : `[${ts}] ${quickNote}`;
+    updateMut.mutate({ id: action.id, updates: { note: appended } });
   };
 
   const isLoading = intelLoading || actionsLoading;
@@ -237,9 +252,7 @@ export default function ReliabilityOperationsBoardPage() {
             {intel && (
               <Card className="border-primary/20">
                 <CardContent className="p-4">
-                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Executive Status
-                  </h2>
+                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Executive Status</h2>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
                     <MiniKpi label="Score" value={String(intel.enterprise.score)} color={verdictColor(intel.enterprise.verdict)} />
                     <MiniKpi label="Verdict" value={intel.enterprise.verdict} color={verdictColor(intel.enterprise.verdict)} />
@@ -252,16 +265,14 @@ export default function ReliabilityOperationsBoardPage() {
               </Card>
             )}
 
-            {/* ═══ Daily Execution Summary ═══ */}
+            {/* ═══ SECTION B — Daily Execution Summary ═══ */}
             {summary && (
               <Card>
                 <CardContent className="p-4">
-                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Daily Execution Summary
-                  </h2>
+                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Daily Execution Summary</h2>
                   <div className="grid grid-cols-5 gap-2 text-center">
                     <SummaryCell label="Open" value={summary.open} accent={summary.open > 0} />
-                    <SummaryCell label="Critical" value={summary.critical} accent={summary.critical > 0} critical />
+                    <SummaryCell label="Critical" value={summary.critical} critical={summary.critical > 0} />
                     <SummaryCell label="In Review" value={summary.inReview} />
                     <SummaryCell label="Resolved Today" value={summary.resolvedToday} />
                     <SummaryCell label="Decisions Today" value={summary.decisionsToday} />
@@ -270,91 +281,70 @@ export default function ReliabilityOperationsBoardPage() {
               </Card>
             )}
 
-            {/* ═══ Hotspots Requiring Action ═══ */}
-            {intel && intel.ac.topHotspots.length > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <AlertTriangle className="w-3 h-3" /> Hotspots Requiring Action
-                  </h2>
+            {/* ═══ SECTION C — Hotspots Requiring Action ═══ */}
+            <Card>
+              <CardContent className="p-4">
+                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3 h-3" /> Hotspots Requiring Action
+                </h2>
+                {!intel?.ac.topHotspots.length ? (
+                  <p className="text-xs text-muted-foreground py-3 text-center">No category-level hotspots detected in the last 24h</p>
+                ) : (
                   <div className="space-y-1.5">
                     {intel.ac.topHotspots.map((h, i) => (
-                      <div key={i} className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] text-muted-foreground">{ZONE_LABEL[h.zoneId] || h.zoneId}</span>
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{h.categoryCode}</Badge>
-                          <span className={`text-xs font-bold ${verdictColor(h.verdict)}`}>{h.reliabilityScore}</span>
-                        </div>
-                        <Button size="sm" variant="ghost" className="text-[10px] h-6 px-2"
-                          onClick={() => handleCreateFromHotspot(h, "hotspot_acknowledged")}>
-                          <Plus className="w-3 h-3 mr-1" /> Track
-                        </Button>
-                      </div>
+                      <IntelRow key={i} item={h} actionLabel="Track" onAction={() => handleCreateFromHotspot(h, "hotspot_acknowledged")} />
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
 
-            {/* ═══ Rollout Candidate Review ═══ */}
-            {intel && intel.ac.rolloutCandidates.length > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3 h-3 text-success" /> Rollout Candidate Review
-                  </h2>
+            {/* ═══ SECTION D — Rollout Candidate Review ═══ */}
+            <Card>
+              <CardContent className="p-4">
+                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3 h-3 text-success" /> Rollout Candidate Review
+                </h2>
+                {!intel?.ac.rolloutCandidates.length ? (
+                  <p className="text-xs text-muted-foreground py-3 text-center">No category combinations currently meet controlled rollout criteria</p>
+                ) : (
                   <div className="space-y-1.5">
                     {intel.ac.rolloutCandidates.map((c, i) => (
-                      <div key={i} className="flex items-center justify-between rounded-lg bg-success/5 border border-success/10 px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] text-muted-foreground">{ZONE_LABEL[c.zoneId] || c.zoneId}</span>
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{c.categoryCode}</Badge>
-                          <span className="text-xs font-bold text-success">{c.reliabilityScore}</span>
-                        </div>
-                        <Button size="sm" variant="ghost" className="text-[10px] h-6 px-2"
-                          onClick={() => handleCreateFromHotspot(c, "rollout_candidate_review")}>
-                          <Plus className="w-3 h-3 mr-1" /> Review
-                        </Button>
-                      </div>
+                      <IntelRow key={i} item={c} variant="success" actionLabel="Review" onAction={() => handleCreateFromHotspot(c, "rollout_candidate_review")} />
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
 
-            {/* ═══ Blocked / Unsafe Queue ═══ */}
-            {intel && intel.ac.blockedItems.length > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <XCircle className="w-3 h-3 text-destructive" /> Blocked / Unsafe Queue
-                  </h2>
+            {/* ═══ SECTION E — Blocked / Unsafe Queue ═══ */}
+            <Card>
+              <CardContent className="p-4">
+                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <XCircle className="w-3 h-3 text-destructive" /> Blocked / Unsafe Queue
+                </h2>
+                {!intel?.ac.blockedItems.length ? (
+                  <p className="text-xs text-muted-foreground py-3 text-center">No blocked items detected</p>
+                ) : (
                   <div className="space-y-1.5">
-                    {intel.ac.blockedItems.slice(0, 5).map((b, i) => (
-                      <div key={i} className="flex items-center justify-between rounded-lg bg-destructive/5 border border-destructive/10 px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-[10px] text-muted-foreground">{ZONE_LABEL[b.zoneId] || b.zoneId}</span>
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{b.categoryCode}</Badge>
-                          <span className={`text-xs font-bold ${verdictColor(b.verdict)}`}>{b.reliabilityScore}</span>
-                        </div>
-                        <Button size="sm" variant="ghost" className="text-[10px] h-6 px-2"
-                          onClick={() => handleCreateFromHotspot(b, "blocked_item_escalation")}>
-                          <Plus className="w-3 h-3 mr-1" /> Escalate
-                        </Button>
-                      </div>
+                    {intel.ac.blockedItems.slice(0, 6).map((b, i) => (
+                      <IntelRow key={i} item={b} variant="destructive" actionLabel="Escalate" onAction={() => handleCreateFromHotspot(b, "blocked_item_escalation")} />
                     ))}
+                    {intel.ac.blockedItems.length > 6 && (
+                      <p className="text-[10px] text-muted-foreground text-center">+{intel.ac.blockedItems.length - 6} more blocked items</p>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
 
-            {/* ═══ Filters ═══ */}
+            {/* ═══ SECTION F — Filters ═══ */}
             <Card>
               <CardContent className="p-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Filter className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="w-24 h-7 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="resolved">Resolved</SelectItem>
@@ -371,6 +361,15 @@ export default function ReliabilityOperationsBoardPage() {
                       <SelectItem value="low">Low</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      {Object.entries(ACTION_TYPE_LABELS).map(([k, v]) => (
+                        <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={sortBy} onValueChange={setSortBy}>
                     <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -384,7 +383,7 @@ export default function ReliabilityOperationsBoardPage() {
               </CardContent>
             </Card>
 
-            {/* ═══ Active Operator Queue ═══ */}
+            {/* ═══ SECTION G — Active Operator Queue ═══ */}
             <Card>
               <CardContent className="p-4">
                 <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
@@ -392,7 +391,11 @@ export default function ReliabilityOperationsBoardPage() {
                   <Badge variant="outline" className="text-[9px]">{actions?.length || 0}</Badge>
                 </h2>
                 {!actions?.length ? (
-                  <p className="text-xs text-muted-foreground py-4 text-center">No items match current filters</p>
+                  <div className="py-6 text-center">
+                    <ClipboardList className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">No items match current filters</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Create an action or track a hotspot to get started</p>
+                  </div>
                 ) : (
                   <div className="space-y-2">
                     {actions.map(action => (
@@ -402,6 +405,7 @@ export default function ReliabilityOperationsBoardPage() {
                         onStatusChange={handleQuickStatus}
                         onAddNote={() => setShowNoteDialog(action)}
                         onAssignOwner={() => setShowOwnerDialog(action)}
+                        onQuickNote={handleQuickNote}
                       />
                     ))}
                   </div>
@@ -409,12 +413,78 @@ export default function ReliabilityOperationsBoardPage() {
               </CardContent>
             </Card>
 
-            {/* ═══ Quick Navigation ═══ */}
+            {/* ═══ SECTION I — Resolved History ═══ */}
             <Card>
               <CardContent className="p-4">
-                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Quick Navigation
+                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <History className="w-3 h-3" /> Resolved History
                 </h2>
+                {!resolvedHistory?.length ? (
+                  <p className="text-xs text-muted-foreground py-3 text-center">No resolved items yet</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {resolvedHistory.map(a => (
+                      <div key={a.id} className="flex items-start justify-between rounded-lg bg-muted/20 px-3 py-2 gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-medium text-foreground truncate">{a.action_title}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <Badge className={`text-[7px] px-1 py-0 ${STATUS_COLORS[a.status]}`}>{a.status}</Badge>
+                            <Badge className={`text-[7px] px-1 py-0 ${PRIORITY_COLORS[a.priority]}`}>{a.priority}</Badge>
+                            {a.owner_name && <span className="text-[8px] text-primary">{a.owner_name}</span>}
+                          </div>
+                          {a.decision_summary && (
+                            <p className="text-[9px] text-muted-foreground mt-0.5 italic line-clamp-1">Decision: {a.decision_summary}</p>
+                          )}
+                        </div>
+                        <span className="text-[8px] text-muted-foreground whitespace-nowrap shrink-0">
+                          {a.resolved_at ? relativeTime(a.resolved_at) : relativeTime(a.updated_at)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ═══ SECTION J — Notes & Decisions ═══ */}
+            <Card>
+              <CardContent className="p-4">
+                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <BookOpen className="w-3 h-3" /> Notes & Decisions
+                </h2>
+                {!decisionLog?.length ? (
+                  <p className="text-xs text-muted-foreground py-3 text-center">No decisions logged yet</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {decisionLog.map(d => (
+                      <div key={d.id} className="rounded-lg border border-primary/10 bg-primary/5 px-3 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-medium text-foreground truncate">{d.action_title}</p>
+                            <Badge variant="outline" className="text-[7px] px-1 py-0 mt-0.5">{ACTION_TYPE_LABELS[d.action_type]}</Badge>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-[8px] text-muted-foreground">{relativeTime(d.created_at)}</span>
+                            {d.owner_name && <p className="text-[8px] text-primary">{d.owner_name}</p>}
+                          </div>
+                        </div>
+                        {d.decision_summary && (
+                          <p className="text-[9px] text-foreground mt-1 italic">{d.decision_summary}</p>
+                        )}
+                        {d.note && (
+                          <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">{d.note}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ═══ SECTION H — Quick Navigation ═══ */}
+            <Card>
+              <CardContent className="p-4">
+                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Navigation</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {NAV_LINKS.map(link => (
                     <Link key={link.path} to={link.path}>
@@ -430,24 +500,20 @@ export default function ReliabilityOperationsBoardPage() {
           </div>
         )}
 
-        {/* ═══ Create Action Dialog ═══ */}
+        {/* ═══ Dialogs ═══ */}
         <CreateActionDialog
           open={showCreateDialog}
           onClose={() => setShowCreateDialog(false)}
           onCreate={(input) => { createMut.mutate(input); setShowCreateDialog(false); }}
         />
-
-        {/* ═══ Add Note Dialog ═══ */}
         <NoteDialog
           action={showNoteDialog}
           onClose={() => setShowNoteDialog(null)}
-          onSave={(id, note) => {
-            updateMut.mutate({ id, updates: { note } });
+          onSave={(id, note, decision) => {
+            updateMut.mutate({ id, updates: { note, ...(decision ? { decision_summary: decision } : {}) } });
             setShowNoteDialog(null);
           }}
         />
-
-        {/* ═══ Assign Owner Dialog ═══ */}
         <OwnerDialog
           action={showOwnerDialog}
           onClose={() => setShowOwnerDialog(null)}
@@ -476,8 +542,31 @@ function MiniKpi({ label, value, color }: { label: string; value: string; color:
 function SummaryCell({ label, value, accent, critical }: { label: string; value: number; accent?: boolean; critical?: boolean }) {
   return (
     <div>
-      <p className={`text-lg font-bold ${critical && value > 0 ? "text-destructive" : accent ? "text-primary" : "text-foreground"}`}>{value}</p>
+      <p className={`text-lg font-bold ${critical ? "text-destructive" : accent ? "text-primary" : "text-foreground"}`}>{value}</p>
       <p className="text-[8px] text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function IntelRow({ item, variant, actionLabel, onAction }: {
+  item: CategoryReliabilitySummary;
+  variant?: "success" | "destructive";
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  const bg = variant === "success" ? "bg-success/5 border border-success/10"
+    : variant === "destructive" ? "bg-destructive/5 border border-destructive/10"
+    : "bg-muted/30";
+  return (
+    <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${bg}`}>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-[10px] text-muted-foreground">{ZONE_LABEL[item.zoneId] || item.zoneId}</span>
+        <Badge variant="outline" className="text-[9px] px-1.5 py-0">{item.categoryCode}</Badge>
+        <span className={`text-xs font-bold ${verdictColor(item.verdict)}`}>{item.reliabilityScore}</span>
+      </div>
+      <Button size="sm" variant="ghost" className="text-[10px] h-6 px-2" onClick={onAction}>
+        <Plus className="w-3 h-3 mr-1" /> {actionLabel}
+      </Button>
     </div>
   );
 }
@@ -487,11 +576,13 @@ function ActionCard({
   onStatusChange,
   onAddNote,
   onAssignOwner,
+  onQuickNote,
 }: {
   action: OperatorAction;
   onStatusChange: (a: OperatorAction, s: OperatorActionStatus) => void;
   onAddNote: () => void;
   onAssignOwner: () => void;
+  onQuickNote: (a: OperatorAction, note: string) => void;
 }) {
   const isActive = !["resolved", "dismissed"].includes(action.status);
 
@@ -500,19 +591,24 @@ function ActionCard({
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-foreground truncate">{action.action_title || ACTION_TYPE_LABELS[action.action_type] || action.action_type}</p>
+          <p className="text-xs font-semibold text-foreground truncate">
+            {action.action_title || ACTION_TYPE_LABELS[action.action_type] || action.action_type}
+          </p>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <Badge className={`text-[8px] px-1.5 py-0 ${STATUS_COLORS[action.status] || ""}`}>{action.status}</Badge>
+            <Badge className={`text-[8px] px-1.5 py-0 ${STATUS_COLORS[action.status] || ""}`}>{action.status.replace("_", " ")}</Badge>
             <Badge className={`text-[8px] px-1.5 py-0 ${PRIORITY_COLORS[action.priority] || ""}`}>{action.priority}</Badge>
             <Badge variant="outline" className="text-[8px] px-1.5 py-0">{ACTION_TYPE_LABELS[action.action_type] || action.action_type}</Badge>
+            {action.source_context && action.source_context !== "manual" && (
+              <Badge variant="outline" className="text-[7px] px-1 py-0 bg-primary/5 border-primary/15">
+                {SOURCE_CONTEXT_LABELS[action.source_context] || action.source_context}
+              </Badge>
+            )}
           </div>
         </div>
-        <span className="text-[9px] text-muted-foreground whitespace-nowrap">
-          {new Date(action.created_at).toLocaleDateString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-        </span>
+        <span className="text-[9px] text-muted-foreground whitespace-nowrap">{relativeTime(action.created_at)}</span>
       </div>
 
-      {/* Context */}
+      {/* Context metadata */}
       <div className="flex items-center gap-2 flex-wrap">
         {action.source_zone_id && (
           <span className="text-[9px] text-muted-foreground flex items-center gap-0.5">
@@ -524,33 +620,46 @@ function ActionCard({
         )}
         {action.owner_name && (
           <span className="text-[9px] text-primary flex items-center gap-0.5">
-            <User className="w-2.5 h-2.5" /> {action.owner_name}{action.owner_role ? ` (${action.owner_role})` : ""}
+            <User className="w-2.5 h-2.5" /> {action.owner_name}{action.owner_role ? ` · ${action.owner_role}` : ""}
           </span>
-        )}
-        {action.source_context && action.source_context !== "manual" && (
-          <Badge variant="outline" className="text-[7px] px-1 py-0 bg-primary/5">{action.source_context}</Badge>
         )}
       </div>
 
-      {/* Note */}
+      {/* Note trail */}
       {action.note && (
-        <p className="text-[10px] text-muted-foreground bg-muted/40 rounded px-2 py-1 line-clamp-2">{action.note}</p>
+        <div className="text-[10px] text-muted-foreground bg-muted/40 rounded px-2 py-1.5 max-h-16 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+          {action.note}
+        </div>
       )}
       {action.decision_summary && (
-        <p className="text-[10px] text-foreground bg-primary/5 rounded px-2 py-1 italic line-clamp-2">Decision: {action.decision_summary}</p>
+        <p className="text-[10px] text-foreground bg-primary/5 rounded px-2 py-1 italic line-clamp-2">
+          <span className="font-medium not-italic">Decision:</span> {action.decision_summary}
+        </p>
       )}
 
-      {/* Actions */}
+      {/* Timestamps */}
+      {action.resolved_at && (
+        <p className="text-[8px] text-muted-foreground flex items-center gap-1">
+          <Clock className="w-2.5 h-2.5" /> Resolved {relativeTime(action.resolved_at)}
+        </p>
+      )}
+
+      {/* Quick actions */}
       {isActive && (
-        <div className="flex items-center gap-1 flex-wrap pt-1">
+        <div className="flex items-center gap-1 flex-wrap pt-0.5 border-t border-border/30">
           {action.status === "open" && (
             <MicroBtn label="Acknowledge" onClick={() => onStatusChange(action, "acknowledged")} />
           )}
           {["open", "acknowledged"].includes(action.status) && (
             <MicroBtn label="In Review" onClick={() => onStatusChange(action, "in_review")} />
           )}
+          {["open", "acknowledged", "in_review"].includes(action.status) && (
+            <MicroBtn label="Waiting" onClick={() => onStatusChange(action, "waiting")} />
+          )}
           <MicroBtn label="Add Note" onClick={onAddNote} />
           <MicroBtn label="Assign" onClick={onAssignOwner} />
+          <MicroBtn label="Needs Data" onClick={() => onQuickNote(action, "Needs more data before proceeding")} muted />
+          <MicroBtn label="Review Later" onClick={() => onQuickNote(action, "Marked for follow-up review")} muted />
           <MicroBtn label="Resolve" onClick={() => onStatusChange(action, "resolved")} />
           <MicroBtn label="Dismiss" onClick={() => onStatusChange(action, "dismissed")} muted />
         </div>
@@ -582,6 +691,8 @@ function CreateActionDialog({ open, onClose, onCreate }: {
   const [decisionSummary, setDecisionSummary] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [ownerRole, setOwnerRole] = useState("");
+  const [zone, setZone] = useState("");
+  const [category, setCategory] = useState("");
 
   const isDecisionType = ["rollout_decision_logged", "risk_acceptance_logged", "deferment_logged"].includes(type);
 
@@ -592,22 +703,24 @@ function CreateActionDialog({ open, onClose, onCreate }: {
       action_title: title,
       priority,
       note,
+      source_zone_id: zone || null,
+      source_category_code: category || null,
       owner_name: ownerName || null,
       owner_role: ownerRole || null,
       decision_summary: decisionSummary || null,
       metadata: decisionType ? { decision_type: decisionType } : {},
     });
-    setTitle(""); setNote(""); setDecisionSummary(""); setOwnerName(""); setOwnerRole("");
+    setTitle(""); setNote(""); setDecisionSummary(""); setOwnerName(""); setOwnerRole(""); setZone(""); setCategory("");
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-sm">Create Operator Action</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input placeholder="Action title" value={title} onChange={e => setTitle(e.target.value)} className="text-sm" />
+          <Input placeholder="Action title *" value={title} onChange={e => setTitle(e.target.value)} className="text-sm" />
           <div className="grid grid-cols-2 gap-2">
             <Select value={type} onValueChange={v => setType(v as OperatorActionType)}>
               <SelectTrigger className="text-xs h-8"><SelectValue /></SelectTrigger>
@@ -628,10 +741,32 @@ function CreateActionDialog({ open, onClose, onCreate }: {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Input placeholder="Owner name" value={ownerName} onChange={e => setOwnerName(e.target.value)} className="text-xs h-8" />
-            <Input placeholder="Owner role" value={ownerRole} onChange={e => setOwnerRole(e.target.value)} className="text-xs h-8" />
+            <Input placeholder="Zone (optional)" value={zone} onChange={e => setZone(e.target.value)} className="text-xs h-8" />
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Category (opt)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {PHASE1_CATEGORIES.map(c => (
+                  <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Textarea placeholder="Note..." value={note} onChange={e => setNote(e.target.value)} className="text-xs min-h-[60px]" />
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="Owner name" value={ownerName} onChange={e => setOwnerName(e.target.value)} className="text-xs h-8" />
+            <Select value={ownerRole} onValueChange={setOwnerRole}>
+              <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Role" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                <SelectItem value="Ops Lead">Ops Lead</SelectItem>
+                <SelectItem value="Dispatch Lead">Dispatch Lead</SelectItem>
+                <SelectItem value="Reliability Reviewer">Reliability Reviewer</SelectItem>
+                <SelectItem value="Launch Manager">Launch Manager</SelectItem>
+                <SelectItem value="Category Lead">Category Lead</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Textarea placeholder="Note…" value={note} onChange={e => setNote(e.target.value)} className="text-xs min-h-[60px]" />
           {isDecisionType && (
             <>
               <Select value={decisionType} onValueChange={setDecisionType}>
@@ -645,7 +780,7 @@ function CreateActionDialog({ open, onClose, onCreate }: {
                   <SelectItem value="request_more_data">Request More Data</SelectItem>
                 </SelectContent>
               </Select>
-              <Textarea placeholder="Decision summary..." value={decisionSummary} onChange={e => setDecisionSummary(e.target.value)} className="text-xs min-h-[40px]" />
+              <Textarea placeholder="Decision summary…" value={decisionSummary} onChange={e => setDecisionSummary(e.target.value)} className="text-xs min-h-[40px]" />
             </>
           )}
         </div>
@@ -661,19 +796,17 @@ function CreateActionDialog({ open, onClose, onCreate }: {
 function NoteDialog({ action, onClose, onSave }: {
   action: OperatorAction | null;
   onClose: () => void;
-  onSave: (id: string, note: string) => void;
+  onSave: (id: string, note: string, decision?: string) => void;
 }) {
   const [note, setNote] = useState("");
+  const [decision, setDecision] = useState("");
 
   const handleSave = () => {
-    if (!action) return;
-    const existingNote = action.note || "";
-    const timestamp = new Date().toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    const appendedNote = existingNote
-      ? `${existingNote}\n[${timestamp}] ${note}`
-      : `[${timestamp}] ${note}`;
-    onSave(action.id, appendedNote);
-    setNote("");
+    if (!action || !note.trim()) return;
+    const ts = new Date().toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const appended = action.note ? `${action.note}\n[${ts}] ${note}` : `[${ts}] ${note}`;
+    onSave(action.id, appended, decision || undefined);
+    setNote(""); setDecision("");
   };
 
   return (
@@ -685,7 +818,8 @@ function NoteDialog({ action, onClose, onSave }: {
         {action?.note && (
           <div className="text-[10px] text-muted-foreground bg-muted/40 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{action.note}</div>
         )}
-        <Textarea placeholder="Add a note..." value={note} onChange={e => setNote(e.target.value)} className="text-xs min-h-[60px]" />
+        <Textarea placeholder="Add a note…" value={note} onChange={e => setNote(e.target.value)} className="text-xs min-h-[60px]" />
+        <Textarea placeholder="Decision summary (optional)…" value={decision} onChange={e => setDecision(e.target.value)} className="text-xs min-h-[40px]" />
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
           <Button size="sm" onClick={handleSave} disabled={!note.trim()}>Save Note</Button>
