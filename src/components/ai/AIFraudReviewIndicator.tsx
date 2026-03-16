@@ -3,7 +3,7 @@
  * Uses AIFraudRiskBadge. Shows explicit "manual review recommended" for unknown/degraded states.
  * Never implies safe/clear when scan failed. Advisory only.
  */
-import { AlertTriangle, Eye, ShieldQuestion } from "lucide-react";
+import { AlertTriangle, Eye } from "lucide-react";
 import AIFraudRiskBadge from "./AIFraudRiskBadge";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
 import AIOperatorFeedback from "./AIOperatorFeedback";
