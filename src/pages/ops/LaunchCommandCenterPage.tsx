@@ -1198,3 +1198,43 @@ function CategoryReliabilityHotspotsPanel() {
     </Card>
   );
 }
+
+function UpcomingReliabilityRisksCard() {
+  const { data } = useQuery({
+    queryKey: ["lcc-predictive-risks"],
+    queryFn: fetchPredictiveReliabilitySummary,
+    staleTime: 60_000,
+  });
+  if (!data) return null;
+  const hasRisks = data.zonesAtRisk > 0 || data.demandAlerts > 0;
+  if (!hasRisks) return null;
+  return (
+    <Card className="mb-6 border-warning/20">
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-warning" /> Upcoming Reliability Risks
+          </h3>
+          <a href="/ops/predictive-reliability">
+            <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2">Details →</Button>
+          </a>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="p-1.5 rounded bg-muted/30">
+            <p className={`text-sm font-bold ${data.zonesAtRisk > 0 ? "text-destructive" : "text-success"}`}>{data.zonesAtRisk}</p>
+            <p className="text-[8px] text-muted-foreground">Zones at Risk</p>
+          </div>
+          <div className="p-1.5 rounded bg-muted/30">
+            <p className={`text-sm font-bold ${data.categoriesDeclining > 0 ? "text-warning" : "text-success"}`}>{data.categoriesDeclining}</p>
+            <p className="text-[8px] text-muted-foreground">Declining</p>
+          </div>
+          <div className="p-1.5 rounded bg-muted/30">
+            <p className={`text-sm font-bold ${data.demandAlerts > 0 ? "text-warning" : "text-success"}`}>{data.demandAlerts}</p>
+            <p className="text-[8px] text-muted-foreground">Demand Alerts</p>
+          </div>
+        </div>
+        <p className="text-[8px] text-muted-foreground/60 text-center italic">Predictive — advisory only</p>
+      </CardContent>
+    </Card>
+  );
+}
