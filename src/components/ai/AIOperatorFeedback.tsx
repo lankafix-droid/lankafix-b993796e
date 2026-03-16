@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ThumbsUp, ThumbsDown, Flag } from "lucide-react";
-import { track } from "@/lib/analytics";
+import { trackAIAnalytics } from "@/services/aiEventTracking";
 
 interface AIOperatorFeedbackProps {
   module: string;
@@ -24,7 +24,7 @@ const AIOperatorFeedback = ({
 
   const handleFeedback = (type: FeedbackType) => {
     setSubmitted(type);
-    track("ai_operator_feedback", {
+    trackAIAnalytics("ai_operator_feedback", {
       module,
       feedback: type,
       bookingId,

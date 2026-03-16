@@ -1,13 +1,13 @@
 /**
  * AIConsentGate — Shows a consent prompt when an AI module requires user consent.
  * Does NOT run the gated module until consent is explicitly granted.
- * Offers: Allow, Not now, Continue without AI.
+ * Offers: Allow AI, Not now, Continue without AI.
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Shield, Lock, X } from "lucide-react";
 import { setAIConsent, type AIConsentCapability } from "@/services/aiConsentService";
-import { track } from "@/lib/analytics";
+import { trackAIAnalytics } from "@/services/aiEventTracking";
 
 interface AIConsentGateProps {
   requiredConsent: AIConsentCapability;
@@ -57,13 +57,13 @@ const AIConsentGate = ({
   const handleGrant = () => {
     setGranting(true);
     setAIConsent({ [requiredConsent]: true });
-    track("ai_consent_granted", { module: moduleName, consent: requiredConsent });
+    trackAIAnalytics("ai_consent_granted", { module: moduleName, consent: requiredConsent });
     onConsented();
   };
 
   const handleDismiss = () => {
     setDismissed(true);
-    track("blocked_by_consent", { module: moduleName, consent: requiredConsent, action: "dismissed" });
+    trackAIAnalytics("blocked_by_consent", { module: moduleName, consent: requiredConsent, action: "dismissed" });
     onDismissed?.();
   };
 
@@ -100,7 +100,7 @@ const AIConsentGate = ({
           className="text-xs"
         >
           <Shield className="w-3 h-3 mr-1" />
-          Allow
+          Allow AI
         </Button>
         <Button
           variant="outline"
@@ -110,18 +110,10 @@ const AIConsentGate = ({
         >
           Not now
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDismiss}
-          className="text-xs text-muted-foreground"
-        >
-          Continue without AI
-        </Button>
       </div>
 
-      <p className="text-[10px] text-muted-foreground">
-        AI is optional and your booking can continue manually. You can change consent anytime in Settings.
+      <p className="text-[10px] text-muted-foreground leading-relaxed">
+        Your booking can continue without AI assistance. You can change this later in Settings.
       </p>
     </div>
   );

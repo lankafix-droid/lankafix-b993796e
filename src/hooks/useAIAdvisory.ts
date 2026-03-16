@@ -7,11 +7,12 @@
  * - Stable memoization via useRef for serviceFn to prevent re-execution loops
  * - Deduplication guard prevents duplicate analytics firing
  * - Single explicit execute path; guarded autoExecute
+ * - Uses trackAIAnalytics exclusively for all AI analytics
  */
 import { useState, useEffect, useCallback, useRef } from "react";
 import { isAIEnabled, type AIFeatureFlags } from "@/config/aiFlags";
 import { checkModuleConsent, type AIConsentCapability } from "@/services/aiConsentService";
-import { track } from "@/lib/analytics";
+import { trackAIAnalytics, type AIAnalyticsEvent } from "@/services/aiEventTracking";
 
 export interface AIAdvisoryResult<T> {
   loading: boolean;
@@ -37,7 +38,7 @@ interface UseAIAdvisoryOptions<T> {
   autoExecute?: boolean;
   /** Dependencies that trigger re-execution — use primitives only */
   deps?: unknown[];
-  analyticsEvent?: string;
+  analyticsEvent?: AIAnalyticsEvent;
   analyticsPayload?: Record<string, unknown>;
 }
 
@@ -108,9 +109,9 @@ export function useAIAdvisory<T>(
         available: false,
         error: "Feature disabled",
       });
-      if (analyticsEvent && !analyticsTrackedRef.current) {
+      if (!analyticsTrackedRef.current) {
         analyticsTrackedRef.current = true;
-        track("fallback_rendered", { module: moduleName, reason: "feature_disabled" });
+        trackAIAnalytics("fallback_rendered", { module: moduleName, reason: "feature_disabled" });
       }
       return;
     }
@@ -126,7 +127,7 @@ export function useAIAdvisory<T>(
       });
       if (!analyticsTrackedRef.current) {
         analyticsTrackedRef.current = true;
-        track("blocked_by_consent", { module: moduleName, requiredConsent: consent.requiredConsent });
+        trackAIAnalytics("blocked_by_consent", { module: moduleName, requiredConsent: consent.requiredConsent });
       }
       return;
     }
@@ -160,7 +161,7 @@ export function useAIAdvisory<T>(
       if (!analyticsTrackedRef.current) {
         analyticsTrackedRef.current = true;
         if (analyticsEvent) {
-          track(analyticsEvent, {
+          trackAIAnalytics(analyticsEvent, {
             module: moduleName,
             confidence,
             fallback_used,
@@ -169,10 +170,10 @@ export function useAIAdvisory<T>(
           });
         }
         if (fallback_used) {
-          track("fallback_rendered", { module: moduleName });
+          trackAIAnalytics("fallback_rendered", { module: moduleName });
         }
         if (confidence > 0 && confidence < 50) {
-          track("low_confidence_rendered", { module: moduleName, confidence });
+          trackAIAnalytics("low_confidence_rendered", { module: moduleName, confidence });
         }
       }
     } catch (err: any) {
@@ -185,7 +186,7 @@ export function useAIAdvisory<T>(
       });
       if (!analyticsTrackedRef.current) {
         analyticsTrackedRef.current = true;
-        track("fallback_rendered", { module: moduleName, reason: "error" });
+        trackAIAnalytics("fallback_rendered", { module: moduleName, reason: "error" });
       }
     } finally {
       executingRef.current = false;
