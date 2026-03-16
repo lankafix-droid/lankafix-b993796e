@@ -37,6 +37,7 @@ import ZoneCategoryReliabilityMatrix from "@/components/ops/ZoneCategoryReliabil
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
+import GovernanceSnapshotStrip from "@/components/ops/GovernanceSnapshotStrip";
 
 const PILOT_ZONE_IDS = [
   "col_01","col_02","col_03","col_04","col_05","col_06","col_07",

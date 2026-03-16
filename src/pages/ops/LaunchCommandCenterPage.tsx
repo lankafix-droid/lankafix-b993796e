@@ -41,6 +41,7 @@ import type { CategoryReliabilitySummary } from "@/engines/categoryReliabilityEn
 import CategoryReliabilityTable from "@/components/ops/CategoryReliabilityTable";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
+import GovernanceSnapshotStrip from "@/components/ops/GovernanceSnapshotStrip";
 import {
   PILLAR_WEIGHTS, MIN_ACTIVE_PARTNERS_TARGET, MIN_ACTIVE_PARTNERS_CHECKLIST,
   PAYMENT_FAILURE_SCORE_PENALTY, UNPAID_COMPLETED_SCORE_PENALTY, MAX_PAYMENT_FAILURES_CHECKLIST,
