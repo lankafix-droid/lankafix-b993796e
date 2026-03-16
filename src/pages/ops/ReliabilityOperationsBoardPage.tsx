@@ -79,6 +79,7 @@ const NAV_LINKS = [
   { label: "Chaos Control", path: "/ops/chaos-control", icon: AlertOctagon },
   { label: "Command Center", path: "/ops/command-center", icon: Radio },
   { label: "Prescriptive", path: "/ops/prescriptive-reliability", icon: Target },
+  { label: "Intervention Workbench", path: "/ops/prescriptive-interventions", icon: ClipboardList },
 ];
 
 const PHASE1_CATEGORIES = [

@@ -200,6 +200,7 @@ export default function PrescriptiveReliabilityPage() {
                     { label: "Archive", path: "/ops/reliability-archive" },
                     { label: "Command Center", path: "/ops/command-center" },
                     { label: "Scenario Simulator", path: "/ops/reliability-scenario-simulator" },
+                    { label: "Intervention Workbench", path: "/ops/prescriptive-interventions" },
                   ].map(l => (
                     <Link key={l.path} to={l.path}>
                       <Button variant="outline" size="sm" className="text-[10px] h-7 gap-1"><ArrowUpRight className="w-2.5 h-2.5" />{l.label}</Button>

@@ -751,6 +751,9 @@ function PredictiveOutlookPanel() {
         <Link to="/ops/reliability-scenario-simulator">
           <Button variant="ghost" size="sm" className="w-full text-[10px] h-7 gap-1"><Beaker className="w-2.5 h-2.5" /> Scenario Simulator</Button>
         </Link>
+        <Link to="/ops/prescriptive-interventions">
+          <Button variant="ghost" size="sm" className="w-full text-[10px] h-7 gap-1"><ArrowUpRight className="w-2.5 h-2.5" /> Intervention Workbench</Button>
+        </Link>
       </CardContent>
     </Card>
   );
