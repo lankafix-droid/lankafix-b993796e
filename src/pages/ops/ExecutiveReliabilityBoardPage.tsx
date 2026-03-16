@@ -686,6 +686,8 @@ export default function ExecutiveReliabilityBoardPage() {
               </Card>
             )}
 
+            <PredictiveOutlookPanel />
+
             <p className="text-[9px] text-muted-foreground text-center pb-4">
               Informational only — does not affect GO/HOLD/NO-GO verdict or marketplace behavior
             </p>
