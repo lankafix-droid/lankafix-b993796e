@@ -451,3 +451,96 @@ export async function fetchReliabilityScopePlannerContext(): Promise<ScopePlanne
   ]);
   return { rolloutSummary, zoneReliability };
 }
+
+// ── Per-zone × per-category reliability intelligence ──
+
+const PHASE1_CATEGORY_CODES = ["AC", "MOBILE", "CONSUMER_ELEC", "IT", "COPIER", "ELECTRICAL", "PLUMBING", "CCTV", "SOLAR", "NETWORK", "SMART_HOME_OFFICE", "HOME_SECURITY", "POWER_BACKUP", "APPLIANCE_INSTALL", "PRINT_SUPPLIES"];
+
+/**
+ * Fetch per-zone × per-category reliability summaries.
+ * Groups bookings by zone_code + category_code, derives inputs, delegates to categoryReliabilityEngine.
+ * Read-only. No formula duplication.
+ */
+export async function fetchPerZoneCategoryReliabilitySummary(): Promise<Record<string, CategoryReliabilitySummary[]>> {
+  const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const [bookingsRes, escalationsRes] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("id, zone_code, category_code, status")
+      .gte("created_at", cutoff24h)
+      .neq("booking_source", "pilot_simulation")
+      .limit(1000),
+    supabase
+      .from("dispatch_escalations")
+      .select("id, booking_id")
+      .gte("created_at", cutoff24h)
+      .limit(500),
+  ]);
+
+  const bookings = bookingsRes.data || [];
+  const escalations = escalationsRes.data || [];
+  const escalatedBookingIds = new Set(escalations.map((e: any) => e.booking_id));
+
+  const enterpriseSummary = await fetchLiveEnterpriseSummary();
+
+  // Build zone×category pair inputs
+  const inputs: CategoryReliabilityInput[] = [];
+
+  for (const zoneId of PILOT_ZONE_IDS_RM) {
+    const zoneBookings = bookings.filter((b: any) => b.zone_code === zoneId);
+
+    for (const categoryCode of PHASE1_CATEGORY_CODES) {
+      const catBookings = zoneBookings.filter((b: any) => b.category_code === categoryCode);
+      const bookingCount24h = catBookings.length;
+      const successCount24h = catBookings.filter((b: any) => b.status === "completed").length;
+      const escalationCount24h = catBookings.filter((b: any) => escalatedBookingIds.has(b.id)).length;
+
+      const sampleFactor = bookingCount24h >= 10 ? 1.0 : bookingCount24h >= 5 ? 0.85 : bookingCount24h >= 1 ? 0.65 : 0.4;
+      const confidenceScore = Math.round(enterpriseSummary.score * sampleFactor);
+
+      const escalationRate = bookingCount24h > 0 ? (escalationCount24h / bookingCount24h) * 100 : 0;
+      const breachRisk = Math.min(100, enterpriseSummary.breachRisk + Math.round(escalationRate * 0.6));
+      const impactScore = Math.min(100, Math.round(escalationRate * 2.5 + (bookingCount24h === 0 ? 15 : 0)));
+
+      inputs.push({
+        zoneId,
+        categoryCode,
+        bookingCount24h,
+        successCount24h,
+        escalationCount24h,
+        failedHealingCount24h: 0,
+        circuitBreakCount24h: 0,
+        confidenceScore,
+        breachRisk,
+        impactScore,
+      });
+    }
+  }
+
+  const summaries = computeAllCategoryReliability(inputs);
+
+  // Group by zoneId
+  const result: Record<string, CategoryReliabilitySummary[]> = {};
+  summaries.forEach(s => {
+    if (!result[s.zoneId]) result[s.zoneId] = [];
+    result[s.zoneId].push(s);
+  });
+
+  return result;
+}
+
+/**
+ * Fetch worst categories across all pilot zones, sorted ascending by reliability score.
+ */
+export async function fetchWorstCategoriesByZone(limitPerZone = 3): Promise<CategoryReliabilitySummary[]> {
+  const grouped = await fetchPerZoneCategoryReliabilitySummary();
+  const worst: CategoryReliabilitySummary[] = [];
+
+  for (const zoneId of Object.keys(grouped)) {
+    const sorted = [...grouped[zoneId]].sort((a, b) => a.reliabilityScore - b.reliabilityScore);
+    worst.push(...sorted.slice(0, limitPerZone));
+  }
+
+  return worst.sort((a, b) => a.reliabilityScore - b.reliabilityScore);
+}
