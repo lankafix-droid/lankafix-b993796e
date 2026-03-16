@@ -27,10 +27,12 @@ import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
   fetchLiveEnterpriseSummary, fetchDispatchReliabilitySignal, fetchDispatchPolicySimulation,
+  fetchReliabilityRolloutSummary,
   verdictColor as getVerdictColor, slaColor as getSlaColor,
   impactLevelColor as getImpactColor, costSeverityColor as getCostColor,
   dispatchRiskColor as getDispatchRiskColor, shadowPolicyColor as getShadowPolicyColor,
-  type DispatchRiskSummary, type DispatchPolicyAdvisory,
+  rolloutReadinessColor as getRolloutReadinessColor, recommendedModeColor as getRecommendedModeColor,
+  type DispatchRiskSummary, type DispatchPolicyAdvisory, type ReliabilityRolloutSummary,
 } from "@/services/reliabilityReadModel";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
@@ -898,6 +900,9 @@ function ReliabilityStatusPanel() {
 
       {/* Shadow Dispatch Policy */}
       <ShadowPolicyPanel />
+
+      {/* Guardrails Rollout */}
+      <GuardrailsRolloutPanel />
     </>
   );
 }
@@ -999,6 +1004,80 @@ function DispatchRiskPanel() {
   );
 }
 
+
+function GuardrailsRolloutPanel() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["lcc-guardrails-rollout"],
+    queryFn: fetchReliabilityRolloutSummary,
+    staleTime: 60_000,
+  });
+
+  if (isLoading || !data) return null;
+
+  const killSwitchActive = data.flags.emergencyKillSwitch;
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="p-4 space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Shield className="w-3.5 h-3.5 text-primary" /> Reliability Guardrails Rollout
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+          <div>
+            <p className={`text-sm font-bold ${data.flags.guardrailsEnabled ? "text-success" : "text-muted-foreground"}`}>
+              {data.flags.guardrailsEnabled ? "ON" : "OFF"}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Guardrails</p>
+          </div>
+          <div>
+            <p className={`text-sm font-bold ${getRecommendedModeColor(data.flags.enforcementMode)}`}>
+              {data.flags.enforcementMode.replace(/_/g, " ")}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Enforcement Mode</p>
+          </div>
+          <div>
+            <p className={`text-sm font-bold ${killSwitchActive ? "text-destructive" : "text-muted-foreground"}`}>
+              {killSwitchActive ? "ACTIVE" : "INACTIVE"}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Kill Switch</p>
+          </div>
+          <div>
+            <p className={`text-sm font-bold ${getRolloutReadinessColor(data.rolloutReadiness)}`}>
+              {data.rolloutReadiness.replace(/_/g, " ")}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Rollout Readiness</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.recommendedRolloutPercent}%</p>
+            <p className="text-[9px] text-muted-foreground">Recommended %</p>
+          </div>
+          <div>
+            <p className={`text-sm font-bold ${getRecommendedModeColor(data.recommendedMode)}`}>
+              {data.recommendedMode.replace(/_/g, " ")}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Recommended Mode</p>
+          </div>
+        </div>
+        {/* Eligible controls */}
+        <div className="flex flex-wrap gap-2 justify-center">
+          <Badge variant="outline" className={`text-[9px] ${data.enforceZoneProtectionEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+            Zone Protection: {data.enforceZoneProtectionEligible ? "Eligible" : "—"}
+          </Badge>
+          <Badge variant="outline" className={`text-[9px] ${data.enforceCapacityCapEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+            Capacity Cap: {data.enforceCapacityCapEligible ? "Eligible" : "—"}
+          </Badge>
+          <Badge variant="outline" className={`text-[9px] ${data.enforceBookingGuardEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+            Booking Guard: {data.enforceBookingGuardEligible ? "Eligible" : "—"}
+          </Badge>
+        </div>
+        <p className="text-[10px] text-muted-foreground text-center">{data.rolloutReason}</p>
+        <p className="text-[9px] text-muted-foreground text-center italic">
+          Control-plane only — no live dispatch enforcement active unless explicitly enabled
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 function SelfHealingStatusBadge() {
   const { data } = useQuery({

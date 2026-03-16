@@ -11,6 +11,7 @@ import { computeIncidentImpact } from "@/engines/incidentImpactModel";
 import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
 import { computeDispatchReliabilitySignal, type DispatchReliabilitySignal, type DispatchRiskInput } from "@/engines/reliabilityDispatchRiskEngine";
 import { simulateDispatchPolicy, type DispatchPolicySimulationResult, type DispatchPolicySimulationInput } from "@/engines/reliabilityDispatchPolicySimulator";
+import { computeRolloutPolicy, type RolloutPolicyResult, type RolloutPolicyInput } from "@/engines/reliabilityRolloutPolicyEngine";
 import type { HealingStats } from "@/engines/selfHealingEngine";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 
@@ -244,3 +245,96 @@ export const FRESHNESS_COLORS: Record<SnapshotFreshness, string> = {
   stale: "text-destructive",
   none: "text-muted-foreground",
 };
+
+// ── Guardrail feature flags (read-only, fail-safe to OFF) ──
+export interface GuardrailFlags {
+  guardrailsEnabled: boolean;
+  enforcementMode: "OBSERVE_ONLY" | "SHADOW_ONLY" | "PILOT_ENFORCEMENT" | "BROAD_ENFORCEMENT";
+  emergencyKillSwitch: boolean;
+  rolloutPercent: number;
+  scope: {
+    zones: string[];
+    categories: string[];
+  };
+}
+
+const DEFAULT_GUARDRAIL_FLAGS: GuardrailFlags = {
+  guardrailsEnabled: false,
+  enforcementMode: "OBSERVE_ONLY",
+  emergencyKillSwitch: false,
+  rolloutPercent: 0,
+  scope: { zones: [], categories: [] },
+};
+
+export async function fetchReliabilityGuardrailFlags(): Promise<GuardrailFlags> {
+  try {
+    const { data } = await (supabase as any)
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "reliability_guardrail_flags")
+      .maybeSingle();
+    if (!data?.value) return DEFAULT_GUARDRAIL_FLAGS;
+    const val = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
+    return {
+      guardrailsEnabled: val.guardrailsEnabled === true,
+      enforcementMode: val.enforcementMode || "OBSERVE_ONLY",
+      emergencyKillSwitch: val.emergencyKillSwitch === true,
+      rolloutPercent: typeof val.rolloutPercent === "number" ? val.rolloutPercent : 0,
+      scope: {
+        zones: Array.isArray(val.scope?.zones) ? val.scope.zones : [],
+        categories: Array.isArray(val.scope?.categories) ? val.scope.categories : [],
+      },
+    };
+  } catch {
+    return DEFAULT_GUARDRAIL_FLAGS;
+  }
+}
+
+// ── Rollout readiness color maps ──
+export function rolloutReadinessColor(readiness: string): string {
+  return ({ NOT_READY: "text-destructive", LIMITED: "text-warning", CONTROLLED: "text-primary", READY: "text-success" }[readiness] || "text-muted-foreground");
+}
+
+export function recommendedModeColor(mode: string): string {
+  return ({ OBSERVE_ONLY: "text-muted-foreground", SHADOW_ONLY: "text-warning", PILOT_ENFORCEMENT: "text-primary", BROAD_ENFORCEMENT: "text-success" }[mode] || "text-muted-foreground");
+}
+
+// ── Unified rollout summary (combines all layers) ──
+export interface ReliabilityRolloutSummary extends RolloutPolicyResult {
+  reliabilityScore: number;
+  verdict: string;
+  dispatchRiskLevel: string;
+  shadowPolicyMode: string;
+  dispatchConfidence: number;
+  flags: GuardrailFlags;
+}
+
+export async function fetchReliabilityRolloutSummary(): Promise<ReliabilityRolloutSummary> {
+  const [policyAdvisory, flags] = await Promise.all([
+    fetchDispatchPolicySimulation(),
+    fetchReliabilityGuardrailFlags(),
+  ]);
+
+  const rolloutInput: RolloutPolicyInput = {
+    reliabilityScore: policyAdvisory.reliabilityScore,
+    dispatchRiskLevel: policyAdvisory.dispatchRiskLevel as any,
+    shadowPolicyMode: policyAdvisory.shadowPolicyMode,
+    breachRisk: PILOT_ASSUMPTIONS.circuitBreak24h,
+    escalationRate: policyAdvisory.reliabilityScore >= 85 ? 0 : 10,
+    dispatchConfidence: policyAdvisory.dispatchConfidence,
+    zoneCountReady: 0,
+    activePartnerCount: 0,
+  };
+
+  const rollout = computeRolloutPolicy(rolloutInput);
+
+  return {
+    ...rollout,
+    reliabilityScore: policyAdvisory.reliabilityScore,
+    verdict: policyAdvisory.verdict,
+    dispatchRiskLevel: policyAdvisory.dispatchRiskLevel,
+    shadowPolicyMode: policyAdvisory.shadowPolicyMode,
+    dispatchConfidence: policyAdvisory.dispatchConfidence,
+    flags,
+  };
+}
