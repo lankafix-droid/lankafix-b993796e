@@ -452,6 +452,69 @@ export default function ExecutiveReliabilityBoardPage() {
               </Card>
             )}
 
+            {/* ── Guardrails Rollout Governance ── */}
+            {rolloutSummary && (
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5" /> Guardrails Rollout Governance
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+                    <div>
+                      <p className={`text-sm font-bold ${rolloutReadinessColor(rolloutSummary.rolloutReadiness)}`}>
+                        {rolloutSummary.rolloutReadiness.replace(/_/g, " ")}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Rollout Readiness</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${recommendedModeColor(rolloutSummary.recommendedMode)}`}>
+                        {rolloutSummary.recommendedMode.replace(/_/g, " ")}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Recommended Mode</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{rolloutSummary.recommendedRolloutPercent}%</p>
+                      <p className="text-[9px] text-muted-foreground">Recommended %</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${rolloutSummary.flags.guardrailsEnabled ? "text-success" : "text-muted-foreground"}`}>
+                        {rolloutSummary.flags.guardrailsEnabled ? "ON" : "OFF"}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Guardrails</p>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-bold ${rolloutSummary.flags.emergencyKillSwitch ? "text-destructive" : "text-muted-foreground"}`}>
+                        {rolloutSummary.flags.emergencyKillSwitch ? "ACTIVE" : "INACTIVE"}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Kill Switch</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{rolloutSummary.flags.rolloutPercent}%</p>
+                      <p className="text-[9px] text-muted-foreground">Current Rollout %</p>
+                    </div>
+                  </div>
+                  {/* Eligible controls */}
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <Badge variant="outline" className={`text-[9px] ${rolloutSummary.enforceZoneProtectionEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+                      Zone Protection: {rolloutSummary.enforceZoneProtectionEligible ? "Eligible" : "—"}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[9px] ${rolloutSummary.enforceCapacityCapEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+                      Capacity Cap: {rolloutSummary.enforceCapacityCapEligible ? "Eligible" : "—"}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[9px] ${rolloutSummary.enforceBookingGuardEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+                      Booking Guard: {rolloutSummary.enforceBookingGuardEligible ? "Eligible" : "—"}
+                    </Badge>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3">
+                    <p className="text-xs text-foreground">{rolloutSummary.rolloutReason}</p>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground text-center italic">
+                    Governance recommendation only — no automatic enforcement
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* ── Section 7: Historical Archive Table ── */}
             {snapshots.length > 0 ? (
               <Card>

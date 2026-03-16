@@ -63,12 +63,15 @@ export default function ReliabilityArchivePage() {
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
 
-        <div className="flex items-center justify-between mb-6">
+         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
             <h1 className="text-lg font-bold text-foreground">Reliability Archive</h1>
             <Badge variant="outline" className="text-[10px]">30-Day Ledger</Badge>
           </div>
+          <p className="text-[9px] text-muted-foreground max-w-[180px] text-right">
+            Historical reliability only — rollout governance is based on latest live posture
+          </p>
           <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/ops/executive-reliability")}>
             Executive Board <TrendingUp className="w-3 h-3" />
           </Button>
