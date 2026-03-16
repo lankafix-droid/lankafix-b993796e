@@ -459,6 +459,16 @@ export default function ExecutiveReliabilityBoardPage() {
                   <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
                     <Shield className="w-3.5 h-3.5" /> Guardrails Rollout Governance
                   </h2>
+
+                  {/* Kill switch override */}
+                  {rolloutSummary.flags.emergencyKillSwitch && (
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
+                      <p className="text-[10px] text-destructive font-medium text-center">
+                        Emergency kill switch currently overrides any rollout progression
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
                     <div>
                       <p className={`text-sm font-bold ${rolloutReadinessColor(rolloutSummary.rolloutReadiness)}`}>
@@ -489,8 +499,10 @@ export default function ExecutiveReliabilityBoardPage() {
                       <p className="text-[9px] text-muted-foreground">Kill Switch</p>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-foreground">{rolloutSummary.flags.rolloutPercent}%</p>
-                      <p className="text-[9px] text-muted-foreground">Current Rollout %</p>
+                      <p className={`text-sm font-bold ${shadowPolicyColor(rolloutSummary.shadowPolicyMode)}`}>
+                        {rolloutSummary.shadowPolicyMode}
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">Shadow Policy</p>
                     </div>
                   </div>
                   {/* Eligible controls */}
@@ -505,11 +517,19 @@ export default function ExecutiveReliabilityBoardPage() {
                       Booking Guard: {rolloutSummary.enforceBookingGuardEligible ? "Eligible" : "—"}
                     </Badge>
                   </div>
-                  <div className="bg-muted/30 rounded-lg p-3">
-                    <p className="text-xs text-foreground">{rolloutSummary.rolloutReason}</p>
+                  {/* Executive interpretation */}
+                  <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                    <p className="text-xs text-foreground">
+                      {rolloutSummary.rolloutReadiness === "NOT_READY" && "System not ready for live enforcement."}
+                      {rolloutSummary.rolloutReadiness === "LIMITED" && "Continue shadow-mode observation only."}
+                      {rolloutSummary.rolloutReadiness === "CONTROLLED" && "Eligible for tightly scoped pilot enforcement."}
+                      {rolloutSummary.rolloutReadiness === "READY" && rolloutSummary.recommendedMode === "BROAD_ENFORCEMENT" && "Candidate for broader staged rollout under strict controls."}
+                      {rolloutSummary.rolloutReadiness === "READY" && rolloutSummary.recommendedMode !== "BROAD_ENFORCEMENT" && "Safe for controlled pilot under kill-switch supervision."}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">{rolloutSummary.rolloutReason}</p>
                   </div>
                   <p className="text-[9px] text-muted-foreground text-center italic">
-                    Governance recommendation only — no automatic enforcement
+                    Board-grade governance visibility only — no automatic enforcement active
                   </p>
                 </CardContent>
               </Card>
