@@ -15,7 +15,7 @@ import {
 import {
   ArrowLeft, Shield, TrendingUp, Activity, DollarSign, MapPin,
   BarChart3, Target, AlertTriangle, FileText, RefreshCw, Archive,
-  Camera, Clock, CheckCircle2, ArrowUpRight,
+  Camera, Clock, CheckCircle2, ArrowUpRight, Beaker,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";

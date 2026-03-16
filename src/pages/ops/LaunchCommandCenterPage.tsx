@@ -18,7 +18,7 @@ import {
   Zap, CreditCard, Activity, Clock, ArrowLeft,
   ChevronRight, Rocket, FileText, Radio,
   RefreshCw, MessageSquare, Target, Save, TrendingUp, TrendingDown, Minus,
-  AlertOctagon, Info, Heart,
+  AlertOctagon, Info, Heart, Beaker,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
