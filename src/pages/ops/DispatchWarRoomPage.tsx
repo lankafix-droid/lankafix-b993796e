@@ -13,6 +13,7 @@ import TechnicianPerformanceCard from "@/components/warroom/TechnicianPerformanc
 import DispatchTimelineViewer from "@/components/warroom/DispatchTimelineViewer";
 import OpsControlPanel from "@/components/warroom/OpsControlPanel";
 import DispatchFailurePanel from "@/components/warroom/DispatchFailurePanel";
+import AIOperatorCopilot from "@/components/ai/AIOperatorCopilot";
 
 interface BookingRaw {
   id: string;
@@ -279,6 +280,14 @@ export default function DispatchWarRoomPage() {
               bookingId={selectedBookingId}
               currentRound={selectedBooking?.dispatch_round || 1}
             />
+
+            {/* AI Operator Advisory — strictly informational */}
+            {selectedBookingId && (
+              <AIOperatorCopilot
+                bookingId={selectedBookingId}
+                className="mt-3"
+              />
+            )}
           </div>
         </div>
 

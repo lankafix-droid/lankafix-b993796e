@@ -20,6 +20,8 @@ import { useLocationStore } from "@/store/locationStore";
 import { createBooking } from "@/services/bookingService";
 import BookingAuthGate from "@/components/auth/BookingAuthGate";
 import { isCategoryOperational, isCategoryConsultation, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
+import AIEstimateAssist from "@/components/ai/AIEstimateAssist";
+import AIBookingSummaryCard from "@/components/ai/AIBookingSummaryCard";
 
 interface Props {
   flow: V2CategoryFlow;
@@ -253,6 +255,9 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{categoryWarranty}</p>
           </div>
         </motion.div>
+
+        {/* AI Advisory summary — what insights were used */}
+        <AIBookingSummaryCard hasIssueTriage hasEstimate />
 
         {/* What happens next — compact */}
         <motion.div
@@ -497,6 +502,12 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">You'll receive a detailed quote for approval before any additional work begins.</p>
         </div>
       </div>
+
+      {/* AI Advisory — estimated price guidance */}
+      <AIEstimateAssist
+        categoryCode={flow.code}
+        issueType={booking.serviceTypeId}
+      />
 
       {/* Policies */}
       <div className="bg-muted/30 rounded-2xl p-4 space-y-2.5 text-xs text-muted-foreground">

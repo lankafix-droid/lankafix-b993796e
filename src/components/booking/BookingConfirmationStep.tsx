@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { CONSUMER_CATEGORIES } from "@/data/consumerBookingCategories";
 import { getIssuesForCategory } from "@/data/consumerBookingCategories";
 import { motion } from "framer-motion";
+import AIBookingSummaryCard from "@/components/ai/AIBookingSummaryCard";
 
 interface Props {
   bookingId: string;
@@ -60,6 +61,9 @@ const BookingConfirmationStep = ({ bookingId, categoryCode, issueType, status }:
           </p>
         </div>
       </div>
+
+      {/* AI advisory summary — optional, non-blocking */}
+      <AIBookingSummaryCard hasIssueTriage hasEstimate />
 
       <div className="flex flex-col gap-2">
         <Button onClick={() => navigate(`/tracker/${bookingId}`)} className="w-full">
