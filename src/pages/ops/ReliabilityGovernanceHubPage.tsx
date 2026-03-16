@@ -55,6 +55,7 @@ const NAV_LINKS = [
   { label: "Self-Healing", path: "/ops/self-healing", icon: Heart },
   { label: "Chaos Control", path: "/ops/chaos-control", icon: AlertOctagon },
   { label: "Command Center", path: "/ops/command-center", icon: Radio },
+  { label: "Predictive Intelligence", path: "/ops/predictive-reliability", icon: TrendingUp },
 ];
 
 const ATTENTION_COLORS: Record<AttentionLevel, string> = {
