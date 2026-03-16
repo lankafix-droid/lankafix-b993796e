@@ -25,10 +25,12 @@ import Footer from "@/components/landing/Footer";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
+import {
+  fetchLiveEnterpriseSummary,
+  verdictColor as getVerdictColor, slaColor as getSlaColor,
+  impactLevelColor as getImpactColor, costSeverityColor as getCostColor,
+} from "@/services/reliabilityReadModel";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
-import { computeSLATier, computeBreachRisk, computeRecommendedAction } from "@/engines/reliabilitySLAEngine";
-import { computeIncidentImpact } from "@/engines/incidentImpactModel";
-import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import {
   PILLAR_WEIGHTS, MIN_ACTIVE_PARTNERS_TARGET, MIN_ACTIVE_PARTNERS_CHECKLIST,
@@ -799,86 +801,35 @@ function MetricTile({ label, value, threshold, inverted, formatFn }: {
 
 // ── Reliability Status Panel (display-only, does NOT affect GO/HOLD) ──
 function ReliabilityStatusPanel() {
+  const navigate = useNavigate();
   const { data } = useQuery({
     queryKey: ["reliability-governance-lcc-enterprise"],
-    queryFn: async () => {
-      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: events } = await (supabase as any)
-        .from("self_healing_events")
-        .select("status, created_at")
-        .gte("created_at", cutoff)
-        .limit(200);
-      const evts = events || [];
-      const total = evts.length;
-      const success = evts.filter((e: any) => e.status === "success").length;
-      const escalated = evts.filter((e: any) => e.status === "escalated").length;
-      const successRate = total > 0 ? Math.round((success / total) * 100) : 100;
-      const escalationRate = total > 0 ? Math.round((escalated / total) * 100) : 0;
-
-      // Use real engines — single source of truth
-      const confidenceScore = 80; // baseline pilot confidence
-      const circuitBreakCount24h = 0; // no clustering data yet in pilot
-      const autoModeHalted = false;
-
-      const healingStats = {
-        successRate, escalationRate, totalEvents: total, lastEventAt: new Date().toISOString(),
-        successCount: success, failedCount: total - success - escalated, escalatedCount: escalated, totalActions: total,
-      };
-      const score = computeReliabilityScore(healingStats, circuitBreakCount24h, confidenceScore, autoModeHalted);
-      const verdict = computeVerdict(score);
-      const riskLevel = score >= 85 ? "LOW" : score >= 65 ? "MODERATE" : score >= 40 ? "HIGH" : "CRITICAL";
-
-      // SLA engine
-      const slaTier = computeSLATier(score).toUpperCase();
-      const breachRisk = computeBreachRisk(score, circuitBreakCount24h, confidenceScore);
-      const slaAction = computeRecommendedAction(computeSLATier(score), breachRisk);
-
-      // Incident impact engine
-      const zoneGuardrailCount = 0; // no zone guardrails active in pilot
-      const impact = computeIncidentImpact(escalationRate, zoneGuardrailCount, breachRisk, 30);
-      const impactLevel = impact.impactLevel.toUpperCase();
-
-      // Cost-of-failure engine (advisory — pilot assumptions clearly labelled)
-      const PILOT_DAILY_VOLUME = 15; // advisory pilot estimate
-      const PILOT_AVG_VALUE = 5000; // LKR advisory estimate
-      const costResult = computeCostOfFailure(PILOT_DAILY_VOLUME, PILOT_AVG_VALUE, escalationRate, escalationRate);
-      const costSeverity = costResult.costSeverityLevel.toUpperCase();
-
-      return {
-        score, verdict, riskLevel, successRate, escalationRate,
-        slaTier, breachRisk, impactLevel,
-        compositeImpact: impact.compositeImpactScore,
-        dailyRevenueAtRisk: costResult.estimatedDailyRevenueAtRisk,
-        projected30Day: costResult.projected30DayExposure,
-        costSeverity, slaAction,
-      };
-    },
+    queryFn: fetchLiveEnterpriseSummary,
     staleTime: 60_000,
   });
   if (!data) return null;
 
-  const verdictColor = { STABLE: "text-success", GUARDED: "text-warning", RISK: "text-destructive", CRITICAL: "text-destructive" }[data.verdict] || "text-muted-foreground";
   const riskColor = { LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[data.riskLevel] || "text-muted-foreground";
-  const slaColor = { PLATINUM: "text-primary", GOLD: "text-warning", STANDARD: "text-muted-foreground", "AT RISK": "text-destructive" }[data.slaTier] || "text-muted-foreground";
-  const impactColor = { LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[data.impactLevel] || "text-muted-foreground";
-  const costColor = { MINIMAL: "text-success", MATERIAL: "text-warning", SEVERE: "text-destructive" }[data.costSeverity] || "text-muted-foreground";
 
   return (
     <>
       <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
         <Target className="w-4 h-4 text-primary" /> Enterprise Reliability Intelligence
         <Badge variant="outline" className="text-[9px]">Display Only</Badge>
+        <Button variant="ghost" size="sm" className="ml-auto text-[10px] h-6 gap-1" onClick={() => navigate("/ops/executive-reliability")}>
+          Full Board <ChevronRight className="w-3 h-3" />
+        </Button>
       </h2>
       <Card className="mb-6">
         <CardContent className="p-4 space-y-4">
           {/* Row 1: Core governance */}
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className={`text-xl font-bold ${verdictColor}`}>{data.score}</p>
+              <p className={`text-xl font-bold ${getVerdictColor(data.verdict)}`}>{data.score}</p>
               <p className="text-[9px] text-muted-foreground">Reliability Score</p>
             </div>
             <div>
-              <p className={`text-sm font-bold ${verdictColor}`}>{data.verdict}</p>
+              <p className={`text-sm font-bold ${getVerdictColor(data.verdict)}`}>{data.verdict}</p>
               <p className="text-[9px] text-muted-foreground">Verdict</p>
             </div>
             <div>
@@ -892,7 +843,7 @@ function ReliabilityStatusPanel() {
           {/* Row 2: SLA + Impact */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div>
-              <p className={`text-sm font-bold ${slaColor}`}>{data.slaTier}</p>
+              <p className={`text-sm font-bold ${getSlaColor(data.slaTier)}`}>{data.slaTier}</p>
               <p className="text-[9px] text-muted-foreground">SLA Tier</p>
             </div>
             <div>
@@ -900,11 +851,11 @@ function ReliabilityStatusPanel() {
               <p className="text-[9px] text-muted-foreground">Breach Risk</p>
             </div>
             <div>
-              <p className={`text-sm font-bold ${impactColor}`}>{data.impactLevel}</p>
+              <p className={`text-sm font-bold ${getImpactColor(data.impactLevel)}`}>{data.impactLevel}</p>
               <p className="text-[9px] text-muted-foreground">Impact Level</p>
             </div>
             <div>
-              <p className={`text-sm font-bold ${costColor}`}>{data.costSeverity}</p>
+              <p className={`text-sm font-bold ${getCostColor(data.costSeverity)}`}>{data.costSeverity}</p>
               <p className="text-[9px] text-muted-foreground">Cost Severity</p>
             </div>
           </div>
@@ -932,7 +883,7 @@ function ReliabilityStatusPanel() {
         <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
           zoneId,
           label: ZONE_LABEL_MAP[zoneId] || zoneId,
-          reliabilityScore: data.score, // uniform score in pilot phase
+          reliabilityScore: data.score,
           verdict: data.verdict as any,
         }))} />
         <p className="text-[9px] text-muted-foreground text-center mt-1">
