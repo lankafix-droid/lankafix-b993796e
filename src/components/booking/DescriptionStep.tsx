@@ -1,5 +1,4 @@
 import { Textarea } from "@/components/ui/textarea";
-import { isAIEnabled } from "@/lib/aiFeatureFlags";
 import { estimatePrice } from "@/services/aiPriceEstimation";
 import AIPriceEstimateCard from "@/components/ai/AIPriceEstimateCard";
 
@@ -11,8 +10,8 @@ interface Props {
 }
 
 const DescriptionStep = ({ description, onChange, categoryCode, issueType }: Props) => {
-  const showEstimate = isAIEnabled("ai_estimate_assist") && categoryCode;
-  const estimate = showEstimate ? estimatePrice(categoryCode!, issueType) : null;
+  // estimatePrice handles feature flag + fallback internally
+  const estimate = categoryCode ? estimatePrice(categoryCode, issueType) : null;
 
   return (
     <div className="space-y-5">
@@ -32,7 +31,7 @@ const DescriptionStep = ({ description, onChange, categoryCode, issueType }: Pro
       />
       <p className="text-xs text-muted-foreground text-right">{description.length}/1000</p>
 
-      {estimate && <AIPriceEstimateCard estimate={estimate} />}
+      <AIPriceEstimateCard estimate={estimate} />
     </div>
   );
 };
