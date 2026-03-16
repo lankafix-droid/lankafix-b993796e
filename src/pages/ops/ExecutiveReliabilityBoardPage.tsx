@@ -57,6 +57,14 @@ function useLiveMetrics() {
   });
 }
 
+function useDispatchRisk() {
+  return useQuery({
+    queryKey: ["exec-dispatch-risk"],
+    queryFn: fetchDispatchReliabilitySignal,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
