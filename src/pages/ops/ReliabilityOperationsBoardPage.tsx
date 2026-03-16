@@ -945,6 +945,40 @@ export default function ReliabilityOperationsBoardPage() {
 
 /* ── Sub-components ── */
 
+function GovernanceSnapshotCard() {
+  const { data: gov } = useQuery({
+    queryKey: ["governance-snapshot-ops-board"],
+    queryFn: fetchGovernanceAutomationSummary,
+    staleTime: 30_000,
+  });
+  if (!gov) return null;
+  const attn = gov.digest.recommendedAttentionLevel;
+  const attnColor = attn === "CRITICAL" || attn === "HIGH" ? "text-destructive" : attn === "MODERATE" ? "text-warning" : "text-success";
+  return (
+    <Card className="border-primary/10">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Shield className="w-3 h-3" /> Governance Snapshot
+          </h2>
+          <Link to="/ops/reliability-governance-hub">
+            <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2 gap-1">
+              <ArrowUpRight className="w-3 h-3" /> Governance Hub
+            </Button>
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
+          <div><p className={`text-sm font-bold ${attnColor}`}>{attn}</p><p className="text-[8px] text-muted-foreground">Attention</p></div>
+          <div><p className={`text-sm font-bold ${gov.shiftReadiness.ready ? "text-success" : "text-destructive"}`}>{gov.shiftReadiness.ready ? "READY" : "NOT READY"}</p><p className="text-[8px] text-muted-foreground">Shift</p></div>
+          <div><p className={`text-sm font-bold ${gov.digest.overdueCount > 0 ? "text-destructive" : "text-foreground"}`}>{gov.digest.overdueCount}</p><p className="text-[8px] text-muted-foreground">Overdue</p></div>
+          <div><p className={`text-sm font-bold ${gov.digest.dueTodayCount > 0 ? "text-warning" : "text-foreground"}`}>{gov.digest.dueTodayCount}</p><p className="text-[8px] text-muted-foreground">Follow-ups</p></div>
+          <div><p className={`text-sm font-bold ${gov.digest.unownedCriticalCount > 0 ? "text-destructive" : "text-foreground"}`}>{gov.digest.unownedCriticalCount}</p><p className="text-[8px] text-muted-foreground">Unowned</p></div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function MiniKpi({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div>
