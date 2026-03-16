@@ -5,6 +5,8 @@ interface AIConfidenceBadgeProps {
   score: number;
   showScore?: boolean;
   className?: string;
+  /** Indicates fallback data was used */
+  fallbackUsed?: boolean;
 }
 
 const BAND_STYLES = {
@@ -19,15 +21,20 @@ const BAND_LABELS = {
   low: "Low — Review Needed",
 } as const;
 
-const AIConfidenceBadge = ({ score, showScore = true, className = "" }: AIConfidenceBadgeProps) => {
-  const band = getConfidenceBand(score);
+const AIConfidenceBadge = ({
+  score,
+  showScore = true,
+  className = "",
+  fallbackUsed = false,
+}: AIConfidenceBadgeProps) => {
+  const band = fallbackUsed ? "low" : getConfidenceBand(score);
   return (
     <Badge
       variant="outline"
       className={`text-[10px] font-medium ${BAND_STYLES[band]} ${className}`}
     >
       {showScore && <span className="font-bold mr-1">{Math.round(score)}%</span>}
-      {BAND_LABELS[band]}
+      {fallbackUsed ? "Estimated" : BAND_LABELS[band]}
     </Badge>
   );
 };

@@ -2,8 +2,16 @@
  * AI Price Estimation Service
  * Provides advisory price estimates before booking confirmation.
  * Always shows disclaimer — final price confirmed after technician inspection.
+ *
+ * HARDENED: feature flags, fallbacks, schema validation, metering, caching.
  */
 import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
+import { isAIEnabled } from "@/config/aiFlags";
+import { isValidPriceEstimate } from "@/ai/schemas";
+import { withFallback, getFallbackPriceRange } from "@/services/aiFallbacks";
+import { recordAIUsage } from "@/services/aiUsageMeter";
+import { withCache } from "@/services/aiCacheService";
+import { logAIEvent } from "@/services/aiEventTracking";
 
 export interface PriceEstimate {
   estimated_min_price: number;
@@ -11,6 +19,7 @@ export interface PriceEstimate {
   recommended_service_type: string;
   confidence: AIConfidenceEnvelope;
   disclaimer: string;
+  fallback_used?: boolean;
 }
 
 // Category-based price ranges (LKR) — advisory only
@@ -21,8 +30,8 @@ const PRICE_RANGES: Record<string, { min: number; max: number; service: string }
   CCTV: { min: 3000, max: 25000, service: "CCTV Installation" },
   AC: { min: 2500, max: 12000, service: "AC Service & Repair" },
   SOLAR: { min: 5000, max: 50000, service: "Solar Solutions" },
-  SMARTHOME: { min: 3000, max: 20000, service: "Smart Home Setup" },
-  ELECTRONICS: { min: 1500, max: 8000, service: "Electronics Repair" },
+  SMART_HOME_OFFICE: { min: 3000, max: 20000, service: "Smart Home Setup" },
+  CONSUMER_ELEC: { min: 1500, max: 8000, service: "Electronics Repair" },
   IT: { min: 2000, max: 12000, service: "IT Services" },
 };
 
@@ -41,14 +50,85 @@ const ISSUE_MULTIPLIERS: Record<string, number> = {
 
 const DISCLAIMER = "Final price will be confirmed after technician inspection.";
 
-/** Generate an advisory price estimate */
+/** Generate an advisory price estimate (with hardening) */
 export function estimatePrice(
   categoryCode: string,
   issueType?: string
 ): PriceEstimate {
+  // Feature flag check — return safe fallback if disabled
+  if (!isAIEnabled("ai_estimate_assist")) {
+    const fb = getFallbackPriceRange(categoryCode);
+    const range = PRICE_RANGES[categoryCode];
+    return {
+      estimated_min_price: fb.min,
+      estimated_max_price: fb.max,
+      recommended_service_type: range?.service ?? "General Service",
+      confidence: createConfidenceEnvelope(20, ["feature_disabled"]),
+      disclaimer: DISCLAIMER,
+      fallback_used: true,
+    };
+  }
+
+  const start = performance.now();
+  let fallbackUsed = false;
+
+  try {
+    const result = computeEstimate(categoryCode, issueType);
+
+    // Schema validation
+    const valid = isValidPriceEstimate({
+      estimated_min_price: result.estimated_min_price,
+      estimated_max_price: result.estimated_max_price,
+      recommended_service_type: result.recommended_service_type,
+      confidence_score: result.confidence.confidence_score,
+    });
+
+    if (!valid) {
+      fallbackUsed = true;
+      const fb = getFallbackPriceRange(categoryCode);
+      const latency = Math.round(performance.now() - start);
+      recordAIUsage("ai_estimate_assist", latency, true);
+      return {
+        estimated_min_price: fb.min,
+        estimated_max_price: fb.max,
+        recommended_service_type: PRICE_RANGES[categoryCode]?.service ?? "General Service",
+        confidence: createConfidenceEnvelope(15, ["schema_validation_failed"]),
+        disclaimer: DISCLAIMER,
+        fallback_used: true,
+      };
+    }
+
+    const latency = Math.round(performance.now() - start);
+    recordAIUsage("ai_estimate_assist", latency, false);
+
+    // Log AI event (fire-and-forget)
+    logAIEvent({
+      ai_module: "ai_estimate_assist",
+      input_summary: `${categoryCode}/${issueType ?? "none"}`,
+      output_summary: `${result.estimated_min_price}-${result.estimated_max_price} LKR`,
+      confidence_score: result.confidence.confidence_score,
+    });
+
+    return result;
+  } catch {
+    const fb = getFallbackPriceRange(categoryCode);
+    const latency = Math.round(performance.now() - start);
+    recordAIUsage("ai_estimate_assist", latency, true);
+    return {
+      estimated_min_price: fb.min,
+      estimated_max_price: fb.max,
+      recommended_service_type: PRICE_RANGES[categoryCode]?.service ?? "General Service",
+      confidence: createConfidenceEnvelope(10, ["computation_error", "fallback_used"]),
+      disclaimer: DISCLAIMER,
+      fallback_used: true,
+    };
+  }
+}
+
+/** Core computation (deterministic, rule-based) */
+function computeEstimate(categoryCode: string, issueType?: string): PriceEstimate {
   const range = PRICE_RANGES[categoryCode] || { min: 2000, max: 10000, service: "General Service" };
 
-  // Apply issue-based adjustment
   let multiplier = 1.0;
   const reasons: string[] = ["category_based_estimate"];
 
@@ -65,7 +145,6 @@ export function estimatePrice(
   const min = Math.round(range.min * multiplier);
   const max = Math.round(range.max * multiplier);
 
-  // Confidence based on how specific the input is
   const confidenceScore = issueType ? 55 : 35;
   reasons.push(issueType ? "issue_specified" : "category_only");
 
@@ -75,7 +154,22 @@ export function estimatePrice(
     recommended_service_type: range.service,
     confidence: createConfidenceEnvelope(confidenceScore, reasons),
     disclaimer: DISCLAIMER,
+    fallback_used: false,
   };
+}
+
+/** Cached price estimate for repeated lookups */
+export async function estimatePriceCached(
+  categoryCode: string,
+  issueType?: string
+): Promise<PriceEstimate> {
+  const { data } = await withCache(
+    "ai_estimate_assist",
+    { categoryCode, issueType },
+    async () => estimatePrice(categoryCode, issueType),
+    3 * 60 * 1000 // 3 minute TTL
+  );
+  return data;
 }
 
 /** Format price range for display */
