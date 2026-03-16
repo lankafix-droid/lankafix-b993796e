@@ -165,6 +165,7 @@ const App = () => (
 
             {/* ─── V3 Customer Marketplace ─── */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/services" element={<ConsumerBookingPage />} />
             <Route path="/book/:category" element={<BookingPage />} />
             <Route path="/quote/:jobId" element={<QuoteApprovalPage />} />
             <Route path="/diagnose" element={<DiagnosePage />} />
