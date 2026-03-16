@@ -54,11 +54,13 @@ const SAFETY_COLORS: Record<string, string> = {
 
 export default function ReliabilityScopePlannerPage() {
   const navigate = useNavigate();
-  const { data: rollout, isLoading } = useQuery<ReliabilityRolloutSummary>({
-    queryKey: ["scope-planner-rollout"],
-    queryFn: fetchReliabilityRolloutSummary,
+  const { data: ctx, isLoading } = useQuery({
+    queryKey: ["scope-planner-context"],
+    queryFn: fetchReliabilityScopePlannerContext,
     staleTime: 60_000,
   });
+  const rollout = ctx?.rolloutSummary;
+  const zoneReliability = ctx?.zoneReliability || [];
 
   // ── Local scope builder state ──
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
