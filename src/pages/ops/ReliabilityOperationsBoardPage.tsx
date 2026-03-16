@@ -840,6 +840,11 @@ function NoteDialog({ action, onClose, onSave }: {
         {action?.note && (
           <div className="text-[10px] text-muted-foreground bg-muted/40 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{action.note}</div>
         )}
+        <div className="flex flex-wrap gap-1">
+          {["Needs more data", "Review tomorrow", "Escalated for follow-up", "Pending owner input"].map(q => (
+            <Button key={q} variant="outline" size="sm" className="text-[9px] h-5 px-2" onClick={() => setNote(prev => prev ? `${prev}\n${q}` : q)}>{q}</Button>
+          ))}
+        </div>
         <Textarea placeholder="Add a note…" value={note} onChange={e => setNote(e.target.value)} className="text-xs min-h-[60px]" />
         <Textarea placeholder="Decision summary (optional)…" value={decision} onChange={e => setDecision(e.target.value)} className="text-xs min-h-[40px]" />
         <DialogFooter>
