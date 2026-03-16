@@ -62,6 +62,12 @@ export default function ReliabilityScopePlannerPage() {
   const rollout = ctx?.rolloutSummary;
   const zoneReliability = ctx?.zoneReliability || [];
 
+  const { data: zoneCatData } = useQuery({
+    queryKey: ["scope-planner-zone-category"],
+    queryFn: fetchPerZoneCategoryReliabilitySummary,
+    staleTime: 60_000,
+  });
+
   // ── Local scope builder state ──
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
