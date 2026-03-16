@@ -1237,6 +1237,9 @@ function UpcomingReliabilityRisksCard() {
           </div>
         </div>
         <p className="text-[8px] text-muted-foreground/60 text-center italic">Predictive — advisory only</p>
+        <Link to="/ops/prescriptive-reliability">
+          <Button variant="outline" size="sm" className="w-full text-[10px] h-7 gap-1 mt-1"><Target className="w-2.5 h-2.5" /> Prescriptive Advice</Button>
+        </Link>
       </CardContent>
     </Card>
   );

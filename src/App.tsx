@@ -108,6 +108,7 @@ const ReliabilityActionCenterPage = lazy(() => import("./pages/ops/ReliabilityAc
 const ReliabilityOperationsBoardPage = lazy(() => import("./pages/ops/ReliabilityOperationsBoardPage"));
 const ReliabilityGovernanceHubPage = lazy(() => import("./pages/ops/ReliabilityGovernanceHubPage"));
 const PredictiveReliabilityDashboardPage = lazy(() => import("./pages/ops/PredictiveReliabilityDashboardPage"));
+const PrescriptiveReliabilityPage = lazy(() => import("./pages/ops/PrescriptiveReliabilityPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
@@ -267,6 +268,7 @@ const App = () => (
             <Route path="/ops/reliability-operations-board" element={<OpsRoute><ReliabilityOperationsBoardPage /></OpsRoute>} />
             <Route path="/ops/reliability-governance-hub" element={<OpsRoute><ReliabilityGovernanceHubPage /></OpsRoute>} />
             <Route path="/ops/predictive-reliability" element={<OpsRoute><PredictiveReliabilityDashboardPage /></OpsRoute>} />
+            <Route path="/ops/prescriptive-reliability" element={<OpsRoute><PrescriptiveReliabilityPage /></OpsRoute>} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />

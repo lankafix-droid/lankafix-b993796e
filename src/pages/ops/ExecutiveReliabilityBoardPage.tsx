@@ -4,7 +4,7 @@
  * Uses reliabilityReadModel as the single source of truth for display composition.
  */
 import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import {
 import {
   ArrowLeft, Shield, TrendingUp, Activity, DollarSign, MapPin,
   BarChart3, Target, AlertTriangle, FileText, RefreshCw, Archive,
-  Camera, Clock, CheckCircle2,
+  Camera, Clock, CheckCircle2, ArrowUpRight,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -745,6 +745,9 @@ function PredictiveOutlookPanel() {
           </div>
         ))}
         <p className="text-[8px] text-muted-foreground/60 text-center italic">Predictions are advisory only</p>
+        <Link to="/ops/prescriptive-reliability">
+          <Button variant="outline" size="sm" className="w-full text-[10px] h-7 gap-1 mt-1"><ArrowUpRight className="w-2.5 h-2.5" /> Prescriptive Recommendations</Button>
+        </Link>
       </CardContent>
     </Card>
   );
