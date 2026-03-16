@@ -357,19 +357,50 @@ export default function ReliabilityScopePlannerPage() {
                     Category Eligibility
                   </h2>
                   <div className="space-y-1">
-                    {scopePlan.categoryEligibilityMap.map(c => (
-                      <div key={c.category} className="flex items-center justify-between text-[10px] py-1 border-b border-border/50 last:border-0">
-                        <span className="text-foreground">{c.category}</span>
-                        <div className="flex items-center gap-1.5">
-                          {c.eligible ? (
-                            <CheckCircle2 className="w-3 h-3 text-success" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3 text-destructive" />
+                    {scopePlan.categoryEligibilityMap.map(c => {
+                      // Derive per-zone×category reasoning
+                      const catZoneDetails: string[] = [];
+                      if (zoneCatData && selectedZones.length > 0) {
+                        selectedZones.forEach(zId => {
+                          const zoneCats = zoneCatData[zId];
+                          if (!zoneCats) return;
+                          const match = zoneCats.find(zc => zc.categoryCode === c.category);
+                          if (match) {
+                            if (match.riskLevel === "CRITICAL") {
+                              catZoneDetails.push(`${ZONE_LABEL_MAP[zId] || zId}: CRITICAL — exclude`);
+                            } else if (match.riskLevel === "HIGH") {
+                              catZoneDetails.push(`${ZONE_LABEL_MAP[zId] || zId}: HIGH risk — shadow only`);
+                            } else if (match.sampleQuality === "PILOT_ESTIMATE") {
+                              catZoneDetails.push(`${ZONE_LABEL_MAP[zId] || zId}: insufficient sample`);
+                            } else if (match.verdict === "GUARDED") {
+                              catZoneDetails.push(`${ZONE_LABEL_MAP[zId] || zId}: guarded — controlled only`);
+                            }
+                          }
+                        });
+                      }
+                      return (
+                        <div key={c.category} className="py-1 border-b border-border/50 last:border-0">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-foreground">{c.category}</span>
+                            <div className="flex items-center gap-1.5">
+                              {c.eligible ? (
+                                <CheckCircle2 className="w-3 h-3 text-success" />
+                              ) : (
+                                <AlertTriangle className="w-3 h-3 text-destructive" />
+                              )}
+                              <span className={c.eligible ? "text-success" : "text-muted-foreground"}>{c.reason}</span>
+                            </div>
+                          </div>
+                          {catZoneDetails.length > 0 && (
+                            <div className="ml-2 mt-0.5 space-y-0.5">
+                              {catZoneDetails.map((d, i) => (
+                                <p key={i} className="text-[9px] text-muted-foreground">• {d}</p>
+                              ))}
+                            </div>
                           )}
-                          <span className={c.eligible ? "text-success" : "text-muted-foreground"}>{c.reason}</span>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </CardContent>
               </Card>
