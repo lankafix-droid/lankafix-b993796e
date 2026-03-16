@@ -24,6 +24,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
+import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
   PILLAR_WEIGHTS, MIN_ACTIVE_PARTNERS_TARGET, MIN_ACTIVE_PARTNERS_CHECKLIST,
   PAYMENT_FAILURE_SCORE_PENALTY, UNPAID_COMPLETED_SCORE_PENALTY, MAX_PAYMENT_FAILURES_CHECKLIST,
