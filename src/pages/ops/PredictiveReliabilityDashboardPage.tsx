@@ -242,6 +242,7 @@ export default function PredictiveReliabilityDashboardPage() {
                     { label: "Command Center", path: "/ops/command-center" },
                     { label: "Action Center", path: "/ops/reliability-action-center" },
                     { label: "Scope Planner", path: "/ops/reliability-scope-planner" },
+                    { label: "Scenario Simulator", path: "/ops/reliability-scenario-simulator" },
                   ].map(l => (
                     <Link key={l.path} to={l.path}>
                       <Button variant="outline" size="sm" className="text-[10px] h-7 gap-1"><ArrowUpRight className="w-2.5 h-2.5" />{l.label}</Button>
