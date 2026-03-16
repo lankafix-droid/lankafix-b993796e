@@ -25,13 +25,15 @@ import ZoneDispatchPolicyMatrix from "@/components/ops/ZoneDispatchPolicyMatrix"
 import {
   fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
   fetchDispatchPolicySimulation, fetchReliabilityRolloutSummary, fetchPerZoneReliabilitySummary,
+  fetchPerZoneCategoryReliabilitySummary,
   computeSnapshotFreshness, FRESHNESS_COLORS,
   slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor, shadowPolicyColor,
   rolloutReadinessColor, recommendedModeColor,
   PILOT_ASSUMPTIONS,
   type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary, type DispatchPolicyAdvisory,
-  type ReliabilityRolloutSummary, type ZoneReliabilitySummary,
+  type ReliabilityRolloutSummary, type ZoneReliabilitySummary, type CategoryReliabilitySummary,
 } from "@/services/reliabilityReadModel";
+import ZoneCategoryReliabilityMatrix from "@/components/ops/ZoneCategoryReliabilityMatrix";
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
@@ -94,6 +96,14 @@ function usePerZoneReliability() {
   });
 }
 
+function usePerZoneCategoryReliability() {
+  return useQuery({
+    queryKey: ["exec-per-zone-category-reliability"],
+    queryFn: fetchPerZoneCategoryReliabilitySummary,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -103,6 +113,7 @@ export default function ExecutiveReliabilityBoardPage() {
   const { data: shadowPolicy } = useShadowPolicy();
   const { data: rolloutSummary } = useRolloutSummary();
   const { data: zoneReliability } = usePerZoneReliability();
+  const { data: zoneCategoryData } = usePerZoneCategoryReliability();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
@@ -429,6 +440,47 @@ export default function ExecutiveReliabilityBoardPage() {
                     verdict: live.verdict as ReliabilityVerdict,
                   }))} />
                 )}
+              </div>
+            )}
+
+            {/* ── Section 6.5: Zone × Category Reliability Breakdown ── */}
+            {zoneCategoryData && Object.keys(zoneCategoryData).length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5" /> Zone × Category Reliability Breakdown
+                </h2>
+                {/* Worst category in each zone summary */}
+                <Card>
+                  <CardContent className="p-3 space-y-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Worst Category per Zone</p>
+                    {Object.entries(zoneCategoryData)
+                      .map(([zoneId, cats]) => {
+                        const worst = [...cats].sort((a, b) => a.reliabilityScore - b.reliabilityScore)[0];
+                        return worst ? { zoneId, worst } : null;
+                      })
+                      .filter(Boolean)
+                      .sort((a, b) => a!.worst.reliabilityScore - b!.worst.reliabilityScore)
+                      .slice(0, 10)
+                      .map(item => (
+                        <div key={item!.zoneId} className="flex items-center justify-between text-[10px] py-0.5 border-b border-border/30 last:border-0">
+                          <span className="text-foreground">{ZONE_LABEL_MAP[item!.zoneId] || item!.zoneId}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{item!.worst.categoryCode}</span>
+                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${verdictColor(item!.worst.verdict)}`}>
+                              {item!.worst.reliabilityScore} — {item!.worst.verdict}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                  </CardContent>
+                </Card>
+                <ZoneCategoryReliabilityMatrix
+                  categories={Object.values(zoneCategoryData).flat()}
+                  zoneLabels={ZONE_LABEL_MAP}
+                />
+                <p className="text-[9px] text-muted-foreground text-center">
+                  Per-zone category scores are advisory and do not trigger live enforcement
+                </p>
               </div>
             )}
 
