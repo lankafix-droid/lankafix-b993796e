@@ -132,6 +132,7 @@ const DRILL_DOWN_LINKS = [
   { label: "Incident Playbooks", path: "/ops/incident-playbooks", icon: FileText },
   { label: "Self-Healing", path: "/ops/self-healing", icon: Heart },
   { label: "Reliability Archive", path: "/ops/reliability-archive", icon: Target },
+  { label: "Executive Board", path: "/ops/executive-reliability", icon: Shield },
   { label: "Chaos Control", path: "/ops/chaos-control", icon: AlertOctagon },
 ];
 
