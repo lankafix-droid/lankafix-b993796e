@@ -20,6 +20,8 @@ import {
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
+import ZoneReliabilityTable from "@/components/ops/ZoneReliabilityTable";
+import ZoneDispatchPolicyMatrix from "@/components/ops/ZoneDispatchPolicyMatrix";
 import {
   fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
   fetchDispatchPolicySimulation, fetchReliabilityRolloutSummary,
