@@ -4,6 +4,7 @@
  * V3: Aging, escalation, handover, follow-up, grouping, shift notes.
  */
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { fetchGovernanceAutomationSummary } from "@/services/reliabilityGovernanceReadModel";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
