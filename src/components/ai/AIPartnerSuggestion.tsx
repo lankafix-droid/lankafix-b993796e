@@ -5,7 +5,7 @@
  */
 import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Users, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Users } from "lucide-react";
 import AIConfidenceBadge from "./AIConfidenceBadge";
 import AIWhyPanel from "./AIWhyPanel";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
@@ -68,18 +68,7 @@ const AIPartnerSuggestion = ({
   className = "",
 }: AIPartnerSuggestionProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Safe execution guards
-  if (!canRunPartnerRanking(partners, categoryCode)) {
-    return (
-      <AIEmptyState
-        mode="no_data"
-        title="No partner suggestions available"
-        description="Awaiting category and technician data to generate recommendations."
-        className={className}
-      />
-    );
-  }
+  const canRun = canRunPartnerRanking(partners, categoryCode);
 
   const serviceFn = useCallback(
     () => rankPartnersForBooking(partners, categoryCode, zoneCode),
@@ -92,10 +81,23 @@ const AIPartnerSuggestion = ({
     serviceFn,
     getConfidence: (d) => d.length > 0 ? d[0].confidence.confidence_score : 0,
     getFallbackUsed: (d) => d.length > 0 ? d[0].fallback_used : true,
+    autoExecute: canRun,
     deps: [partners.length, categoryCode, zoneCode],
     analyticsEvent: "ai_partner_rank_viewed",
     analyticsPayload: { categoryCode, candidateCount: partners.length },
   });
+
+  // Guard AFTER hooks
+  if (!canRun) {
+    return (
+      <AIEmptyState
+        mode="no_data"
+        title="No partner suggestions available"
+        description="Awaiting category and technician data to generate recommendations."
+        className={className}
+      />
+    );
+  }
 
   // Consent gate
   if (advisory.blockedByConsent && advisory.requiredConsent) {
@@ -175,7 +177,6 @@ const AIPartnerSuggestion = ({
 
             <p className="text-xs text-muted-foreground">{partner.explanation}</p>
 
-            {/* Strengths — consumer-safe wording */}
             {strengths.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {strengths.map(f => (
@@ -186,7 +187,6 @@ const AIPartnerSuggestion = ({
               </div>
             )}
 
-            {/* Weak factors — soft, non-defamatory */}
             {weakFactors.length > 0 && (
               <div className="space-y-0.5">
                 {weakFactors.map(f => (
@@ -197,7 +197,6 @@ const AIPartnerSuggestion = ({
               </div>
             )}
 
-            {/* Why panel toggle */}
             <button
               onClick={() => {
                 setExpandedId(isExpanded ? null : partner.partnerId);
