@@ -819,7 +819,10 @@ function ReliabilityStatusPanel() {
       const circuitBreakCount24h = 0; // no clustering data yet in pilot
       const autoModeHalted = false;
 
-      const healingStats = { successRate, escalationRate, totalEvents: total, lastEventAt: new Date().toISOString() };
+      const healingStats = {
+        successRate, escalationRate, totalEvents: total, lastEventAt: new Date().toISOString(),
+        successCount: success, failedCount: total - success - escalated, escalatedCount: escalated, totalActions: total,
+      };
       const score = computeReliabilityScore(healingStats, circuitBreakCount24h, confidenceScore, autoModeHalted);
       const verdict = computeVerdict(score);
       const riskLevel = score >= 85 ? "LOW" : score >= 65 ? "MODERATE" : score >= 40 ? "HIGH" : "CRITICAL";
