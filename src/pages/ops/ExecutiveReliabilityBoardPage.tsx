@@ -96,6 +96,14 @@ function usePerZoneReliability() {
   });
 }
 
+function usePerZoneCategoryReliability() {
+  return useQuery({
+    queryKey: ["exec-per-zone-category-reliability"],
+    queryFn: fetchPerZoneCategoryReliabilitySummary,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
