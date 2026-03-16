@@ -70,6 +70,7 @@ export default function ExecutiveReliabilityBoardPage() {
   const queryClient = useQueryClient();
   const { data: snapshots = [], isLoading: loadingSnaps, refetch: refetchSnaps } = useSnapshots();
   const { data: live, isLoading: loadingLive, refetch: refetchLive } = useLiveMetrics();
+  const { data: dispatchRisk } = useDispatchRisk();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
