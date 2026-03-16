@@ -953,8 +953,6 @@ function ShadowPolicyPanel() {
       </CardContent>
     </Card>
   );
-    </>
-  );
 }
 
 function DispatchRiskPanel() {
