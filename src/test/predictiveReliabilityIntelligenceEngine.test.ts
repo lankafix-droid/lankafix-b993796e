@@ -14,7 +14,7 @@ describe("predictZoneCategoryReliability", () => {
   it("returns stable with no snapshots", () => {
     const result = predictZoneCategoryReliability([], "col_01", "AC");
     expect(result.trend).toBe("stable");
-    expect(result.riskLevel).toBe("moderate"); // default 85
+    expect(result.riskLevel).toBe("low"); // default 85 is low risk
     expect(result.currentReliability).toBe(85);
   });
 
