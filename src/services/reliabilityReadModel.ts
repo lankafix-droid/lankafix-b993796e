@@ -12,6 +12,8 @@ import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
 import { computeDispatchReliabilitySignal, type DispatchReliabilitySignal, type DispatchRiskInput } from "@/engines/reliabilityDispatchRiskEngine";
 import { simulateDispatchPolicy, type DispatchPolicySimulationResult, type DispatchPolicySimulationInput } from "@/engines/reliabilityDispatchPolicySimulator";
 import { computeRolloutPolicy, type RolloutPolicyResult, type RolloutPolicyInput } from "@/engines/reliabilityRolloutPolicyEngine";
+import { computeAllZoneReliability, type ZoneReliabilityInput, type ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
+export type { ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
 import type { HealingStats } from "@/engines/selfHealingEngine";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 
