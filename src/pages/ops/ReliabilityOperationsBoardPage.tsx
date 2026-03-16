@@ -68,6 +68,7 @@ const ZONE_LABEL: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL[z.id] = z.label; });
 
 const NAV_LINKS = [
+  { label: "Governance Hub", path: "/ops/reliability-governance-hub", icon: Shield },
   { label: "Action Center", path: "/ops/reliability-action-center", icon: Activity },
   { label: "Executive Board", path: "/ops/executive-reliability", icon: Shield },
   { label: "Scope Planner", path: "/ops/reliability-scope-planner", icon: Target },
