@@ -219,6 +219,8 @@ const ConsumerBookingPage = () => {
                 <DescriptionStep
                   description={description}
                   onChange={setDescription}
+                  categoryCode={categoryCode}
+                  issueType={issueType}
                 />
               )}
             </motion.div>

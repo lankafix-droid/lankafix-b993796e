@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_events: {
+        Row: {
+          accepted_by_operator: boolean | null
+          accepted_by_user: boolean | null
+          ai_module: string
+          booking_id: string | null
+          category: string | null
+          confidence_score: number | null
+          created_at: string
+          id: string
+          input_summary: string | null
+          metadata: Json | null
+          output_summary: string | null
+          partner_id: string | null
+          user_id: string | null
+          zone_id: string | null
+        }
+        Insert: {
+          accepted_by_operator?: boolean | null
+          accepted_by_user?: boolean | null
+          ai_module: string
+          booking_id?: string | null
+          category?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          input_summary?: string | null
+          metadata?: Json | null
+          output_summary?: string | null
+          partner_id?: string | null
+          user_id?: string | null
+          zone_id?: string | null
+        }
+        Update: {
+          accepted_by_operator?: boolean | null
+          accepted_by_user?: boolean | null
+          ai_module?: string
+          booking_id?: string | null
+          category?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          input_summary?: string | null
+          metadata?: Json | null
+          output_summary?: string | null
+          partner_id?: string | null
+          user_id?: string | null
+          zone_id?: string | null
+        }
+        Relationships: []
+      }
+      ai_experiments: {
+        Row: {
+          created_at: string
+          experiment_name: string
+          id: string
+          metadata: Json | null
+          metric_name: string
+          metric_value: number | null
+          module: string
+          user_id: string | null
+          variant: string
+        }
+        Insert: {
+          created_at?: string
+          experiment_name: string
+          id?: string
+          metadata?: Json | null
+          metric_name: string
+          metric_value?: number | null
+          module: string
+          user_id?: string | null
+          variant?: string
+        }
+        Update: {
+          created_at?: string
+          experiment_name?: string
+          id?: string
+          metadata?: Json | null
+          metric_name?: string
+          metric_value?: number | null
+          module?: string
+          user_id?: string | null
+          variant?: string
+        }
+        Relationships: []
+      }
       ai_interaction_logs: {
         Row: {
           ai_model: string | null
@@ -95,6 +182,87 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_partner_insights: {
+        Row: {
+          confidence_score: number | null
+          expires_at: string | null
+          generated_at: string
+          id: string
+          insight_data: Json
+          insight_type: string
+          partner_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          expires_at?: string | null
+          generated_at?: string
+          id?: string
+          insight_data?: Json
+          insight_type?: string
+          partner_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          expires_at?: string | null
+          generated_at?: string
+          id?: string
+          insight_data?: Json
+          insight_type?: string
+          partner_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+        }
+        Relationships: []
+      }
+      ai_quality_flags: {
+        Row: {
+          ai_module: string
+          booking_id: string | null
+          confidence_score: number | null
+          created_at: string
+          description: string | null
+          flag_type: string
+          id: string
+          metadata: Json | null
+          partner_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+        }
+        Insert: {
+          ai_module: string
+          booking_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          description?: string | null
+          flag_type: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+        }
+        Update: {
+          ai_module?: string
+          booking_id?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          description?: string | null
+          flag_type?: string
+          id?: string
+          metadata?: Json | null
+          partner_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       ai_rate_limits: {
         Row: {
           created_at: string
@@ -119,6 +287,54 @@ export type Database = {
           identifier?: string
           request_count?: number
           window_start?: string
+        }
+        Relationships: []
+      }
+      ai_retention_events: {
+        Row: {
+          booking_id: string | null
+          channel: string | null
+          clicked_at: string | null
+          converted_at: string | null
+          created_at: string
+          customer_id: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          nudge_content: string | null
+          sent_at: string | null
+          status: string
+          trigger_reason: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          channel?: string | null
+          clicked_at?: string | null
+          converted_at?: string | null
+          created_at?: string
+          customer_id: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          nudge_content?: string | null
+          sent_at?: string | null
+          status?: string
+          trigger_reason?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          channel?: string | null
+          clicked_at?: string | null
+          converted_at?: string | null
+          created_at?: string
+          customer_id?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          nudge_content?: string | null
+          sent_at?: string | null
+          status?: string
+          trigger_reason?: string | null
         }
         Relationships: []
       }
