@@ -102,6 +102,7 @@ export default function ExecutiveReliabilityBoardPage() {
   const { data: dispatchRisk } = useDispatchRisk();
   const { data: shadowPolicy } = useShadowPolicy();
   const { data: rolloutSummary } = useRolloutSummary();
+  const { data: zoneReliability } = usePerZoneReliability();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
