@@ -21,11 +21,11 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
-  fetchLiveEnterpriseSummary, fetch30DaySnapshots,
+  fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
   computeSnapshotFreshness, FRESHNESS_COLORS,
-  slaColor, impactLevelColor, costSeverityColor, verdictColor,
+  slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor,
   PILOT_ASSUMPTIONS,
-  type SnapshotRow, type EnterpriseReliabilitySummary,
+  type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary,
 } from "@/services/reliabilityReadModel";
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
