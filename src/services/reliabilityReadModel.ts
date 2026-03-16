@@ -152,6 +152,31 @@ export async function fetchLiveEnterpriseSummary(): Promise<EnterpriseReliabilit
   return computeEnterpriseSummary(stats);
 }
 
+// ── Dispatch risk signal from live data ──
+export interface DispatchRiskSummary extends DispatchReliabilitySignal {
+  reliabilityScore: number;
+  verdict: string;
+}
+
+export async function fetchDispatchReliabilitySignal(): Promise<DispatchRiskSummary> {
+  const summary = await fetchLiveEnterpriseSummary();
+  const input: DispatchRiskInput = {
+    reliabilityScore: summary.score,
+    riskProbability: summary.riskProbability,
+    breachRisk: summary.breachRisk,
+    compositeImpact: summary.compositeImpact,
+    escalationRate: summary.escalationRate,
+    circuitBreakCount: PILOT_ASSUMPTIONS.circuitBreak24h,
+    zoneGuardrailCount: PILOT_ASSUMPTIONS.zoneGuardrails,
+  };
+  const signal = computeDispatchReliabilitySignal(input);
+  return { ...signal, reliabilityScore: summary.score, verdict: summary.verdict };
+}
+
+export function dispatchRiskColor(level: string): string {
+  return ({ LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[level] || "text-foreground");
+}
+
 // ── Fetch 30-day snapshots ──
 export async function fetch30DaySnapshots(): Promise<SnapshotRow[]> {
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
