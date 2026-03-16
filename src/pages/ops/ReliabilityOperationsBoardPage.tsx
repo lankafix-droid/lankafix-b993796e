@@ -83,6 +83,8 @@ export default function ReliabilityOperationsBoardPage() {
   const [statusFilter, setStatusFilter] = useState<string>("active");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [zoneFilter, setZoneFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
 
   // Dialogs
@@ -136,11 +138,13 @@ export default function ReliabilityOperationsBoardPage() {
     [typeFilter]);
 
   const { data: actions, isLoading: actionsLoading } = useQuery({
-    queryKey: ["operator-actions", statusFilter, priorityFilter, typeFilter, sortBy],
+    queryKey: ["operator-actions", statusFilter, priorityFilter, typeFilter, zoneFilter, categoryFilter, sortBy],
     queryFn: () => fetchOperatorActions({
       status: statusArr,
       priority: priorityArr,
       action_type: typeArr,
+      zone: zoneFilter !== "all" ? zoneFilter : undefined,
+      category: categoryFilter !== "all" ? categoryFilter : undefined,
       sortBy: sortBy as any,
     }),
     staleTime: 10_000,
@@ -377,6 +381,24 @@ export default function ReliabilityOperationsBoardPage() {
                       <SelectItem value="oldest">Oldest</SelectItem>
                       <SelectItem value="priority">Priority</SelectItem>
                       <SelectItem value="unresolved">Unresolved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={zoneFilter} onValueChange={setZoneFilter}>
+                    <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Zones</SelectItem>
+                      {COLOMBO_ZONES_DATA.map(z => (
+                        <SelectItem key={z.id} value={z.id} className="text-xs">{z.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {PHASE1_CATEGORIES.map(c => (
+                        <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -818,6 +840,11 @@ function NoteDialog({ action, onClose, onSave }: {
         {action?.note && (
           <div className="text-[10px] text-muted-foreground bg-muted/40 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{action.note}</div>
         )}
+        <div className="flex flex-wrap gap-1">
+          {["Needs more data", "Review tomorrow", "Escalated for follow-up", "Pending owner input"].map(q => (
+            <Button key={q} variant="outline" size="sm" className="text-[9px] h-5 px-2" onClick={() => setNote(prev => prev ? `${prev}\n${q}` : q)}>{q}</Button>
+          ))}
+        </div>
         <Textarea placeholder="Add a note…" value={note} onChange={e => setNote(e.target.value)} className="text-xs min-h-[60px]" />
         <Textarea placeholder="Decision summary (optional)…" value={decision} onChange={e => setDecision(e.target.value)} className="text-xs min-h-[40px]" />
         <DialogFooter>
