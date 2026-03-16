@@ -140,6 +140,17 @@ export default function ReliabilityActionCenterPage() {
                 </CardContent>
               </Card>
             </Link>
+            <Link to="/ops/prescriptive-interventions">
+              <Card className="cursor-pointer hover:border-primary/30 transition-colors">
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-3.5 h-3.5 text-warning" />
+                    <span className="text-xs font-semibold">Intervention Workbench</span>
+                  </div>
+                  <Badge variant="outline" className="text-[9px]">Open →</Badge>
+                </CardContent>
+              </Card>
+            </Link>
 
             {/* ═══ SECTION A — Executive Status Strip ═══ */}
             <Card className="border-primary/20">
