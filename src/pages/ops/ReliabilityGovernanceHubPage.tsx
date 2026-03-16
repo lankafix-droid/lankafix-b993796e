@@ -486,6 +486,9 @@ export default function ReliabilityGovernanceHubPage() {
               </CardContent>
             </Card>
 
+            {/* ═══ Predictive Risk Panel ═══ */}
+            <PredictiveRiskPanel />
+
             {/* ═══ SECTION I — Quick Navigation ═══ */}
             <Card>
               <CardContent className="p-4">
