@@ -272,6 +272,7 @@ const App = () => (
             <Route path="/ops/predictive-reliability" element={<OpsRoute><PredictiveReliabilityDashboardPage /></OpsRoute>} />
             <Route path="/ops/prescriptive-reliability" element={<OpsRoute><PrescriptiveReliabilityPage /></OpsRoute>} />
             <Route path="/ops/reliability-scenario-simulator" element={<OpsRoute><ReliabilityScenarioSimulatorPage /></OpsRoute>} />
+            <Route path="/ops/reliability-scenarios" element={<OpsRoute><ReliabilityScenarioSimulatorPage /></OpsRoute>} />
             <Route path="/ops/prescriptive-interventions" element={<OpsRoute><PrescriptiveInterventionWorkbenchPage /></OpsRoute>} />
 
             {/* ─── Content Pages ─── */}
