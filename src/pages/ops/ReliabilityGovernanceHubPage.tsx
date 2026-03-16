@@ -543,6 +543,58 @@ export default function ReliabilityGovernanceHubPage() {
   );
 }
 
+/* ── Predictive Risk Panel ── */
+function PredictiveRiskPanel() {
+  const { data } = useQuery({
+    queryKey: ["gov-hub-predictive"],
+    queryFn: fetchPredictiveReliabilitySummary,
+    staleTime: 60_000,
+  });
+  if (!data || (data.zonesAtRisk === 0 && data.partnersAtRisk === 0 && data.demandAlerts === 0)) return null;
+  return (
+    <Card className="border-warning/20">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="w-3 h-3" /> Predictive Reliability Signals
+          </h2>
+          <Link to="/ops/predictive-reliability">
+            <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2 gap-1">
+              <ArrowUpRight className="w-2.5 h-2.5" /> Full Dashboard
+            </Button>
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.zonesAtRisk > 0 ? "text-destructive" : "text-success"}`}>{data.zonesAtRisk}</p>
+            <p className="text-[8px] text-muted-foreground">Zones at Risk</p>
+          </div>
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.categoriesDeclining > 0 ? "text-warning" : "text-success"}`}>{data.categoriesDeclining}</p>
+            <p className="text-[8px] text-muted-foreground">Declining</p>
+          </div>
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.partnersAtRisk > 0 ? "text-destructive" : "text-success"}`}>{data.partnersAtRisk}</p>
+            <p className="text-[8px] text-muted-foreground">Partner Risks</p>
+          </div>
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.demandAlerts > 0 ? "text-warning" : "text-success"}`}>{data.demandAlerts}</p>
+            <p className="text-[8px] text-muted-foreground">Demand Alerts</p>
+          </div>
+        </div>
+        {data.governanceRisk.slice(0, 3).map((g, i) => (
+          <div key={i} className="flex items-center justify-between mt-2 px-2 py-1.5 rounded bg-muted/20 text-[10px]">
+            <span className="text-muted-foreground">{ZONE_LABEL[g.zoneId] || g.zoneId} · {g.categoryCode}</span>
+            <Badge className={`text-[8px] border-0 ${g.level === "CRITICAL" || g.level === "HIGH" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>
+              Risk {g.governanceRiskScore}
+            </Badge>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ── Sub-components ── */
 
 function AttentionItem({ action, onAssignSelf, onMarkInReview }: {
