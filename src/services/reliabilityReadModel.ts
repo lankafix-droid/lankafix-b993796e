@@ -14,6 +14,8 @@ import { simulateDispatchPolicy, type DispatchPolicySimulationResult, type Dispa
 import { computeRolloutPolicy, type RolloutPolicyResult, type RolloutPolicyInput } from "@/engines/reliabilityRolloutPolicyEngine";
 import { computeAllZoneReliability, type ZoneReliabilityInput, type ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
 export type { ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
+import { computeAllCategoryReliability, type CategoryReliabilityInput, type CategoryReliabilitySummary } from "@/engines/categoryReliabilityEngine";
+export type { CategoryReliabilitySummary } from "@/engines/categoryReliabilityEngine";
 import type { HealingStats } from "@/engines/selfHealingEngine";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 
