@@ -17,9 +17,9 @@ import {
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import {
-  fetchReliabilityRolloutSummary,
+  fetchReliabilityScopePlannerContext,
   verdictColor, rolloutReadinessColor, recommendedModeColor,
-  type ReliabilityRolloutSummary,
+  type ReliabilityRolloutSummary, type ZoneReliabilitySummary,
 } from "@/services/reliabilityReadModel";
 import { computeScopePlan, type ScopePlannerInput, type PartnerTier, type TimeWindow } from "@/engines/reliabilityScopePlannerEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
