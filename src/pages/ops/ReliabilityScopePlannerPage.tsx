@@ -129,6 +129,9 @@ export default function ReliabilityScopePlannerPage() {
         ) : (
           <div className="space-y-5">
 
+            {/* ── Governance Snapshot ── */}
+            <GovernanceSnapshotStrip />
+
             {/* ── Section 1: Current Governance Posture ── */}
             <Card className="border-primary/20">
               <CardContent className="p-4 space-y-3">

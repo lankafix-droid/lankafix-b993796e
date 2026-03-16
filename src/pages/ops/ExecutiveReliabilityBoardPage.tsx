@@ -183,6 +183,9 @@ export default function ExecutiveReliabilityBoardPage() {
         ) : (
           <div className="space-y-6">
 
+            {/* ── Governance Snapshot ── */}
+            <GovernanceSnapshotStrip />
+
             {/* ── Snapshot Freshness ── */}
             <Card>
               <CardContent className="p-3 flex items-center justify-between">

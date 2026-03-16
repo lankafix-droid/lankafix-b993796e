@@ -124,6 +124,9 @@ export default function ReliabilityActionCenterPage() {
         ) : (
           <div className="space-y-5">
 
+            {/* ── Governance Snapshot ── */}
+            <GovernanceSnapshotStrip />
+
             {/* ═══ SECTION A — Executive Status Strip ═══ */}
             <Card className="border-primary/20">
               <CardContent className="p-4">

@@ -577,6 +577,11 @@ export default function LaunchCommandCenterPage() {
             </CardContent>
           </Card>
 
+          {/* ── Governance Snapshot ── */}
+          <div className="mb-6">
+            <GovernanceSnapshotStrip />
+          </div>
+
           {/* ── CRITICAL ALERTS ── */}
           {sortedAlerts.length > 0 && (
             <div className="mb-6">
