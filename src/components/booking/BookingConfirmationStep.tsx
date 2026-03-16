@@ -62,6 +62,9 @@ const BookingConfirmationStep = ({ bookingId, categoryCode, issueType, status }:
         </div>
       </div>
 
+      {/* AI advisory summary — optional, non-blocking */}
+      <AIBookingSummaryCard hasIssueTriage hasEstimate />
+
       <div className="flex flex-col gap-2">
         <Button onClick={() => navigate(`/tracker/${bookingId}`)} className="w-full">
           Track Booking <ArrowRight className="w-4 h-4 ml-1.5" />

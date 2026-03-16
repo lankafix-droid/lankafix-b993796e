@@ -279,6 +279,14 @@ export default function DispatchWarRoomPage() {
               bookingId={selectedBookingId}
               currentRound={selectedBooking?.dispatch_round || 1}
             />
+
+            {/* AI Operator Advisory — strictly informational */}
+            {selectedBookingId && (
+              <AIOperatorCopilot
+                bookingId={selectedBookingId}
+                className="mt-3"
+              />
+            )}
           </div>
         </div>
 

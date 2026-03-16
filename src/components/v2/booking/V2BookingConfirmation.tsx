@@ -20,6 +20,8 @@ import { useLocationStore } from "@/store/locationStore";
 import { createBooking } from "@/services/bookingService";
 import BookingAuthGate from "@/components/auth/BookingAuthGate";
 import { isCategoryOperational, isCategoryConsultation, isCategoryComingSoon } from "@/config/categoryLaunchConfig";
+import AIEstimateAssist from "@/components/ai/AIEstimateAssist";
+import AIBookingSummaryCard from "@/components/ai/AIBookingSummaryCard";
 
 interface Props {
   flow: V2CategoryFlow;
