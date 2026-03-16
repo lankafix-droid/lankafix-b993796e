@@ -540,9 +540,10 @@ export default function ReliabilityGovernanceHubPage() {
 
 /* ── Sub-components ── */
 
-function AttentionItem({ action, onAssignSelf }: {
+function AttentionItem({ action, onAssignSelf, onMarkInReview }: {
   action: OperatorAction;
   onAssignSelf: (a: OperatorAction, name: string) => void;
+  onMarkInReview?: (a: OperatorAction) => void;
 }) {
   return (
     <div className="flex items-start justify-between rounded-lg bg-muted/20 px-3 py-2 gap-2">
@@ -552,20 +553,29 @@ function AttentionItem({ action, onAssignSelf }: {
           <Badge className={`text-[7px] px-1 py-0 ${STATUS_COLORS[action.status]}`}>{action.status.replace("_", " ")}</Badge>
           <Badge className={`text-[7px] px-1 py-0 ${PRIORITY_COLORS[action.priority]}`}>{action.priority}</Badge>
           {action.source_zone_id && <span className="text-[8px] text-muted-foreground">{ZONE_LABEL[action.source_zone_id] || action.source_zone_id}</span>}
+          {action.source_category_code && <span className="text-[8px] text-muted-foreground/70">{action.source_category_code}</span>}
           {action.owner_name ? (
             <span className="text-[8px] text-primary">{action.owner_name}</span>
           ) : (
             <span className="text-[8px] text-muted-foreground/60 italic">Unassigned</span>
           )}
         </div>
+        <p className="text-[7px] text-muted-foreground/50 mt-0.5">
+          {new Date(action.created_at).toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+          {" · "}{relativeTime(action.created_at)}
+        </p>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <span className="text-[8px] text-muted-foreground">{relativeTime(action.created_at)}</span>
+      <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
         {!action.owner_name && (
           <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2" onClick={() => {
             const name = localStorage.getItem("lankafix_operator_name") || "Current Operator";
             onAssignSelf(action, name);
           }}>Assign to Me</Button>
+        )}
+        {action.status === "open" && onMarkInReview && (
+          <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2" onClick={() => onMarkInReview(action)}>
+            In Review
+          </Button>
         )}
         <Link to="/ops/reliability-operations-board">
           <Button variant="ghost" size="sm" className="text-[9px] h-5 px-1.5">
