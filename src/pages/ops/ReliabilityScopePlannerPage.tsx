@@ -328,7 +328,13 @@ export default function ReliabilityScopePlannerPage() {
                           ) : (
                             <AlertTriangle className="w-3 h-3 text-destructive" />
                           )}
-                          <span className={z.eligible ? "text-success" : "text-muted-foreground"}>{z.reason}</span>
+                          <span className={z.eligible ? "text-success" : "text-muted-foreground"}>
+                            {z.reason}
+                            {(() => {
+                              const zr = zoneReliability.find(zri => zri.zoneId === z.zoneId);
+                              return zr && zr.riskLevel !== "LOW" ? ` (zone risk: ${zr.riskLevel})` : "";
+                            })()}
+                          </span>
                         </div>
                       </div>
                     ))}
