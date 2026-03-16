@@ -22,6 +22,7 @@ const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
 
 // Lazy-load all other routes
 const BookingPage = lazy(() => import("./pages/V2BookingPage"));
+const ConsumerBookingPage = lazy(() => import("./pages/ConsumerBookingPage"));
 const QuoteApprovalPage = lazy(() => import("./pages/V2QuoteApprovalPage"));
 const DiagnosePage = lazy(() => import("./pages/DiagnosePage"));
 const TrackJob = lazy(() => import("./pages/TrackJob"));
@@ -164,6 +165,7 @@ const App = () => (
 
             {/* ─── V3 Customer Marketplace ─── */}
             <Route path="/" element={<HomePage />} />
+            <Route path="/services" element={<ConsumerBookingPage />} />
             <Route path="/book/:category" element={<BookingPage />} />
             <Route path="/quote/:jobId" element={<QuoteApprovalPage />} />
             <Route path="/diagnose" element={<DiagnosePage />} />
