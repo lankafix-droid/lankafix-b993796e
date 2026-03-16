@@ -1022,18 +1022,24 @@ function GuardrailsRolloutPanel() {
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
           <Shield className="w-3.5 h-3.5 text-primary" /> Reliability Guardrails Rollout
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+
+        {/* Kill switch override banner */}
+        {killSwitchActive && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 flex items-center gap-2">
+            <AlertOctagon className="w-4 h-4 text-destructive shrink-0" />
+            <p className="text-[10px] text-destructive font-medium">
+              Kill switch active — any future enforcement rollout should remain blocked
+            </p>
+          </div>
+        )}
+
+        {/* Row 1: Status flags */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           <div>
             <p className={`text-sm font-bold ${data.flags.guardrailsEnabled ? "text-success" : "text-muted-foreground"}`}>
               {data.flags.guardrailsEnabled ? "ON" : "OFF"}
             </p>
             <p className="text-[9px] text-muted-foreground">Guardrails</p>
-          </div>
-          <div>
-            <p className={`text-sm font-bold ${getRecommendedModeColor(data.flags.enforcementMode)}`}>
-              {data.flags.enforcementMode.replace(/_/g, " ")}
-            </p>
-            <p className="text-[9px] text-muted-foreground">Enforcement Mode</p>
           </div>
           <div>
             <p className={`text-sm font-bold ${killSwitchActive ? "text-destructive" : "text-muted-foreground"}`}>
@@ -1042,37 +1048,46 @@ function GuardrailsRolloutPanel() {
             <p className="text-[9px] text-muted-foreground">Kill Switch</p>
           </div>
           <div>
+            <p className={`text-sm font-bold ${getRecommendedModeColor(data.recommendedMode)}`}>
+              {data.recommendedMode.replace(/_/g, " ")}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Recommended Mode</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.recommendedRolloutPercent}%</p>
+            <p className="text-[9px] text-muted-foreground">Recommended %</p>
+          </div>
+        </div>
+
+        {/* Row 2: Readiness + eligibility */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div>
             <p className={`text-sm font-bold ${getRolloutReadinessColor(data.rolloutReadiness)}`}>
               {data.rolloutReadiness.replace(/_/g, " ")}
             </p>
             <p className="text-[9px] text-muted-foreground">Rollout Readiness</p>
           </div>
           <div>
-            <p className="text-sm font-bold text-foreground">{data.recommendedRolloutPercent}%</p>
-            <p className="text-[9px] text-muted-foreground">Recommended %</p>
+            <Badge variant="outline" className={`text-[9px] ${data.enforceZoneProtectionEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+              Zone Protection: {data.enforceZoneProtectionEligible ? "✓" : "—"}
+            </Badge>
           </div>
           <div>
-            <p className={`text-sm font-bold ${getRecommendedModeColor(data.recommendedMode)}`}>
-              {data.recommendedMode.replace(/_/g, " ")}
-            </p>
-            <p className="text-[9px] text-muted-foreground">Recommended Mode</p>
+            <Badge variant="outline" className={`text-[9px] ${data.enforceCapacityCapEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+              Capacity Cap: {data.enforceCapacityCapEligible ? "✓" : "—"}
+            </Badge>
+          </div>
+          <div>
+            <Badge variant="outline" className={`text-[9px] ${data.enforceBookingGuardEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
+              Booking Guard: {data.enforceBookingGuardEligible ? "✓" : "—"}
+            </Badge>
           </div>
         </div>
-        {/* Eligible controls */}
-        <div className="flex flex-wrap gap-2 justify-center">
-          <Badge variant="outline" className={`text-[9px] ${data.enforceZoneProtectionEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
-            Zone Protection: {data.enforceZoneProtectionEligible ? "Eligible" : "—"}
-          </Badge>
-          <Badge variant="outline" className={`text-[9px] ${data.enforceCapacityCapEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
-            Capacity Cap: {data.enforceCapacityCapEligible ? "Eligible" : "—"}
-          </Badge>
-          <Badge variant="outline" className={`text-[9px] ${data.enforceBookingGuardEligible ? "text-success border-success/30" : "text-muted-foreground"}`}>
-            Booking Guard: {data.enforceBookingGuardEligible ? "Eligible" : "—"}
-          </Badge>
-        </div>
-        <p className="text-[10px] text-muted-foreground text-center">{data.rolloutReason}</p>
+
+        {/* Row 3: Reason */}
+        <p className="text-[10px] text-foreground text-center">{data.rolloutReason}</p>
         <p className="text-[9px] text-muted-foreground text-center italic">
-          Control-plane only — no live dispatch enforcement active unless explicitly enabled
+          Governance recommendation only — live dispatch remains unchanged
         </p>
       </CardContent>
     </Card>
