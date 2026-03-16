@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { CONSUMER_CATEGORIES } from "@/data/consumerBookingCategories";
 import { getIssuesForCategory } from "@/data/consumerBookingCategories";
 import { motion } from "framer-motion";
+import AIBookingSummaryCard from "@/components/ai/AIBookingSummaryCard";
 
 interface Props {
   bookingId: string;
