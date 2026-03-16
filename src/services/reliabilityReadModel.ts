@@ -342,8 +342,6 @@ export async function fetchReliabilityRolloutSummary(): Promise<ReliabilityRollo
 }
 
 // ── Per-zone reliability intelligence ──
-import { computeZoneReliability, computeAllZoneReliability, type ZoneReliabilityInput, type ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
-export type { ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
 
 const PILOT_ZONE_IDS_RM = [
   "col_01","col_02","col_03","col_04","col_05","col_06","col_07",
