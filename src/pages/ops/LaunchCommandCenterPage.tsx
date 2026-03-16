@@ -25,6 +25,8 @@ import Footer from "@/components/landing/Footer";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
+import ZoneReliabilityTable from "@/components/ops/ZoneReliabilityTable";
+import ZoneDispatchPolicyMatrix from "@/components/ops/ZoneDispatchPolicyMatrix";
 import {
   fetchLiveEnterpriseSummary, fetchDispatchReliabilitySignal, fetchDispatchPolicySimulation,
   fetchReliabilityRolloutSummary,
