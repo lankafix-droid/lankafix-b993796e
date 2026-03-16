@@ -76,6 +76,14 @@ function useShadowPolicy() {
   });
 }
 
+function useRolloutSummary() {
+  return useQuery({
+    queryKey: ["exec-rollout-summary"],
+    queryFn: fetchReliabilityRolloutSummary,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
