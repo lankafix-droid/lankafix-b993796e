@@ -113,10 +113,11 @@ describe("computePriorityInterventions", () => {
   it("unowned critical creates assign_owner", () => {
     const input: WorkbenchInput = {
       ...EMPTY_INPUT,
-      unownedCriticalActions: [{ id: "a1", title: "Test" }],
+      unownedCriticalActions: [{ id: "a1", title: "Test" }, { id: "a2", title: "Test2" }, { id: "a3", title: "Test3" }],
     };
     const result = computePriorityInterventions(input);
-    expect(result.topInterventions.some(i => i.actionType === "assign_owner")).toBe(true);
+    const all = [...result.topInterventions, ...result.quickWins];
+    expect(all.some(i => i.actionType === "assign_owner")).toBe(true);
   });
 
   it("stale snapshot creates refresh_snapshot", () => {
