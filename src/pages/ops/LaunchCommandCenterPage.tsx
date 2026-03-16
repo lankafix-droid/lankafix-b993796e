@@ -25,6 +25,11 @@ import Footer from "@/components/landing/Footer";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
+import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
+import { computeSLATier, computeBreachRisk, computeRecommendedAction } from "@/engines/reliabilitySLAEngine";
+import { computeIncidentImpact } from "@/engines/incidentImpactModel";
+import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
+import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import {
   PILLAR_WEIGHTS, MIN_ACTIVE_PARTNERS_TARGET, MIN_ACTIVE_PARTNERS_CHECKLIST,
   PAYMENT_FAILURE_SCORE_PENALTY, UNPAID_COMPLETED_SCORE_PENALTY, MAX_PAYMENT_FAILURES_CHECKLIST,
@@ -809,30 +814,43 @@ function ReliabilityStatusPanel() {
       const successRate = total > 0 ? Math.round((success / total) * 100) : 100;
       const escalationRate = total > 0 ? Math.round((escalated / total) * 100) : 0;
 
-      // Governance scoring (mirrors reliabilityGovernanceEngine)
-      const score = Math.max(0, Math.min(100, Math.round(successRate * 0.4 + (100 - escalationRate) * 0.25 + 100 * 0.15 + 80 * 0.10 + 10)));
-      const verdict = score >= 85 ? "STABLE" : score >= 65 ? "GUARDED" : score >= 40 ? "RISK" : "CRITICAL";
+      // Use real engines — single source of truth
+      const confidenceScore = 80; // baseline pilot confidence
+      const circuitBreakCount24h = 0; // no clustering data yet in pilot
+      const autoModeHalted = false;
+
+      const healingStats = {
+        successRate, escalationRate, totalEvents: total, lastEventAt: new Date().toISOString(),
+        successCount: success, failedCount: total - success - escalated, escalatedCount: escalated, totalActions: total,
+      };
+      const score = computeReliabilityScore(healingStats, circuitBreakCount24h, confidenceScore, autoModeHalted);
+      const verdict = computeVerdict(score);
       const riskLevel = score >= 85 ? "LOW" : score >= 65 ? "MODERATE" : score >= 40 ? "HIGH" : "CRITICAL";
 
-      // SLA tier (mirrors reliabilitySLAEngine)
-      const slaTier = score >= 95 ? "PLATINUM" : score >= 85 ? "GOLD" : score >= 70 ? "STANDARD" : "AT RISK";
-      // Breach risk
-      const breachRisk = Math.max(0, Math.min(100, Math.round((100 - score) * 0.4 + Math.round((100 - 80) * 0.4))));
+      // SLA engine
+      const slaTier = computeSLATier(score).toUpperCase();
+      const breachRisk = computeBreachRisk(score, circuitBreakCount24h, confidenceScore);
+      const slaAction = computeRecommendedAction(computeSLATier(score), breachRisk);
 
-      // Incident impact (mirrors incidentImpactModel)
-      const opImpact = Math.max(0, Math.min(100, Math.round(Math.min(60, escalationRate * 2) + 0)));
-      const repRisk = Math.max(0, Math.min(100, Math.round(Math.min(60, breachRisk * 0.6) + 0)));
-      const compositeImpact = Math.max(0, Math.min(100, Math.round(opImpact * 0.55 + repRisk * 0.45)));
-      const impactLevel = compositeImpact >= 75 ? "CRITICAL" : compositeImpact >= 50 ? "HIGH" : compositeImpact >= 25 ? "MODERATE" : "LOW";
+      // Incident impact engine
+      const zoneGuardrailCount = 0; // no zone guardrails active in pilot
+      const impact = computeIncidentImpact(escalationRate, zoneGuardrailCount, breachRisk, 30);
+      const impactLevel = impact.impactLevel.toUpperCase();
 
-      // Cost-of-failure estimate (advisory — uses placeholder volume)
-      const dailyVolume = 15; // estimated pilot daily bookings
-      const avgValue = 5000; // LKR
-      const dailyRevenueAtRisk = Math.round(dailyVolume * avgValue * (escalationRate / 100));
-      const projected30Day = Math.round(dailyVolume * avgValue * (Math.max(escalationRate, escalationRate) / 100) * 30);
-      const costSeverity = projected30Day >= 500000 ? "SEVERE" : projected30Day >= 100000 ? "MATERIAL" : "MINIMAL";
+      // Cost-of-failure engine (advisory — pilot assumptions clearly labelled)
+      const PILOT_DAILY_VOLUME = 15; // advisory pilot estimate
+      const PILOT_AVG_VALUE = 5000; // LKR advisory estimate
+      const costResult = computeCostOfFailure(PILOT_DAILY_VOLUME, PILOT_AVG_VALUE, escalationRate, escalationRate);
+      const costSeverity = costResult.costSeverityLevel.toUpperCase();
 
-      return { score, verdict, riskLevel, successRate, escalationRate, slaTier, breachRisk, impactLevel, compositeImpact, dailyRevenueAtRisk, projected30Day, costSeverity };
+      return {
+        score, verdict, riskLevel, successRate, escalationRate,
+        slaTier, breachRisk, impactLevel,
+        compositeImpact: impact.compositeImpactScore,
+        dailyRevenueAtRisk: costResult.estimatedDailyRevenueAtRisk,
+        projected30Day: costResult.projected30DayExposure,
+        costSeverity, slaAction,
+      };
     },
     staleTime: 60_000,
   });
@@ -903,7 +921,7 @@ function ReliabilityStatusPanel() {
           </div>
 
           <p className="text-[9px] text-muted-foreground text-center">
-            Informational only — does not affect GO/HOLD/NO-GO verdict
+            Advisory estimate based on pilot assumptions · Informational only — does not affect GO/HOLD/NO-GO verdict
           </p>
         </CardContent>
       </Card>
@@ -916,6 +934,9 @@ function ReliabilityStatusPanel() {
           reliabilityScore: data.score, // uniform score in pilot phase
           verdict: data.verdict as any,
         }))} />
+        <p className="text-[9px] text-muted-foreground text-center mt-1">
+          Pilot baseline view — per-zone scoring not yet individualized
+        </p>
       </div>
     </>
   );
