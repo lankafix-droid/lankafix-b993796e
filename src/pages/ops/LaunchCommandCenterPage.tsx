@@ -1166,3 +1166,30 @@ function PerZoneReliabilityPanel() {
     </div>
   );
 }
+
+function CategoryReliabilityHotspotsPanel() {
+  const { data: worstCategories, isLoading } = useQuery({
+    queryKey: ["lcc-category-hotspots"],
+    queryFn: () => fetchWorstCategoriesByZone(2),
+    staleTime: 60_000,
+  });
+
+  if (isLoading || !worstCategories || worstCategories.length === 0) return null;
+
+  // Show top 15 worst
+  const top = worstCategories.slice(0, 15);
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="p-4 space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <AlertTriangle className="w-3.5 h-3.5 text-warning" /> Category Reliability Hotspots
+        </h3>
+        <CategoryReliabilityTable categories={top} zoneLabels={ZONE_LABEL_MAP} />
+        <p className="text-[9px] text-muted-foreground text-center">
+          Category-level reliability is advisory only and does not affect live dispatch
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
