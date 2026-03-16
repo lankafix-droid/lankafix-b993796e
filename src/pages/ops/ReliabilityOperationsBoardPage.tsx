@@ -565,6 +565,9 @@ export default function ReliabilityOperationsBoardPage() {
               </Card>
             )}
 
+            {/* ═══ Governance Snapshot ═══ */}
+            <GovernanceSnapshotCard />
+
             {/* ═══ SECTION C — Hotspots Requiring Action ═══ */}
             <Card>
               <CardContent className="p-4">
