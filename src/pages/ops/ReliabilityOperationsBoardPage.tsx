@@ -840,12 +840,14 @@ function ActionCard({
   onStatusChange,
   onAddNote,
   onAssignOwner,
+  onAssignSelf,
   onQuickNote,
 }: {
   action: OperatorAction;
   onStatusChange: (a: OperatorAction, s: OperatorActionStatus) => void;
   onAddNote: () => void;
   onAssignOwner: () => void;
+  onAssignSelf: (a: OperatorAction, name: string) => void;
   onQuickNote: (a: OperatorAction, note: string) => void;
 }) {
   const isActive = !["resolved", "dismissed"].includes(action.status);
