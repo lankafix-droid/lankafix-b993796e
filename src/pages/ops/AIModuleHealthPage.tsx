@@ -11,6 +11,7 @@ import { getAIFlags, type AIFeatureFlags } from "@/lib/aiFeatureFlags";
 
 const MODULE_META: Record<keyof AIFeatureFlags, { label: string; icon: any; description: string; category: string }> = {
   ai_photo_triage: { label: "Photo Triage", icon: Eye, description: "AI-powered issue detection from photos", category: "Consumer" },
+  ai_issue_triage: { label: "Issue Triage", icon: Brain, description: "Free-text issue analysis and categorization", category: "Consumer" },
   ai_estimate_assist: { label: "Price Estimation", icon: TrendingUp, description: "Advisory price range estimation", category: "Consumer" },
   ai_partner_ranking: { label: "Partner Matching", icon: Users, description: "AI-assisted technician ranking", category: "Consumer" },
   ai_review_summary: { label: "Review Summary", icon: BarChart3, description: "Automated review summarization", category: "Consumer" },

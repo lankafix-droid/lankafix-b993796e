@@ -1,12 +1,14 @@
 /**
  * AIPartnerSuggestion — Shows top-3 AI-ranked partners with scores and explanations.
+ * Includes both strengths and relevant weak factors for explainability.
  * Uses hardened aiPartnerMatching service. NEVER auto-assigns providers.
  */
 import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronUp, Star, Clock, Zap, Users, AlertTriangle, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Users, Loader2 } from "lucide-react";
 import AIConfidenceBadge from "./AIConfidenceBadge";
 import AIWhyPanel from "./AIWhyPanel";
+import AIAdvisoryFooter from "./AIAdvisoryFooter";
 import AIConsentGate from "./AIConsentGate";
 import { useAIAdvisory } from "@/hooks/useAIAdvisory";
 import { rankPartnersForBooking, type PartnerMatchScore } from "@/services/aiPartnerMatching";
@@ -32,6 +34,18 @@ interface AIPartnerSuggestionProps {
   className?: string;
 }
 
+/** Get consumer-safe weak factor labels */
+function getWeakFactorNote(factor: { name: string; score: number; label: string }): string | null {
+  if (factor.score >= 50) return null;
+  switch (factor.name) {
+    case "zone_coverage": return "May need extra travel time to your area";
+    case "response_speed": return "Response times may be longer than average";
+    case "completion": return "Newer technician — fewer completed jobs so far";
+    case "rating": return "Limited customer reviews available";
+    default: return null;
+  }
+}
+
 const AIPartnerSuggestion = ({
   partners,
   categoryCode,
@@ -40,6 +54,15 @@ const AIPartnerSuggestion = ({
   className = "",
 }: AIPartnerSuggestionProps) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Safe execution guards
+  if (!categoryCode || partners.length === 0) {
+    return (
+      <div className={`text-center py-6 text-muted-foreground text-xs ${className}`}>
+        No partner suggestions available — awaiting category and technician data.
+      </div>
+    );
+  }
 
   const serviceFn = useCallback(
     () => rankPartnersForBooking(partners, categoryCode, zoneCode),
@@ -114,6 +137,12 @@ const AIPartnerSuggestion = ({
 
       {ranked.map((partner, index) => {
         const isExpanded = expandedId === partner.partnerId;
+        const strengths = partner.factors.filter(f => f.score >= 70).slice(0, 3);
+        const weakFactors = partner.factors
+          .map(f => ({ ...f, note: getWeakFactorNote(f) }))
+          .filter(f => f.note !== null)
+          .slice(0, 2);
+
         return (
           <div
             key={partner.partnerId}
@@ -137,27 +166,26 @@ const AIPartnerSuggestion = ({
 
             <p className="text-xs text-muted-foreground">{partner.explanation}</p>
 
-            {/* Top factors */}
-            <div className="flex flex-wrap gap-1.5">
-              {partner.factors
-                .filter(f => f.score >= 70)
-                .slice(0, 3)
-                .map(f => (
+            {/* Strengths */}
+            {strengths.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {strengths.map(f => (
                   <Badge key={f.name} variant="secondary" className="text-[10px] font-normal">
-                    {f.label}: {Math.round(f.score)}%
+                    ✓ {f.label}: {Math.round(f.score)}%
                   </Badge>
                 ))}
-            </div>
-
-            {partner.fallback_used && (
-              <div className="flex items-center gap-1.5 text-[10px] text-destructive">
-                <AlertTriangle className="w-3 h-3" />
-                <span>Using estimated ranking</span>
               </div>
             )}
 
-            {partner.cached && (
-              <p className="text-[10px] text-muted-foreground">Cached result</p>
+            {/* Weak factors — consumer-safe wording */}
+            {weakFactors.length > 0 && (
+              <div className="space-y-0.5">
+                {weakFactors.map(f => (
+                  <p key={f.name} className="text-[10px] text-muted-foreground">
+                    ℹ️ {f.note}
+                  </p>
+                ))}
+              </div>
             )}
 
             {/* Why panel toggle */}
@@ -184,9 +212,13 @@ const AIPartnerSuggestion = ({
         );
       })}
 
-      <p className="text-[10px] text-muted-foreground italic text-center">
-        ⚠️ Advisory only — does not auto-assign a technician.
-      </p>
+      <AIAdvisoryFooter
+        module="ai_partner_ranking"
+        confidence={advisory.confidence}
+        fallbackUsed={advisory.fallback_used}
+        cached={advisory.cached}
+        disclaimer="Advisory only — does not auto-assign a technician."
+      />
     </div>
   );
 };

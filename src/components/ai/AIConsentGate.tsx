@@ -1,10 +1,11 @@
 /**
  * AIConsentGate — Shows a consent prompt when an AI module requires user consent.
  * Does NOT run the gated module until consent is explicitly granted.
+ * Offers: Allow, Not now, Continue without AI.
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Shield, Lock } from "lucide-react";
+import { Shield, Lock, X } from "lucide-react";
 import { setAIConsent, type AIConsentCapability } from "@/services/aiConsentService";
 import { track } from "@/lib/analytics";
 
@@ -12,6 +13,8 @@ interface AIConsentGateProps {
   requiredConsent: AIConsentCapability;
   moduleName: string;
   onConsented: () => void;
+  /** Called when user dismisses without granting */
+  onDismissed?: () => void;
   className?: string;
 }
 
@@ -42,10 +45,14 @@ const AIConsentGate = ({
   requiredConsent,
   moduleName,
   onConsented,
+  onDismissed,
   className = "",
 }: AIConsentGateProps) => {
+  const [dismissed, setDismissed] = useState(false);
   const [granting, setGranting] = useState(false);
   const config = CONSENT_LABELS[requiredConsent];
+
+  if (dismissed) return null;
 
   const handleGrant = () => {
     setGranting(true);
@@ -54,21 +61,38 @@ const AIConsentGate = ({
     onConsented();
   };
 
+  const handleDismiss = () => {
+    setDismissed(true);
+    track("blocked_by_consent", { module: moduleName, consent: requiredConsent, action: "dismissed" });
+    onDismissed?.();
+  };
+
   return (
     <div className={`rounded-xl border border-border/50 bg-muted/20 p-4 space-y-3 ${className}`}>
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-          <Lock className="w-4 h-4 text-primary" />
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <Lock className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">{config.title}</p>
+            <p className="text-[11px] text-muted-foreground">Optional — your booking works without this</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-foreground">{config.title}</p>
-          <p className="text-[11px] text-muted-foreground">Consent required</p>
-        </div>
+        <button
+          onClick={handleDismiss}
+          className="w-6 h-6 rounded-full hover:bg-muted flex items-center justify-center shrink-0"
+          title="Dismiss"
+        >
+          <X className="w-3.5 h-3.5 text-muted-foreground" />
+        </button>
       </div>
+
       <p className="text-xs text-muted-foreground leading-relaxed">
         {config.description}
       </p>
-      <div className="flex items-center gap-2">
+
+      <div className="flex items-center gap-2 flex-wrap">
         <Button
           size="sm"
           onClick={handleGrant}
@@ -78,10 +102,27 @@ const AIConsentGate = ({
           <Shield className="w-3 h-3 mr-1" />
           Allow
         </Button>
-        <p className="text-[10px] text-muted-foreground">
-          You can revoke this anytime in Settings.
-        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleDismiss}
+          className="text-xs"
+        >
+          Not now
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDismiss}
+          className="text-xs text-muted-foreground"
+        >
+          Continue without AI
+        </Button>
       </div>
+
+      <p className="text-[10px] text-muted-foreground">
+        AI is optional and your booking can continue manually. You can change consent anytime in Settings.
+      </p>
     </div>
   );
 };

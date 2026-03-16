@@ -1,19 +1,20 @@
 /**
  * AIIssueTriage — Free-text issue analysis card for booking intake.
  * Shows structured advisory output: likely issue, suggested category, urgency.
+ * Module identity: ai_issue_triage (distinct from ai_estimate_assist).
  * NEVER auto-modifies booking. Advisory only.
  */
 import { useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Zap, AlertTriangle, Search, Loader2 } from "lucide-react";
-import AIConfidenceBadge from "./AIConfidenceBadge";
+import { Brain, Zap, Search, Loader2 } from "lucide-react";
+import AIAdvisoryFooter from "./AIAdvisoryFooter";
 import AIConsentGate from "./AIConsentGate";
 import { useAIAdvisory } from "@/hooks/useAIAdvisory";
 import { CATEGORY_LABELS, type CategoryCode } from "@/config/aiFlags";
-import { track } from "@/lib/analytics";
 
-interface AIIssuTriageProps {
+const MIN_DESCRIPTION_LENGTH = 15;
+
+interface AIIssueTriageProps {
   description: string;
   categoryCode?: string;
   className?: string;
@@ -43,7 +44,6 @@ function triageIssue(description: string, currentCategory?: string): TriageResul
   const text = description.toLowerCase();
   const reasons: string[] = [];
 
-  // Category detection
   let detectedCategory: CategoryCode = (currentCategory as CategoryCode) || "MOBILE";
   if (text.includes("laptop") || text.includes("notebook")) { detectedCategory = "LAPTOP"; reasons.push("laptop_keyword"); }
   else if (text.includes("printer") || text.includes("printing")) { detectedCategory = "PRINTER"; reasons.push("printer_keyword"); }
@@ -53,7 +53,6 @@ function triageIssue(description: string, currentCategory?: string): TriageResul
   else if (text.includes("phone") || text.includes("screen") || text.includes("mobile")) { detectedCategory = "MOBILE"; reasons.push("mobile_keyword"); }
   else if (currentCategory) { reasons.push("user_selected_category"); }
 
-  // Issue detection
   let likelyIssue = "General service request";
   if (text.includes("broken") || text.includes("cracked")) { likelyIssue = "Physical damage — screen or body repair likely needed"; reasons.push("damage_detected"); }
   else if (text.includes("not charging") || text.includes("battery")) { likelyIssue = "Power/charging issue — battery or port inspection needed"; reasons.push("power_issue"); }
@@ -62,14 +61,12 @@ function triageIssue(description: string, currentCategory?: string): TriageResul
   else if (text.includes("install") || text.includes("setup") || text.includes("mount")) { likelyIssue = "Installation/setup service"; reasons.push("installation_request"); }
   else if (text.includes("not working") || text.includes("stopped")) { likelyIssue = "Device malfunction — technician diagnosis required"; reasons.push("malfunction_detected"); }
 
-  // Urgency detection
   let urgency: TriageResult["urgency"] = "normal";
   if (text.includes("urgent") || text.includes("emergency") || text.includes("asap")) { urgency = "emergency"; reasons.push("urgency_keyword"); }
   else if (text.includes("water") || text.includes("smoke") || text.includes("spark")) { urgency = "high"; reasons.push("safety_concern"); }
   else if (text.includes("maintenance") || text.includes("routine")) { urgency = "low"; reasons.push("routine_service"); }
 
   const technicianRequired = !text.includes("advice") && !text.includes("question") && !text.includes("how to");
-
   const confidenceScore = Math.min(80, 30 + reasons.length * 10);
 
   return {
@@ -85,8 +82,9 @@ function triageIssue(description: string, currentCategory?: string): TriageResul
   };
 }
 
-const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssuTriageProps) => {
+const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssueTriageProps) => {
   const [triggered, setTriggered] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   const serviceFn = useCallback(
     () => triageIssue(description, categoryCode),
@@ -94,29 +92,33 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssuTria
   );
 
   const advisory = useAIAdvisory<TriageResult>({
-    featureFlag: "ai_estimate_assist",
-    moduleName: "ai_estimate_assist",
+    featureFlag: "ai_issue_triage",
+    moduleName: "ai_issue_triage",
     serviceFn,
     getConfidence: (d) => d.confidence.confidence_score,
     getFallbackUsed: (d) => d.fallback_used,
     autoExecute: false,
     deps: [description, categoryCode],
-    analyticsEvent: "ai_search_assist_used",
+    analyticsEvent: "ai_issue_triage_used",
   });
 
-  if (!description || description.length < 10) return null;
+  // Safe execution guard: only actionable with meaningful description
+  if (!description || description.trim().length < MIN_DESCRIPTION_LENGTH) return null;
 
   // Consent gate
   if (advisory.blockedByConsent && advisory.requiredConsent) {
     return (
       <AIConsentGate
         requiredConsent={advisory.requiredConsent}
-        moduleName="ai_estimate_assist"
+        moduleName="ai_issue_triage"
         onConsented={advisory.execute}
+        onDismissed={() => setDismissed(true)}
         className={className}
       />
     );
   }
+
+  if (dismissed) return null;
 
   // Not yet triggered
   if (!triggered && !advisory.data) {
@@ -145,9 +147,7 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssuTria
   }
 
   // Feature disabled
-  if (!advisory.available) {
-    return null;
-  }
+  if (!advisory.available) return null;
 
   const data = advisory.data;
   if (!data) return null;
@@ -156,15 +156,9 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssuTria
 
   return (
     <div className={`rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 ${className}`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Brain className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">AI Issue Analysis</span>
-        </div>
-        <AIConfidenceBadge
-          score={data.confidence.confidence_score}
-          fallbackUsed={advisory.fallback_used}
-        />
+      <div className="flex items-center gap-2">
+        <Brain className="w-4 h-4 text-primary" />
+        <span className="text-sm font-semibold text-foreground">AI Issue Analysis</span>
       </div>
 
       <div className="space-y-2">
@@ -189,20 +183,13 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssuTria
         </div>
       </div>
 
-      {advisory.fallback_used && (
-        <div className="flex items-center gap-1.5 text-[10px] text-destructive">
-          <AlertTriangle className="w-3 h-3" />
-          <span>Using estimated analysis — results may vary</span>
-        </div>
-      )}
-
-      {advisory.cached && (
-        <p className="text-[10px] text-muted-foreground">Cached result</p>
-      )}
-
-      <p className="text-[10px] text-muted-foreground italic">
-        ⚠️ Advisory only — final diagnosis by technician. Does not affect your booking.
-      </p>
+      <AIAdvisoryFooter
+        module="ai_issue_triage"
+        confidence={data.confidence.confidence_score}
+        fallbackUsed={advisory.fallback_used}
+        cached={advisory.cached}
+        disclaimer="Advisory only — final diagnosis by technician. Does not affect your booking."
+      />
     </div>
   );
 };
