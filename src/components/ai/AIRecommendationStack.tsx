@@ -9,6 +9,7 @@ export interface AIRecommendation {
   module: string;
   reasons?: string[];
   fallbackUsed?: boolean;
+  cached?: boolean;
 }
 
 interface AIRecommendationStackProps {
@@ -20,6 +21,8 @@ interface AIRecommendationStackProps {
   featureFlag?: keyof AIFeatureFlags;
   /** Show loading state */
   loading?: boolean;
+  /** Shown when feature flag is disabled */
+  disabledMessage?: string;
 }
 
 const AIRecommendationStack = ({
@@ -29,9 +32,17 @@ const AIRecommendationStack = ({
   className = "",
   featureFlag,
   loading = false,
+  disabledMessage,
 }: AIRecommendationStackProps) => {
   // Feature flag guard
   if (featureFlag && !isAIEnabled(featureFlag)) {
+    if (disabledMessage) {
+      return (
+        <div className={`text-center py-6 text-muted-foreground text-xs ${className}`}>
+          {disabledMessage}
+        </div>
+      );
+    }
     return null;
   }
 
@@ -74,6 +85,7 @@ const AIRecommendationStack = ({
           reasons={rec.reasons}
           actions={actions?.(rec)}
           fallbackUsed={rec.fallbackUsed}
+          cached={rec.cached}
         />
       ))}
       {recommendations.length > maxVisible && (

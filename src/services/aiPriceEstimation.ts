@@ -8,7 +8,7 @@
 import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
 import { isAIEnabled } from "@/config/aiFlags";
 import { isValidPriceEstimate } from "@/ai/schemas";
-import { withFallback, getFallbackPriceRange } from "@/services/aiFallbacks";
+import { getFallbackPriceRange } from "@/services/aiFallbacks";
 import { recordAIUsage } from "@/services/aiUsageMeter";
 import { withCache } from "@/services/aiCacheService";
 import { logAIEvent } from "@/services/aiEventTracking";
@@ -19,7 +19,9 @@ export interface PriceEstimate {
   recommended_service_type: string;
   confidence: AIConfidenceEnvelope;
   disclaimer: string;
-  fallback_used?: boolean;
+  fallback_used: boolean;
+  advisory_only: true;
+  cached?: boolean;
 }
 
 // Category-based price ranges (LKR) — advisory only
@@ -66,11 +68,11 @@ export function estimatePrice(
       confidence: createConfidenceEnvelope(20, ["feature_disabled"]),
       disclaimer: DISCLAIMER,
       fallback_used: true,
+      advisory_only: true,
     };
   }
 
   const start = performance.now();
-  let fallbackUsed = false;
 
   try {
     const result = computeEstimate(categoryCode, issueType);
@@ -84,7 +86,6 @@ export function estimatePrice(
     });
 
     if (!valid) {
-      fallbackUsed = true;
       const fb = getFallbackPriceRange(categoryCode);
       const latency = Math.round(performance.now() - start);
       recordAIUsage("ai_estimate_assist", latency, true);
@@ -95,6 +96,7 @@ export function estimatePrice(
         confidence: createConfidenceEnvelope(15, ["schema_validation_failed"]),
         disclaimer: DISCLAIMER,
         fallback_used: true,
+        advisory_only: true,
       };
     }
 
@@ -121,6 +123,7 @@ export function estimatePrice(
       confidence: createConfidenceEnvelope(10, ["computation_error", "fallback_used"]),
       disclaimer: DISCLAIMER,
       fallback_used: true,
+      advisory_only: true,
     };
   }
 }
@@ -155,6 +158,7 @@ function computeEstimate(categoryCode: string, issueType?: string): PriceEstimat
     confidence: createConfidenceEnvelope(confidenceScore, reasons),
     disclaimer: DISCLAIMER,
     fallback_used: false,
+    advisory_only: true,
   };
 }
 
@@ -163,13 +167,13 @@ export async function estimatePriceCached(
   categoryCode: string,
   issueType?: string
 ): Promise<PriceEstimate> {
-  const { data } = await withCache(
+  const { data, cached } = await withCache(
     "ai_estimate_assist",
     { categoryCode, issueType },
     async () => estimatePrice(categoryCode, issueType),
     3 * 60 * 1000 // 3 minute TTL
   );
-  return data;
+  return { ...data, cached };
 }
 
 /** Format price range for display */

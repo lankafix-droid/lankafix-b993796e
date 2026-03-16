@@ -3,7 +3,10 @@
  * Advisory-only fraud pattern detection.
  * Flags for operator review — never auto-bans users.
  *
- * HARDENED: feature flags, schema validation, metering.
+ * HARDENED: feature flags, schema validation, metering, safe degraded state.
+ *
+ * CRITICAL SAFETY: On error or disabled state, riskLevel MUST be "unknown"
+ * (never "safe") to prevent false-negative trust signals.
  */
 import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
 import { isAIEnabled } from "@/config/aiFlags";
@@ -12,6 +15,14 @@ import { recordAIUsage } from "@/services/aiUsageMeter";
 import { logAIEvent } from "@/services/aiEventTracking";
 
 export type FraudAlertSeverity = "info" | "low" | "medium" | "high" | "critical";
+
+/**
+ * Risk levels:
+ * - "safe"     — scan completed, no signals found
+ * - "unknown"  — scan could not complete (error, disabled, degraded)
+ * - "low" / "medium" / "high" / "critical" — signals detected
+ */
+export type FraudRiskLevel = "safe" | "unknown" | "low" | "medium" | "high" | "critical";
 
 export interface FraudAlert {
   id: string;
@@ -26,9 +37,10 @@ export interface FraudAlert {
 export interface FraudScanResult {
   alerts: FraudAlert[];
   riskScore: number;
-  riskLevel: "safe" | "low" | "medium" | "high" | "critical";
+  riskLevel: FraudRiskLevel;
   scanTimestamp: string;
-  fallback_used?: boolean;
+  fallback_used: boolean;
+  advisory_only: true;
 }
 
 interface BookingPattern {
@@ -40,20 +52,26 @@ interface BookingPattern {
   sameAddressBookings: number;
 }
 
+/** Degraded-state result: returned when scan cannot execute */
+function degradedResult(reason: string): FraudScanResult {
+  return {
+    alerts: [],
+    riskScore: 0,
+    riskLevel: "unknown",
+    scanTimestamp: new Date().toISOString(),
+    fallback_used: true,
+    advisory_only: true,
+  };
+}
+
 /** Analyze booking patterns for potential fraud signals */
 export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
   const start = performance.now();
 
-  // Feature flag check
+  // Feature flag check — NEVER return "safe" when disabled
   if (!isAIEnabled("ai_fraud_watch")) {
     recordAIUsage("ai_fraud_watch", 0, true);
-    return {
-      alerts: [],
-      riskScore: 0,
-      riskLevel: "safe",
-      scanTimestamp: new Date().toISOString(),
-      fallback_used: true,
-    };
+    return degradedResult("feature_disabled");
   }
 
   try {
@@ -70,7 +88,6 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
         action: "flag_for_review",
         confidence: createConfidenceEnvelope(65, ["cancellation_rate"]),
       };
-      // Validate alert structure
       if (isValidFraudAlert({
         alert_type: alert.alertType,
         severity: alert.severity,
@@ -124,7 +141,13 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
       }
     }
 
-    const riskLevel = riskScore >= 60 ? "critical" : riskScore >= 40 ? "high" : riskScore >= 20 ? "medium" : riskScore > 0 ? "low" : "safe";
+    // Determine risk level — "safe" ONLY when scan completed with zero alerts
+    const riskLevel: FraudRiskLevel =
+      riskScore >= 60 ? "critical" :
+      riskScore >= 40 ? "high" :
+      riskScore >= 20 ? "medium" :
+      riskScore > 0 ? "low" :
+      "safe";
 
     const latency = Math.round(performance.now() - start);
     recordAIUsage("ai_fraud_watch", latency, false);
@@ -144,17 +167,13 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
       riskLevel,
       scanTimestamp: new Date().toISOString(),
       fallback_used: false,
+      advisory_only: true,
     };
   } catch {
+    // CRITICAL: On error, return "unknown" — NEVER "safe"
     const latency = Math.round(performance.now() - start);
     recordAIUsage("ai_fraud_watch", latency, true);
-    return {
-      alerts: [],
-      riskScore: 0,
-      riskLevel: "safe",
-      scanTimestamp: new Date().toISOString(),
-      fallback_used: true,
-    };
+    return degradedResult("computation_error");
   }
 }
 

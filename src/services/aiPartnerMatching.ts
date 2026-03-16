@@ -3,7 +3,7 @@
  * Advisory ranking factors for partner selection.
  * Does NOT modify dispatch — provides display-only insights.
  *
- * HARDENED: feature flags, fallbacks, metering, consent checks.
+ * HARDENED: feature flags, fallbacks, metering, advisory_only.
  */
 import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
 import { isAIEnabled } from "@/config/aiFlags";
@@ -17,7 +17,8 @@ export interface PartnerMatchScore {
   factors: MatchFactor[];
   explanation: string;
   confidence: AIConfidenceEnvelope;
-  fallback_used?: boolean;
+  fallback_used: boolean;
+  advisory_only: true;
 }
 
 export interface MatchFactor {
@@ -67,6 +68,7 @@ export function rankPartnersForBooking(
       explanation: `${p.full_name} is available for this service.`,
       confidence: createConfidenceEnvelope(10, ["feature_disabled"]),
       fallback_used: true,
+      advisory_only: true as const,
     }));
   }
 
@@ -100,6 +102,7 @@ export function rankPartnersForBooking(
       explanation: `${p.full_name} is available for this service.`,
       confidence: createConfidenceEnvelope(10, ["computation_error", "fallback_used"]),
       fallback_used: true,
+      advisory_only: true as const,
     }));
   }
 }
@@ -151,6 +154,7 @@ function scorePartner(
       reasons.length > 0 ? reasons : ["standard_scoring"]
     ),
     fallback_used: false,
+    advisory_only: true,
   };
 }
 
