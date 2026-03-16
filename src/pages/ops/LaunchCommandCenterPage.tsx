@@ -26,9 +26,11 @@ import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
-  fetchLiveEnterpriseSummary,
+  fetchLiveEnterpriseSummary, fetchDispatchReliabilitySignal,
   verdictColor as getVerdictColor, slaColor as getSlaColor,
   impactLevelColor as getImpactColor, costSeverityColor as getCostColor,
+  dispatchRiskColor as getDispatchRiskColor,
+  type DispatchRiskSummary,
 } from "@/services/reliabilityReadModel";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
