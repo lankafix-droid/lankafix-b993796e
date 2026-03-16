@@ -36,7 +36,9 @@ import {
   rolloutReadinessColor as getRolloutReadinessColor, recommendedModeColor as getRecommendedModeColor,
   type DispatchRiskSummary, type DispatchPolicyAdvisory, type ReliabilityRolloutSummary,
 } from "@/services/reliabilityReadModel";
-import { fetchPerZoneReliabilitySummary, type ZoneReliabilitySummary } from "@/services/reliabilityReadModel";
+import { fetchPerZoneReliabilitySummary, fetchWorstCategoriesByZone, type ZoneReliabilitySummary } from "@/services/reliabilityReadModel";
+import type { CategoryReliabilitySummary } from "@/engines/categoryReliabilityEngine";
+import CategoryReliabilityTable from "@/components/ops/CategoryReliabilityTable";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import {
