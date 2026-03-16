@@ -256,6 +256,9 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           </div>
         </motion.div>
 
+        {/* AI Advisory summary — what insights were used */}
+        <AIBookingSummaryCard hasIssueTriage hasEstimate />
+
         {/* What happens next — compact */}
         <motion.div
           className="bg-card rounded-2xl border border-border/60 p-5 shadow-[var(--shadow-card)]"
