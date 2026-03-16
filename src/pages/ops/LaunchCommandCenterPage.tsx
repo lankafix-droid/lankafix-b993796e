@@ -934,6 +934,9 @@ function ReliabilityStatusPanel() {
           reliabilityScore: data.score, // uniform score in pilot phase
           verdict: data.verdict as any,
         }))} />
+        <p className="text-[9px] text-muted-foreground text-center mt-1">
+          Pilot baseline view — per-zone scoring not yet individualized
+        </p>
       </div>
     </>
   );
