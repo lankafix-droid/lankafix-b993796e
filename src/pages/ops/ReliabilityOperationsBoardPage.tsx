@@ -942,13 +942,17 @@ function ActionCard({
             <MicroBtn label="Waiting" onClick={() => onStatusChange(action, "waiting")} />
           )}
           <MicroBtn label="Add Note" onClick={onAddNote} />
+          <MicroBtn label="Assign to Me" onClick={() => {
+            const myName = localStorage.getItem("lankafix_operator_name");
+            if (myName) { onAssignSelf(action, myName); } else { onAssignOwner(); }
+          }} />
           {!action.owner_name ? (
             <MicroBtn label="Assign" onClick={onAssignOwner} />
           ) : (
             <MicroBtn label="Reassign" onClick={onAssignOwner} muted />
           )}
           <MicroBtn label="Needs Data" onClick={() => onQuickNote(action, "Needs more data before proceeding")} muted />
-          <MicroBtn label="Review Later" onClick={() => onQuickNote(action, "Marked for follow-up review")} muted />
+          <MicroBtn label="Review Later" onClick={() => onQuickNote(action, "Review tomorrow — marked for follow-up")} muted />
           <MicroBtn label="Resolve" onClick={() => onStatusChange(action, "resolved")} />
           <MicroBtn label="Dismiss" onClick={() => onStatusChange(action, "dismissed")} muted />
         </div>
