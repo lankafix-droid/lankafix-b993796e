@@ -147,6 +147,9 @@ export default function ExecutiveReliabilityBoardPage() {
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/ops/reliability-action-center")}>
+              <Activity className="w-3 h-3" /> Action Center
+            </Button>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/ops/reliability-scope-planner")}>
               <Target className="w-3 h-3" /> Scope Planner
             </Button>
