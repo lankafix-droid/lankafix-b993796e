@@ -2610,6 +2610,69 @@ export type Database = {
           },
         ]
       }
+      reliability_operator_actions: {
+        Row: {
+          action_title: string
+          action_type: string
+          created_at: string
+          decision_summary: string | null
+          due_at: string | null
+          id: string
+          metadata: Json | null
+          note: string
+          owner_name: string | null
+          owner_role: string | null
+          priority: string
+          resolved_at: string | null
+          source_category_code: string | null
+          source_context: string
+          source_severity: string | null
+          source_zone_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          action_title?: string
+          action_type?: string
+          created_at?: string
+          decision_summary?: string | null
+          due_at?: string | null
+          id?: string
+          metadata?: Json | null
+          note?: string
+          owner_name?: string | null
+          owner_role?: string | null
+          priority?: string
+          resolved_at?: string | null
+          source_category_code?: string | null
+          source_context?: string
+          source_severity?: string | null
+          source_zone_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          action_title?: string
+          action_type?: string
+          created_at?: string
+          decision_summary?: string | null
+          due_at?: string | null
+          id?: string
+          metadata?: Json | null
+          note?: string
+          owner_name?: string | null
+          owner_role?: string | null
+          priority?: string
+          resolved_at?: string | null
+          source_category_code?: string | null
+          source_context?: string
+          source_severity?: string | null
+          source_zone_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reliability_snapshots: {
         Row: {
           circuit_break_count: number

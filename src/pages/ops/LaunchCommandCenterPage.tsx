@@ -134,6 +134,7 @@ COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL_MAP[z.id] = z.label; });
 // ── Drill-down links (only confirmed routes) ──
 const DRILL_DOWN_LINKS = [
   { label: "Action Center", path: "/ops/reliability-action-center", icon: Activity },
+  { label: "Operations Board", path: "/ops/reliability-operations-board", icon: FileText },
   { label: "War Room", path: "/ops/war-room", icon: Radio },
   { label: "Launch Readiness", path: "/ops/launch", icon: Rocket },
   { label: "Partner Readiness", path: "/ops/partner-readiness", icon: Users },
