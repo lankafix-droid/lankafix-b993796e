@@ -80,6 +80,7 @@ function useActionCenterData() {
 }
 
 const NAV_LINKS = [
+  { label: "Operations Board", path: "/ops/reliability-operations-board", icon: Activity },
   { label: "Command Center", path: "/ops/command-center", icon: Radio },
   { label: "Executive Board", path: "/ops/executive-reliability", icon: Shield },
   { label: "Scope Planner", path: "/ops/reliability-scope-planner", icon: Target },
