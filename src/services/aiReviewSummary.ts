@@ -2,7 +2,7 @@
  * AI Review Summarization Service
  * Summarizes partner reviews into actionable insights.
  *
- * HARDENED: feature flags, schema validation, metering, caching.
+ * HARDENED: feature flags, schema validation, metering, caching, advisory_only.
  */
 import { isAIEnabled } from "@/config/aiFlags";
 import { isValidReviewSummary } from "@/ai/schemas";
@@ -18,7 +18,9 @@ export interface ReviewSummary {
   overallSentiment: "positive" | "mixed" | "negative";
   totalReviews: number;
   avgRating: number;
-  fallback_used?: boolean;
+  fallback_used: boolean;
+  advisory_only: true;
+  cached?: boolean;
 }
 
 export interface ReviewInput {
@@ -36,6 +38,7 @@ const EMPTY_SUMMARY: ReviewSummary = {
   totalReviews: 0,
   avgRating: 0,
   fallback_used: true,
+  advisory_only: true,
 };
 
 /** Generate a review summary from a list of reviews */
@@ -98,13 +101,13 @@ export async function summarizeReviewsCached(
   partnerId: string,
   reviews: ReviewInput[]
 ): Promise<ReviewSummary> {
-  const { data } = await withCache(
+  const { data, cached } = await withCache(
     "ai_review_summary",
     { partnerId, count: reviews.length },
     async () => summarizeReviews(reviews),
     5 * 60 * 1000
   );
-  return data;
+  return { ...data, cached };
 }
 
 const POSITIVE_KEYWORDS = ["professional", "quick", "clean", "on time", "friendly", "excellent", "great", "recommended"];
@@ -135,6 +138,7 @@ function computeSummary(reviews: ReviewInput[]): ReviewSummary {
     totalReviews: reviews.length,
     avgRating: Math.round(avgRating * 10) / 10,
     fallback_used: false,
+    advisory_only: true,
   };
 }
 

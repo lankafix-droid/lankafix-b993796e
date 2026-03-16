@@ -1,16 +1,27 @@
 import { TrendingUp, AlertTriangle } from "lucide-react";
 import AIConfidenceBadge from "./AIConfidenceBadge";
 import { formatPriceRange, type PriceEstimate } from "@/services/aiPriceEstimation";
-import { isAIEnabled } from "@/config/aiFlags";
 
 interface AIPriceEstimateCardProps {
-  estimate: PriceEstimate;
+  estimate: PriceEstimate | null;
   className?: string;
+  loading?: boolean;
 }
 
-const AIPriceEstimateCard = ({ estimate, className = "" }: AIPriceEstimateCardProps) => {
-  // Don't render if feature is disabled and no estimate data
-  if (!isAIEnabled("ai_estimate_assist") && !estimate.fallback_used) {
+const AIPriceEstimateCard = ({ estimate, className = "", loading = false }: AIPriceEstimateCardProps) => {
+  // Loading state
+  if (loading) {
+    return (
+      <div className={`rounded-xl border border-border/40 bg-muted/20 p-4 space-y-2 animate-pulse ${className}`}>
+        <div className="h-4 bg-muted rounded w-2/3" />
+        <div className="h-6 bg-muted rounded w-1/2" />
+        <div className="h-3 bg-muted rounded w-3/4" />
+      </div>
+    );
+  }
+
+  // No result state
+  if (!estimate) {
     return null;
   }
 
@@ -30,17 +41,21 @@ const AIPriceEstimateCard = ({ estimate, className = "" }: AIPriceEstimateCardPr
       <p className="text-xs text-muted-foreground">{estimate.recommended_service_type}</p>
 
       {estimate.fallback_used && (
-        <div className="flex items-center gap-1.5 text-[10px] text-amber-600">
+        <div className="flex items-center gap-1.5 text-[10px] text-destructive">
           <AlertTriangle className="w-3 h-3" />
           <span>Using estimated ranges — final inspection may change result</span>
         </div>
       )}
 
       {estimate.confidence.confidence_score < 50 && !estimate.fallback_used && (
-        <div className="flex items-center gap-1.5 text-[10px] text-amber-600">
+        <div className="flex items-center gap-1.5 text-[10px] text-destructive">
           <AlertTriangle className="w-3 h-3" />
           <span>Advisory only — human review recommended</span>
         </div>
+      )}
+
+      {estimate.cached && (
+        <p className="text-[10px] text-muted-foreground">Cached result</p>
       )}
 
       <div className="pt-1 border-t border-primary/10">

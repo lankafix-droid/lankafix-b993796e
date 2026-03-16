@@ -15,6 +15,8 @@ interface AICopilotCardProps {
   fallbackUsed?: boolean;
   /** When true, shows a loading skeleton */
   loading?: boolean;
+  /** When true, this is a cached result */
+  cached?: boolean;
 }
 
 const AICopilotCard = ({
@@ -27,6 +29,7 @@ const AICopilotCard = ({
   className = "",
   fallbackUsed = false,
   loading = false,
+  cached = false,
 }: AICopilotCardProps) => {
   if (loading) {
     return (
@@ -60,14 +63,14 @@ const AICopilotCard = ({
         <p className="text-sm text-foreground leading-relaxed">{recommendation}</p>
 
         {fallbackUsed && (
-          <div className="flex items-center gap-1.5 text-[10px] text-amber-600">
+          <div className="flex items-center gap-1.5 text-[10px] text-destructive">
             <AlertTriangle className="w-3 h-3" />
             <span>Advisory only — using estimated data</span>
           </div>
         )}
 
         {confidence < 50 && !fallbackUsed && (
-          <div className="flex items-center gap-1.5 text-[10px] text-amber-600">
+          <div className="flex items-center gap-1.5 text-[10px] text-destructive">
             <AlertTriangle className="w-3 h-3" />
             <span>Low confidence — human review recommended</span>
           </div>
@@ -85,7 +88,7 @@ const AICopilotCard = ({
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <Sparkles className="w-3 h-3" />
-            <span>AI Advisory · {module}</span>
+            <span>AI Advisory · {module}{cached ? " · Cached" : ""}</span>
           </div>
           {actions && <div className="flex gap-2">{actions}</div>}
         </div>

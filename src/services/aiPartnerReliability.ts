@@ -2,7 +2,7 @@
  * AI Partner Reliability Scoring
  * Generates advisory reliability insights for partners.
  *
- * HARDENED: feature flags, schema validation, metering, caching.
+ * HARDENED: feature flags, schema validation, metering, caching, advisory_only.
  */
 import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
 import { isAIEnabled } from "@/config/aiFlags";
@@ -19,7 +19,9 @@ export interface PartnerReliabilityScore {
   trend: "improving" | "stable" | "declining";
   riskSignals: string[];
   confidence: AIConfidenceEnvelope;
-  fallback_used?: boolean;
+  fallback_used: boolean;
+  advisory_only: true;
+  cached?: boolean;
 }
 
 export interface ReliabilityMetric {
@@ -59,6 +61,7 @@ export function computePartnerReliability(
       riskSignals: [],
       confidence: createConfidenceEnvelope(10, ["feature_disabled"]),
       fallback_used: true,
+      advisory_only: true,
     };
   }
 
@@ -107,6 +110,7 @@ export function computePartnerReliability(
       riskSignals: [],
       confidence: createConfidenceEnvelope(10, ["computation_error", "fallback_used"]),
       fallback_used: true,
+      advisory_only: true,
     };
   }
 }
@@ -115,13 +119,13 @@ export function computePartnerReliability(
 export async function computePartnerReliabilityCached(
   data: PartnerPerformanceData
 ): Promise<PartnerReliabilityScore> {
-  const { data: result } = await withCache(
+  const { data: result, cached } = await withCache(
     "ai_quality_monitor",
     { id: data.id },
     async () => computePartnerReliability(data),
     5 * 60 * 1000 // 5 min TTL
   );
-  return result;
+  return { ...result, cached };
 }
 
 function computeScore(data: PartnerPerformanceData): PartnerReliabilityScore {
@@ -186,5 +190,6 @@ function computeScore(data: PartnerPerformanceData): PartnerReliabilityScore {
       riskSignals.length > 0 ? riskSignals : ["standard_assessment"]
     ),
     fallback_used: false,
+    advisory_only: true,
   };
 }

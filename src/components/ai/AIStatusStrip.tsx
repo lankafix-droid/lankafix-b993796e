@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { Activity, Brain, Shield, TrendingUp } from "lucide-react";
+import { Brain } from "lucide-react";
 
 interface AIModuleStatus {
   name: string;
@@ -21,6 +21,15 @@ const HEALTH_COLORS = {
 const AIStatusStrip = ({ modules, className = "" }: AIStatusStripProps) => {
   const active = modules.filter((m) => m.enabled).length;
   const total = modules.length;
+
+  if (total === 0) {
+    return (
+      <div className={`flex items-center gap-2 px-4 py-2 bg-muted/30 rounded-xl border border-border/40 ${className}`}>
+        <Brain className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">No AI modules configured</span>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex items-center gap-3 px-4 py-2 bg-muted/30 rounded-xl border border-border/40 overflow-x-auto ${className}`}>
