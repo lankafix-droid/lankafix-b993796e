@@ -15,7 +15,7 @@ import {
 import {
   ArrowLeft, Shield, TrendingUp, Activity, DollarSign, MapPin,
   BarChart3, Target, AlertTriangle, FileText, RefreshCw, Archive,
-  Camera, Clock, CheckCircle2, ArrowUpRight,
+  Camera, Clock, CheckCircle2, ArrowUpRight, Beaker,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -747,6 +747,9 @@ function PredictiveOutlookPanel() {
         <p className="text-[8px] text-muted-foreground/60 text-center italic">Predictions are advisory only</p>
         <Link to="/ops/prescriptive-reliability">
           <Button variant="outline" size="sm" className="w-full text-[10px] h-7 gap-1 mt-1"><ArrowUpRight className="w-2.5 h-2.5" /> Prescriptive Recommendations</Button>
+        </Link>
+        <Link to="/ops/reliability-scenario-simulator">
+          <Button variant="ghost" size="sm" className="w-full text-[10px] h-7 gap-1"><Beaker className="w-2.5 h-2.5" /> Scenario Simulator</Button>
         </Link>
       </CardContent>
     </Card>
