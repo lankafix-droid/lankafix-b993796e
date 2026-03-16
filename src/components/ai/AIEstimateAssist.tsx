@@ -18,11 +18,8 @@ interface AIEstimateAssistProps {
 }
 
 const AIEstimateAssist = ({ categoryCode, issueType, className = "" }: AIEstimateAssistProps) => {
-  // Safe execution guard
-  if (!categoryCode) return null;
-
   const serviceFn = useCallback(
-    () => estimatePrice(categoryCode, issueType),
+    () => estimatePrice(categoryCode || "_NONE_", issueType),
     [categoryCode, issueType]
   );
 
@@ -33,10 +30,14 @@ const AIEstimateAssist = ({ categoryCode, issueType, className = "" }: AIEstimat
     getConfidence: (d) => d.confidence.confidence_score,
     getFallbackUsed: (d) => d.fallback_used,
     getCached: (d) => !!d.cached,
+    autoExecute: !!categoryCode,
     deps: [categoryCode, issueType],
     analyticsEvent: "ai_estimate_viewed",
     analyticsPayload: { categoryCode, issueType },
   });
+
+  // Safe execution guard — no category means no estimate
+  if (!categoryCode) return null;
 
   // Consent gate
   if (advisory.blockedByConsent && advisory.requiredConsent) {
