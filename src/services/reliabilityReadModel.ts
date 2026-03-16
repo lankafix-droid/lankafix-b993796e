@@ -9,6 +9,7 @@ import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import { computeSLATier, computeSLACompliance, computeBreachRisk, computeRecommendedAction } from "@/engines/reliabilitySLAEngine";
 import { computeIncidentImpact } from "@/engines/incidentImpactModel";
 import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
+import { computeDispatchReliabilitySignal, type DispatchReliabilitySignal, type DispatchRiskInput } from "@/engines/reliabilityDispatchRiskEngine";
 import type { HealingStats } from "@/engines/selfHealingEngine";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 
