@@ -13,6 +13,7 @@ import { isAIEnabled } from "@/config/aiFlags";
 import { isValidFraudAlert } from "@/ai/schemas";
 import { recordAIUsage } from "@/services/aiUsageMeter";
 import { logAIEvent } from "@/services/aiEventTracking";
+import type { AIAdvisoryMeta } from "@/ai/types";
 
 export type FraudAlertSeverity = "info" | "low" | "medium" | "high" | "critical";
 
@@ -34,13 +35,11 @@ export interface FraudAlert {
   metadata?: Record<string, unknown>;
 }
 
-export interface FraudScanResult {
+export interface FraudScanResult extends AIAdvisoryMeta {
   alerts: FraudAlert[];
   riskScore: number;
   riskLevel: FraudRiskLevel;
   scanTimestamp: string;
-  fallback_used: boolean;
-  advisory_only: true;
 }
 
 interface BookingPattern {
@@ -53,12 +52,13 @@ interface BookingPattern {
 }
 
 /** Degraded-state result: returned when scan cannot execute */
-function degradedResult(reason: string): FraudScanResult {
+function degradedResult(reasons: string[]): FraudScanResult {
   return {
     alerts: [],
     riskScore: 0,
     riskLevel: "unknown",
     scanTimestamp: new Date().toISOString(),
+    confidence: createConfidenceEnvelope(0, reasons),
     fallback_used: true,
     advisory_only: true,
   };
@@ -71,7 +71,7 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
   // Feature flag check — NEVER return "safe" when disabled
   if (!isAIEnabled("ai_fraud_watch")) {
     recordAIUsage("ai_fraud_watch", 0, true);
-    return degradedResult("feature_disabled");
+    return degradedResult(["feature_disabled"]);
   }
 
   try {
@@ -149,6 +149,14 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
       riskScore > 0 ? "low" :
       "safe";
 
+    // Aggregate confidence from alerts, or high if clean scan
+    const scanConfidence = alerts.length > 0
+      ? createConfidenceEnvelope(
+          Math.round(alerts.reduce((s, a) => s + a.confidence.confidence_score, 0) / alerts.length),
+          alerts.map(a => a.alertType)
+        )
+      : createConfidenceEnvelope(85, ["clean_scan"]);
+
     const latency = Math.round(performance.now() - start);
     recordAIUsage("ai_fraud_watch", latency, false);
 
@@ -157,7 +165,7 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
         ai_module: "ai_fraud_watch",
         input_summary: `customer=${pattern.customerId}`,
         output_summary: `${alerts.length} alerts, risk=${riskLevel}`,
-        confidence_score: alerts[0].confidence.confidence_score,
+        confidence_score: scanConfidence.confidence_score,
       });
     }
 
@@ -166,6 +174,7 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
       riskScore: Math.min(100, riskScore),
       riskLevel,
       scanTimestamp: new Date().toISOString(),
+      confidence: scanConfidence,
       fallback_used: false,
       advisory_only: true,
     };
@@ -173,8 +182,14 @@ export function scanBookingPatterns(pattern: BookingPattern): FraudScanResult {
     // CRITICAL: On error, return "unknown" — NEVER "safe"
     const latency = Math.round(performance.now() - start);
     recordAIUsage("ai_fraud_watch", latency, true);
-    return degradedResult("computation_error");
+    return degradedResult(["computation_error", "fallback_used"]);
   }
+}
+
+/** Partner pattern scan result — standardized shape */
+export interface PartnerFraudScanResult extends AIAdvisoryMeta {
+  alerts: FraudAlert[];
+  partnerId: string;
 }
 
 /** Detect potential partner abuse patterns */
@@ -184,8 +199,17 @@ export function scanPartnerPatterns(data: {
   totalJobs30d: number;
   disputesLost30d: number;
   quoteInflationRate: number;
-}): FraudAlert[] {
-  if (!isAIEnabled("ai_fraud_watch")) return [];
+}): PartnerFraudScanResult {
+  // Feature flag check — return degraded, not empty
+  if (!isAIEnabled("ai_fraud_watch")) {
+    return {
+      alerts: [],
+      partnerId: data.partnerId,
+      confidence: createConfidenceEnvelope(0, ["feature_disabled"]),
+      fallback_used: true,
+      advisory_only: true,
+    };
+  }
 
   const start = performance.now();
   const alerts: FraudAlert[] = [];
@@ -215,10 +239,30 @@ export function scanPartnerPatterns(data: {
 
     const latency = Math.round(performance.now() - start);
     recordAIUsage("ai_fraud_watch", latency, false);
+
+    const scanConfidence = alerts.length > 0
+      ? createConfidenceEnvelope(
+          Math.round(alerts.reduce((s, a) => s + a.confidence.confidence_score, 0) / alerts.length),
+          alerts.map(a => a.alertType)
+        )
+      : createConfidenceEnvelope(80, ["clean_partner_scan"]);
+
+    return {
+      alerts,
+      partnerId: data.partnerId,
+      confidence: scanConfidence,
+      fallback_used: false,
+      advisory_only: true,
+    };
   } catch {
     const latency = Math.round(performance.now() - start);
     recordAIUsage("ai_fraud_watch", latency, true);
+    return {
+      alerts: [],
+      partnerId: data.partnerId,
+      confidence: createConfidenceEnvelope(0, ["computation_error", "fallback_used"]),
+      fallback_used: true,
+      advisory_only: true,
+    };
   }
-
-  return alerts;
 }

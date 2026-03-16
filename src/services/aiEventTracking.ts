@@ -3,6 +3,7 @@
  * Logs all AI module interactions for explainability, training, and auditing.
  */
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface AIEventPayload {
   user_id?: string;
@@ -22,7 +23,20 @@ export interface AIEventPayload {
 /** Log an AI event (fire-and-forget) */
 export async function logAIEvent(payload: AIEventPayload): Promise<void> {
   try {
-    await supabase.from("ai_events" as any).insert(payload);
+    await supabase.from("ai_events").insert({
+      ai_module: payload.ai_module,
+      user_id: payload.user_id ?? null,
+      partner_id: payload.partner_id ?? null,
+      booking_id: payload.booking_id ?? null,
+      zone_id: payload.zone_id ?? null,
+      category: payload.category ?? null,
+      input_summary: payload.input_summary ?? null,
+      output_summary: payload.output_summary ?? null,
+      confidence_score: payload.confidence_score ?? null,
+      accepted_by_user: payload.accepted_by_user ?? null,
+      accepted_by_operator: payload.accepted_by_operator ?? null,
+      metadata: (payload.metadata as Json) ?? null,
+    });
   } catch {
     // Silent fail — analytics should never block UX
   }
