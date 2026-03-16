@@ -128,6 +128,19 @@ export default function ReliabilityActionCenterPage() {
             {/* ── Governance Snapshot ── */}
             <GovernanceSnapshotStrip />
 
+            {/* ── Prescriptive Queue ── */}
+            <Link to="/ops/prescriptive-reliability">
+              <Card className="cursor-pointer hover:border-primary/30 transition-colors">
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Target className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-semibold">Prescriptive Recommendations</span>
+                  </div>
+                  <Badge variant="outline" className="text-[9px]">View →</Badge>
+                </CardContent>
+              </Card>
+            </Link>
+
             {/* ═══ SECTION A — Executive Status Strip ═══ */}
             <Card className="border-primary/20">
               <CardContent className="p-4">
