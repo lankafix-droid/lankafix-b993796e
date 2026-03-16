@@ -310,7 +310,7 @@ export default function ReliabilityGovernanceHubPage() {
                     {!queues?.dueFollowUps.length ? (
                       <p className="text-xs text-muted-foreground py-3 text-center">No follow-ups due today</p>
                     ) : (
-                      <div className="space-y-1.5">{queues.dueFollowUps.map(a => <AttentionItem key={a.id} action={a} onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })} />)}</div>
+                      <div className="space-y-1.5">{queues.dueFollowUps.map(a => <AttentionItem key={a.id} action={a} onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })} onMarkInReview={(a) => updateMut.mutate({ id: a.id, updates: { status: "in_review" } })} />)}</div>
                     )}
                   </TabsContent>
                   <TabsContent value="unowned">
