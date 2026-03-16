@@ -1,12 +1,13 @@
 /**
  * AIFraudReviewIndicator — Fraud risk indicator for operator/admin surfaces.
  * Uses AIFraudRiskBadge. Shows explicit "manual review recommended" for unknown/degraded states.
- * Never implies safe/clear when scan failed.
+ * Never implies safe/clear when scan failed. Advisory only.
  */
 import { AlertTriangle, Eye, ShieldQuestion } from "lucide-react";
 import AIFraudRiskBadge from "./AIFraudRiskBadge";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
 import AIOperatorFeedback from "./AIOperatorFeedback";
+import AIEmptyState from "./AIEmptyState";
 import type { FraudScanResult } from "@/services/aiFraudDetection";
 
 interface AIFraudReviewIndicatorProps {
@@ -34,18 +35,12 @@ const AIFraudReviewIndicator = ({
   // No scan result — explicit no-data state
   if (!scanResult) {
     return (
-      <div className={`rounded-lg border border-border/40 bg-muted/20 p-3 space-y-2 ${className}`}>
-        <div className="flex items-center gap-2">
-          <ShieldQuestion className="w-3.5 h-3.5 text-muted-foreground" />
-          <span className="text-xs font-semibold text-muted-foreground">Trust & Fraud</span>
-        </div>
-        <p className="text-[11px] text-muted-foreground">
-          No fraud signal available — AI trust scan has not been run for this booking.
-        </p>
-        <p className="text-[10px] text-muted-foreground italic">
-          Manual review recommended when fraud data is unavailable.
-        </p>
-      </div>
+      <AIEmptyState
+        mode="unavailable"
+        title="No fraud signal available"
+        description="AI trust scan has not been run for this booking. Manual review recommended."
+        className={className}
+      />
     );
   }
 
@@ -87,7 +82,7 @@ const AIFraudReviewIndicator = ({
       {needsReview && !isUnknown && (
         <div className="flex items-center gap-1.5 text-[10px] font-medium text-destructive bg-destructive/5 rounded-md px-2 py-1.5">
           <AlertTriangle className="w-3 h-3" />
-          Elevated risk detected — manual review recommended
+          Manual review recommended — does not automatically block the booking
         </div>
       )}
 
@@ -99,7 +94,7 @@ const AIFraudReviewIndicator = ({
         fallbackUsed={scanResult.fallback_used}
         degraded={isUnknown}
         cached={!!scanResult.cached}
-        disclaimer="Advisory only — does not block bookings or payments."
+        disclaimer="Trust scan advisory — does not block bookings or payments."
       />
     </div>
   );

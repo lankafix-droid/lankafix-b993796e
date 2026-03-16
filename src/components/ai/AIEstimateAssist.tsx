@@ -6,10 +6,12 @@
 import { useCallback } from "react";
 import { useAIAdvisory } from "@/hooks/useAIAdvisory";
 import { estimatePrice, formatPriceRange, type PriceEstimate } from "@/services/aiPriceEstimation";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Info } from "lucide-react";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
 import AIConsentGate from "./AIConsentGate";
 import AIConfidenceBadge from "./AIConfidenceBadge";
+import AIEmptyState from "./AIEmptyState";
+import { canRunEstimate } from "@/lib/aiExecutionGuards";
 
 interface AIEstimateAssistProps {
   categoryCode: string;
@@ -30,14 +32,14 @@ const AIEstimateAssist = ({ categoryCode, issueType, className = "" }: AIEstimat
     getConfidence: (d) => d.confidence.confidence_score,
     getFallbackUsed: (d) => d.fallback_used,
     getCached: (d) => !!d.cached,
-    autoExecute: !!categoryCode,
+    autoExecute: canRunEstimate(categoryCode),
     deps: [categoryCode, issueType],
     analyticsEvent: "ai_estimate_viewed",
     analyticsPayload: { categoryCode, issueType },
   });
 
   // Safe execution guard — no category means no estimate
-  if (!categoryCode) return null;
+  if (!canRunEstimate(categoryCode)) return null;
 
   // Consent gate
   if (advisory.blockedByConsent && advisory.requiredConsent) {
@@ -62,10 +64,16 @@ const AIEstimateAssist = ({ categoryCode, issueType, className = "" }: AIEstimat
     );
   }
 
-  // No result / feature disabled
-  if (!advisory.data) return null;
+  // Feature disabled
+  if (!advisory.available && advisory.error === "Feature disabled") return null;
+
+  // No result
+  if (!advisory.data) {
+    return <AIEmptyState mode="no_data" title="No price estimate available" className={className} />;
+  }
 
   const estimate = advisory.data;
+  const lowConfidence = estimate.confidence.confidence_score > 0 && estimate.confidence.confidence_score < 50;
 
   return (
     <div className={`rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2 ${className}`}>
@@ -81,6 +89,26 @@ const AIEstimateAssist = ({ categoryCode, issueType, className = "" }: AIEstimat
       </div>
       <p className="text-lg font-bold text-primary">{formatPriceRange(estimate)}</p>
       <p className="text-xs text-muted-foreground">{estimate.recommended_service_type}</p>
+
+      {/* Trust messaging */}
+      <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+        <Info className="w-3 h-3 mt-0.5 shrink-0" />
+        <span>Estimated range only — final quote after technician inspection.</span>
+      </div>
+
+      {/* Fallback/degraded notice */}
+      {advisory.fallback_used && (
+        <div className="rounded-md bg-amber-500/5 border border-amber-500/20 px-2.5 py-1.5 text-[10px] text-amber-700">
+          Using estimated guidance due to limited data.
+        </div>
+      )}
+
+      {/* Low confidence warning */}
+      {lowConfidence && !advisory.fallback_used && (
+        <div className="rounded-md bg-amber-500/5 border border-amber-500/20 px-2.5 py-1.5 text-[10px] text-amber-700">
+          Low confidence — final price may vary significantly.
+        </div>
+      )}
 
       <AIAdvisoryFooter
         module="ai_estimate_assist"

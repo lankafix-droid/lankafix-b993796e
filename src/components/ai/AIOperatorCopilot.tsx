@@ -56,7 +56,6 @@ const AIOperatorCopilot = ({
 
   // Build rows — always show all 3 modules, even if no data
   const rows: CopilotRow[] = [
-    // Estimate
     {
       icon: TrendingUp,
       label: "Price Estimate",
@@ -68,7 +67,6 @@ const AIOperatorCopilot = ({
       noData: !estimate,
       noDataMessage: "No estimate available — AI pricing module has not been run.",
     },
-    // Fraud
     {
       icon: Shield,
       label: "Trust Assessment",
@@ -79,11 +77,12 @@ const AIOperatorCopilot = ({
         : null,
       confidence: fraudScan?.confidence.confidence_score ?? null,
       fallbackUsed: fraudScan?.fallback_used ?? false,
-      warning: fraudScan?.riskLevel === "unknown" ? "Fraud scan unavailable — manual review" : undefined,
+      warning: fraudScan?.riskLevel === "unknown"
+        ? "Fraud scan unavailable — manual review recommended"
+        : undefined,
       noData: !fraudScan,
       noDataMessage: "No fraud signal available — trust scan has not been run.",
     },
-    // Partner
     {
       icon: Users,
       label: "Top Partner Match",
@@ -105,7 +104,7 @@ const AIOperatorCopilot = ({
     warnings.push(`Elevated fraud risk: ${fraudScan.alerts.length} alert(s) detected`);
   }
   if (fraudScan?.riskLevel === "unknown") {
-    warnings.push("Fraud scan could not complete — recommend manual review");
+    warnings.push("Fraud scan could not complete — manual review recommended");
   }
   if (topPartnerMatch && topPartnerMatch.confidence.confidence_score < 50) {
     warnings.push("Low confidence on partner suggestion — limited data");

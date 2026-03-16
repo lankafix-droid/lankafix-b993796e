@@ -6,13 +6,13 @@
  */
 import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Zap, Search, Loader2 } from "lucide-react";
+import { Brain, Zap, Search, Loader2, Stethoscope } from "lucide-react";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
 import AIConsentGate from "./AIConsentGate";
+import AIEmptyState from "./AIEmptyState";
 import { useAIAdvisory } from "@/hooks/useAIAdvisory";
+import { canRunIssueTriage } from "@/lib/aiExecutionGuards";
 import { CATEGORY_LABELS, type CategoryCode } from "@/config/aiFlags";
-
-const MIN_DESCRIPTION_LENGTH = 15;
 
 interface AIIssueTriageProps {
   description: string;
@@ -102,8 +102,8 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssueTri
     analyticsEvent: "ai_issue_triage_used",
   });
 
-  // Safe execution guard: only actionable with meaningful description
-  if (!description || description.trim().length < MIN_DESCRIPTION_LENGTH) return null;
+  // Safe execution guard
+  if (!canRunIssueTriage(description)) return null;
 
   // Consent gate
   if (advisory.blockedByConsent && advisory.requiredConsent) {
@@ -119,6 +119,11 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssueTri
   }
 
   if (dismissed) return null;
+
+  // Feature disabled
+  if (!advisory.available && advisory.error === "Feature disabled") {
+    return null;
+  }
 
   // Not yet triggered
   if (!triggered && !advisory.data) {
@@ -146,19 +151,20 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssueTri
     );
   }
 
-  // Feature disabled
-  if (!advisory.available) return null;
-
   const data = advisory.data;
-  if (!data) return null;
+  if (!data) {
+    return <AIEmptyState mode="no_data" title="No issue analysis available" className={className} />;
+  }
 
   const urgencyConfig = URGENCY_CONFIG[data.urgency];
+  const lowConfidence = data.confidence.confidence_score > 0 && data.confidence.confidence_score < 50;
 
   return (
     <div className={`rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3 ${className}`}>
       <div className="flex items-center gap-2">
         <Brain className="w-4 h-4 text-primary" />
         <span className="text-sm font-semibold text-foreground">AI Issue Analysis</span>
+        <Badge variant="outline" className="text-[9px] ml-auto text-muted-foreground">AI estimate only</Badge>
       </div>
 
       <div className="space-y-2">
@@ -182,6 +188,19 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssueTri
           )}
         </div>
       </div>
+
+      {/* Trust messaging */}
+      <div className="flex items-start gap-1.5 text-[10px] text-muted-foreground">
+        <Stethoscope className="w-3 h-3 mt-0.5 shrink-0" />
+        <span>Final diagnosis will be confirmed by a qualified technician.</span>
+      </div>
+
+      {/* Low confidence warning */}
+      {lowConfidence && (
+        <div className="rounded-md bg-amber-500/5 border border-amber-500/20 px-2.5 py-1.5 text-[10px] text-amber-700">
+          Low confidence — please rely on technician inspection for final assessment.
+        </div>
+      )}
 
       <AIAdvisoryFooter
         module="ai_issue_triage"

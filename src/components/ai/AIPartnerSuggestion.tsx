@@ -1,6 +1,6 @@
 /**
  * AIPartnerSuggestion — Shows top-3 AI-ranked partners with scores and explanations.
- * Includes both strengths and relevant weak factors for explainability.
+ * Uses consumer-safe wording for strengths and weak factors.
  * Uses hardened aiPartnerMatching service. NEVER auto-assigns providers.
  */
 import { useState, useCallback } from "react";
@@ -10,9 +10,11 @@ import AIConfidenceBadge from "./AIConfidenceBadge";
 import AIWhyPanel from "./AIWhyPanel";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
 import AIConsentGate from "./AIConsentGate";
+import AIEmptyState from "./AIEmptyState";
 import { useAIAdvisory } from "@/hooks/useAIAdvisory";
 import { rankPartnersForBooking, type PartnerMatchScore } from "@/services/aiPartnerMatching";
-import { track } from "@/lib/analytics";
+import { trackAIAnalytics } from "@/services/aiEventTracking";
+import { canRunPartnerRanking } from "@/lib/aiExecutionGuards";
 
 interface PartnerData {
   id: string;
@@ -34,13 +36,25 @@ interface AIPartnerSuggestionProps {
   className?: string;
 }
 
-/** Get consumer-safe weak factor labels */
-function getWeakFactorNote(factor: { name: string; score: number; label: string }): string | null {
+/** Consumer-safe strength labels */
+function getStrengthLabel(factor: { name: string; label: string }): string {
+  switch (factor.name) {
+    case "category_match": return "Specializes in this category";
+    case "zone_coverage": return "Good area coverage";
+    case "response_speed": return "Responds relatively quickly";
+    case "completion": return "Strong recent completion history";
+    case "rating": return "Well-rated by customers";
+    default: return factor.label;
+  }
+}
+
+/** Consumer-safe weak factor labels — soft, non-defamatory */
+function getWeakFactorNote(factor: { name: string; score: number }): string | null {
   if (factor.score >= 50) return null;
   switch (factor.name) {
-    case "zone_coverage": return "May need extra travel time to your area";
-    case "response_speed": return "Response times may be longer than average";
-    case "completion": return "Newer technician — fewer completed jobs so far";
+    case "zone_coverage": return "Coverage may depend on technician availability";
+    case "response_speed": return "May take longer to respond";
+    case "completion": return "Limited recent job history";
     case "rating": return "Limited customer reviews available";
     default: return null;
   }
@@ -56,11 +70,14 @@ const AIPartnerSuggestion = ({
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Safe execution guards
-  if (!categoryCode || partners.length === 0) {
+  if (!canRunPartnerRanking(partners, categoryCode)) {
     return (
-      <div className={`text-center py-6 text-muted-foreground text-xs ${className}`}>
-        No partner suggestions available — awaiting category and technician data.
-      </div>
+      <AIEmptyState
+        mode="no_data"
+        title="No partner suggestions available"
+        description="Awaiting category and technician data to generate recommendations."
+        className={className}
+      />
     );
   }
 
@@ -108,21 +125,13 @@ const AIPartnerSuggestion = ({
 
   // Feature disabled
   if (!advisory.available) {
-    return (
-      <div className={`text-center py-6 text-muted-foreground text-xs ${className}`}>
-        Partner ranking is currently unavailable.
-      </div>
-    );
+    return <AIEmptyState mode="disabled" title="Partner ranking is currently unavailable" className={className} />;
   }
 
   const ranked = advisory.data?.slice(0, maxVisible) || [];
 
   if (ranked.length === 0) {
-    return (
-      <div className={`text-center py-6 text-muted-foreground text-sm ${className}`}>
-        No partner suggestions available.
-      </div>
-    );
+    return <AIEmptyState mode="no_data" title="No partner suggestions available" className={className} />;
   }
 
   return (
@@ -166,18 +175,18 @@ const AIPartnerSuggestion = ({
 
             <p className="text-xs text-muted-foreground">{partner.explanation}</p>
 
-            {/* Strengths */}
+            {/* Strengths — consumer-safe wording */}
             {strengths.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {strengths.map(f => (
                   <Badge key={f.name} variant="secondary" className="text-[10px] font-normal">
-                    ✓ {f.label}: {Math.round(f.score)}%
+                    ✓ {getStrengthLabel(f)}
                   </Badge>
                 ))}
               </div>
             )}
 
-            {/* Weak factors — consumer-safe wording */}
+            {/* Weak factors — soft, non-defamatory */}
             {weakFactors.length > 0 && (
               <div className="space-y-0.5">
                 {weakFactors.map(f => (
@@ -192,7 +201,9 @@ const AIPartnerSuggestion = ({
             <button
               onClick={() => {
                 setExpandedId(isExpanded ? null : partner.partnerId);
-                if (!isExpanded) track("ai_nudge_clicked", { module: "ai_partner_ranking", partnerId: partner.partnerId });
+                if (!isExpanded) {
+                  trackAIAnalytics("ai_nudge_clicked", { module: "ai_partner_ranking", partnerId: partner.partnerId });
+                }
               }}
               className="text-[11px] text-primary hover:underline flex items-center gap-1"
             >
