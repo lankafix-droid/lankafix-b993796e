@@ -12,6 +12,8 @@ import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
 import { computeDispatchReliabilitySignal, type DispatchReliabilitySignal, type DispatchRiskInput } from "@/engines/reliabilityDispatchRiskEngine";
 import { simulateDispatchPolicy, type DispatchPolicySimulationResult, type DispatchPolicySimulationInput } from "@/engines/reliabilityDispatchPolicySimulator";
 import { computeRolloutPolicy, type RolloutPolicyResult, type RolloutPolicyInput } from "@/engines/reliabilityRolloutPolicyEngine";
+import { computeAllZoneReliability, type ZoneReliabilityInput, type ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
+export type { ZoneReliabilitySummary } from "@/engines/zoneReliabilityEngine";
 import type { HealingStats } from "@/engines/selfHealingEngine";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 
@@ -337,4 +339,113 @@ export async function fetchReliabilityRolloutSummary(): Promise<ReliabilityRollo
     dispatchConfidence: policyAdvisory.dispatchConfidence,
     flags,
   };
+}
+
+// ── Per-zone reliability intelligence ──
+
+const PILOT_ZONE_IDS_RM = [
+  "col_01","col_02","col_03","col_04","col_05","col_06","col_07",
+  "col_08","col_09","col_10","col_11","col_12","col_13","col_14","col_15",
+  "rajagiriya","battaramulla","nawala","nugegoda","dehiwala","mt_lavinia",
+  "thalawathugoda","negombo","wattala","moratuwa",
+];
+
+/**
+ * Fetch per-zone reliability summaries using existing operational data.
+ * Derives zone-level metrics from bookings, escalations, and automation events.
+ * Read-only. No formula duplication — delegates to zoneReliabilityEngine.
+ */
+export async function fetchPerZoneReliabilitySummary(): Promise<ZoneReliabilitySummary[]> {
+  const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  // Batch queries for zone-level data
+  const [bookingsRes, escalationsRes, healingRes] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("id, zone_code, status")
+      .gte("created_at", cutoff24h)
+      .neq("booking_source", "pilot_simulation")
+      .limit(1000),
+    supabase
+      .from("dispatch_escalations")
+      .select("id, booking_id")
+      .gte("created_at", cutoff24h)
+      .limit(500),
+    (supabase as any)
+      .from("self_healing_events")
+      .select("status, created_at, metadata")
+      .gte("created_at", cutoff24h)
+      .limit(500),
+  ]);
+
+  const bookings = bookingsRes.data || [];
+  const escalations = escalationsRes.data || [];
+  const healingEvents = healingRes.data || [];
+
+  // Get booking IDs that had escalations
+  const escalatedBookingIds = new Set(escalations.map((e: any) => e.booking_id));
+
+  // Get enterprise summary for baseline confidence/breach
+  const enterpriseSummary = await fetchLiveEnterpriseSummary();
+
+  // Build per-zone inputs
+  const zoneInputs: ZoneReliabilityInput[] = PILOT_ZONE_IDS_RM.map(zoneId => {
+    const zoneBookings = bookings.filter((b: any) => b.zone_code === zoneId);
+    const bookingCount24h = zoneBookings.length;
+    const successCount24h = zoneBookings.filter((b: any) =>
+      b.status === "completed"
+    ).length;
+    const escalationCount24h = zoneBookings.filter((b: any) =>
+      escalatedBookingIds.has(b.id)
+    ).length;
+
+    // Derive healing failures from zone context (sparse — use proportional estimate)
+    const failedHealingCount24h = bookingCount24h > 0
+      ? Math.round((healingEvents.filter((e: any) => e.status === "failed").length / Math.max(1, bookings.length)) * bookingCount24h)
+      : 0;
+
+    const circuitBreakCount24h = 0; // Circuit breaks are system-wide, not zone-level yet
+
+    // Zone-level confidence: scale enterprise confidence by zone sample quality
+    const sampleFactor = bookingCount24h >= 10 ? 1.0 : bookingCount24h >= 5 ? 0.9 : bookingCount24h >= 1 ? 0.75 : 0.5;
+    const confidenceScore = Math.round(enterpriseSummary.score * sampleFactor);
+
+    // Breach risk: use enterprise baseline, slightly adjusted per-zone
+    const escalationRate = bookingCount24h > 0 ? (escalationCount24h / bookingCount24h) * 100 : 0;
+    const breachRisk = Math.min(100, enterpriseSummary.breachRisk + Math.round(escalationRate * 0.5));
+
+    // Impact score: proportional to zone escalation density
+    const impactScore = Math.min(100, Math.round(escalationRate * 2 + (bookingCount24h === 0 ? 10 : 0)));
+
+    return {
+      zoneId,
+      bookingCount24h,
+      successCount24h,
+      escalationCount24h,
+      failedHealingCount24h,
+      circuitBreakCount24h,
+      confidenceScore,
+      breachRisk,
+      impactScore,
+    };
+  });
+
+  return computeAllZoneReliability(zoneInputs);
+}
+
+/**
+ * Compact context for Scope Planner page.
+ * Combines rollout summary with per-zone intelligence.
+ */
+export interface ScopePlannerContext {
+  rolloutSummary: ReliabilityRolloutSummary;
+  zoneReliability: ZoneReliabilitySummary[];
+}
+
+export async function fetchReliabilityScopePlannerContext(): Promise<ScopePlannerContext> {
+  const [rolloutSummary, zoneReliability] = await Promise.all([
+    fetchReliabilityRolloutSummary(),
+    fetchPerZoneReliabilitySummary(),
+  ]);
+  return { rolloutSummary, zoneReliability };
 }

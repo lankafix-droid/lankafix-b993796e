@@ -17,9 +17,9 @@ import {
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import {
-  fetchReliabilityRolloutSummary,
+  fetchReliabilityScopePlannerContext,
   verdictColor, rolloutReadinessColor, recommendedModeColor,
-  type ReliabilityRolloutSummary,
+  type ReliabilityRolloutSummary, type ZoneReliabilitySummary,
 } from "@/services/reliabilityReadModel";
 import { computeScopePlan, type ScopePlannerInput, type PartnerTier, type TimeWindow } from "@/engines/reliabilityScopePlannerEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -54,11 +54,13 @@ const SAFETY_COLORS: Record<string, string> = {
 
 export default function ReliabilityScopePlannerPage() {
   const navigate = useNavigate();
-  const { data: rollout, isLoading } = useQuery<ReliabilityRolloutSummary>({
-    queryKey: ["scope-planner-rollout"],
-    queryFn: fetchReliabilityRolloutSummary,
+  const { data: ctx, isLoading } = useQuery({
+    queryKey: ["scope-planner-context"],
+    queryFn: fetchReliabilityScopePlannerContext,
     staleTime: 60_000,
   });
+  const rollout = ctx?.rolloutSummary;
+  const zoneReliability = ctx?.zoneReliability || [];
 
   // ── Local scope builder state ──
   const [selectedZones, setSelectedZones] = useState<string[]>([]);
@@ -326,7 +328,13 @@ export default function ReliabilityScopePlannerPage() {
                           ) : (
                             <AlertTriangle className="w-3 h-3 text-destructive" />
                           )}
-                          <span className={z.eligible ? "text-success" : "text-muted-foreground"}>{z.reason}</span>
+                          <span className={z.eligible ? "text-success" : "text-muted-foreground"}>
+                            {z.reason}
+                            {(() => {
+                              const zr = zoneReliability.find(zri => zri.zoneId === z.zoneId);
+                              return zr && zr.riskLevel !== "LOW" ? ` (zone risk: ${zr.riskLevel})` : "";
+                            })()}
+                          </span>
                         </div>
                       </div>
                     ))}

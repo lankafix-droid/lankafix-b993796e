@@ -25,6 +25,8 @@ import Footer from "@/components/landing/Footer";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
+import ZoneReliabilityTable from "@/components/ops/ZoneReliabilityTable";
+import ZoneDispatchPolicyMatrix from "@/components/ops/ZoneDispatchPolicyMatrix";
 import {
   fetchLiveEnterpriseSummary, fetchDispatchReliabilitySignal, fetchDispatchPolicySimulation,
   fetchReliabilityRolloutSummary,
@@ -34,6 +36,7 @@ import {
   rolloutReadinessColor as getRolloutReadinessColor, recommendedModeColor as getRecommendedModeColor,
   type DispatchRiskSummary, type DispatchPolicyAdvisory, type ReliabilityRolloutSummary,
 } from "@/services/reliabilityReadModel";
+import { fetchPerZoneReliabilitySummary, type ZoneReliabilitySummary } from "@/services/reliabilityReadModel";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import {
@@ -883,18 +886,8 @@ function ReliabilityStatusPanel() {
         </CardContent>
       </Card>
 
-      {/* Zone Reliability Heatmap */}
-      <div className="mb-6">
-        <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
-          zoneId,
-          label: ZONE_LABEL_MAP[zoneId] || zoneId,
-          reliabilityScore: data.score,
-          verdict: data.verdict as any,
-        }))} />
-        <p className="text-[9px] text-muted-foreground text-center mt-1">
-          Pilot baseline view — per-zone scoring not yet individualized
-        </p>
-      </div>
+      {/* Per-Zone Reliability Intelligence */}
+      <PerZoneReliabilityPanel />
 
       {/* Dispatch Reliability Intelligence */}
       <DispatchRiskPanel />
@@ -1128,5 +1121,43 @@ function SelfHealingStatusBadge() {
     <span className={`flex items-center gap-1 ${cfg.color}`}>
       <Icon className="w-3.5 h-3.5" /> {cfg.label}
     </span>
+  );
+}
+
+function PerZoneReliabilityPanel() {
+  const { data: zoneData, isLoading } = useQuery({
+    queryKey: ["lcc-per-zone-reliability"],
+    queryFn: fetchPerZoneReliabilitySummary,
+    staleTime: 60_000,
+  });
+
+  if (isLoading || !zoneData || zoneData.length === 0) {
+    return (
+      <div className="mb-6">
+        <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
+          zoneId,
+          label: ZONE_LABEL_MAP[zoneId] || zoneId,
+          reliabilityScore: 0,
+          verdict: "GUARDED" as any,
+        }))} />
+        <p className="text-[9px] text-muted-foreground text-center mt-1">Loading per-zone reliability…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6 space-y-4">
+      <ZoneReliabilityHeatmap zones={zoneData.map(z => ({
+        zoneId: z.zoneId,
+        label: ZONE_LABEL_MAP[z.zoneId] || z.zoneId,
+        reliabilityScore: z.reliabilityScore,
+        verdict: z.verdict as any,
+      }))} />
+      <ZoneReliabilityTable zones={zoneData} zoneLabels={ZONE_LABEL_MAP} />
+      <ZoneDispatchPolicyMatrix zones={zoneData} zoneLabels={ZONE_LABEL_MAP} />
+      <p className="text-[9px] text-muted-foreground text-center">
+        Per-zone intelligence — advisory only, does not alter live dispatch
+      </p>
+    </div>
   );
 }

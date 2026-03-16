@@ -20,15 +20,17 @@ import {
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
+import ZoneReliabilityTable from "@/components/ops/ZoneReliabilityTable";
+import ZoneDispatchPolicyMatrix from "@/components/ops/ZoneDispatchPolicyMatrix";
 import {
   fetchLiveEnterpriseSummary, fetch30DaySnapshots, fetchDispatchReliabilitySignal,
-  fetchDispatchPolicySimulation, fetchReliabilityRolloutSummary,
+  fetchDispatchPolicySimulation, fetchReliabilityRolloutSummary, fetchPerZoneReliabilitySummary,
   computeSnapshotFreshness, FRESHNESS_COLORS,
   slaColor, impactLevelColor, costSeverityColor, verdictColor, dispatchRiskColor, shadowPolicyColor,
   rolloutReadinessColor, recommendedModeColor,
   PILOT_ASSUMPTIONS,
   type SnapshotRow, type EnterpriseReliabilitySummary, type DispatchRiskSummary, type DispatchPolicyAdvisory,
-  type ReliabilityRolloutSummary,
+  type ReliabilityRolloutSummary, type ZoneReliabilitySummary,
 } from "@/services/reliabilityReadModel";
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -84,6 +86,14 @@ function useRolloutSummary() {
   });
 }
 
+function usePerZoneReliability() {
+  return useQuery({
+    queryKey: ["exec-per-zone-reliability"],
+    queryFn: fetchPerZoneReliabilitySummary,
+    staleTime: 60_000,
+  });
+}
+
 export default function ExecutiveReliabilityBoardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -92,6 +102,7 @@ export default function ExecutiveReliabilityBoardPage() {
   const { data: dispatchRisk } = useDispatchRisk();
   const { data: shadowPolicy } = useShadowPolicy();
   const { data: rolloutSummary } = useRolloutSummary();
+  const { data: zoneReliability } = usePerZoneReliability();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
@@ -390,21 +401,34 @@ export default function ExecutiveReliabilityBoardPage() {
               </Card>
             )}
 
-            {/* ── Section 6: Zone Reliability View ── */}
+            {/* ── Section 6: Per-Zone Reliability View ── */}
             {live && (
-              <div>
+              <div className="space-y-4">
                 <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" /> Zone Reliability
+                  <MapPin className="w-3.5 h-3.5" /> Zone Reliability Intelligence
                 </h2>
-                <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
-                  zoneId,
-                  label: ZONE_LABEL_MAP[zoneId] || zoneId,
-                  reliabilityScore: live.score,
-                  verdict: live.verdict as ReliabilityVerdict,
-                }))} />
-                <p className="text-[9px] text-muted-foreground text-center mt-1">
-                  Pilot baseline view — per-zone dispatch policy simulation not yet individualized
-                </p>
+                {zoneReliability && zoneReliability.length > 0 ? (
+                  <>
+                    <ZoneReliabilityHeatmap zones={zoneReliability.map(z => ({
+                      zoneId: z.zoneId,
+                      label: ZONE_LABEL_MAP[z.zoneId] || z.zoneId,
+                      reliabilityScore: z.reliabilityScore,
+                      verdict: z.verdict as ReliabilityVerdict,
+                    }))} />
+                    <ZoneReliabilityTable zones={zoneReliability} zoneLabels={ZONE_LABEL_MAP} />
+                    <ZoneDispatchPolicyMatrix zones={zoneReliability} zoneLabels={ZONE_LABEL_MAP} />
+                    <p className="text-[9px] text-muted-foreground text-center">
+                      Per-zone intelligence — advisory only, does not alter live dispatch
+                    </p>
+                  </>
+                ) : (
+                  <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
+                    zoneId,
+                    label: ZONE_LABEL_MAP[zoneId] || zoneId,
+                    reliabilityScore: live.score,
+                    verdict: live.verdict as ReliabilityVerdict,
+                  }))} />
+                )}
               </div>
             )}
 
