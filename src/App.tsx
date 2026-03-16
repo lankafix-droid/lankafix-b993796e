@@ -103,6 +103,7 @@ const SelfHealingMonitorPage = lazy(() => import("./pages/ops/SelfHealingMonitor
 const ChaosControlCenterPage = lazy(() => import("./pages/ops/ChaosControlCenterPage"));
 const ReliabilityArchivePage = lazy(() => import("./pages/ops/ReliabilityArchivePage"));
 const ExecutiveReliabilityBoardPage = lazy(() => import("./pages/ops/ExecutiveReliabilityBoardPage"));
+const ReliabilityScopePlannerPage = lazy(() => import("./pages/ops/ReliabilityScopePlannerPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
