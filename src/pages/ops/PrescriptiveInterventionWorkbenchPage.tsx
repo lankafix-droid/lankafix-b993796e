@@ -1,23 +1,33 @@
 /**
- * Prescriptive Reliability Orchestrator — V1
- * Advisory-only decision support. No marketplace enforcement.
+ * Prescriptive Intervention Workbench — V1
+ * Advisory-only operator workbench. No marketplace enforcement.
  */
 import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  ArrowLeft, Target, AlertTriangle, Shield, Zap, TrendingDown,
-  CheckCircle2, ArrowUpRight, RefreshCw, Clock, ShieldAlert,
-  Lightbulb, Ban, Layers, Activity,
+  ArrowLeft, Target, AlertTriangle, Shield, Zap, CheckCircle2,
+  ArrowUpRight, RefreshCw, Clock, ShieldAlert, Lightbulb, Ban,
+  Layers, Activity, Wrench, ClipboardList,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { fetchPrescriptiveReliabilitySummary, type PrescriptiveReliabilityFullSummary } from "@/services/prescriptiveReliabilityReadModel";
-import type { PrescriptiveIntervention, InterventionUrgency, ImpactLevel, EffortLevel } from "@/engines/prescriptiveReliabilityOrchestrator";
+import { toast } from "sonner";
+import {
+  fetchPrescriptiveInterventionWorkbench,
+  createInterventionOperatorAction,
+  type WorkbenchFullSummary,
+} from "@/services/prescriptiveInterventionWorkbenchReadModel";
+import type {
+  PrescriptiveIntervention,
+  InterventionUrgency,
+  ImpactLevel,
+  EffortLevel,
+} from "@/engines/prescriptiveInterventionWorkbenchEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 
 const ZONE_LABEL: Record<string, string> = {};
@@ -36,12 +46,24 @@ const EFFORT_STYLE: Record<EffortLevel, string> = {
   low: "text-success", medium: "text-warning", high: "text-destructive",
 };
 
-export default function PrescriptiveReliabilityPage() {
+export default function PrescriptiveInterventionWorkbenchPage() {
+  const queryClient = useQueryClient();
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["prescriptive-reliability"],
-    queryFn: fetchPrescriptiveReliabilitySummary,
+    queryKey: ["prescriptive-intervention-workbench"],
+    queryFn: fetchPrescriptiveInterventionWorkbench,
     staleTime: 60_000,
   });
+
+  const handleTrackAction = async (item: PrescriptiveIntervention) => {
+    const result = await createInterventionOperatorAction(item);
+    if (result.success) {
+      toast.success("Operator action created", { description: item.title });
+      queryClient.invalidateQueries({ queryKey: ["operator-actions"] });
+      queryClient.invalidateQueries({ queryKey: ["governance-attention"] });
+    } else {
+      toast.error("Could not create action", { description: result.message });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,24 +75,27 @@ export default function PrescriptiveReliabilityPage() {
               <Button variant="ghost" size="icon" className="h-8 w-8"><ArrowLeft className="w-4 h-4" /></Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold font-heading">Prescriptive Reliability Orchestrator</h1>
-              <p className="text-xs text-muted-foreground">What to do first, next, and avoid · Advisory only</p>
+              <h1 className="text-xl font-bold font-heading">Prescriptive Intervention Workbench</h1>
+              <p className="text-xs text-muted-foreground">Ranked operator actions · Advisory only</p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1.5 text-xs">
-            <RefreshCw className="w-3 h-3" /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[9px]">Advisory Only</Badge>
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-1.5 text-xs">
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </Button>
+          </div>
         </div>
 
-        {isLoading && <p className="text-sm text-muted-foreground py-8 text-center">Computing prescriptive intelligence…</p>}
+        {isLoading && <p className="text-sm text-muted-foreground py-8 text-center">Assembling intervention workbench…</p>}
 
         {data && (
           <>
-            {/* SECTION A — Executive Hero */}
+            {/* SECTION A — Workbench Hero */}
             <Card className="border-primary/20">
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-start gap-3">
-                  <Target className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <Wrench className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div className="space-y-2 flex-1">
                     <p className="text-sm font-bold">{data.summary.headline}</p>
                     {data.summary.summaryLines.map((line, i) => (
@@ -86,6 +111,21 @@ export default function PrescriptiveReliabilityPage() {
               </CardContent>
             </Card>
 
+            {/* SECTION B — Executive Summary Strip */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              <SummaryChip label="Priority" value={data.interventions.topInterventions.length} icon={Target} />
+              <SummaryChip label="Avoid Now" value={data.interventions.avoidNow.length} icon={Ban} color="text-destructive" />
+              <SummaryChip label="Quick Wins" value={data.interventions.quickWins.length} icon={Lightbulb} color="text-warning" />
+              <SummaryChip label="Immediate" value={data.sequence.immediate.length} icon={AlertTriangle} color="text-destructive" />
+              <SummaryChip
+                label="Rollout"
+                value={data.rolloutGuard.rolloutAllowed ? "OK" : "BLOCKED"}
+                icon={ShieldAlert}
+                color={data.rolloutGuard.rolloutAllowed ? "text-success" : "text-destructive"}
+              />
+              <SummaryChip label="Ceiling" value={`${data.rolloutGuard.recommendedCeilingPercent}%`} icon={Shield} />
+            </div>
+
             <Tabs defaultValue="priority" className="space-y-4">
               <TabsList className="w-full justify-start flex-wrap">
                 <TabsTrigger value="priority" className="text-xs">Priority</TabsTrigger>
@@ -95,17 +135,17 @@ export default function PrescriptiveReliabilityPage() {
                 <TabsTrigger value="rollout" className="text-xs">Rollout Guard</TabsTrigger>
               </TabsList>
 
-              {/* SECTION B — Top Priority */}
+              {/* SECTION C — Top Interventions */}
               <TabsContent value="priority">
                 <Card>
                   <CardContent className="p-4">
                     <h2 className="text-sm font-bold mb-3">Top Priority Interventions</h2>
                     {data.interventions.topInterventions.length === 0 ? (
-                      <EmptyState icon={Target} title="No priority interventions" description="System is stable. No prescriptive actions needed." />
+                      <EmptyState icon={Target} title="System stable" description="No priority interventions identified." />
                     ) : (
                       <div className="space-y-2">
                         {data.interventions.topInterventions.map((item, i) => (
-                          <InterventionCard key={item.id} item={item} rank={i + 1} />
+                          <InterventionCard key={item.id} item={item} rank={i + 1} onTrack={handleTrackAction} />
                         ))}
                       </div>
                     )}
@@ -113,16 +153,16 @@ export default function PrescriptiveReliabilityPage() {
                 </Card>
               </TabsContent>
 
-              {/* SECTION C — Sequence */}
+              {/* SECTION D — Sequence */}
               <TabsContent value="sequence">
                 <div className="space-y-4">
-                  <SequenceSection title="Immediate" icon={AlertTriangle} items={data.sequence.immediate} emptyText="No immediate actions required." />
-                  <SequenceSection title="This Shift" icon={Clock} items={data.sequence.thisShift} emptyText="No same-shift actions identified." />
-                  <SequenceSection title="This Week" icon={Layers} items={data.sequence.thisWeek} emptyText="No weekly review items." />
+                  <SequenceSection title="Immediate" icon={AlertTriangle} items={data.sequence.immediate} emptyText="No immediate actions." onTrack={handleTrackAction} />
+                  <SequenceSection title="This Shift" icon={Clock} items={data.sequence.thisShift} emptyText="No same-shift actions." onTrack={handleTrackAction} />
+                  <SequenceSection title="This Week" icon={Layers} items={data.sequence.thisWeek} emptyText="No weekly review items." onTrack={handleTrackAction} />
                 </div>
               </TabsContent>
 
-              {/* SECTION D — Avoid Now */}
+              {/* SECTION G — Avoid Now */}
               <TabsContent value="avoid">
                 <Card>
                   <CardContent className="p-4">
@@ -132,7 +172,7 @@ export default function PrescriptiveReliabilityPage() {
                     ) : (
                       <div className="space-y-2">
                         {data.interventions.avoidNow.map(item => (
-                          <InterventionCard key={item.id} item={item} />
+                          <InterventionCard key={item.id} item={item} onTrack={handleTrackAction} />
                         ))}
                       </div>
                     )}
@@ -146,11 +186,11 @@ export default function PrescriptiveReliabilityPage() {
                   <CardContent className="p-4">
                     <h2 className="text-sm font-bold mb-3 flex items-center gap-2"><Lightbulb className="w-4 h-4 text-warning" /> Quick Wins</h2>
                     {data.interventions.quickWins.length === 0 ? (
-                      <EmptyState icon={Lightbulb} title="No quick wins available" description="No low-effort, high-impact actions identified right now." />
+                      <EmptyState icon={Lightbulb} title="No quick wins" description="No low-effort, high-impact actions identified." />
                     ) : (
                       <div className="space-y-2">
                         {data.interventions.quickWins.map(item => (
-                          <InterventionCard key={item.id} item={item} />
+                          <InterventionCard key={item.id} item={item} onTrack={handleTrackAction} />
                         ))}
                       </div>
                     )}
@@ -185,13 +225,15 @@ export default function PrescriptiveReliabilityPage() {
               </TabsContent>
             </Tabs>
 
-            {/* SECTION H — Quick Navigation */}
+            {/* SECTION I — Quick Navigation */}
             <Card>
               <CardContent className="p-4">
                 <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Navigation</h2>
                 <div className="flex flex-wrap gap-2">
                   {[
                     { label: "Predictive Dashboard", path: "/ops/predictive-reliability" },
+                    { label: "Prescriptive Orchestrator", path: "/ops/prescriptive-reliability" },
+                    { label: "Scenario Simulator", path: "/ops/reliability-scenario-simulator" },
                     { label: "Governance Hub", path: "/ops/reliability-governance-hub" },
                     { label: "Operations Board", path: "/ops/reliability-operations-board" },
                     { label: "Action Center", path: "/ops/reliability-action-center" },
@@ -199,8 +241,6 @@ export default function PrescriptiveReliabilityPage() {
                     { label: "Scope Planner", path: "/ops/reliability-scope-planner" },
                     { label: "Archive", path: "/ops/reliability-archive" },
                     { label: "Command Center", path: "/ops/command-center" },
-                    { label: "Scenario Simulator", path: "/ops/reliability-scenario-simulator" },
-                    { label: "Intervention Workbench", path: "/ops/prescriptive-interventions" },
                   ].map(l => (
                     <Link key={l.path} to={l.path}>
                       <Button variant="outline" size="sm" className="text-[10px] h-7 gap-1"><ArrowUpRight className="w-2.5 h-2.5" />{l.label}</Button>
@@ -211,11 +251,22 @@ export default function PrescriptiveReliabilityPage() {
             </Card>
           </>
         )}
+
+        {/* Empty state when no data at all */}
+        {!isLoading && !data && (
+          <Card>
+            <CardContent className="p-8">
+              <EmptyState icon={Wrench} title="Workbench unavailable" description="Could not load intervention data. Try refreshing." />
+            </CardContent>
+          </Card>
+        )}
       </main>
       <Footer />
     </div>
   );
 }
+
+// ── Sub-components ──
 
 function MiniSignal({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
@@ -229,7 +280,19 @@ function MiniSignal({ icon: Icon, label, value }: { icon: React.ElementType; lab
   );
 }
 
-function InterventionCard({ item, rank }: { item: PrescriptiveIntervention; rank?: number }) {
+function SummaryChip({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: React.ElementType; color?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-2.5 text-center">
+        <Icon className={`w-3.5 h-3.5 mx-auto mb-1 ${color || "text-muted-foreground"}`} />
+        <p className={`text-sm font-bold ${color || ""}`}>{value}</p>
+        <p className="text-[8px] text-muted-foreground">{label}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function InterventionCard({ item, rank, onTrack }: { item: PrescriptiveIntervention; rank?: number; onTrack: (item: PrescriptiveIntervention) => void }) {
   return (
     <div className="p-3 rounded-xl border border-border/50 bg-card space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -264,11 +327,29 @@ function InterventionCard({ item, rank }: { item: PrescriptiveIntervention; rank
           ))}
         </div>
       )}
+      <div className="flex items-center gap-1.5 pt-1">
+        <Button variant="outline" size="sm" className="text-[9px] h-6 px-2 gap-1" onClick={() => onTrack(item)}>
+          <ClipboardList className="w-2.5 h-2.5" /> Track in Ops
+        </Button>
+        <Link to="/ops/reliability-action-center">
+          <Button variant="ghost" size="sm" className="text-[9px] h-6 px-2 gap-1">
+            <Activity className="w-2.5 h-2.5" /> Action Center
+          </Button>
+        </Link>
+        <Link to="/ops/reliability-governance-hub">
+          <Button variant="ghost" size="sm" className="text-[9px] h-6 px-2 gap-1">
+            <Shield className="w-2.5 h-2.5" /> Gov Hub
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }
 
-function SequenceSection({ title, icon: Icon, items, emptyText }: { title: string; icon: React.ElementType; items: PrescriptiveIntervention[]; emptyText: string }) {
+function SequenceSection({ title, icon: Icon, items, emptyText, onTrack }: {
+  title: string; icon: React.ElementType; items: PrescriptiveIntervention[]; emptyText: string;
+  onTrack: (item: PrescriptiveIntervention) => void;
+}) {
   return (
     <Card>
       <CardContent className="p-4">
@@ -278,7 +359,7 @@ function SequenceSection({ title, icon: Icon, items, emptyText }: { title: strin
         ) : (
           <div className="space-y-2">
             {items.map((item, i) => (
-              <InterventionCard key={item.id} item={item} rank={i + 1} />
+              <InterventionCard key={item.id} item={item} rank={i + 1} onTrack={onTrack} />
             ))}
           </div>
         )}

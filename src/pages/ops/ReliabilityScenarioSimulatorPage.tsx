@@ -254,6 +254,7 @@ export default function ReliabilityScenarioSimulatorPage() {
                 <div className="flex flex-wrap gap-2">
                   {[
                     { label: "Prescriptive", path: "/ops/prescriptive-reliability" },
+                    { label: "Intervention Workbench", path: "/ops/prescriptive-interventions" },
                     { label: "Predictive", path: "/ops/predictive-reliability" },
                     { label: "Governance Hub", path: "/ops/reliability-governance-hub" },
                     { label: "Operations Board", path: "/ops/reliability-operations-board" },
