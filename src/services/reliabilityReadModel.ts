@@ -10,6 +10,7 @@ import { computeSLATier, computeSLACompliance, computeBreachRisk, computeRecomme
 import { computeIncidentImpact } from "@/engines/incidentImpactModel";
 import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
 import { computeDispatchReliabilitySignal, type DispatchReliabilitySignal, type DispatchRiskInput } from "@/engines/reliabilityDispatchRiskEngine";
+import { simulateDispatchPolicy, type DispatchPolicySimulationResult, type DispatchPolicySimulationInput } from "@/engines/reliabilityDispatchPolicySimulator";
 import type { HealingStats } from "@/engines/selfHealingEngine";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 
