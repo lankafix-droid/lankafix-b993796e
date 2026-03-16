@@ -1,6 +1,7 @@
 /**
- * Reliability Operations Board V2 — Operator execution workflow.
+ * Reliability Operations Board V3 — Operator execution workflow.
  * Advisory-only. No live marketplace mutation.
+ * V3: Aging, escalation, handover, follow-up, grouping, shift notes.
  */
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -18,6 +19,7 @@ import {
   CheckCircle2, XCircle, MapPin, FileText, Heart, AlertOctagon,
   Archive, Radio, Plus, User, ClipboardList, Filter, History,
   MessageSquare, BookOpen, Download, BarChart3, UserCheck,
+  ArrowUpRight, Repeat, Layers, Bell, StickyNote,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -55,6 +57,12 @@ import {
 } from "@/services/operatorActionsService";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import type { CategoryReliabilitySummary } from "@/engines/categoryReliabilityEngine";
+import {
+  computeAging, computeFollowUp, AGING_COLORS, FOLLOWUP_COLORS, agingBadgeLabel,
+} from "@/utils/operatorAgingUtils";
+import {
+  EscalationDialog, HandoverDialog, DECISION_TAGS, DECISION_TAG_COLORS,
+} from "@/components/ops/EscalationHandoverDialogs";
 
 const ZONE_LABEL: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL[z.id] = z.label; });
@@ -77,6 +85,7 @@ const PHASE1_CATEGORIES = [
 ];
 
 const FILTER_STORAGE_KEY = "lankafix_ops_board_filters_v1";
+const SHIFT_NOTE_KEY = "lankafix_shift_handover_note";
 
 interface FilterState {
   statusFilter: string;
@@ -86,6 +95,9 @@ interface FilterState {
   categoryFilter: string;
   sortBy: string;
   ownerScope: string;
+  overdueOnly: boolean;
+  followupToday: boolean;
+  unassignedOnly: boolean;
 }
 
 const DEFAULT_FILTERS: FilterState = {
@@ -96,6 +108,9 @@ const DEFAULT_FILTERS: FilterState = {
   categoryFilter: "all",
   sortBy: "newest",
   ownerScope: "all",
+  overdueOnly: false,
+  followupToday: false,
+  unassignedOnly: false,
 };
 
 function loadFilters(): FilterState {
@@ -110,7 +125,24 @@ function saveFilters(f: FilterState) {
   try { localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(f)); } catch { /* ignore */ }
 }
 
-/** Check if an active action already exists for the same type+zone+category */
+interface ShiftNote {
+  note: string;
+  operator: string;
+  timestamp: string;
+}
+
+function loadShiftNote(): ShiftNote | null {
+  try {
+    const raw = localStorage.getItem(SHIFT_NOTE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
+function saveShiftNote(n: ShiftNote) {
+  try { localStorage.setItem(SHIFT_NOTE_KEY, JSON.stringify(n)); } catch { /* ignore */ }
+}
+
 function findExistingAction(
   actions: OperatorAction[] | undefined,
   type: OperatorActionType,
@@ -126,37 +158,24 @@ function findExistingAction(
   );
 }
 
-/** Compute lightweight operator insights from action records */
 function computeInsights(allActions: OperatorAction[] | undefined) {
   if (!allActions?.length) return null;
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayISO = todayStart.toISOString();
-
   const createdToday = allActions.filter(a => a.created_at >= todayISO);
-
-  // Busiest zone
   const zoneCounts: Record<string, number> = {};
   createdToday.forEach(a => { if (a.source_zone_id) zoneCounts[a.source_zone_id] = (zoneCounts[a.source_zone_id] || 0) + 1; });
   const busiestZone = Object.entries(zoneCounts).sort((a, b) => b[1] - a[1])[0];
-
-  // Most problematic category
   const catCounts: Record<string, number> = {};
   createdToday.forEach(a => { if (a.source_category_code) catCounts[a.source_category_code] = (catCounts[a.source_category_code] || 0) + 1; });
   const worstCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
-
-  // Average resolution time (for resolved items today)
   const resolvedToday = allActions.filter(a => a.status === "resolved" && a.resolved_at && a.resolved_at >= todayISO);
   let avgResolutionMin: number | null = null;
   if (resolvedToday.length) {
-    const totalMs = resolvedToday.reduce((sum, a) => {
-      const created = new Date(a.created_at).getTime();
-      const resolved = new Date(a.resolved_at!).getTime();
-      return sum + (resolved - created);
-    }, 0);
+    const totalMs = resolvedToday.reduce((sum, a) => sum + (new Date(a.resolved_at!).getTime() - new Date(a.created_at).getTime()), 0);
     avgResolutionMin = Math.round(totalMs / resolvedToday.length / 60_000);
   }
-
   return {
     actionsCreatedToday: createdToday.length,
     busiestZone: busiestZone ? (ZONE_LABEL[busiestZone[0]] || busiestZone[0]) : "—",
@@ -165,11 +184,50 @@ function computeInsights(allActions: OperatorAction[] | undefined) {
   };
 }
 
+/** Compute overdue/follow-up summary strip data */
+function computeQueueSummary(actions: OperatorAction[] | undefined) {
+  if (!actions?.length) return { overdue: 0, followupToday: 0, unassigned: 0, handoverPending: 0 };
+  const todayStr = new Date().toISOString().split("T")[0];
+  let overdue = 0, followupToday = 0, unassigned = 0, handoverPending = 0;
+  for (const a of actions) {
+    if (["resolved", "dismissed"].includes(a.status)) continue;
+    const aging = computeAging(a.status, a.created_at);
+    if (aging.level === "overdue" || aging.level === "critical") overdue++;
+    const fu = computeFollowUp(a.metadata);
+    if (fu && (fu.level === "today" || fu.level === "overdue")) followupToday++;
+    if (!a.owner_name) unassigned++;
+    if (a.metadata?.handover_to) handoverPending++;
+  }
+  return { overdue, followupToday, unassigned, handoverPending };
+}
+
+type GroupMode = "none" | "priority" | "status" | "owner";
+
+function groupActions(actions: OperatorAction[], mode: GroupMode): [string, OperatorAction[]][] {
+  if (mode === "none") return [["", actions]];
+  const groups: Record<string, OperatorAction[]> = {};
+  for (const a of actions) {
+    const key = mode === "priority" ? a.priority
+      : mode === "status" ? a.status
+      : (a.owner_name || "Unassigned");
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(a);
+  }
+  if (mode === "priority") {
+    const order = ["critical", "high", "medium", "low"];
+    return order.filter(k => groups[k]).map(k => [k, groups[k]]);
+  }
+  if (mode === "status") {
+    const order = ["open", "acknowledged", "in_review", "waiting", "resolved", "dismissed"];
+    return order.filter(k => groups[k]).map(k => [k, groups[k]]);
+  }
+  return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+}
+
 export default function ReliabilityOperationsBoardPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  // Persistent filters
   const [filters, setFilters] = useState<FilterState>(loadFilters);
   const updateFilter = useCallback(<K extends keyof FilterState>(key: K, value: FilterState[K]) => {
     setFilters(prev => {
@@ -179,10 +237,18 @@ export default function ReliabilityOperationsBoardPage() {
     });
   }, []);
 
+  const [groupMode, setGroupMode] = useState<GroupMode>("none");
+
   // Dialogs
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showNoteDialog, setShowNoteDialog] = useState<OperatorAction | null>(null);
   const [showOwnerDialog, setShowOwnerDialog] = useState<OperatorAction | null>(null);
+  const [showEscalationDialog, setShowEscalationDialog] = useState<OperatorAction | null>(null);
+  const [showHandoverDialog, setShowHandoverDialog] = useState<OperatorAction | null>(null);
+  const [showShiftNoteDialog, setShowShiftNoteDialog] = useState(false);
+
+  // Shift handover note
+  const [shiftNote, setShiftNote] = useState<ShiftNote | null>(loadShiftNote);
 
   // ── Intelligence data ──
   const { data: intel, isLoading: intelLoading } = useQuery({
@@ -229,7 +295,7 @@ export default function ReliabilityOperationsBoardPage() {
     filters.typeFilter !== "all" ? [filters.typeFilter as OperatorActionType] : undefined,
     [filters.typeFilter]);
 
-  const { data: actions, isLoading: actionsLoading } = useQuery({
+  const { data: rawActions, isLoading: actionsLoading } = useQuery({
     queryKey: ["operator-actions", filters.statusFilter, filters.priorityFilter, filters.typeFilter, filters.zoneFilter, filters.categoryFilter, filters.sortBy, filters.ownerScope],
     queryFn: () => fetchOperatorActions({
       status: statusArr,
@@ -243,7 +309,30 @@ export default function ReliabilityOperationsBoardPage() {
     staleTime: 10_000,
   });
 
-  // Also fetch ALL active actions for duplicate detection (unfiltered)
+  // Client-side V3 filter chips
+  const actions = useMemo(() => {
+    if (!rawActions) return rawActions;
+    let result = rawActions;
+    const todayStr = new Date().toISOString().split("T")[0];
+    if (filters.overdueOnly) {
+      result = result.filter(a => {
+        if (["resolved", "dismissed"].includes(a.status)) return false;
+        const aging = computeAging(a.status, a.created_at);
+        return aging.level === "overdue" || aging.level === "critical";
+      });
+    }
+    if (filters.followupToday) {
+      result = result.filter(a => {
+        const fu = computeFollowUp(a.metadata);
+        return fu && (fu.level === "today" || fu.level === "overdue");
+      });
+    }
+    if (filters.unassignedOnly) {
+      result = result.filter(a => !a.owner_name);
+    }
+    return result;
+  }, [rawActions, filters.overdueOnly, filters.followupToday, filters.unassignedOnly]);
+
   const { data: allActiveActions } = useQuery({
     queryKey: ["operator-actions-all-active"],
     queryFn: () => fetchOperatorActions({ status: ["open", "acknowledged", "in_review", "waiting"] }),
@@ -294,7 +383,6 @@ export default function ReliabilityOperationsBoardPage() {
   };
 
   const handleCreateFromHotspot = (item: CategoryReliabilitySummary, type: OperatorActionType) => {
-    // Duplicate detection
     const existing = findExistingAction(allActiveActions, type, item.zoneId, item.categoryCode);
     if (existing) {
       toast.info("This issue is already being tracked in the operator queue.");
@@ -321,7 +409,6 @@ export default function ReliabilityOperationsBoardPage() {
     const ts = new Date().toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     const appended = action.note ? `${action.note}\n[${ts}] ${quickNote}` : `[${ts}] ${quickNote}`;
     const updates: Parameters<typeof updateOperatorAction>[1] = { note: appended };
-    // Add followup_date metadata for "Review Later"
     if (quickNote.toLowerCase().includes("follow-up") || quickNote.toLowerCase().includes("review tomorrow")) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -333,6 +420,11 @@ export default function ReliabilityOperationsBoardPage() {
 
   const handleExportSummary = () => {
     const today = new Date().toISOString().split("T")[0];
+    const strip = computeQueueSummary(allActiveActions);
+    const todayISO = new Date(); todayISO.setHours(0, 0, 0, 0);
+    const escalatedToday = (allActiveActions || []).filter(a =>
+      a.metadata?.escalated_at && a.metadata.escalated_at >= todayISO.toISOString()
+    ).length;
     const report = {
       date: today,
       open_actions: summary?.open ?? 0,
@@ -340,6 +432,12 @@ export default function ReliabilityOperationsBoardPage() {
       in_review: summary?.inReview ?? 0,
       resolved_today: summary?.resolvedToday ?? 0,
       decisions_today: summary?.decisionsToday ?? 0,
+      overdue_items_count: strip.overdue,
+      followups_due_today: strip.followupToday,
+      unassigned_actions_count: strip.unassigned,
+      handover_pending_count: strip.handoverPending,
+      escalated_today_count: escalatedToday,
+      latest_shift_handover_note: shiftNote || null,
       top_hotspots: intel?.ac.topHotspots.slice(0, 5).map(h => ({
         zone: h.zoneId, category: h.categoryCode, score: h.reliabilityScore, verdict: h.verdict,
       })) ?? [],
@@ -361,11 +459,16 @@ export default function ReliabilityOperationsBoardPage() {
   };
 
   const insights = useMemo(() => computeInsights(allActiveActions), [allActiveActions]);
+  const queueSummary = useMemo(() => computeQueueSummary(allActiveActions), [allActiveActions]);
 
-  /** Check if a hotspot/candidate/blocked item is already tracked */
   const isTracked = useCallback((type: OperatorActionType, zoneId: string, categoryCode: string) => {
     return !!findExistingAction(allActiveActions, type, zoneId, categoryCode);
   }, [allActiveActions]);
+
+  const groupedActions = useMemo(() => {
+    if (!actions) return [];
+    return groupActions(actions, groupMode);
+  }, [actions, groupMode]);
 
   const isLoading = intelLoading || actionsLoading;
 
@@ -393,7 +496,7 @@ export default function ReliabilityOperationsBoardPage() {
         <div className="flex items-center gap-2 mb-1">
           <ClipboardList className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground">Operations Board</h1>
-          <Badge variant="outline" className="text-[10px]">V2</Badge>
+          <Badge variant="outline" className="text-[10px]">V3</Badge>
           <Badge variant="outline" className="text-[10px]">Advisory Only</Badge>
         </div>
         <p className="text-[10px] text-muted-foreground mb-5">
@@ -451,22 +554,10 @@ export default function ReliabilityOperationsBoardPage() {
                     <BarChart3 className="w-3 h-3" /> Operator Insights
                   </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{insights.actionsCreatedToday}</p>
-                      <p className="text-[8px] text-muted-foreground">Actions Today</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{insights.busiestZone}</p>
-                      <p className="text-[8px] text-muted-foreground">Busiest Zone</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{insights.worstCategory}</p>
-                      <p className="text-[8px] text-muted-foreground">Most Problematic</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-foreground">{insights.avgResolutionMin != null ? `${insights.avgResolutionMin}m` : "—"}</p>
-                      <p className="text-[8px] text-muted-foreground">Avg Resolution</p>
-                    </div>
+                    <div><p className="text-sm font-bold text-foreground">{insights.actionsCreatedToday}</p><p className="text-[8px] text-muted-foreground">Actions Today</p></div>
+                    <div><p className="text-sm font-bold text-foreground">{insights.busiestZone}</p><p className="text-[8px] text-muted-foreground">Busiest Zone</p></div>
+                    <div><p className="text-sm font-bold text-foreground">{insights.worstCategory}</p><p className="text-[8px] text-muted-foreground">Most Problematic</p></div>
+                    <div><p className="text-sm font-bold text-foreground">{insights.avgResolutionMin != null ? `${insights.avgResolutionMin}m` : "—"}</p><p className="text-[8px] text-muted-foreground">Avg Resolution</p></div>
                   </div>
                 </CardContent>
               </Card>
@@ -483,13 +574,9 @@ export default function ReliabilityOperationsBoardPage() {
                 ) : (
                   <div className="space-y-1.5">
                     {intel.ac.topHotspots.map((h, i) => (
-                      <IntelRow
-                        key={i}
-                        item={h}
-                        actionLabel="Track"
+                      <IntelRow key={i} item={h} actionLabel="Track"
                         onAction={() => handleCreateFromHotspot(h, "hotspot_acknowledged")}
-                        tracked={isTracked("hotspot_acknowledged", h.zoneId, h.categoryCode)}
-                      />
+                        tracked={isTracked("hotspot_acknowledged", h.zoneId, h.categoryCode)} />
                     ))}
                   </div>
                 )}
@@ -507,14 +594,9 @@ export default function ReliabilityOperationsBoardPage() {
                 ) : (
                   <div className="space-y-1.5">
                     {intel.ac.rolloutCandidates.map((c, i) => (
-                      <IntelRow
-                        key={i}
-                        item={c}
-                        variant="success"
-                        actionLabel="Review"
+                      <IntelRow key={i} item={c} variant="success" actionLabel="Review"
                         onAction={() => handleCreateFromHotspot(c, "rollout_candidate_review")}
-                        tracked={isTracked("rollout_candidate_review", c.zoneId, c.categoryCode)}
-                      />
+                        tracked={isTracked("rollout_candidate_review", c.zoneId, c.categoryCode)} />
                     ))}
                   </div>
                 )}
@@ -532,14 +614,9 @@ export default function ReliabilityOperationsBoardPage() {
                 ) : (
                   <div className="space-y-1.5">
                     {intel.ac.blockedItems.slice(0, 6).map((b, i) => (
-                      <IntelRow
-                        key={i}
-                        item={b}
-                        variant="destructive"
-                        actionLabel="Escalate"
+                      <IntelRow key={i} item={b} variant="destructive" actionLabel="Escalate"
                         onAction={() => handleCreateFromHotspot(b, "blocked_item_escalation")}
-                        tracked={isTracked("blocked_item_escalation", b.zoneId, b.categoryCode)}
-                      />
+                        tracked={isTracked("blocked_item_escalation", b.zoneId, b.categoryCode)} />
                     ))}
                     {intel.ac.blockedItems.length > 6 && (
                       <p className="text-[10px] text-muted-foreground text-center">+{intel.ac.blockedItems.length - 6} more blocked items</p>
@@ -610,30 +687,73 @@ export default function ReliabilityOperationsBoardPage() {
                   </Select>
                   {/* My Actions toggle */}
                   <div className="flex items-center gap-1 ml-auto">
-                    <Button
-                      variant={filters.ownerScope === "all" ? "default" : "outline"}
-                      size="sm"
-                      className="text-[9px] h-6 px-2"
-                      onClick={() => updateFilter("ownerScope", "all")}
-                    >All</Button>
-                    <Button
-                      variant={filters.ownerScope !== "all" ? "default" : "outline"}
-                      size="sm"
-                      className="text-[9px] h-6 px-2 gap-1"
+                    <Button variant={filters.ownerScope === "all" ? "default" : "outline"} size="sm" className="text-[9px] h-6 px-2"
+                      onClick={() => updateFilter("ownerScope", "all")}>All</Button>
+                    <Button variant={filters.ownerScope !== "all" ? "default" : "outline"} size="sm" className="text-[9px] h-6 px-2 gap-1"
                       onClick={() => {
                         const saved = localStorage.getItem("lankafix_operator_name");
                         if (saved) { updateFilter("ownerScope", saved); return; }
                         const name = prompt("Enter your operator name:");
-                        if (name?.trim()) {
-                          localStorage.setItem("lankafix_operator_name", name.trim());
-                          updateFilter("ownerScope", name.trim());
-                        }
-                      }}
-                    ><UserCheck className="w-3 h-3" /> My Actions</Button>
+                        if (name?.trim()) { localStorage.setItem("lankafix_operator_name", name.trim()); updateFilter("ownerScope", name.trim()); }
+                      }}>
+                      <UserCheck className="w-3 h-3" /> My Actions
+                    </Button>
+                  </div>
+                </div>
+                {/* V3 filter chips row */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-border/30">
+                  <span className="text-[9px] text-muted-foreground mr-1">Quick:</span>
+                  <FilterChip label="Overdue" active={filters.overdueOnly} count={queueSummary.overdue}
+                    onClick={() => updateFilter("overdueOnly", !filters.overdueOnly)} />
+                  <FilterChip label="Follow-up Due" active={filters.followupToday} count={queueSummary.followupToday}
+                    onClick={() => updateFilter("followupToday", !filters.followupToday)} />
+                  <FilterChip label="Unassigned" active={filters.unassignedOnly} count={queueSummary.unassigned}
+                    onClick={() => updateFilter("unassignedOnly", !filters.unassignedOnly)} />
+                  <div className="ml-auto flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-muted-foreground" />
+                    <Select value={groupMode} onValueChange={v => setGroupMode(v as GroupMode)}>
+                      <SelectTrigger className="w-24 h-6 text-[9px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-xs">No Grouping</SelectItem>
+                        <SelectItem value="priority" className="text-xs">By Priority</SelectItem>
+                        <SelectItem value="status" className="text-xs">By Status</SelectItem>
+                        <SelectItem value="owner" className="text-xs">By Owner</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* ═══ Overdue / Follow-Up Summary Strip ═══ */}
+            {(queueSummary.overdue > 0 || queueSummary.followupToday > 0 || queueSummary.unassigned > 0 || queueSummary.handoverPending > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {queueSummary.overdue > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-1.5">
+                    <AlertTriangle className="w-3 h-3 text-destructive" />
+                    <span className="text-[10px] font-medium text-destructive">{queueSummary.overdue} Overdue</span>
+                  </div>
+                )}
+                {queueSummary.followupToday > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-lg bg-warning/10 px-3 py-1.5">
+                    <Bell className="w-3 h-3 text-warning" />
+                    <span className="text-[10px] font-medium text-warning">{queueSummary.followupToday} Follow-ups Due</span>
+                  </div>
+                )}
+                {queueSummary.unassigned > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-lg bg-muted px-3 py-1.5">
+                    <User className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[10px] font-medium text-muted-foreground">{queueSummary.unassigned} Unassigned</span>
+                  </div>
+                )}
+                {queueSummary.handoverPending > 0 && (
+                  <div className="flex items-center gap-1.5 rounded-lg bg-accent/20 px-3 py-1.5">
+                    <Repeat className="w-3 h-3 text-accent-foreground" />
+                    <span className="text-[10px] font-medium text-accent-foreground">{queueSummary.handoverPending} Handover Pending</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ═══ SECTION G — Active Operator Queue ═══ */}
             <Card>
@@ -645,23 +765,62 @@ export default function ReliabilityOperationsBoardPage() {
                 {!actions?.length ? (
                   <div className="py-6 text-center">
                     <ClipboardList className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-xs text-muted-foreground">No items match current filters</p>
+                    <p className="text-xs text-muted-foreground">
+                      {filters.overdueOnly ? "No overdue items" : filters.followupToday ? "No follow-ups due today" : filters.unassignedOnly ? "No unassigned actions" : "No items match current filters"}
+                    </p>
                     <p className="text-[10px] text-muted-foreground mt-1">Create an action or track a hotspot to get started</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {actions.map(action => (
-                      <ActionCard
-                        key={action.id}
-                        action={action}
-                        onStatusChange={handleQuickStatus}
-                        onAddNote={() => setShowNoteDialog(action)}
-                        onAssignOwner={() => setShowOwnerDialog(action)}
-                        onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })}
-                        onQuickNote={handleQuickNote}
-                      />
+                    {groupedActions.map(([groupLabel, items]) => (
+                      <div key={groupLabel || "__all"}>
+                        {groupLabel && (
+                          <div className="flex items-center gap-2 mb-1.5 mt-3 first:mt-0">
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase">{groupLabel.replace("_", " ")}</span>
+                            <Badge variant="outline" className="text-[8px]">{items.length}</Badge>
+                            <div className="flex-1 border-t border-border/30" />
+                          </div>
+                        )}
+                        {items.map(action => (
+                          <ActionCard key={action.id} action={action}
+                            onStatusChange={handleQuickStatus}
+                            onAddNote={() => setShowNoteDialog(action)}
+                            onAssignOwner={() => setShowOwnerDialog(action)}
+                            onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })}
+                            onQuickNote={handleQuickNote}
+                            onEscalate={() => setShowEscalationDialog(action)}
+                            onHandover={() => setShowHandoverDialog(action)} />
+                        ))}
+                      </div>
                     ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ═══ Shift Handover Notes ═══ */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <StickyNote className="w-3 h-3" /> Shift Handover Notes
+                  </h2>
+                  <Button variant="outline" size="sm" className="text-[9px] h-5 px-2" onClick={() => setShowShiftNoteDialog(true)}>
+                    Update Note
+                  </Button>
+                </div>
+                {shiftNote ? (
+                  <div className="rounded-lg bg-muted/30 p-3">
+                    <p className="text-xs text-foreground whitespace-pre-wrap">{shiftNote.note}</p>
+                    <div className="flex items-center gap-2 mt-2 text-[9px] text-muted-foreground">
+                      <span>{shiftNote.operator}</span>
+                      <span>•</span>
+                      <span>{relativeTime(shiftNote.timestamp)}</span>
+                      <span className="text-[8px]">({new Date(shiftNote.timestamp).toLocaleString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })})</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground py-3 text-center">No handover notes recorded yet</p>
                 )}
               </CardContent>
             </Card>
@@ -673,7 +832,7 @@ export default function ReliabilityOperationsBoardPage() {
                   <History className="w-3 h-3" /> Resolved History
                 </h2>
                 {!resolvedHistory?.length ? (
-                  <p className="text-xs text-muted-foreground py-3 text-center">No resolved items yet</p>
+                  <p className="text-xs text-muted-foreground py-3 text-center">No resolved actions yet</p>
                 ) : (
                   <div className="space-y-1.5">
                     {resolvedHistory.map(a => (
@@ -687,12 +846,8 @@ export default function ReliabilityOperationsBoardPage() {
                             {a.owner_name && <span className="text-[8px] text-primary">{a.owner_name}</span>}
                             {a.source_zone_id && <span className="text-[8px] text-muted-foreground">{ZONE_LABEL[a.source_zone_id] || a.source_zone_id}</span>}
                           </div>
-                          {a.decision_summary && (
-                            <p className="text-[9px] text-muted-foreground mt-0.5 italic line-clamp-1">Decision: {a.decision_summary}</p>
-                          )}
-                          {a.note && (
-                            <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-1">{a.note.split("\n").pop()}</p>
-                          )}
+                          {a.decision_summary && <p className="text-[9px] text-muted-foreground mt-0.5 italic line-clamp-1">Decision: {a.decision_summary}</p>}
+                          {a.note && <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-1">{a.note.split("\n").pop()}</p>}
                         </div>
                         <span className="text-[8px] text-muted-foreground whitespace-nowrap shrink-0">
                           {a.resolved_at ? relativeTime(a.resolved_at) : relativeTime(a.updated_at)}
@@ -719,19 +874,23 @@ export default function ReliabilityOperationsBoardPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-[10px] font-medium text-foreground truncate">{d.action_title}</p>
-                            <Badge variant="outline" className="text-[7px] px-1 py-0 mt-0.5">{ACTION_TYPE_LABELS[d.action_type]}</Badge>
+                            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                              <Badge variant="outline" className="text-[7px] px-1 py-0">{ACTION_TYPE_LABELS[d.action_type]}</Badge>
+                              {/* Decision quality tags */}
+                              {d.metadata?.decision_tags && Array.isArray(d.metadata.decision_tags) && d.metadata.decision_tags.map((tag: string) => (
+                                <Badge key={tag} className={`text-[7px] px-1 py-0 ${DECISION_TAG_COLORS[tag] || "bg-muted text-muted-foreground"}`}>
+                                  {DECISION_TAGS[tag] || tag}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
                           <div className="text-right shrink-0">
                             <span className="text-[8px] text-muted-foreground">{relativeTime(d.created_at)}</span>
                             {d.owner_name && <p className="text-[8px] text-primary">{d.owner_name}</p>}
                           </div>
                         </div>
-                        {d.decision_summary && (
-                          <p className="text-[9px] text-foreground mt-1 italic">{d.decision_summary}</p>
-                        )}
-                        {d.note && (
-                          <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">{d.note}</p>
-                        )}
+                        {d.decision_summary && <p className="text-[9px] text-foreground mt-1 italic">{d.decision_summary}</p>}
+                        {d.note && <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2">{d.note}</p>}
                       </div>
                     ))}
                   </div>
@@ -739,7 +898,7 @@ export default function ReliabilityOperationsBoardPage() {
               </CardContent>
             </Card>
 
-            {/* ═══ SECTION H — Quick Navigation ═══ */}
+            {/* ═══ Quick Navigation ═══ */}
             <Card>
               <CardContent className="p-4">
                 <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Navigation</h2>
@@ -759,27 +918,19 @@ export default function ReliabilityOperationsBoardPage() {
         )}
 
         {/* ═══ Dialogs ═══ */}
-        <CreateActionDialog
-          open={showCreateDialog}
-          onClose={() => setShowCreateDialog(false)}
-          onCreate={(input) => { createMut.mutate(input); setShowCreateDialog(false); }}
-        />
-        <NoteDialog
-          action={showNoteDialog}
-          onClose={() => setShowNoteDialog(null)}
-          onSave={(id, note, decision) => {
-            updateMut.mutate({ id, updates: { note, ...(decision ? { decision_summary: decision } : {}) } });
-            setShowNoteDialog(null);
-          }}
-        />
-        <OwnerDialog
-          action={showOwnerDialog}
-          onClose={() => setShowOwnerDialog(null)}
-          onSave={(id, name, role) => {
-            updateMut.mutate({ id, updates: { owner_name: name, owner_role: role } });
-            setShowOwnerDialog(null);
-          }}
-        />
+        <CreateActionDialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)}
+          onCreate={(input) => { createMut.mutate(input); setShowCreateDialog(false); }} />
+        <NoteDialog action={showNoteDialog} onClose={() => setShowNoteDialog(null)}
+          onSave={(id, note, decision) => { updateMut.mutate({ id, updates: { note, ...(decision ? { decision_summary: decision } : {}) } }); setShowNoteDialog(null); }} />
+        <OwnerDialog action={showOwnerDialog} onClose={() => setShowOwnerDialog(null)}
+          onSave={(id, name, role) => { updateMut.mutate({ id, updates: { owner_name: name, owner_role: role } }); setShowOwnerDialog(null); }} />
+        <EscalationDialog action={showEscalationDialog} onClose={() => setShowEscalationDialog(null)}
+          onEscalate={(id, updates) => { updateMut.mutate({ id, updates: { priority: updates.priority, note: updates.note, ...(updates.status ? { status: updates.status as OperatorActionStatus } : {}), metadata: updates.metadata } }); setShowEscalationDialog(null); }} />
+        <HandoverDialog action={showHandoverDialog} onClose={() => setShowHandoverDialog(null)}
+          onHandover={(id, updates) => { updateMut.mutate({ id, updates: { owner_name: updates.owner_name, note: updates.note, metadata: updates.metadata } }); setShowHandoverDialog(null); }} />
+        <ShiftNoteDialog open={showShiftNoteDialog} onClose={() => setShowShiftNoteDialog(false)}
+          currentNote={shiftNote}
+          onSave={(note) => { setShiftNote(note); saveShiftNote(note); setShowShiftNoteDialog(false); toast.success("Shift handover note updated"); }} />
       </main>
       <Footer />
     </div>
@@ -807,16 +958,21 @@ function SummaryCell({ label, value, accent, critical }: { label: string; value:
   );
 }
 
+function FilterChip({ label, active, count, onClick }: { label: string; active: boolean; count: number; onClick: () => void }) {
+  return (
+    <Button variant={active ? "default" : "outline"} size="sm"
+      className={`text-[9px] h-5 px-2 gap-1 ${!active && count === 0 ? "opacity-50" : ""}`}
+      onClick={onClick}>
+      {label} {count > 0 && <span className="font-bold">{count}</span>}
+    </Button>
+  );
+}
+
 function IntelRow({ item, variant, actionLabel, onAction, tracked }: {
-  item: CategoryReliabilitySummary;
-  variant?: "success" | "destructive";
-  actionLabel: string;
-  onAction: () => void;
-  tracked?: boolean;
+  item: CategoryReliabilitySummary; variant?: "success" | "destructive"; actionLabel: string; onAction: () => void; tracked?: boolean;
 }) {
   const bg = variant === "success" ? "bg-success/5 border border-success/10"
-    : variant === "destructive" ? "bg-destructive/5 border border-destructive/10"
-    : "bg-muted/30";
+    : variant === "destructive" ? "bg-destructive/5 border border-destructive/10" : "bg-muted/30";
   return (
     <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${bg}`}>
       <div className="flex items-center gap-2 min-w-0">
@@ -837,12 +993,7 @@ function IntelRow({ item, variant, actionLabel, onAction, tracked }: {
 }
 
 function ActionCard({
-  action,
-  onStatusChange,
-  onAddNote,
-  onAssignOwner,
-  onAssignSelf,
-  onQuickNote,
+  action, onStatusChange, onAddNote, onAssignOwner, onAssignSelf, onQuickNote, onEscalate, onHandover,
 }: {
   action: OperatorAction;
   onStatusChange: (a: OperatorAction, s: OperatorActionStatus) => void;
@@ -850,8 +1001,12 @@ function ActionCard({
   onAssignOwner: () => void;
   onAssignSelf: (a: OperatorAction, name: string) => void;
   onQuickNote: (a: OperatorAction, note: string) => void;
+  onEscalate: () => void;
+  onHandover: () => void;
 }) {
   const isActive = !["resolved", "dismissed"].includes(action.status);
+  const aging = isActive ? computeAging(action.status, action.created_at) : null;
+  const followUp = computeFollowUp(action.metadata);
 
   return (
     <div className="rounded-lg border border-border/60 p-3 space-y-2">
@@ -875,6 +1030,18 @@ function ActionCard({
                 {SOURCE_CONTEXT_LABELS[action.source_context] || action.source_context}
               </Badge>
             )}
+            {/* Aging badge */}
+            {aging && aging.level !== "fresh" && (
+              <Badge className={`text-[7px] px-1 py-0 ${AGING_COLORS[aging.level]}`}>
+                {agingBadgeLabel(aging)}
+              </Badge>
+            )}
+            {/* Follow-up badge */}
+            {followUp && (
+              <Badge className={`text-[7px] px-1 py-0 ${FOLLOWUP_COLORS[followUp.level]}`}>
+                {followUp.label}
+              </Badge>
+            )}
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -883,6 +1050,7 @@ function ActionCard({
           {action.updated_at !== action.created_at && (
             <p className="text-[8px] text-muted-foreground/70">upd {relativeTime(action.updated_at)}</p>
           )}
+          {aging && <p className="text-[8px] text-muted-foreground/50">{aging.ageLabel}</p>}
         </div>
       </div>
 
@@ -893,15 +1061,19 @@ function ActionCard({
             <MapPin className="w-2.5 h-2.5" /> {ZONE_LABEL[action.source_zone_id] || action.source_zone_id}
           </span>
         )}
-        {action.source_category_code && (
-          <Badge variant="outline" className="text-[8px] px-1 py-0">{action.source_category_code}</Badge>
-        )}
+        {action.source_category_code && <Badge variant="outline" className="text-[8px] px-1 py-0">{action.source_category_code}</Badge>}
         {action.owner_name ? (
           <span className="text-[9px] text-primary flex items-center gap-0.5">
             <User className="w-2.5 h-2.5" /> {action.owner_name}{action.owner_role ? ` · ${action.owner_role}` : ""}
           </span>
         ) : (
           <span className="text-[9px] text-muted-foreground/60 italic">Unassigned</span>
+        )}
+        {/* Handover indicator */}
+        {action.metadata?.handover_to && (
+          <span className="text-[9px] text-accent-foreground flex items-center gap-0.5">
+            <Repeat className="w-2.5 h-2.5" /> Handover: {action.metadata.handover_to}
+          </span>
         )}
       </div>
 
@@ -911,10 +1083,12 @@ function ActionCard({
           {action.note.split("\n").map((line, i) => {
             const tsMatch = line.match(/^\[(.+?)\]\s*(.*)/);
             if (tsMatch) {
+              const isEscalation = tsMatch[2].startsWith("⚡");
+              const isHandover = tsMatch[2].startsWith("🔄");
               return (
-                <div key={i} className="flex gap-1.5">
+                <div key={i} className={`flex gap-1.5 ${isEscalation ? "text-destructive" : isHandover ? "text-accent-foreground" : ""}`}>
                   <span className="text-[9px] text-muted-foreground/60 shrink-0">{tsMatch[1]}</span>
-                  <span className="text-[10px] text-foreground/80">{tsMatch[2]}</span>
+                  <span className="text-[10px]">{tsMatch[2]}</span>
                 </div>
               );
             }
@@ -928,7 +1102,6 @@ function ActionCard({
         </p>
       )}
 
-      {/* Timestamps */}
       {action.resolved_at && (
         <p className="text-[8px] text-muted-foreground flex items-center gap-1">
           <Clock className="w-2.5 h-2.5" /> Resolved {relativeTime(action.resolved_at)}
@@ -938,27 +1111,17 @@ function ActionCard({
       {/* Quick actions */}
       {isActive && (
         <div className="flex items-center gap-1 flex-wrap pt-0.5 border-t border-border/30">
-          {action.status === "open" && (
-            <MicroBtn label="Acknowledge" onClick={() => onStatusChange(action, "acknowledged")} />
-          )}
-          {["open", "acknowledged"].includes(action.status) && (
-            <MicroBtn label="In Review" onClick={() => onStatusChange(action, "in_review")} />
-          )}
-          {["open", "acknowledged", "in_review"].includes(action.status) && (
-            <MicroBtn label="Waiting" onClick={() => onStatusChange(action, "waiting")} />
-          )}
+          {action.status === "open" && <MicroBtn label="Acknowledge" onClick={() => onStatusChange(action, "acknowledged")} />}
+          {["open", "acknowledged"].includes(action.status) && <MicroBtn label="In Review" onClick={() => onStatusChange(action, "in_review")} />}
+          {["open", "acknowledged", "in_review"].includes(action.status) && <MicroBtn label="Waiting" onClick={() => onStatusChange(action, "waiting")} />}
           <MicroBtn label="Add Note" onClick={onAddNote} />
+          <MicroBtn label="Escalate" onClick={onEscalate} icon={<ArrowUpRight className="w-2.5 h-2.5" />} />
+          <MicroBtn label="Handover" onClick={onHandover} icon={<Repeat className="w-2.5 h-2.5" />} muted />
           <MicroBtn label="Assign to Me" onClick={() => {
             const myName = localStorage.getItem("lankafix_operator_name");
             if (myName) { onAssignSelf(action, myName); } else { onAssignOwner(); }
           }} />
-          {!action.owner_name ? (
-            <MicroBtn label="Assign" onClick={onAssignOwner} />
-          ) : (
-            <MicroBtn label="Reassign" onClick={onAssignOwner} muted />
-          )}
-          <MicroBtn label="Needs Data" onClick={() => onQuickNote(action, "Needs more data before proceeding")} muted />
-          <MicroBtn label="Review Later" onClick={() => onQuickNote(action, "Review tomorrow — marked for follow-up")} muted />
+          {!action.owner_name ? <MicroBtn label="Assign" onClick={onAssignOwner} /> : <MicroBtn label="Reassign" onClick={onAssignOwner} muted />}
           <MicroBtn label="Resolve" onClick={() => onStatusChange(action, "resolved")} />
           <MicroBtn label="Dismiss" onClick={() => onStatusChange(action, "dismissed")} muted />
         </div>
@@ -967,10 +1130,10 @@ function ActionCard({
   );
 }
 
-function MicroBtn({ label, onClick, muted }: { label: string; onClick: () => void; muted?: boolean }) {
+function MicroBtn({ label, onClick, muted, icon }: { label: string; onClick: () => void; muted?: boolean; icon?: React.ReactNode }) {
   return (
-    <Button variant="ghost" size="sm" className={`text-[9px] h-5 px-2 ${muted ? "text-muted-foreground" : ""}`} onClick={onClick}>
-      {label}
+    <Button variant="ghost" size="sm" className={`text-[9px] h-5 px-2 gap-0.5 ${muted ? "text-muted-foreground" : ""}`} onClick={onClick}>
+      {icon} {label}
     </Button>
   );
 }
@@ -978,9 +1141,7 @@ function MicroBtn({ label, onClick, muted }: { label: string; onClick: () => voi
 /* ── Dialogs ── */
 
 function CreateActionDialog({ open, onClose, onCreate }: {
-  open: boolean;
-  onClose: () => void;
-  onCreate: (input: CreateActionInput) => void;
+  open: boolean; onClose: () => void; onCreate: (input: CreateActionInput) => void;
 }) {
   const [title, setTitle] = useState("");
   const [type, setType] = useState<OperatorActionType>("reliability_note");
@@ -992,11 +1153,15 @@ function CreateActionDialog({ open, onClose, onCreate }: {
   const [ownerRole, setOwnerRole] = useState("");
   const [zone, setZone] = useState("");
   const [category, setCategory] = useState("");
+  const [followupDate, setFollowupDate] = useState("");
 
   const isDecisionType = ["rollout_decision_logged", "risk_acceptance_logged", "deferment_logged"].includes(type);
 
   const handleSubmit = () => {
     if (!title.trim()) return;
+    const meta: any = {};
+    if (decisionType) meta.decision_type = decisionType;
+    if (followupDate) meta.followup_date = followupDate;
     onCreate({
       action_type: type,
       action_title: title,
@@ -1007,17 +1172,15 @@ function CreateActionDialog({ open, onClose, onCreate }: {
       owner_name: ownerName || null,
       owner_role: ownerRole || null,
       decision_summary: decisionSummary || null,
-      metadata: decisionType ? { decision_type: decisionType } : {},
+      metadata: Object.keys(meta).length ? meta : {},
     });
-    setTitle(""); setNote(""); setDecisionSummary(""); setOwnerName(""); setOwnerRole(""); setZone(""); setCategory("");
+    setTitle(""); setNote(""); setDecisionSummary(""); setOwnerName(""); setOwnerRole(""); setZone(""); setCategory(""); setFollowupDate("");
   };
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Create Operator Action</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle className="text-sm">Create Operator Action</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Input placeholder="Action title *" value={title} onChange={e => setTitle(e.target.value)} className="text-sm" />
           <div className="grid grid-cols-2 gap-2">
@@ -1040,7 +1203,15 @@ function CreateActionDialog({ open, onClose, onCreate }: {
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Input placeholder="Zone (optional)" value={zone} onChange={e => setZone(e.target.value)} className="text-xs h-8" />
+            <Select value={zone} onValueChange={setZone}>
+              <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Zone (opt)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {COLOMBO_ZONES_DATA.map(z => (
+                  <SelectItem key={z.id} value={z.id} className="text-xs">{z.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="text-xs h-8"><SelectValue placeholder="Category (opt)" /></SelectTrigger>
               <SelectContent>
@@ -1065,6 +1236,7 @@ function CreateActionDialog({ open, onClose, onCreate }: {
               </SelectContent>
             </Select>
           </div>
+          <Input type="date" placeholder="Follow-up date (optional)" value={followupDate} onChange={e => setFollowupDate(e.target.value)} className="text-xs h-8" />
           <Textarea placeholder="Note…" value={note} onChange={e => setNote(e.target.value)} className="text-xs min-h-[60px]" />
           {isDecisionType && (
             <>
@@ -1093,9 +1265,7 @@ function CreateActionDialog({ open, onClose, onCreate }: {
 }
 
 function NoteDialog({ action, onClose, onSave }: {
-  action: OperatorAction | null;
-  onClose: () => void;
-  onSave: (id: string, note: string, decision?: string) => void;
+  action: OperatorAction | null; onClose: () => void; onSave: (id: string, note: string, decision?: string) => void;
 }) {
   const [note, setNote] = useState("");
   const [decision, setDecision] = useState("");
@@ -1111,9 +1281,7 @@ function NoteDialog({ action, onClose, onSave }: {
   return (
     <Dialog open={!!action} onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Add Note</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle className="text-sm">Add Note</DialogTitle></DialogHeader>
         {action?.note && (
           <div className="text-[10px] text-muted-foreground bg-muted/40 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap">{action.note}</div>
         )}
@@ -1134,25 +1302,16 @@ function NoteDialog({ action, onClose, onSave }: {
 }
 
 function OwnerDialog({ action, onClose, onSave }: {
-  action: OperatorAction | null;
-  onClose: () => void;
-  onSave: (id: string, name: string, role: string) => void;
+  action: OperatorAction | null; onClose: () => void; onSave: (id: string, name: string, role: string) => void;
 }) {
   const [name, setName] = useState(action?.owner_name || "");
   const [role, setRole] = useState(action?.owner_role || "");
-
-  // Reset when action changes
-  useEffect(() => {
-    setName(action?.owner_name || "");
-    setRole(action?.owner_role || "");
-  }, [action]);
+  useEffect(() => { setName(action?.owner_name || ""); setRole(action?.owner_role || ""); }, [action]);
 
   return (
     <Dialog open={!!action} onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Assign Owner</DialogTitle>
-        </DialogHeader>
+        <DialogHeader><DialogTitle className="text-sm">Assign Owner</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Input placeholder="Owner name" value={name} onChange={e => setName(e.target.value)} className="text-sm" />
           <Select value={role} onValueChange={setRole}>
@@ -1169,6 +1328,40 @@ function OwnerDialog({ action, onClose, onSave }: {
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
           <Button size="sm" onClick={() => { if (action) onSave(action.id, name, role); }} disabled={!name.trim()}>Save</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ShiftNoteDialog({ open, onClose, currentNote, onSave }: {
+  open: boolean; onClose: () => void; currentNote: ShiftNote | null; onSave: (note: ShiftNote) => void;
+}) {
+  const [noteText, setNoteText] = useState(currentNote?.note || "");
+  const operatorName = localStorage.getItem("lankafix_operator_name") || "Current Operator";
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle className="text-sm">Update Shift Handover Note</DialogTitle></DialogHeader>
+        {currentNote && (
+          <div className="text-[10px] text-muted-foreground bg-muted/40 rounded p-2 max-h-24 overflow-y-auto whitespace-pre-wrap">
+            <p className="text-[9px] text-muted-foreground/60 mb-1">{currentNote.operator} — {relativeTime(currentNote.timestamp)}</p>
+            {currentNote.note}
+          </div>
+        )}
+        <Textarea
+          placeholder="Enter shift handover notes for the next operator…"
+          value={noteText}
+          onChange={e => setNoteText(e.target.value)}
+          className="text-xs min-h-[80px]"
+        />
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          <Button size="sm" onClick={() => {
+            if (!noteText.trim()) return;
+            onSave({ note: noteText.trim(), operator: operatorName, timestamp: new Date().toISOString() });
+          }} disabled={!noteText.trim()}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
