@@ -4,24 +4,21 @@
  *
  * HARDENED: feature flags, schema validation, metering, caching, advisory_only.
  */
-import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
+import { createConfidenceEnvelope } from "@/lib/aiConfidence";
 import { isAIEnabled } from "@/config/aiFlags";
 import { isValidPartnerReliability } from "@/ai/schemas";
 import { recordAIUsage } from "@/services/aiUsageMeter";
 import { withCache } from "@/services/aiCacheService";
 import { logAIEvent } from "@/services/aiEventTracking";
+import type { AIAdvisoryMeta } from "@/ai/types";
 
-export interface PartnerReliabilityScore {
+export interface PartnerReliabilityScore extends AIAdvisoryMeta {
   partnerId: string;
   partnerName: string;
   overallScore: number;
   metrics: ReliabilityMetric[];
   trend: "improving" | "stable" | "declining";
   riskSignals: string[];
-  confidence: AIConfidenceEnvelope;
-  fallback_used: boolean;
-  advisory_only: true;
-  cached?: boolean;
 }
 
 export interface ReliabilityMetric {

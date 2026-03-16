@@ -3,22 +3,20 @@
  * Advisory ranking factors for partner selection.
  * Does NOT modify dispatch — provides display-only insights.
  *
- * HARDENED: feature flags, fallbacks, metering, advisory_only.
+ * HARDENED: feature flags, fallbacks, metering, advisory_only, confidence.
  */
-import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
+import { createConfidenceEnvelope } from "@/lib/aiConfidence";
 import { isAIEnabled } from "@/config/aiFlags";
 import { recordAIUsage } from "@/services/aiUsageMeter";
 import { logAIEvent } from "@/services/aiEventTracking";
+import type { AIAdvisoryMeta } from "@/ai/types";
 
-export interface PartnerMatchScore {
+export interface PartnerMatchScore extends AIAdvisoryMeta {
   partnerId: string;
   partnerName: string;
   overallScore: number;
   factors: MatchFactor[];
   explanation: string;
-  confidence: AIConfidenceEnvelope;
-  fallback_used: boolean;
-  advisory_only: true;
 }
 
 export interface MatchFactor {

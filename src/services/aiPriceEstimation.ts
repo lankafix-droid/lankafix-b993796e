@@ -5,23 +5,20 @@
  *
  * HARDENED: feature flags, fallbacks, schema validation, metering, caching.
  */
-import { createConfidenceEnvelope, type AIConfidenceEnvelope } from "@/lib/aiConfidence";
+import { createConfidenceEnvelope } from "@/lib/aiConfidence";
 import { isAIEnabled } from "@/config/aiFlags";
 import { isValidPriceEstimate } from "@/ai/schemas";
 import { getFallbackPriceRange } from "@/services/aiFallbacks";
 import { recordAIUsage } from "@/services/aiUsageMeter";
 import { withCache } from "@/services/aiCacheService";
 import { logAIEvent } from "@/services/aiEventTracking";
+import type { AIAdvisoryMeta } from "@/ai/types";
 
-export interface PriceEstimate {
+export interface PriceEstimate extends AIAdvisoryMeta {
   estimated_min_price: number;
   estimated_max_price: number;
   recommended_service_type: string;
-  confidence: AIConfidenceEnvelope;
   disclaimer: string;
-  fallback_used: boolean;
-  advisory_only: true;
-  cached?: boolean;
 }
 
 // Category-based price ranges (LKR) — advisory only
