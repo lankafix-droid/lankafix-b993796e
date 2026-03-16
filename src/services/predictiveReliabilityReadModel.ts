@@ -54,7 +54,7 @@ export async function fetchPredictiveReliabilitySummary(): Promise<PredictiveRel
     supabase.from("bookings").select("id, zone_code, category_code, status, partner_id, created_at")
       .gte("created_at", cutoff7d).limit(1000).then(r => r.data || []),
     supabase.from("partners").select("id, full_name, categories_supported, service_zones, performance_score, availability_status, completed_jobs_count")
-      .eq("availability_status", "available").limit(200).then(r => r.data || []),
+      .eq("availability_status", "online").limit(200).then(r => r.data || []),
   ]);
 
   // Build reliability snapshots from zone summaries (synthetic daily points)
