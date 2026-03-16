@@ -178,6 +178,44 @@ export function dispatchRiskColor(level: string): string {
   return ({ LOW: "text-success", MODERATE: "text-warning", HIGH: "text-destructive", CRITICAL: "text-destructive" }[level] || "text-foreground");
 }
 
+export function shadowPolicyColor(mode: string): string {
+  return ({ NORMAL: "text-success", CAUTION: "text-warning", THROTTLE: "text-destructive", PROTECT: "text-destructive" }[mode] || "text-foreground");
+}
+
+// ── Dispatch policy simulation from live data ──
+export interface DispatchPolicyAdvisory extends DispatchPolicySimulationResult {
+  reliabilityScore: number;
+  verdict: string;
+  dispatchRiskLevel: string;
+  routingRecommendation: string;
+  technicianLoadRecommendation: string;
+  dispatchConfidence: number;
+}
+
+export async function fetchDispatchPolicySimulation(): Promise<DispatchPolicyAdvisory> {
+  const signal = await fetchDispatchReliabilitySignal();
+  const simInput: DispatchPolicySimulationInput = {
+    dispatchRiskLevel: signal.dispatchRiskLevel,
+    routingRecommendation: signal.routingRecommendation,
+    technicianLoadRecommendation: signal.technicianLoadRecommendation,
+    dispatchConfidence: signal.dispatchConfidence,
+    reliabilityScore: signal.reliabilityScore,
+    breachRisk: PILOT_ASSUMPTIONS.circuitBreak24h,
+    escalationRate: 0,
+    zoneGuardrailCount: PILOT_ASSUMPTIONS.zoneGuardrails,
+  };
+  const policy = simulateDispatchPolicy(simInput);
+  return {
+    ...policy,
+    reliabilityScore: signal.reliabilityScore,
+    verdict: signal.verdict,
+    dispatchRiskLevel: signal.dispatchRiskLevel,
+    routingRecommendation: signal.routingRecommendation,
+    technicianLoadRecommendation: signal.technicianLoadRecommendation,
+    dispatchConfidence: signal.dispatchConfidence,
+  };
+}
+
 // ── Fetch 30-day snapshots ──
 export async function fetch30DaySnapshots(): Promise<SnapshotRow[]> {
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
