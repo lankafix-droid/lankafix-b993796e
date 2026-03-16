@@ -62,6 +62,69 @@ export interface CreateActionInput {
   metadata?: any;
 }
 
+// ── Shared constants (single source of truth) ──
+export const ACTION_TYPE_LABELS: Record<string, string> = {
+  hotspot_acknowledged: "Hotspot Acknowledged",
+  hotspot_review_requested: "Hotspot Review",
+  rollout_candidate_review: "Rollout Review",
+  blocked_item_escalation: "Blocked Escalation",
+  snapshot_refresh_requested: "Snapshot Refresh",
+  reliability_note: "Note",
+  rollout_decision_logged: "Rollout Decision",
+  followup_task_created: "Follow-up Task",
+  risk_acceptance_logged: "Risk Accepted",
+  deferment_logged: "Deferred",
+};
+
+export const STATUS_COLORS: Record<string, string> = {
+  open: "bg-primary/10 text-primary",
+  acknowledged: "bg-warning/10 text-warning",
+  in_review: "bg-accent/20 text-accent-foreground",
+  waiting: "bg-muted text-muted-foreground",
+  resolved: "bg-success/10 text-success",
+  dismissed: "bg-muted text-muted-foreground",
+};
+
+export const PRIORITY_COLORS: Record<string, string> = {
+  critical: "bg-destructive/15 text-destructive",
+  high: "bg-destructive/10 text-destructive",
+  medium: "bg-warning/10 text-warning",
+  low: "bg-muted text-muted-foreground",
+};
+
+export const SOURCE_CONTEXT_LABELS: Record<string, string> = {
+  hotspot: "Hotspot",
+  rollout_candidate: "Rollout Candidate",
+  blocked_item: "Blocked Item",
+  snapshot_freshness: "Snapshot",
+  manual: "Manual",
+  reliability_note: "Note",
+};
+
+/** Map severity to default priority */
+export function severityToPriority(severity?: string | null): OperatorActionPriority {
+  if (!severity) return "medium";
+  const s = severity.toUpperCase();
+  if (s === "CRITICAL") return "critical";
+  if (s === "HIGH") return "high";
+  if (s === "MODERATE" || s === "GUARDED") return "medium";
+  return "low";
+}
+
+/** Relative time label e.g. "2h ago", "3d ago" */
+export function relativeTime(isoDate: string): string {
+  const ms = Date.now() - new Date(isoDate).getTime();
+  const mins = Math.floor(ms / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+// ── CRUD ──
+
 export async function fetchOperatorActions(filters?: {
   status?: OperatorActionStatus[];
   priority?: OperatorActionPriority[];
@@ -98,9 +161,6 @@ export async function fetchOperatorActions(filters?: {
   const sortBy = filters?.sortBy || "newest";
   if (sortBy === "oldest") {
     query = query.order("created_at", { ascending: true });
-  } else if (sortBy === "priority") {
-    // Sort by custom priority ordering via created_at desc as fallback
-    query = query.order("created_at", { ascending: false });
   } else {
     query = query.order("created_at", { ascending: false });
   }
@@ -110,7 +170,6 @@ export async function fetchOperatorActions(filters?: {
 
   let result = (data || []) as OperatorAction[];
 
-  // Client-side priority sort if requested
   if (sortBy === "priority") {
     const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
     result.sort((a, b) => (priorityOrder[a.priority] ?? 4) - (priorityOrder[b.priority] ?? 4));
@@ -120,6 +179,28 @@ export async function fetchOperatorActions(filters?: {
   }
 
   return result;
+}
+
+export async function fetchResolvedHistory(limit = 20): Promise<OperatorAction[]> {
+  const { data, error } = await (supabase as any)
+    .from("reliability_operator_actions")
+    .select("*")
+    .in("status", ["resolved", "dismissed"])
+    .order("resolved_at", { ascending: false, nullsFirst: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []) as OperatorAction[];
+}
+
+export async function fetchDecisionLog(limit = 20): Promise<OperatorAction[]> {
+  const { data, error } = await (supabase as any)
+    .from("reliability_operator_actions")
+    .select("*")
+    .in("action_type", ["rollout_decision_logged", "risk_acceptance_logged", "deferment_logged"])
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []) as OperatorAction[];
 }
 
 export async function createOperatorAction(input: CreateActionInput): Promise<OperatorAction> {
@@ -191,14 +272,4 @@ export async function fetchDailySummary(): Promise<{
       a.created_at >= todayISO
     ).length,
   };
-}
-
-/** Map severity to default priority */
-export function severityToPriority(severity?: string | null): OperatorActionPriority {
-  if (!severity) return "medium";
-  const s = severity.toUpperCase();
-  if (s === "CRITICAL") return "critical";
-  if (s === "HIGH") return "high";
-  if (s === "MODERATE" || s === "GUARDED") return "medium";
-  return "low";
 }
