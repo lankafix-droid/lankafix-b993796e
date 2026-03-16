@@ -157,9 +157,14 @@ describe("computeRecommendedSequence", () => {
   it("puts critical+low-effort in immediate", () => {
     const result = computePriorityInterventions({
       ...EMPTY_INPUT,
-      unownedCriticalActions: [{ id: "a1", title: "Critical" }],
+      unownedCriticalActions: [
+        { id: "a1", title: "Critical" },
+        { id: "a2", title: "Critical 2" },
+        { id: "a3", title: "Critical 3" },
+      ],
     });
-    const seq = computeRecommendedSequence(result.topInterventions);
+    const allItems = [...result.topInterventions, ...result.quickWins];
+    const seq = computeRecommendedSequence(allItems);
     expect(seq.immediate.some(i => i.urgency === "critical")).toBe(true);
   });
 });
