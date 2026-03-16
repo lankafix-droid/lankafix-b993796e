@@ -921,7 +921,7 @@ function ReliabilityStatusPanel() {
           </div>
 
           <p className="text-[9px] text-muted-foreground text-center">
-            Informational only — does not affect GO/HOLD/NO-GO verdict
+            Advisory estimate based on pilot assumptions · Informational only — does not affect GO/HOLD/NO-GO verdict
           </p>
         </CardContent>
       </Card>
