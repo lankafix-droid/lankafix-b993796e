@@ -449,31 +449,3 @@ export async function fetchReliabilityScopePlannerContext(): Promise<ScopePlanne
   ]);
   return { rolloutSummary, zoneReliability };
 }
-  const [policyAdvisory, flags] = await Promise.all([
-    fetchDispatchPolicySimulation(),
-    fetchReliabilityGuardrailFlags(),
-  ]);
-
-  const rolloutInput: RolloutPolicyInput = {
-    reliabilityScore: policyAdvisory.reliabilityScore,
-    dispatchRiskLevel: policyAdvisory.dispatchRiskLevel as any,
-    shadowPolicyMode: policyAdvisory.shadowPolicyMode,
-    breachRisk: PILOT_ASSUMPTIONS.circuitBreak24h,
-    escalationRate: policyAdvisory.reliabilityScore >= 85 ? 0 : 10,
-    dispatchConfidence: policyAdvisory.dispatchConfidence,
-    zoneCountReady: 0,
-    activePartnerCount: 0,
-  };
-
-  const rollout = computeRolloutPolicy(rolloutInput);
-
-  return {
-    ...rollout,
-    reliabilityScore: policyAdvisory.reliabilityScore,
-    verdict: policyAdvisory.verdict,
-    dispatchRiskLevel: policyAdvisory.dispatchRiskLevel,
-    shadowPolicyMode: policyAdvisory.shadowPolicyMode,
-    dispatchConfidence: policyAdvisory.dispatchConfidence,
-    flags,
-  };
-}
