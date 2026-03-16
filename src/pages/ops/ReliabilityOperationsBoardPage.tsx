@@ -383,6 +383,24 @@ export default function ReliabilityOperationsBoardPage() {
                       <SelectItem value="unresolved">Unresolved</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={zoneFilter} onValueChange={setZoneFilter}>
+                    <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Zones</SelectItem>
+                      {COLOMBO_ZONES_DATA.map(z => (
+                        <SelectItem key={z.id} value={z.id} className="text-xs">{z.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-28 h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {PHASE1_CATEGORIES.map(c => (
+                        <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>
