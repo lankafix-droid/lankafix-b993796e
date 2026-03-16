@@ -898,6 +898,9 @@ function ReliabilityStatusPanel() {
 
       {/* Shadow Dispatch Policy */}
       <ShadowPolicyPanel />
+
+      {/* Guardrails Rollout */}
+      <GuardrailsRolloutPanel />
     </>
   );
 }
