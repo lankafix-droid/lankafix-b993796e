@@ -886,18 +886,8 @@ function ReliabilityStatusPanel() {
         </CardContent>
       </Card>
 
-      {/* Zone Reliability Heatmap */}
-      <div className="mb-6">
-        <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
-          zoneId,
-          label: ZONE_LABEL_MAP[zoneId] || zoneId,
-          reliabilityScore: data.score,
-          verdict: data.verdict as any,
-        }))} />
-        <p className="text-[9px] text-muted-foreground text-center mt-1">
-          Pilot baseline view — per-zone scoring not yet individualized
-        </p>
-      </div>
+      {/* Per-Zone Reliability Intelligence */}
+      <PerZoneReliabilityPanel />
 
       {/* Dispatch Reliability Intelligence */}
       <DispatchRiskPanel />
