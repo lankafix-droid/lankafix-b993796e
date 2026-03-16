@@ -29,7 +29,7 @@ import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/eng
 import { computeSLATier, computeBreachRisk, computeRecommendedAction } from "@/engines/reliabilitySLAEngine";
 import { computeIncidentImpact } from "@/engines/incidentImpactModel";
 import { computeCostOfFailure } from "@/engines/reliabilityCostEngine";
-import { forecastReliabilityRisk } from "@/engines/predictiveReliabilityEngine";
+import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import {
   PILLAR_WEIGHTS, MIN_ACTIVE_PARTNERS_TARGET, MIN_ACTIVE_PARTNERS_CHECKLIST,
   PAYMENT_FAILURE_SCORE_PENALTY, UNPAID_COMPLETED_SCORE_PENALTY, MAX_PAYMENT_FAILURES_CHECKLIST,
