@@ -108,6 +108,9 @@ export default function ReliabilityScopePlannerPage() {
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/ops/reliability-governance-hub")}>
+            <Shield className="w-3 h-3" /> Governance Hub
+          </Button>
         </div>
 
         <div className="flex items-center gap-2 mb-2">

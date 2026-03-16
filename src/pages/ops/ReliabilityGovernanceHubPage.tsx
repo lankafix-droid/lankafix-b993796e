@@ -1,5 +1,5 @@
 /**
- * Reliability Governance Hub — V4 Governance Control Tower
+ * Reliability Governance Hub — V5 Governance Control Tower
  * Advisory-only. No live marketplace enforcement.
  */
 import { useState, useCallback } from "react";
@@ -9,11 +9,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft, Shield, Activity, Target, AlertTriangle, Clock, RefreshCw,
   CheckCircle2, XCircle, MapPin, FileText, Heart, AlertOctagon,
   Archive, Radio, ClipboardList, User, BarChart3, ArrowUpRight,
-  Layers, Bell, Zap, TrendingUp, ShieldAlert, ShieldCheck,
+  Layers, Bell, Zap, TrendingUp, ShieldAlert, ShieldCheck, Plus,
+  CalendarPlus, MessageSquarePlus, Camera, Eye,
 } from "lucide-react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -21,6 +25,7 @@ import { toast } from "sonner";
 import {
   fetchGovernanceAutomationSummary,
   fetchGovernanceAttentionQueues,
+  createGovernanceQuickAction,
   type GovernanceAutomationSummary,
   type GovernanceAttentionQueues,
 } from "@/services/reliabilityGovernanceReadModel";
@@ -31,6 +36,7 @@ import {
   STATUS_COLORS,
   PRIORITY_COLORS,
   type OperatorAction,
+  type CreateActionInput,
 } from "@/services/operatorActionsService";
 import type { GovernanceRecommendation, AutomationCandidate, OperatorLoad, AttentionLevel } from "@/engines/reliabilityGovernanceAutomationEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
@@ -70,9 +76,21 @@ const SEVERITY_ICON: Record<string, string> = {
   critical: "text-destructive",
 };
 
+const QUICK_ACTIONS: { label: string; icon: React.ElementType; type: CreateActionInput["action_type"]; title: string }[] = [
+  { label: "Create Follow-up Task", icon: CalendarPlus, type: "followup_task_created", title: "Follow-up task" },
+  { label: "Request Management Review", icon: Eye, type: "blocked_item_escalation", title: "Management review requested" },
+  { label: "Request Snapshot Refresh", icon: Camera, type: "snapshot_refresh_requested", title: "Snapshot refresh requested" },
+  { label: "Log Governance Note", icon: MessageSquarePlus, type: "reliability_note", title: "Governance note" },
+];
+
 export default function ReliabilityGovernanceHubPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [quickActionOpen, setQuickActionOpen] = useState(false);
+  const [quickActionType, setQuickActionType] = useState<typeof QUICK_ACTIONS[0] | null>(null);
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickNote, setQuickNote] = useState("");
+  const [quickFollowup, setQuickFollowup] = useState("");
 
   const { data: govSummary, isLoading: govLoading } = useQuery({
     queryKey: ["governance-automation-summary"],
@@ -98,6 +116,37 @@ export default function ReliabilityGovernanceHubPage() {
     onError: () => toast.error("Failed to update action"),
   });
 
+  const createMut = useMutation({
+    mutationFn: (input: CreateActionInput) => createGovernanceQuickAction(input),
+    onSuccess: () => { invalidate(); toast.success("Quick action created"); setQuickActionOpen(false); },
+    onError: () => toast.error("Failed to create action"),
+  });
+
+  const openQuickAction = (qa: typeof QUICK_ACTIONS[0]) => {
+    setQuickActionType(qa);
+    setQuickTitle(qa.title);
+    setQuickNote("");
+    setQuickFollowup("");
+    setQuickActionOpen(true);
+  };
+
+  const submitQuickAction = () => {
+    if (!quickActionType || !quickTitle.trim()) return;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const metadata: any = {};
+    if (quickFollowup) metadata.followup_date = quickFollowup;
+
+    createMut.mutate({
+      action_type: quickActionType.type,
+      action_title: quickTitle.trim(),
+      source_context: "manual",
+      note: quickNote.trim() || `Created from Governance Hub`,
+      priority: quickActionType.type === "blocked_item_escalation" ? "high" : "medium",
+      metadata,
+    });
+  };
+
   const isLoading = govLoading || queuesLoading;
 
   return (
@@ -118,7 +167,7 @@ export default function ReliabilityGovernanceHubPage() {
         <div className="flex items-center gap-2 mb-1">
           <ShieldAlert className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground">Governance Hub</h1>
-          <Badge variant="outline" className="text-[10px]">V4</Badge>
+          <Badge variant="outline" className="text-[10px]">V5</Badge>
           <Badge variant="outline" className="text-[10px]">Advisory Only</Badge>
         </div>
         <p className="text-[10px] text-muted-foreground mb-5">
@@ -182,14 +231,18 @@ export default function ReliabilityGovernanceHubPage() {
                   <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
                     <FileText className="w-3 h-3" /> Governance Digest
                   </h2>
-                  <div className="space-y-1.5">
-                    {govSummary.digest.digestLines.map((line, i) => (
-                      <div key={i} className="flex items-start gap-2 rounded-lg bg-muted/30 px-3 py-2">
-                        <span className="text-[10px] text-muted-foreground/60 shrink-0">•</span>
-                        <p className="text-xs text-foreground">{line}</p>
-                      </div>
-                    ))}
-                  </div>
+                  {govSummary.digest.digestLines.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-3 text-center">All governance indicators are within normal range</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {govSummary.digest.digestLines.map((line, i) => (
+                        <div key={i} className="flex items-start gap-2 rounded-lg bg-muted/30 px-3 py-2">
+                          <span className="text-[10px] text-muted-foreground/60 shrink-0">•</span>
+                          <p className="text-xs text-foreground">{line}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -272,7 +325,7 @@ export default function ReliabilityGovernanceHubPage() {
             </Card>
 
             {/* ═══ SECTION E — Operator Accountability Leaderboard ═══ */}
-            {govSummary && govSummary.operatorLoads.length > 0 && (
+            {govSummary && govSummary.operatorLoads.length > 0 ? (
               <Card>
                 <CardContent className="p-4">
                   <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
@@ -310,9 +363,15 @@ export default function ReliabilityGovernanceHubPage() {
                       </tbody>
                     </table>
                   </div>
-                  {govSummary.operatorLoads.length === 0 && (
-                    <p className="text-xs text-muted-foreground py-3 text-center">No operator activity available yet</p>
-                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <BarChart3 className="w-3 h-3" /> Operator Accountability
+                  </h2>
+                  <p className="text-xs text-muted-foreground py-3 text-center">No operator activity available yet</p>
                 </CardContent>
               </Card>
             )}
@@ -325,7 +384,7 @@ export default function ReliabilityGovernanceHubPage() {
                     <TrendingUp className="w-3 h-3" /> Governance Recommendations
                   </h2>
                   {govSummary.recommendations.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-3 text-center">All governance indicators are within acceptable range</p>
+                    <p className="text-xs text-muted-foreground py-3 text-center">No governance recommendations at this time</p>
                   ) : (
                     <div className="space-y-1.5">
                       {govSummary.recommendations.map(rec => (
@@ -364,7 +423,7 @@ export default function ReliabilityGovernanceHubPage() {
                             <Badge variant="outline" className="text-[8px] px-1.5 py-0 mt-1">{c.suggestion}</Badge>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-[7px] text-muted-foreground/50 italic">suggested only</p>
+                            <p className="text-[7px] text-muted-foreground/50 italic">suggested only — no automatic action taken</p>
                             <Link to="/ops/reliability-operations-board">
                               <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2 gap-0.5 mt-1">
                                 <ArrowUpRight className="w-2.5 h-2.5" /> Open
@@ -379,7 +438,53 @@ export default function ReliabilityGovernanceHubPage() {
               </Card>
             )}
 
-            {/* ═══ SECTION H — Quick Navigation ═══ */}
+            {/* ═══ SECTION H — Quick Operator Actions ═══ */}
+            <Card>
+              <CardContent className="p-4">
+                <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Plus className="w-3 h-3" /> Quick Operator Actions
+                </h2>
+                <p className="text-[9px] text-muted-foreground mb-3">
+                  Create operator action records only — no live marketplace changes
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {QUICK_ACTIONS.map(qa => (
+                    <Button
+                      key={qa.type}
+                      variant="outline"
+                      size="sm"
+                      className="text-[10px] h-8 gap-1.5 justify-start"
+                      onClick={() => openQuickAction(qa)}
+                    >
+                      <qa.icon className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{qa.label}</span>
+                    </Button>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-[10px] h-8 gap-1.5 justify-start"
+                    onClick={() => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      createMut.mutate({
+                        action_type: "followup_task_created",
+                        action_title: "Review tomorrow",
+                        source_context: "manual",
+                        note: "Marked for review tomorrow from Governance Hub",
+                        priority: "medium",
+                        metadata: { followup_date: tomorrow.toISOString().split("T")[0] },
+                      });
+                    }}
+                  >
+                    <CalendarPlus className="w-3 h-3 shrink-0" />
+                    <span className="truncate">Review Tomorrow</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* ═══ SECTION I — Quick Navigation ═══ */}
             <Card>
               <CardContent className="p-4">
                 <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Quick Navigation</h2>
@@ -397,6 +502,36 @@ export default function ReliabilityGovernanceHubPage() {
             </Card>
           </div>
         )}
+
+        {/* ═══ Quick Action Dialog ═══ */}
+        <Dialog open={quickActionOpen} onOpenChange={setQuickActionOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-sm">{quickActionType?.label || "Quick Action"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <label className="text-[10px] text-muted-foreground">Title</label>
+                <Input value={quickTitle} onChange={e => setQuickTitle(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Note (optional)</label>
+                <Textarea value={quickNote} onChange={e => setQuickNote(e.target.value)} className="text-xs min-h-[60px]" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground">Follow-up date (optional)</label>
+                <Input type="date" value={quickFollowup} onChange={e => setQuickFollowup(e.target.value)} className="h-8 text-xs" />
+              </div>
+              <p className="text-[8px] text-muted-foreground/60 italic">Advisory-only — creates operator action record only</p>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setQuickActionOpen(false)}>Cancel</Button>
+              <Button size="sm" className="text-xs" onClick={submitQuickAction} disabled={!quickTitle.trim() || createMut.isPending}>
+                Create
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
       <Footer />
     </div>

@@ -146,7 +146,10 @@ export default function ExecutiveReliabilityBoardPage() {
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
             <ArrowLeft className="w-4 h-4" /> Back
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/ops/reliability-governance-hub")}>
+              <Shield className="w-3 h-3" /> Governance Hub
+            </Button>
             <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => navigate("/ops/reliability-action-center")}>
               <Activity className="w-3 h-3" /> Action Center
             </Button>

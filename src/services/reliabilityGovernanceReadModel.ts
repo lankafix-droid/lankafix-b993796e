@@ -1,20 +1,26 @@
 /**
- * Reliability Governance Read Model — V4
+ * Reliability Governance Read Model — V5
  * Fetches data from existing services and runs through governance automation engine.
- * Read-only. Advisory-only.
+ * Read-only except for explicit operator quick actions.
+ * Advisory-only. No marketplace mutation.
  */
 
 import {
   fetchOperatorActions,
   fetchDailySummary,
   fetchResolvedHistory,
+  createOperatorAction,
+  updateOperatorAction,
   type OperatorAction,
+  type CreateActionInput,
 } from "@/services/operatorActionsService";
 import {
   fetchLiveEnterpriseSummary,
   fetchReliabilityRolloutSummary,
   fetch30DaySnapshots,
   computeSnapshotFreshness,
+  type EnterpriseReliabilitySummary,
+  type ReliabilityRolloutSummary,
 } from "@/services/reliabilityReadModel";
 import {
   computeOverdueActions,
@@ -56,13 +62,18 @@ export interface GovernanceAutomationSummary {
   operatorLoads: OperatorLoad[];
   snapshotFreshness: string;
   snapshotAgeHours: number;
+  enterprise: EnterpriseReliabilitySummary | null;
+  rollout: ReliabilityRolloutSummary | null;
+  shiftNote: ShiftNote | null;
 }
 
 export async function fetchGovernanceAutomationSummary(): Promise<GovernanceAutomationSummary> {
-  const [allActive, summary, snapshots] = await Promise.all([
+  const [allActive, summary, snapshots, enterprise, rollout] = await Promise.all([
     fetchOperatorActions({ status: ["open", "acknowledged", "in_review", "waiting"] }),
     fetchDailySummary(),
     fetch30DaySnapshots(),
+    fetchLiveEnterpriseSummary().catch(() => null),
+    fetchReliabilityRolloutSummary().catch(() => null),
   ]);
 
   const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;
@@ -84,6 +95,9 @@ export async function fetchGovernanceAutomationSummary(): Promise<GovernanceAuto
     operatorLoads,
     snapshotFreshness: freshness.freshness,
     snapshotAgeHours: freshness.ageHours,
+    enterprise,
+    rollout,
+    shiftNote,
   };
 }
 
@@ -108,4 +122,14 @@ export async function fetchGovernanceAttentionQueues(): Promise<GovernanceAttent
     dueFollowUps: computeDueFollowUps(govActions) as unknown as OperatorAction[],
     unownedCriticalActions: computeUnownedCriticalActions(govActions) as unknown as OperatorAction[],
   };
+}
+
+/** Create a governance quick action — only creates operator action records */
+export async function createGovernanceQuickAction(input: CreateActionInput): Promise<OperatorAction | null> {
+  return createOperatorAction(input);
+}
+
+/** Append a governance note to an existing operator action */
+export async function appendGovernanceNote(actionId: string, note: string): Promise<void> {
+  await updateOperatorAction(actionId, { note });
 }
