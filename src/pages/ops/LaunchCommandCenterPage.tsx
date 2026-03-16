@@ -27,10 +27,12 @@ import { track } from "@/lib/analytics";
 import ZoneReliabilityHeatmap from "@/components/ops/ZoneReliabilityHeatmap";
 import {
   fetchLiveEnterpriseSummary, fetchDispatchReliabilitySignal, fetchDispatchPolicySimulation,
+  fetchReliabilityRolloutSummary,
   verdictColor as getVerdictColor, slaColor as getSlaColor,
   impactLevelColor as getImpactColor, costSeverityColor as getCostColor,
   dispatchRiskColor as getDispatchRiskColor, shadowPolicyColor as getShadowPolicyColor,
-  type DispatchRiskSummary, type DispatchPolicyAdvisory,
+  rolloutReadinessColor as getRolloutReadinessColor, recommendedModeColor as getRecommendedModeColor,
+  type DispatchRiskSummary, type DispatchPolicyAdvisory, type ReliabilityRolloutSummary,
 } from "@/services/reliabilityReadModel";
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
