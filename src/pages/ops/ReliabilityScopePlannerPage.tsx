@@ -24,6 +24,7 @@ import {
 import { computeScopePlan, type ScopePlannerInput, type PartnerTier, type TimeWindow } from "@/engines/reliabilityScopePlannerEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import { categories } from "@/data/categories";
+import GovernanceSnapshotStrip from "@/components/ops/GovernanceSnapshotStrip";
 
 const PILOT_ZONE_IDS = [
   "col_01","col_02","col_03","col_04","col_05","col_06","col_07",
@@ -128,6 +129,9 @@ export default function ReliabilityScopePlannerPage() {
           <div className="text-center text-muted-foreground text-sm py-12">Unable to load rollout summary.</div>
         ) : (
           <div className="space-y-5">
+
+            {/* ── Governance Snapshot ── */}
+            <GovernanceSnapshotStrip />
 
             {/* ── Section 1: Current Governance Posture ── */}
             <Card className="border-primary/20">

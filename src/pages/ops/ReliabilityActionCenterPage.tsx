@@ -25,6 +25,7 @@ import {
 import type { CategoryReliabilitySummary } from "@/engines/categoryReliabilityEngine";
 import { computeActionCenter, type ActionCenterResult } from "@/engines/reliabilityActionCenterEngine";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
+import GovernanceSnapshotStrip from "@/components/ops/GovernanceSnapshotStrip";
 
 const ZONE_LABEL_MAP: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL_MAP[z.id] = z.label; });
@@ -123,6 +124,9 @@ export default function ReliabilityActionCenterPage() {
           <div className="text-center text-muted-foreground text-sm py-12">Loading reliability intelligence…</div>
         ) : (
           <div className="space-y-5">
+
+            {/* ── Governance Snapshot ── */}
+            <GovernanceSnapshotStrip />
 
             {/* ═══ SECTION A — Executive Status Strip ═══ */}
             <Card className="border-primary/20">

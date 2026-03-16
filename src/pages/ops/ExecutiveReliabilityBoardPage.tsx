@@ -37,6 +37,7 @@ import ZoneCategoryReliabilityMatrix from "@/components/ops/ZoneCategoryReliabil
 import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliabilitySnapshotWriter";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
+import GovernanceSnapshotStrip from "@/components/ops/GovernanceSnapshotStrip";
 
 const PILOT_ZONE_IDS = [
   "col_01","col_02","col_03","col_04","col_05","col_06","col_07",
@@ -182,6 +183,9 @@ export default function ExecutiveReliabilityBoardPage() {
           <div className="text-center text-muted-foreground text-sm py-12">Loading reliability intelligence…</div>
         ) : (
           <div className="space-y-6">
+
+            {/* ── Governance Snapshot ── */}
+            <GovernanceSnapshotStrip />
 
             {/* ── Snapshot Freshness ── */}
             <Card>
