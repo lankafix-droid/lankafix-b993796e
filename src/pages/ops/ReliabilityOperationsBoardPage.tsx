@@ -138,11 +138,13 @@ export default function ReliabilityOperationsBoardPage() {
     [typeFilter]);
 
   const { data: actions, isLoading: actionsLoading } = useQuery({
-    queryKey: ["operator-actions", statusFilter, priorityFilter, typeFilter, sortBy],
+    queryKey: ["operator-actions", statusFilter, priorityFilter, typeFilter, zoneFilter, categoryFilter, sortBy],
     queryFn: () => fetchOperatorActions({
       status: statusArr,
       priority: priorityArr,
       action_type: typeArr,
+      zone: zoneFilter !== "all" ? zoneFilter : undefined,
+      category: categoryFilter !== "all" ? categoryFilter : undefined,
       sortBy: sortBy as any,
     }),
     staleTime: 10_000,
