@@ -303,7 +303,7 @@ export default function ReliabilityGovernanceHubPage() {
                     {!queues?.overdueActions.length ? (
                       <p className="text-xs text-muted-foreground py-3 text-center">No overdue operator actions</p>
                     ) : (
-                      <div className="space-y-1.5">{queues.overdueActions.map(a => <AttentionItem key={a.id} action={a} onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })} />)}</div>
+                      <div className="space-y-1.5">{queues.overdueActions.map(a => <AttentionItem key={a.id} action={a} onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })} onMarkInReview={(a) => updateMut.mutate({ id: a.id, updates: { status: "in_review" } })} />)}</div>
                     )}
                   </TabsContent>
                   <TabsContent value="followups">
