@@ -42,6 +42,7 @@ import CategoryReliabilityTable from "@/components/ops/CategoryReliabilityTable"
 import { computeReliabilityScore, computeVerdict, computeSLOStatus } from "@/engines/reliabilityGovernanceEngine";
 import { computeRiskForecast } from "@/engines/predictiveReliabilityEngine";
 import GovernanceSnapshotStrip from "@/components/ops/GovernanceSnapshotStrip";
+import { fetchPredictiveReliabilitySummary } from "@/services/predictiveReliabilityReadModel";
 import {
   PILLAR_WEIGHTS, MIN_ACTIVE_PARTNERS_TARGET, MIN_ACTIVE_PARTNERS_CHECKLIST,
   PAYMENT_FAILURE_SCORE_PENALTY, UNPAID_COMPLETED_SCORE_PENALTY, MAX_PAYMENT_FAILURES_CHECKLIST,
@@ -895,6 +896,9 @@ function ReliabilityStatusPanel() {
       {/* Per-Zone Reliability Intelligence */}
       <PerZoneReliabilityPanel />
 
+      {/* Upcoming Reliability Risks */}
+      <UpcomingReliabilityRisksCard />
+
       {/* Category Reliability Hotspots */}
       <CategoryReliabilityHotspotsPanel />
 
@@ -1193,6 +1197,46 @@ function CategoryReliabilityHotspotsPanel() {
         <p className="text-[9px] text-muted-foreground text-center">
           Category-level reliability is advisory only and does not affect live dispatch
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function UpcomingReliabilityRisksCard() {
+  const { data } = useQuery({
+    queryKey: ["lcc-predictive-risks"],
+    queryFn: fetchPredictiveReliabilitySummary,
+    staleTime: 60_000,
+  });
+  if (!data) return null;
+  const hasRisks = data.zonesAtRisk > 0 || data.demandAlerts > 0;
+  if (!hasRisks) return null;
+  return (
+    <Card className="mb-6 border-warning/20">
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 text-warning" /> Upcoming Reliability Risks
+          </h3>
+          <a href="/ops/predictive-reliability">
+            <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2">Details →</Button>
+          </a>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="p-1.5 rounded bg-muted/30">
+            <p className={`text-sm font-bold ${data.zonesAtRisk > 0 ? "text-destructive" : "text-success"}`}>{data.zonesAtRisk}</p>
+            <p className="text-[8px] text-muted-foreground">Zones at Risk</p>
+          </div>
+          <div className="p-1.5 rounded bg-muted/30">
+            <p className={`text-sm font-bold ${data.categoriesDeclining > 0 ? "text-warning" : "text-success"}`}>{data.categoriesDeclining}</p>
+            <p className="text-[8px] text-muted-foreground">Declining</p>
+          </div>
+          <div className="p-1.5 rounded bg-muted/30">
+            <p className={`text-sm font-bold ${data.demandAlerts > 0 ? "text-warning" : "text-success"}`}>{data.demandAlerts}</p>
+            <p className="text-[8px] text-muted-foreground">Demand Alerts</p>
+          </div>
+        </div>
+        <p className="text-[8px] text-muted-foreground/60 text-center italic">Predictive — advisory only</p>
       </CardContent>
     </Card>
   );

@@ -38,6 +38,7 @@ import { writeReliabilitySnapshot, type SnapshotResult } from "@/services/reliab
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import type { ReliabilityVerdict } from "@/engines/reliabilityGovernanceEngine";
 import GovernanceSnapshotStrip from "@/components/ops/GovernanceSnapshotStrip";
+import { fetchPredictiveReliabilitySummary } from "@/services/predictiveReliabilityReadModel";
 
 const PILOT_ZONE_IDS = [
   "col_01","col_02","col_03","col_04","col_05","col_06","col_07",
@@ -685,6 +686,8 @@ export default function ExecutiveReliabilityBoardPage() {
               </Card>
             )}
 
+            <PredictiveOutlookPanel />
+
             <p className="text-[9px] text-muted-foreground text-center pb-4">
               Informational only — does not affect GO/HOLD/NO-GO verdict or marketplace behavior
             </p>
@@ -693,5 +696,56 @@ export default function ExecutiveReliabilityBoardPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+function PredictiveOutlookPanel() {
+  const { data } = useQuery({
+    queryKey: ["exec-predictive-outlook"],
+    queryFn: fetchPredictiveReliabilitySummary,
+    staleTime: 60_000,
+  });
+  if (!data) return null;
+  const hasRisks = data.zonesAtRisk > 0 || data.categoriesDeclining > 0 || data.partnersAtRisk > 0;
+  return (
+    <Card className={hasRisks ? "border-warning/20" : ""}>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5" /> Predictive Reliability Outlook
+          </h3>
+          <a href="/ops/predictive-reliability">
+            <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2">View Dashboard →</Button>
+          </a>
+        </div>
+        <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.zonesAtRisk > 0 ? "text-destructive" : "text-success"}`}>{data.zonesAtRisk}</p>
+            <p className="text-[8px] text-muted-foreground">Zones at Risk</p>
+          </div>
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.categoriesDeclining > 0 ? "text-warning" : "text-success"}`}>{data.categoriesDeclining}</p>
+            <p className="text-[8px] text-muted-foreground">Declining</p>
+          </div>
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.partnersAtRisk > 0 ? "text-destructive" : "text-success"}`}>{data.partnersAtRisk}</p>
+            <p className="text-[8px] text-muted-foreground">Partner Risks</p>
+          </div>
+          <div className="p-2 rounded-lg bg-muted/30">
+            <p className={`text-sm font-bold ${data.demandAlerts > 0 ? "text-warning" : "text-success"}`}>{data.demandAlerts}</p>
+            <p className="text-[8px] text-muted-foreground">Demand Alerts</p>
+          </div>
+        </div>
+        {data.governanceRisk.slice(0, 3).map((g, i) => (
+          <div key={i} className="flex items-center justify-between px-2 py-1 rounded bg-muted/20 text-[10px]">
+            <span className="text-muted-foreground">{g.zoneId} · {g.categoryCode}</span>
+            <Badge className={`text-[8px] border-0 ${g.level === "CRITICAL" || g.level === "HIGH" ? "bg-destructive/10 text-destructive" : "bg-warning/10 text-warning"}`}>
+              Risk {g.governanceRiskScore}
+            </Badge>
+          </div>
+        ))}
+        <p className="text-[8px] text-muted-foreground/60 text-center italic">Predictions are advisory only</p>
+      </CardContent>
+    </Card>
   );
 }
