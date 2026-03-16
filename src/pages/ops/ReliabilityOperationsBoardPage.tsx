@@ -322,7 +322,7 @@ export default function ReliabilityOperationsBoardPage() {
     const appended = action.note ? `${action.note}\n[${ts}] ${quickNote}` : `[${ts}] ${quickNote}`;
     const updates: Parameters<typeof updateOperatorAction>[1] = { note: appended };
     // Add followup_date metadata for "Review Later"
-    if (quickNote.includes("follow-up review")) {
+    if (quickNote.toLowerCase().includes("follow-up") || quickNote.toLowerCase().includes("review tomorrow")) {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       tomorrow.setHours(9, 0, 0, 0);
@@ -621,8 +621,13 @@ export default function ReliabilityOperationsBoardPage() {
                       size="sm"
                       className="text-[9px] h-6 px-2 gap-1"
                       onClick={() => {
-                        const name = prompt("Enter your name to filter:");
-                        if (name?.trim()) updateFilter("ownerScope", name.trim());
+                        const saved = localStorage.getItem("lankafix_operator_name");
+                        if (saved) { updateFilter("ownerScope", saved); return; }
+                        const name = prompt("Enter your operator name:");
+                        if (name?.trim()) {
+                          localStorage.setItem("lankafix_operator_name", name.trim());
+                          updateFilter("ownerScope", name.trim());
+                        }
                       }}
                     ><UserCheck className="w-3 h-3" /> My Actions</Button>
                   </div>
@@ -652,6 +657,7 @@ export default function ReliabilityOperationsBoardPage() {
                         onStatusChange={handleQuickStatus}
                         onAddNote={() => setShowNoteDialog(action)}
                         onAssignOwner={() => setShowOwnerDialog(action)}
+                        onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })}
                         onQuickNote={handleQuickNote}
                       />
                     ))}
@@ -835,12 +841,14 @@ function ActionCard({
   onStatusChange,
   onAddNote,
   onAssignOwner,
+  onAssignSelf,
   onQuickNote,
 }: {
   action: OperatorAction;
   onStatusChange: (a: OperatorAction, s: OperatorActionStatus) => void;
   onAddNote: () => void;
   onAssignOwner: () => void;
+  onAssignSelf: (a: OperatorAction, name: string) => void;
   onQuickNote: (a: OperatorAction, note: string) => void;
 }) {
   const isActive = !["resolved", "dismissed"].includes(action.status);
@@ -871,6 +879,7 @@ function ActionCard({
         </div>
         <div className="text-right shrink-0">
           <span className="text-[9px] text-muted-foreground whitespace-nowrap">{relativeTime(action.created_at)}</span>
+          <p className="text-[7px] text-muted-foreground/50">{new Date(action.created_at).toLocaleDateString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
           {action.updated_at !== action.created_at && (
             <p className="text-[8px] text-muted-foreground/70">upd {relativeTime(action.updated_at)}</p>
           )}
@@ -887,10 +896,12 @@ function ActionCard({
         {action.source_category_code && (
           <Badge variant="outline" className="text-[8px] px-1 py-0">{action.source_category_code}</Badge>
         )}
-        {action.owner_name && (
+        {action.owner_name ? (
           <span className="text-[9px] text-primary flex items-center gap-0.5">
             <User className="w-2.5 h-2.5" /> {action.owner_name}{action.owner_role ? ` · ${action.owner_role}` : ""}
           </span>
+        ) : (
+          <span className="text-[9px] text-muted-foreground/60 italic">Unassigned</span>
         )}
       </div>
 
@@ -937,13 +948,17 @@ function ActionCard({
             <MicroBtn label="Waiting" onClick={() => onStatusChange(action, "waiting")} />
           )}
           <MicroBtn label="Add Note" onClick={onAddNote} />
+          <MicroBtn label="Assign to Me" onClick={() => {
+            const myName = localStorage.getItem("lankafix_operator_name");
+            if (myName) { onAssignSelf(action, myName); } else { onAssignOwner(); }
+          }} />
           {!action.owner_name ? (
             <MicroBtn label="Assign" onClick={onAssignOwner} />
           ) : (
             <MicroBtn label="Reassign" onClick={onAssignOwner} muted />
           )}
           <MicroBtn label="Needs Data" onClick={() => onQuickNote(action, "Needs more data before proceeding")} muted />
-          <MicroBtn label="Review Later" onClick={() => onQuickNote(action, "Marked for follow-up review")} muted />
+          <MicroBtn label="Review Later" onClick={() => onQuickNote(action, "Review tomorrow — marked for follow-up")} muted />
           <MicroBtn label="Resolve" onClick={() => onStatusChange(action, "resolved")} />
           <MicroBtn label="Dismiss" onClick={() => onStatusChange(action, "dismissed")} muted />
         </div>
