@@ -91,6 +91,7 @@ export default function ExecutiveReliabilityBoardPage() {
   const { data: live, isLoading: loadingLive, refetch: refetchLive } = useLiveMetrics();
   const { data: dispatchRisk } = useDispatchRisk();
   const { data: shadowPolicy } = useShadowPolicy();
+  const { data: rolloutSummary } = useRolloutSummary();
 
   const [snapshotAction, setSnapshotAction] = useState<{ loading: boolean; result: SnapshotResult | null }>({ loading: false, result: null });
 
