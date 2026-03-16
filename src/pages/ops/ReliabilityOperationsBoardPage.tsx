@@ -879,6 +879,7 @@ function ActionCard({
         </div>
         <div className="text-right shrink-0">
           <span className="text-[9px] text-muted-foreground whitespace-nowrap">{relativeTime(action.created_at)}</span>
+          <p className="text-[7px] text-muted-foreground/50">{new Date(action.created_at).toLocaleDateString("en-LK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
           {action.updated_at !== action.created_at && (
             <p className="text-[8px] text-muted-foreground/70">upd {relativeTime(action.updated_at)}</p>
           )}
@@ -895,10 +896,12 @@ function ActionCard({
         {action.source_category_code && (
           <Badge variant="outline" className="text-[8px] px-1 py-0">{action.source_category_code}</Badge>
         )}
-        {action.owner_name && (
+        {action.owner_name ? (
           <span className="text-[9px] text-primary flex items-center gap-0.5">
             <User className="w-2.5 h-2.5" /> {action.owner_name}{action.owner_role ? ` · ${action.owner_role}` : ""}
           </span>
+        ) : (
+          <span className="text-[9px] text-muted-foreground/60 italic">Unassigned</span>
         )}
       </div>
 
