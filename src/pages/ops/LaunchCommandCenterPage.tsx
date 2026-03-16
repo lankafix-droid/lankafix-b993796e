@@ -891,6 +891,9 @@ function ReliabilityStatusPanel() {
       {/* Per-Zone Reliability Intelligence */}
       <PerZoneReliabilityPanel />
 
+      {/* Category Reliability Hotspots */}
+      <CategoryReliabilityHotspotsPanel />
+
       {/* Dispatch Reliability Intelligence */}
       <DispatchRiskPanel />
 
