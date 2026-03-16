@@ -237,14 +237,16 @@ describe("computePrescriptiveSummary", () => {
   it("generates action headline when interventions exist", () => {
     const interventions = computePriorityInterventions({
       ...EMPTY_INPUT,
-      unownedCriticalActions: [{ id: "a1", title: "Test" }],
+      unownedCriticalActions: [{ id: "a1", title: "Test" }, { id: "a2", title: "Test2" }, { id: "a3", title: "Test3" }],
+      governanceRiskZones: [{ zoneId: "col_01", categoryCode: "AC", score: 70, level: "HIGH", factors: ["test"] }],
     });
-    const sequence = computeRecommendedSequence(interventions.topInterventions);
+    const allItems = [...interventions.topInterventions, ...interventions.quickWins];
+    const sequence = computeRecommendedSequence(allItems);
     const rolloutGuard = computeRolloutGuardAdvice({
       governanceBlockers: [], snapshotAgeHours: 2, highGovernanceRiskCount: 0,
       criticalDemandPressureCount: 0, emergencyKillSwitch: false, currentRolloutCeiling: 50,
     });
     const summary = computePrescriptiveSummary({ interventions, sequence, rolloutGuard, snapshotAgeHours: 2 });
-    expect(summary.headline).toContain("action");
+    expect(summary.headline).toContain("immediate");
   });
 });
