@@ -109,6 +109,7 @@ const ReliabilityOperationsBoardPage = lazy(() => import("./pages/ops/Reliabilit
 const ReliabilityGovernanceHubPage = lazy(() => import("./pages/ops/ReliabilityGovernanceHubPage"));
 const PredictiveReliabilityDashboardPage = lazy(() => import("./pages/ops/PredictiveReliabilityDashboardPage"));
 const PrescriptiveReliabilityPage = lazy(() => import("./pages/ops/PrescriptiveReliabilityPage"));
+const ReliabilityScenarioSimulatorPage = lazy(() => import("./pages/ops/ReliabilityScenarioSimulatorPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
