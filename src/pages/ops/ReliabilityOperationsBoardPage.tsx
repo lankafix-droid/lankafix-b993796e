@@ -4,6 +4,7 @@
  * V3: Aging, escalation, handover, follow-up, grouping, shift notes.
  */
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { fetchGovernanceAutomationSummary } from "@/services/reliabilityGovernanceReadModel";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -68,6 +69,7 @@ const ZONE_LABEL: Record<string, string> = {};
 COLOMBO_ZONES_DATA.forEach(z => { ZONE_LABEL[z.id] = z.label; });
 
 const NAV_LINKS = [
+  { label: "Governance Hub", path: "/ops/reliability-governance-hub", icon: Shield },
   { label: "Action Center", path: "/ops/reliability-action-center", icon: Activity },
   { label: "Executive Board", path: "/ops/executive-reliability", icon: Shield },
   { label: "Scope Planner", path: "/ops/reliability-scope-planner", icon: Target },
@@ -563,6 +565,9 @@ export default function ReliabilityOperationsBoardPage() {
               </Card>
             )}
 
+            {/* ═══ Governance Snapshot ═══ */}
+            <GovernanceSnapshotCard />
+
             {/* ═══ SECTION C — Hotspots Requiring Action ═══ */}
             <Card>
               <CardContent className="p-4">
@@ -939,6 +944,40 @@ export default function ReliabilityOperationsBoardPage() {
 }
 
 /* ── Sub-components ── */
+
+function GovernanceSnapshotCard() {
+  const { data: gov } = useQuery({
+    queryKey: ["governance-snapshot-ops-board"],
+    queryFn: fetchGovernanceAutomationSummary,
+    staleTime: 30_000,
+  });
+  if (!gov) return null;
+  const attn = gov.digest.recommendedAttentionLevel;
+  const attnColor = attn === "CRITICAL" || attn === "HIGH" ? "text-destructive" : attn === "MODERATE" ? "text-warning" : "text-success";
+  return (
+    <Card className="border-primary/10">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Shield className="w-3 h-3" /> Governance Snapshot
+          </h2>
+          <Link to="/ops/reliability-governance-hub">
+            <Button variant="ghost" size="sm" className="text-[9px] h-5 px-2 gap-1">
+              <ArrowUpRight className="w-3 h-3" /> Governance Hub
+            </Button>
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 text-center">
+          <div><p className={`text-sm font-bold ${attnColor}`}>{attn}</p><p className="text-[8px] text-muted-foreground">Attention</p></div>
+          <div><p className={`text-sm font-bold ${gov.shiftReadiness.ready ? "text-success" : "text-destructive"}`}>{gov.shiftReadiness.ready ? "READY" : "NOT READY"}</p><p className="text-[8px] text-muted-foreground">Shift</p></div>
+          <div><p className={`text-sm font-bold ${gov.digest.overdueCount > 0 ? "text-destructive" : "text-foreground"}`}>{gov.digest.overdueCount}</p><p className="text-[8px] text-muted-foreground">Overdue</p></div>
+          <div><p className={`text-sm font-bold ${gov.digest.dueTodayCount > 0 ? "text-warning" : "text-foreground"}`}>{gov.digest.dueTodayCount}</p><p className="text-[8px] text-muted-foreground">Follow-ups</p></div>
+          <div><p className={`text-sm font-bold ${gov.digest.unownedCriticalCount > 0 ? "text-destructive" : "text-foreground"}`}>{gov.digest.unownedCriticalCount}</p><p className="text-[8px] text-muted-foreground">Unowned</p></div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function MiniKpi({ label, value, color }: { label: string; value: string; color: string }) {
   return (
