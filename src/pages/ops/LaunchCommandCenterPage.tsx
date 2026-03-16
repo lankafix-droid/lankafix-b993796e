@@ -1123,3 +1123,41 @@ function SelfHealingStatusBadge() {
     </span>
   );
 }
+
+function PerZoneReliabilityPanel() {
+  const { data: zoneData, isLoading } = useQuery({
+    queryKey: ["lcc-per-zone-reliability"],
+    queryFn: fetchPerZoneReliabilitySummary,
+    staleTime: 60_000,
+  });
+
+  if (isLoading || !zoneData || zoneData.length === 0) {
+    return (
+      <div className="mb-6">
+        <ZoneReliabilityHeatmap zones={PILOT_ZONE_IDS.map(zoneId => ({
+          zoneId,
+          label: ZONE_LABEL_MAP[zoneId] || zoneId,
+          reliabilityScore: 0,
+          verdict: "GUARDED" as any,
+        }))} />
+        <p className="text-[9px] text-muted-foreground text-center mt-1">Loading per-zone reliability…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6 space-y-4">
+      <ZoneReliabilityHeatmap zones={zoneData.map(z => ({
+        zoneId: z.zoneId,
+        label: ZONE_LABEL_MAP[z.zoneId] || z.zoneId,
+        reliabilityScore: z.reliabilityScore,
+        verdict: z.verdict as any,
+      }))} />
+      <ZoneReliabilityTable zones={zoneData} zoneLabels={ZONE_LABEL_MAP} />
+      <ZoneDispatchPolicyMatrix zones={zoneData} zoneLabels={ZONE_LABEL_MAP} />
+      <p className="text-[9px] text-muted-foreground text-center">
+        Per-zone intelligence — advisory only, does not alter live dispatch
+      </p>
+    </div>
+  );
+}
