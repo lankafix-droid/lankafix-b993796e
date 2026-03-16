@@ -317,7 +317,7 @@ export default function ReliabilityGovernanceHubPage() {
                     {!queues?.unownedCriticalActions.length ? (
                       <p className="text-xs text-muted-foreground py-3 text-center">No unowned critical actions</p>
                     ) : (
-                      <div className="space-y-1.5">{queues.unownedCriticalActions.map(a => <AttentionItem key={a.id} action={a} onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })} />)}</div>
+                      <div className="space-y-1.5">{queues.unownedCriticalActions.map(a => <AttentionItem key={a.id} action={a} onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })} onMarkInReview={(a) => updateMut.mutate({ id: a.id, updates: { status: "in_review" } })} />)}</div>
                     )}
                   </TabsContent>
                 </Tabs>
