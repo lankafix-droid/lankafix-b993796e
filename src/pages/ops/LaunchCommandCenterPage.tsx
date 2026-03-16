@@ -895,6 +895,64 @@ function ReliabilityStatusPanel() {
 
       {/* Dispatch Reliability Intelligence */}
       <DispatchRiskPanel />
+
+      {/* Shadow Dispatch Policy */}
+      <ShadowPolicyPanel />
+    </>
+  );
+}
+
+function ShadowPolicyPanel() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["lcc-shadow-policy"],
+    queryFn: fetchDispatchPolicySimulation,
+    staleTime: 60_000,
+  });
+
+  if (isLoading || !data) return null;
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="p-4 space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Shield className="w-3.5 h-3.5 text-primary" /> Shadow Dispatch Policy
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center">
+          <div>
+            <p className={`text-sm font-bold ${getShadowPolicyColor(data.shadowPolicyMode)}`}>{data.shadowPolicyMode}</p>
+            <p className="text-[9px] text-muted-foreground">Policy Mode</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.simulatedRoutingAction.replace(/_/g, " ")}</p>
+            <p className="text-[9px] text-muted-foreground">Routing Action</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.simulatedCapacityAction.replace(/_/g, " ")}</p>
+            <p className="text-[9px] text-muted-foreground">Capacity Action</p>
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">{data.simulatedPartnerLoadCapPercent}%</p>
+            <p className="text-[9px] text-muted-foreground">Partner Load Cap</p>
+          </div>
+          <div>
+            <p className={`text-sm font-bold ${data.simulatedBookingIntakeAdvisory === "OPEN" ? "text-success" : data.simulatedBookingIntakeAdvisory === "RESTRICT" ? "text-destructive" : "text-warning"}`}>
+              {data.simulatedBookingIntakeAdvisory}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Booking Intake</p>
+          </div>
+          <div>
+            <p className={`text-sm font-bold ${data.simulatedZoneProtection ? "text-destructive" : "text-success"}`}>
+              {data.simulatedZoneProtection ? "ON" : "OFF"}
+            </p>
+            <p className="text-[9px] text-muted-foreground">Zone Protection</p>
+          </div>
+        </div>
+        <p className="text-[9px] text-muted-foreground text-center">
+          Simulation only — live dispatch behavior remains unchanged
+        </p>
+      </CardContent>
+    </Card>
+  );
     </>
   );
 }
