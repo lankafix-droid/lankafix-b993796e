@@ -57,6 +57,7 @@ const NAV_LINKS = [
   { label: "Command Center", path: "/ops/command-center", icon: Radio },
   { label: "Predictive Intelligence", path: "/ops/predictive-reliability", icon: TrendingUp },
   { label: "Prescriptive Orchestrator", path: "/ops/prescriptive-reliability", icon: Target },
+  { label: "Scenario Simulator", path: "/ops/reliability-scenario-simulator", icon: Zap },
 ];
 
 const ATTENTION_COLORS: Record<AttentionLevel, string> = {
