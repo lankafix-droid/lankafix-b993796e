@@ -657,6 +657,7 @@ export default function ReliabilityOperationsBoardPage() {
                         onStatusChange={handleQuickStatus}
                         onAddNote={() => setShowNoteDialog(action)}
                         onAssignOwner={() => setShowOwnerDialog(action)}
+                        onAssignSelf={(a, name) => updateMut.mutate({ id: a.id, updates: { owner_name: name } })}
                         onQuickNote={handleQuickNote}
                       />
                     ))}
