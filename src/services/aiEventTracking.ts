@@ -51,7 +51,11 @@ export function trackAIAnalytics(
     | "ai_nudge_clicked"
     | "ai_dropoff_recovered"
     | "ai_photo_triage_used"
-    | "ai_search_assist_used",
+    | "ai_search_assist_used"
+    | "blocked_by_consent"
+    | "fallback_rendered"
+    | "low_confidence_rendered"
+    | "ai_consent_granted",
   payload?: Record<string, unknown>
 ) {
   if (import.meta.env.DEV) {

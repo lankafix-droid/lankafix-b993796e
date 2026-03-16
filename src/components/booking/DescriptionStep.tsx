@@ -1,6 +1,6 @@
 import { Textarea } from "@/components/ui/textarea";
-import { estimatePrice } from "@/services/aiPriceEstimation";
-import AIPriceEstimateCard from "@/components/ai/AIPriceEstimateCard";
+import AIEstimateAssist from "@/components/ai/AIEstimateAssist";
+import AIIssueTriage from "@/components/ai/AIIssueTriage";
 
 interface Props {
   description: string;
@@ -10,9 +10,6 @@ interface Props {
 }
 
 const DescriptionStep = ({ description, onChange, categoryCode, issueType }: Props) => {
-  // estimatePrice handles feature flag + fallback internally
-  const estimate = categoryCode ? estimatePrice(categoryCode, issueType) : null;
-
   return (
     <div className="space-y-5">
       <div>
@@ -31,7 +28,19 @@ const DescriptionStep = ({ description, onChange, categoryCode, issueType }: Pro
       />
       <p className="text-xs text-muted-foreground text-right">{description.length}/1000</p>
 
-      <AIPriceEstimateCard estimate={estimate} />
+      {/* AI Issue Triage — advisory analysis of user description */}
+      <AIIssueTriage
+        description={description}
+        categoryCode={categoryCode}
+      />
+
+      {/* AI Estimate Assist — advisory price range */}
+      {categoryCode && (
+        <AIEstimateAssist
+          categoryCode={categoryCode}
+          issueType={issueType}
+        />
+      )}
     </div>
   );
 };
