@@ -331,6 +331,41 @@ export default function ExecutiveReliabilityBoardPage() {
               </Card>
             )}
 
+            {/* ── Section 5.5: Operational Routing Advisory ── */}
+            {dispatchRisk && (
+              <Card>
+                <CardContent className="p-4">
+                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5" /> Operational Routing Advisory
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div>
+                      <p className={`text-sm font-bold ${dispatchRiskColor(dispatchRisk.dispatchRiskLevel)}`}>{dispatchRisk.dispatchRiskLevel}</p>
+                      <p className="text-[9px] text-muted-foreground">Dispatch Risk</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{dispatchRisk.routingRecommendation}</p>
+                      <p className="text-[9px] text-muted-foreground">Routing</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{dispatchRisk.technicianLoadRecommendation}</p>
+                      <p className="text-[9px] text-muted-foreground">Tech Load</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-foreground">{dispatchRisk.dispatchConfidence}%</p>
+                      <p className="text-[9px] text-muted-foreground">Confidence</p>
+                    </div>
+                  </div>
+                  {dispatchRisk.reliabilityWarning && (
+                    <p className="text-[10px] text-warning text-center mt-2">{dispatchRisk.reliabilityWarning}</p>
+                  )}
+                  <p className="text-[9px] text-muted-foreground text-center mt-2">
+                    Advisory signal — does not alter dispatch behavior · Dispatch advisory signals currently system-wide (zone signals coming in Phase-2)
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* ── Section 6: Zone Reliability View ── */}
             {live && (
               <div>
