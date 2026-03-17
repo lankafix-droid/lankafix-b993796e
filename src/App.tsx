@@ -282,6 +282,7 @@ const App = () => (
             <Route path="/ops/prescriptive-interventions" element={<OpsRoute><PrescriptiveInterventionWorkbenchPage /></OpsRoute>} />
             <Route path="/ops/ai-module-health" element={<OpsRoute><AIModuleHealthPage /></OpsRoute>} />
             <Route path="/ops/ai-control-center" element={<OpsRoute><AIControlCenterPage /></OpsRoute>} />
+            <Route path="/ops/ai-audit-log" element={<OpsRoute><AIAuditLogPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
