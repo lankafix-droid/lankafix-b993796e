@@ -90,6 +90,65 @@ export const CUSTOMER_NOTIFICATION_TEMPLATES: Record<string, NotificationTemplat
     detailedMessage: "Our team will review this fairly before any final action. A human operator handles every case personally. You'll hear from us within 2–4 hours.",
     tone: "reassurance",
   },
+
+  // ── Reminder-specific variants ──
+
+  quote_reminder_1: {
+    key: "quote_reminder_1",
+    title: "Quote Ready for Review",
+    shortMessage: "Your quote is ready. Take your time reviewing it.",
+    detailedMessage: "A detailed quote has been submitted for your review. All charges are transparent — nothing proceeds without your approval. Review when you're ready.",
+    tone: "informational",
+  },
+  quote_reminder_2: {
+    key: "quote_reminder_2",
+    title: "Reminder: Quote Awaiting Approval",
+    shortMessage: "Your technician is ready once you approve the quote.",
+    detailedMessage: "Your quote is still awaiting your approval. The technician is standing by. If you have questions, our team is happy to help you decide.",
+    tone: "action_required",
+  },
+  completion_reminder: {
+    key: "completion_reminder",
+    title: "Please Confirm Completion",
+    shortMessage: "Please confirm your service was completed satisfactorily.",
+    detailedMessage: "Your technician has finished the work. Confirming helps protect your warranty. If something isn't right, report it before confirming.",
+    tone: "action_required",
+  },
+  rating_reminder: {
+    key: "rating_reminder",
+    title: "Rate Your Experience",
+    shortMessage: "How was your service? Your rating helps others.",
+    detailedMessage: "Your feedback helps us improve and helps other customers choose the right technician. It only takes a moment.",
+    tone: "informational",
+  },
+  technician_delayed_update: {
+    key: "technician_delayed_update",
+    title: "Delay Update",
+    shortMessage: "Your technician is running late. We're coordinating an update.",
+    detailedMessage: "Your technician is delayed. Our team is actively coordinating an updated arrival time. We're here if you need anything in the meantime.",
+    tone: "reassurance",
+  },
+  escalation_followup_update: {
+    key: "escalation_followup_update",
+    title: "Escalation Update",
+    shortMessage: "A senior operator is still working on your case.",
+    detailedMessage: "Your escalated case is being handled by a senior LankaFix team member. We'll share an update as soon as we have one.",
+    tone: "reassurance",
+  },
+  dispute_status_followup: {
+    key: "dispute_status_followup",
+    title: "Dispute Update",
+    shortMessage: "We're still reviewing your concern carefully.",
+    detailedMessage: "Our mediation team is thoroughly reviewing your case. Every dispute is handled personally by a human operator. You'll hear from us soon.",
+    tone: "reassurance",
+  },
+  no_provider_reassurance: {
+    key: "no_provider_reassurance",
+    title: "Still Searching",
+    shortMessage: "We're expanding technician search in your area.",
+    detailedMessage: "All nearby technicians are currently busy. Our team is personally coordinating to find the right professional for your job. You'll be notified as soon as we have a match.",
+    tone: "reassurance",
+  },
 };
 
 /** Get a notification template by key */
