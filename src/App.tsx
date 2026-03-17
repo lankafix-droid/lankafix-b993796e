@@ -116,6 +116,15 @@ const AIModuleHealthPage = lazy(() => import("./pages/ops/AIModuleHealthPage"));
 const AIControlCenterPage = lazy(() => import("./pages/ops/AIControlCenterPage"));
 const AIAuditLogPage = lazy(() => import("./pages/ops/AIAuditLogPage"));
 const AILaunchReadinessPage = lazy(() => import("./pages/ops/AILaunchReadinessPage"));
+const V2LaunchCommandCenterPage = lazy(() => import("./pages/ops/V2LaunchCommandCenterPage"));
+const CategoryLaunchGatingPage = lazy(() => import("./pages/ops/CategoryLaunchGatingPage"));
+const ZoneReadinessPage = lazy(() => import("./pages/ops/ZoneReadinessPage"));
+const PartnerReadinessScorecardPage = lazy(() => import("./pages/ops/PartnerReadinessScorecardPage"));
+const OperatorTrainingHubPage = lazy(() => import("./pages/ops/OperatorTrainingHubPage"));
+const PilotTestTrackerPage = lazy(() => import("./pages/ops/PilotTestTrackerPage"));
+const CommunicationReadinessPage = lazy(() => import("./pages/ops/CommunicationReadinessPage"));
+const CustomerTrustAuditPage = lazy(() => import("./pages/ops/CustomerTrustAuditPage"));
+const LaunchBlockersPage = lazy(() => import("./pages/ops/LaunchBlockersPage"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
@@ -285,6 +294,15 @@ const App = () => (
             <Route path="/ops/ai-control-center" element={<OpsRoute><AIControlCenterPage /></OpsRoute>} />
             <Route path="/ops/ai-audit-log" element={<OpsRoute><AIAuditLogPage /></OpsRoute>} />
             <Route path="/ops/ai-launch-readiness" element={<OpsRoute><AILaunchReadinessPage /></OpsRoute>} />
+            <Route path="/ops/launch-command-center" element={<OpsRoute><V2LaunchCommandCenterPage /></OpsRoute>} />
+            <Route path="/ops/category-launch-gating" element={<OpsRoute><CategoryLaunchGatingPage /></OpsRoute>} />
+            <Route path="/ops/zone-readiness" element={<OpsRoute><ZoneReadinessPage /></OpsRoute>} />
+            <Route path="/ops/partner-readiness-scorecard" element={<OpsRoute><PartnerReadinessScorecardPage /></OpsRoute>} />
+            <Route path="/ops/training-hub" element={<OpsRoute><OperatorTrainingHubPage /></OpsRoute>} />
+            <Route path="/ops/pilot-test-tracker" element={<OpsRoute><PilotTestTrackerPage /></OpsRoute>} />
+            <Route path="/ops/communication-readiness" element={<OpsRoute><CommunicationReadinessPage /></OpsRoute>} />
+            <Route path="/ops/customer-trust-audit" element={<OpsRoute><CustomerTrustAuditPage /></OpsRoute>} />
+            <Route path="/ops/launch-blockers" element={<OpsRoute><LaunchBlockersPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
