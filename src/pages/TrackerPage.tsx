@@ -789,6 +789,11 @@ const TrackerPage = () => {
               role="customer"
             />
 
+            {/* Quote transparency — shown near quote-related states */}
+            {["quote_submitted", "quote_approved", "quote_revised"].includes(dbBooking.status) && (
+              <QuoteTransparencyPanel />
+            )}
+
             {/* Trust & Support */}
             {isActive && (
               <>
