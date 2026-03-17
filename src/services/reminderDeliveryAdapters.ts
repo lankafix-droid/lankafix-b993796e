@@ -13,6 +13,8 @@ export interface DeliveryResult {
   channel: ReminderChannel;
   error?: string;
   messageId?: string;
+  deliveredAt?: string;
+  advisory_only: boolean;
 }
 
 interface DeliveryPayload {
@@ -22,13 +24,14 @@ interface DeliveryPayload {
   channel: ReminderChannel;
 }
 
+const now = () => new Date().toISOString();
+
 /** In-app notification adapter — uses existing notifications table */
 async function deliverInApp(payload: DeliveryPayload): Promise<DeliveryResult> {
   const template = getNotificationTemplate(payload.reminderKey);
-  if (!template) return { success: false, channel: "in_app", error: "Template not found" };
+  if (!template) return { success: false, channel: "in_app", error: "Template not found", advisory_only: false };
 
   try {
-    // Only insert if we have a recipient
     if (payload.recipientId) {
       await supabase.from("notifications").insert({
         user_id: payload.recipientId,
@@ -38,9 +41,9 @@ async function deliverInApp(payload: DeliveryPayload): Promise<DeliveryResult> {
         type: "reminder",
       });
     }
-    return { success: true, channel: "in_app" };
+    return { success: true, channel: "in_app", deliveredAt: now(), advisory_only: false };
   } catch {
-    return { success: false, channel: "in_app", error: "Insert failed" };
+    return { success: false, channel: "in_app", error: "Insert failed", advisory_only: false };
   }
 }
 
@@ -48,21 +51,21 @@ async function deliverInApp(payload: DeliveryPayload): Promise<DeliveryResult> {
 async function deliverPush(payload: DeliveryPayload): Promise<DeliveryResult> {
   const template = getNotificationTemplate(payload.reminderKey);
   console.log(`[push-stub] Would send push: ${template?.title || payload.reminderKey} for booking ${payload.bookingId}`);
-  return { success: true, channel: "push", messageId: `push-stub-${Date.now()}` };
+  return { success: true, channel: "push", messageId: `push-stub-${Date.now()}`, deliveredAt: now(), advisory_only: true };
 }
 
 /** WhatsApp adapter — stub, logs intent */
 async function deliverWhatsApp(payload: DeliveryPayload): Promise<DeliveryResult> {
   const template = getNotificationTemplate(payload.reminderKey);
   console.log(`[whatsapp-stub] Would send WhatsApp: ${template?.title || payload.reminderKey} for booking ${payload.bookingId}`);
-  return { success: true, channel: "whatsapp", messageId: `wa-stub-${Date.now()}` };
+  return { success: true, channel: "whatsapp", messageId: `wa-stub-${Date.now()}`, deliveredAt: now(), advisory_only: true };
 }
 
 /** SMS adapter — stub, logs intent */
 async function deliverSMS(payload: DeliveryPayload): Promise<DeliveryResult> {
   const template = getNotificationTemplate(payload.reminderKey);
   console.log(`[sms-stub] Would send SMS: ${template?.title || payload.reminderKey} for booking ${payload.bookingId}`);
-  return { success: true, channel: "sms", messageId: `sms-stub-${Date.now()}` };
+  return { success: true, channel: "sms", messageId: `sms-stub-${Date.now()}`, deliveredAt: now(), advisory_only: true };
 }
 
 /** Operator task adapter — creates a callback task record */
@@ -78,9 +81,9 @@ async function deliverOperatorTask(payload: DeliveryPayload): Promise<DeliveryRe
       created_from_reminder_key: payload.reminderKey,
       advisory_source: "reminder_engine",
     });
-    return { success: true, channel: "operator_task" };
+    return { success: true, channel: "operator_task", deliveredAt: now(), advisory_only: false };
   } catch {
-    return { success: false, channel: "operator_task", error: "Insert failed" };
+    return { success: false, channel: "operator_task", error: "Insert failed", advisory_only: false };
   }
 }
 
@@ -92,6 +95,6 @@ export async function deliverReminder(payload: DeliveryPayload): Promise<Deliver
     case "whatsapp": return deliverWhatsApp(payload);
     case "sms": return deliverSMS(payload);
     case "operator_task": return deliverOperatorTask(payload);
-    default: return { success: false, channel: payload.channel, error: "Unknown channel" };
+    default: return { success: false, channel: payload.channel, error: "Unknown channel", advisory_only: false };
   }
 }

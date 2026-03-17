@@ -20,6 +20,7 @@ import OperatorCommunicationStatePanel from "@/components/ops/OperatorCommunicat
 import OperatorReminderPanel from "@/components/ops/OperatorReminderPanel";
 import OperatorCommunicationLogPanel from "@/components/ops/OperatorCommunicationLogPanel";
 import CallbackTaskQueuePanel from "@/components/ops/CallbackTaskQueuePanel";
+import ReminderEngineRunCard from "@/components/ops/ReminderEngineRunCard";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface BookingRaw {
@@ -343,8 +344,10 @@ export default function DispatchWarRoomPage() {
               <OperatorCommunicationLogPanel bookingId={selectedBookingId} />
             )}
 
-            {/* Callback Task Queue — open human follow-up tasks */}
             <CallbackTaskQueuePanel />
+
+            {/* Reminder Engine — manual processing control */}
+            <ReminderEngineRunCard />
 
             {/* Partner Shortlist — for selected booking */}
             {selectedBooking && ["dispatching", "escalated", "no_provider_found", "pending_acceptance"].includes(selectedBooking.dispatch_status || "") && (() => {
