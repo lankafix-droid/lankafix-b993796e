@@ -328,6 +328,14 @@ export default function DispatchWarRoomPage() {
               />
             )}
 
+            {/* Reminder intelligence — advisory for operators */}
+            {selectedBooking && (
+              <OperatorReminderPanel
+                stage={mapBookingStatusToStage(selectedBooking.status, selectedBooking.dispatch_status)}
+                stageEnteredAt={selectedBooking.created_at}
+              />
+            )}
+
             {/* Partner Shortlist — for selected booking */}
             {selectedBooking && ["dispatching", "escalated", "no_provider_found", "pending_acceptance"].includes(selectedBooking.dispatch_status || "") && (() => {
               const matching = partners
