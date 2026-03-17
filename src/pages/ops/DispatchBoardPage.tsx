@@ -14,6 +14,7 @@ import {
   RefreshCw, MapPin, Radio, Flag, Clock, UserCheck, FileText, Sparkles,
 } from "lucide-react";
 import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPanel";
+import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
 
 interface EscalatedBooking {
   id: string;
