@@ -202,6 +202,8 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssueTri
         </div>
       )}
 
+      <AIOperatorFeedback module="ai_issue_triage" className="pt-1" />
+
       <AIAdvisoryFooter
         module="ai_issue_triage"
         confidence={data.confidence.confidence_score}
