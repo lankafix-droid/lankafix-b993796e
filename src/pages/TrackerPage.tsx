@@ -49,6 +49,11 @@ import { generateDemoQuote } from "@/engines/quoteEngine";
 // Zone intelligence now returns conservative defaults — real data comes from useOnlinePartners
 import { track } from "@/lib/analytics";
 import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
+import PostBookingStatusCard from "@/components/booking/PostBookingStatusCard";
+import CustomerTrustPanel from "@/components/trust/CustomerTrustPanel";
+import HumanSupportAvailableCard from "@/components/trust/HumanSupportAvailableCard";
+import BookingExceptionCard from "@/components/booking/BookingExceptionCard";
+import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import QuoteApprovalCard from "@/components/quotes/QuoteApprovalCard";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
@@ -661,21 +666,21 @@ const TrackerPage = () => {
               </div>
             </motion.div>
 
+            {/* Lifecycle status card */}
+            <PostBookingStatusCard stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} />
+
             {/* Exception state banner */}
             {exceptionInfo && (
-              <motion.div
-                className={`rounded-2xl border p-4 shadow-[var(--shadow-card)] ${exceptionInfo.color}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="flex items-start gap-3">
-                  <exceptionInfo.icon className="w-5 h-5 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold">{exceptionInfo.label}</p>
-                    <p className="text-xs mt-0.5 opacity-80">{exceptionEvent?.note || exceptionInfo.description}</p>
-                  </div>
-                </div>
-              </motion.div>
+              <BookingExceptionCard
+                type={
+                  exceptionEvent?.status === "technician_cancelled" ? "technician_declined" :
+                  exceptionEvent?.status === "technician_delayed" ? "service_delayed" :
+                  exceptionEvent?.status === "technician_reassigned" ? "technician_declined" :
+                  exceptionEvent?.status === "ops_intervention" ? "escalated" :
+                  "escalated"
+                }
+                message={exceptionEvent?.note || exceptionInfo.description}
+              />
             )}
 
             {/* Technician Arrival Card — trust-building profile */}
@@ -778,6 +783,14 @@ const TrackerPage = () => {
               bookingStatus={dbBooking.status}
               role="customer"
             />
+
+            {/* Trust & Support */}
+            {isActive && (
+              <>
+                <CustomerTrustPanel />
+                <HumanSupportAvailableCard />
+              </>
+            )}
 
             {/* Completion state — premium */}
             {isCompleted && (

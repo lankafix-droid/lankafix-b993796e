@@ -5,6 +5,10 @@ import { CONSUMER_CATEGORIES } from "@/data/consumerBookingCategories";
 import { getIssuesForCategory } from "@/data/consumerBookingCategories";
 import { motion } from "framer-motion";
 import AIBookingSummaryCard from "@/components/ai/AIBookingSummaryCard";
+import BookingProgressTimeline from "@/components/booking/BookingProgressTimeline";
+import CustomerTrustPanel from "@/components/trust/CustomerTrustPanel";
+import HumanSupportAvailableCard from "@/components/trust/HumanSupportAvailableCard";
+import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface Props {
   bookingId: string;
@@ -17,13 +21,14 @@ const BookingConfirmationStep = ({ bookingId, categoryCode, issueType, status }:
   const navigate = useNavigate();
   const category = CONSUMER_CATEGORIES.find((c) => c.code === categoryCode);
   const issue = getIssuesForCategory(categoryCode).find((i) => i.id === issueType);
+  const lifecycleStage = mapBookingStatusToStage(status);
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.35 }}
-      className="space-y-6 text-center"
+      className="space-y-5 text-center"
     >
       <div className="flex justify-center">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -62,8 +67,22 @@ const BookingConfirmationStep = ({ bookingId, categoryCode, issueType, status }:
         </div>
       </div>
 
+      {/* Progress timeline */}
+      <div className="text-left">
+        <BookingProgressTimeline currentStage={lifecycleStage} compact />
+      </div>
+
       {/* AI advisory summary — optional, non-blocking */}
       <AIBookingSummaryCard hasIssueTriage hasEstimate />
+
+      {/* Trust reinforcement */}
+      <div className="text-left">
+        <CustomerTrustPanel />
+      </div>
+
+      <div className="text-left">
+        <HumanSupportAvailableCard />
+      </div>
 
       <div className="flex flex-col gap-2">
         <Button onClick={() => navigate(`/tracker/${bookingId}`)} className="w-full">
