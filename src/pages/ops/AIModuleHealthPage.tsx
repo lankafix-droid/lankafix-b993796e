@@ -128,6 +128,8 @@ const AIModuleHealthPage = () => {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             {[
+              { label: "AI Control Center", route: "/ops/ai-control-center" },
+              { label: "AI Audit Log", route: "/ops/ai-audit-log" },
               { label: "Governance Hub", route: "/ops/governance-hub" },
               { label: "Operations Board", route: "/ops/operations-board" },
               { label: "Predictive Reliability", route: "/ops/predictive-reliability" },
