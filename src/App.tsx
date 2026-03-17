@@ -115,6 +115,7 @@ const PrescriptiveInterventionWorkbenchPage = lazy(() => import("./pages/ops/Pre
 const AIModuleHealthPage = lazy(() => import("./pages/ops/AIModuleHealthPage"));
 const AIControlCenterPage = lazy(() => import("./pages/ops/AIControlCenterPage"));
 const AIAuditLogPage = lazy(() => import("./pages/ops/AIAuditLogPage"));
+const AILaunchReadinessPage = lazy(() => import("./pages/ops/AILaunchReadinessPage"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
