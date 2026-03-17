@@ -344,8 +344,10 @@ export default function DispatchWarRoomPage() {
               <OperatorCommunicationLogPanel bookingId={selectedBookingId} />
             )}
 
-            {/* Callback Task Queue — open human follow-up tasks */}
             <CallbackTaskQueuePanel />
+
+            {/* Reminder Engine — manual processing control */}
+            <ReminderEngineRunCard />
 
             {/* Partner Shortlist — for selected booking */}
             {selectedBooking && ["dispatching", "escalated", "no_provider_found", "pending_acceptance"].includes(selectedBooking.dispatch_status || "") && (() => {
