@@ -313,6 +313,16 @@ const App = () => (
             <Route path="/ops/communication-readiness" element={<OpsRoute><CommunicationReadinessPage /></OpsRoute>} />
             <Route path="/ops/customer-trust-audit" element={<OpsRoute><CustomerTrustAuditPage /></OpsRoute>} />
             <Route path="/ops/launch-blockers" element={<OpsRoute><LaunchBlockersPage /></OpsRoute>} />
+            <Route path="/ops/launch-command-center-v2" element={<OpsRoute><LaunchCommandCenterV2Page /></OpsRoute>} />
+            <Route path="/ops/readiness-categories" element={<OpsRoute><ReadinessCategoriesPage /></OpsRoute>} />
+            <Route path="/ops/readiness-zones" element={<OpsRoute><ReadinessZonesPage /></OpsRoute>} />
+            <Route path="/ops/readiness-partners" element={<OpsRoute><ReadinessPartnersPage /></OpsRoute>} />
+            <Route path="/ops/readiness-communications" element={<OpsRoute><ReadinessCommunicationsPage /></OpsRoute>} />
+            <Route path="/ops/readiness-payments" element={<OpsRoute><ReadinessPaymentsPage /></OpsRoute>} />
+            <Route path="/ops/readiness-trust" element={<OpsRoute><ReadinessTrustPage /></OpsRoute>} />
+            <Route path="/ops/training-hub-v2" element={<OpsRoute><TrainingHubV2Page /></OpsRoute>} />
+            <Route path="/ops/pilot-validation" element={<OpsRoute><PilotValidationPage /></OpsRoute>} />
+            <Route path="/ops/launch-blockers-v2" element={<OpsRoute><LaunchBlockersV2Page /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
