@@ -795,6 +795,9 @@ const TrackerPage = () => {
             {/* Payment Status */}
             <TrackerPaymentStatus bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
 
+            {/* Notification history — updates sent to customer */}
+            <CustomerNotificationHistoryCard bookingId={dbBooking.id} />
+
             {/* Communication milestones — derived from timeline */}
             {dbTimeline && dbTimeline.length > 0 && (() => {
               const COMM_LABELS: Record<string, { title: string; desc: string; actor: CommunicationMilestone["actor"] }> = {

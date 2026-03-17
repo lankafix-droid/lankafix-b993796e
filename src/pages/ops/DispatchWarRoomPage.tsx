@@ -18,6 +18,8 @@ import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPa
 import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
 import OperatorCommunicationStatePanel from "@/components/ops/OperatorCommunicationStatePanel";
 import OperatorReminderPanel from "@/components/ops/OperatorReminderPanel";
+import OperatorCommunicationLogPanel from "@/components/ops/OperatorCommunicationLogPanel";
+import CallbackTaskQueuePanel from "@/components/ops/CallbackTaskQueuePanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface BookingRaw {
