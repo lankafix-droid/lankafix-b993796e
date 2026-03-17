@@ -125,6 +125,16 @@ const PilotTestTrackerPage = lazy(() => import("./pages/ops/PilotTestTrackerPage
 const CommunicationReadinessPage = lazy(() => import("./pages/ops/CommunicationReadinessPage"));
 const CustomerTrustAuditPage = lazy(() => import("./pages/ops/CustomerTrustAuditPage"));
 const LaunchBlockersPage = lazy(() => import("./pages/ops/LaunchBlockersPage"));
+const LaunchCommandCenterV2Page = lazy(() => import("./pages/ops/LaunchCommandCenterV2Page"));
+const ReadinessCategoriesPage = lazy(() => import("./pages/ops/ReadinessCategoriesPage"));
+const ReadinessZonesPage = lazy(() => import("./pages/ops/ReadinessZonesPage"));
+const ReadinessPartnersPage = lazy(() => import("./pages/ops/ReadinessPartnersPage"));
+const ReadinessCommunicationsPage = lazy(() => import("./pages/ops/ReadinessCommunicationsPage"));
+const ReadinessPaymentsPage = lazy(() => import("./pages/ops/ReadinessPaymentsPage"));
+const ReadinessTrustPage = lazy(() => import("./pages/ops/ReadinessTrustPage"));
+const TrainingHubV2Page = lazy(() => import("./pages/ops/TrainingHubV2Page"));
+const PilotValidationPage = lazy(() => import("./pages/ops/PilotValidationPage"));
+const LaunchBlockersV2Page = lazy(() => import("./pages/ops/LaunchBlockersV2Page"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
