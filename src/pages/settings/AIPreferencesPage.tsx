@@ -70,13 +70,16 @@ const AIPreferencesPage = () => {
   const [consent, setConsentState] = useState<AIConsentState>(getAIConsent());
   const flags = getAIFlags();
 
+  // Sync consent with backend for authenticated users
+  useAIConsentSync();
+
   const activeModules = Object.values(flags).filter(Boolean).length;
   const grantedPermissions = CONSENT_TOGGLES.filter(
     (t) => !t.comingSoon && consent[t.key]
   ).length;
 
-  const handleToggle = (key: AIConsentCapability, value: boolean) => {
-    const updated = setAIConsent({ [key]: value });
+  const handleToggle = async (key: AIConsentCapability, value: boolean) => {
+    const updated = await saveAndSyncConsent({ [key]: value });
     setConsentState(updated);
     trackAIAnalytics(value ? "ai_consent_granted" : "blocked_by_consent", {
       consent: key,
