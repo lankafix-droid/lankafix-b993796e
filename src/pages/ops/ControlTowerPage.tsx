@@ -279,6 +279,7 @@ export default function ControlTowerPage() {
           <div className="grid grid-cols-2 gap-2">
             {[
               { label: "AI Intelligence", icon: Brain, path: "/ops/ai-intelligence" },
+              { label: "AI Control Center", icon: Brain, path: "/ops/ai-control-center" },
               { label: "Dispatch Board", icon: MapPin, path: "/ops/dispatch" },
               { label: "Finance Board", icon: CreditCard, path: "/ops/finance" },
               { label: "Support Cases", icon: Headphones, path: "/ops/support" },
