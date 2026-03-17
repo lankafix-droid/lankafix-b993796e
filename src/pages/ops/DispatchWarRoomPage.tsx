@@ -354,6 +354,14 @@ export default function DispatchWarRoomPage() {
 
             <CallbackTaskQueuePanel />
 
+            {/* Callback Execution Queue — full action center */}
+            <CallbackExecutionQueue />
+
+            {/* Delivery History — per-booking */}
+            {selectedBookingId && (
+              <ReminderDeliveryHistoryPanel bookingId={selectedBookingId} />
+            )}
+
             {/* Reminder Engine — manual processing control */}
             <ReminderEngineRunCard />
 
