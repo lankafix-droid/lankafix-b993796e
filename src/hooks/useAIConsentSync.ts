@@ -61,9 +61,9 @@ export function useAIConsentSync() {
 /** Push local consent to backend (fire-and-forget) */
 async function pushConsentToServer(userId: string, consent: AIConsentState) {
   try {
-    await supabase
-      .from("profiles")
-      .update({ ai_preferences: consent as any })
+    await (supabase
+      .from("profiles") as any)
+      .update({ ai_preferences: consent })
       .eq("user_id", userId);
   } catch {
     // Silent — local is the fallback
