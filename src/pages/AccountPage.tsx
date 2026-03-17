@@ -11,7 +11,7 @@ import {
   User, MapPin, Clock, ShieldCheck, Phone, ChevronRight,
   Smartphone, Snowflake, Wrench, FileText, LogOut, Trash2,
   Lock, MessageCircle, Mail, Info, Heart, HelpCircle,
-  Star, Settings, Zap,
+  Star, Settings, Zap, Brain,
 } from "lucide-react";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP, SUPPORT_PHONE, whatsappLink } from "@/config/contact";
 import { supabase } from "@/integrations/supabase/client";
