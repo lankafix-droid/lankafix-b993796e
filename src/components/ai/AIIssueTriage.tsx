@@ -8,6 +8,7 @@ import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Zap, Search, Loader2, Stethoscope } from "lucide-react";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
+import AIOperatorFeedback from "./AIOperatorFeedback";
 import AIConsentGate from "./AIConsentGate";
 import AIEmptyState from "./AIEmptyState";
 import { useAIAdvisory } from "@/hooks/useAIAdvisory";

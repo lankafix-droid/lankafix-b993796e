@@ -8,6 +8,7 @@ import { useAIAdvisory } from "@/hooks/useAIAdvisory";
 import { estimatePrice, formatPriceRange, type PriceEstimate } from "@/services/aiPriceEstimation";
 import { TrendingUp, Info } from "lucide-react";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
+import AIOperatorFeedback from "./AIOperatorFeedback";
 import AIConsentGate from "./AIConsentGate";
 import AIConfidenceBadge from "./AIConfidenceBadge";
 import AIEmptyState from "./AIEmptyState";
