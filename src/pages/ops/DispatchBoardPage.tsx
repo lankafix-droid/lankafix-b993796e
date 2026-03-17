@@ -14,6 +14,7 @@ import {
   RefreshCw, MapPin, Radio, Flag, Clock, UserCheck, FileText, Sparkles,
 } from "lucide-react";
 import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPanel";
+import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
 
 interface EscalatedBooking {
   id: string;
@@ -199,8 +200,9 @@ export default function DispatchBoardPage() {
     { label: "Consult Q", value: metrics?.consultation_queue ?? 0, icon: Users, color: (metrics?.consultation_queue ?? 0) > 5 ? "text-destructive" : (metrics?.consultation_queue ?? 0) > 0 ? "text-warning" : "text-muted-foreground" },
   ];
 
-  const handleOpsAssign = async (bookingId: string) => {
-    if (!selectedPartnerId) return;
+  const handleOpsAssign = async (bookingId: string, partnerId?: string) => {
+    const pid = partnerId || selectedPartnerId;
+    if (!pid) return;
     setAssigningId(bookingId);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -215,7 +217,7 @@ export default function DispatchBoardPage() {
         },
         body: JSON.stringify({
           booking_id: bookingId,
-          partner_id: selectedPartnerId,
+          partner_id: pid,
           action: "ops_override",
           ops_user_id: session.data.session?.user?.id,
         }),
@@ -320,25 +322,61 @@ export default function DispatchBoardPage() {
                     {b.is_emergency && <Badge className="bg-destructive/10 text-destructive text-[9px] h-4">EMERGENCY</Badge>}
                     <span>Round {b.dispatch_round || 0}</span>
                   </div>
-                  {/* Manual assign */}
-                  <div className="flex gap-1 items-center">
-                    <select
-                      className="flex-1 text-xs border rounded px-2 py-1 bg-background"
-                      value={selectedPartnerId}
-                      onChange={(e) => setSelectedPartnerId(e.target.value)}
-                    >
-                      <option value="">Select partner…</option>
-                      {partners
-                        .filter((p) => p.categories_supported.includes(b.category_code))
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>{p.full_name} ({p.business_name || "Ind."}) ⭐{p.rating_average}</option>
-                        ))}
-                    </select>
-                    <Button size="sm" className="text-xs h-7" disabled={!selectedPartnerId || assigningId === b.id}
-                      onClick={() => handleOpsAssign(b.id)}>
-                      <UserCheck className="w-3 h-3 mr-1" /> Assign
-                    </Button>
-                  </div>
+                  {/* Manual assign — Partner Shortlist */}
+                  {(() => {
+                    const matchingPartners = partners
+                      .filter((p) => p.categories_supported.includes(b.category_code));
+                    
+                    const candidates: PartnerCandidate[] = matchingPartners
+                      .slice(0, 6)
+                      .map((p, idx) => {
+                        const cautionNotes: string[] = [];
+                        if ((p.rating_average ?? 0) < 3.5) cautionNotes.push("Limited review history available");
+                        if ((p.completed_jobs_count ?? 0) < 5) cautionNotes.push("Limited recent job history");
+                        if (p.availability_status === "busy") cautionNotes.push("Currently busy — may take longer to respond");
+                        if (p.availability_status === "offline") cautionNotes.push("Currently offline");
+                        
+                        const zoneMatch = b.zone_code
+                          ? (p.service_zones || []).includes(b.zone_code)
+                          : false;
+                        if (!zoneMatch && b.zone_code) cautionNotes.push("Coverage may depend on technician availability");
+
+                        return {
+                          id: p.id,
+                          name: `${p.full_name}${p.business_name ? ` (${p.business_name})` : ""}`,
+                          rating: p.rating_average,
+                          zone: (p.service_zones || []).slice(0, 2).join(", ") || null,
+                          responseTime: null,
+                          reason: idx === 0 && zoneMatch
+                            ? "Top-rated in zone with category match"
+                            : zoneMatch
+                            ? "Category and zone match"
+                            : "Category match — nearby zone",
+                          recommended: idx === 0 && zoneMatch && (p.rating_average ?? 0) >= 3.5,
+                          categoryMatch: true,
+                          zoneMatch,
+                          availability: (p.availability_status === "online")
+                            ? "available" as const
+                            : p.availability_status === "busy"
+                            ? "busy" as const
+                            : "offline" as const,
+                          completedJobs: p.completed_jobs_count,
+                          cautionNotes,
+                        };
+                      });
+
+                    return (
+                      <PartnerShortlistReviewPanel
+                        candidates={candidates}
+                        bookingCategory={b.category_code}
+                        bookingZone={b.zone_code || undefined}
+                        onSelect={(partnerId) => {
+                          handleOpsAssign(b.id, partnerId);
+                        }}
+                        loading={false}
+                      />
+                    );
+                  })()}
                   {/* Operator review summary */}
                   <OperatorReviewSummaryPanel
                     booking={b}

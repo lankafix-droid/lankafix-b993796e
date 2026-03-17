@@ -14,6 +14,8 @@ import DispatchTimelineViewer from "@/components/warroom/DispatchTimelineViewer"
 import OpsControlPanel from "@/components/warroom/OpsControlPanel";
 import DispatchFailurePanel from "@/components/warroom/DispatchFailurePanel";
 import AIOperatorCopilot from "@/components/ai/AIOperatorCopilot";
+import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPanel";
+import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
 
 interface BookingRaw {
   id: string;
@@ -35,6 +37,11 @@ interface PartnerRaw {
   current_job_count: number | null;
   max_concurrent_jobs: number | null;
   active_job_id: string | null;
+  categories_supported?: string[];
+  service_zones?: string[];
+  rating_average?: number | null;
+  completed_jobs_count?: number | null;
+  business_name?: string | null;
 }
 
 interface EscalationRaw {
@@ -77,7 +84,7 @@ export default function DispatchWarRoomPage() {
         .order("created_at", { ascending: false })
         .limit(200),
       supabase.from("partners")
-        .select("id, full_name, availability_status, current_job_count, max_concurrent_jobs, active_job_id"),
+        .select("id, full_name, availability_status, current_job_count, max_concurrent_jobs, active_job_id, categories_supported, service_zones, rating_average, completed_jobs_count, business_name"),
       supabase.from("dispatch_escalations")
         .select("id, booking_id, reason, dispatch_rounds_attempted, created_at, resolved_at")
         .order("created_at", { ascending: false })
@@ -288,6 +295,68 @@ export default function DispatchWarRoomPage() {
                 className="mt-3"
               />
             )}
+
+            {/* Operator Review Summary — selected booking */}
+            {selectedBooking && (
+              <OperatorReviewSummaryPanel
+                booking={{
+                  id: selectedBooking.id,
+                  category_code: selectedBooking.category_code,
+                  zone_code: selectedBooking.zone_code,
+                  is_emergency: selectedBooking.is_emergency,
+                  dispatch_status: selectedBooking.dispatch_status,
+                }}
+                recommendedAction={
+                  selectedBooking.dispatch_status === "escalated"
+                    ? "Manual partner assignment required"
+                    : selectedBooking.dispatch_status === "pending_acceptance"
+                    ? "Awaiting partner response"
+                    : "Review and dispatch"
+                }
+              />
+            )}
+
+            {/* Partner Shortlist — for selected booking */}
+            {selectedBooking && ["dispatching", "escalated", "no_provider_found", "pending_acceptance"].includes(selectedBooking.dispatch_status || "") && (() => {
+              const matching = partners
+                .filter(p => (p.categories_supported || []).includes(selectedBooking.category_code))
+                .slice(0, 6);
+
+              const candidates: PartnerCandidate[] = matching.map((p, idx) => {
+                const cautionNotes: string[] = [];
+                if ((p.rating_average ?? 0) < 3.5) cautionNotes.push("Limited review history available");
+                if ((p.completed_jobs_count ?? 0) < 5) cautionNotes.push("Limited recent job history");
+                if (p.availability_status === "busy") cautionNotes.push("Currently busy — may take longer to respond");
+                if (p.availability_status === "offline") cautionNotes.push("Currently offline");
+                const zoneMatch = selectedBooking.zone_code
+                  ? (p.service_zones || []).includes(selectedBooking.zone_code!)
+                  : false;
+                if (!zoneMatch && selectedBooking.zone_code) cautionNotes.push("Coverage may depend on technician availability");
+
+                return {
+                  id: p.id,
+                  name: `${p.full_name}${p.business_name ? ` (${p.business_name})` : ""}`,
+                  rating: p.rating_average ?? null,
+                  zone: (p.service_zones || []).slice(0, 2).join(", ") || null,
+                  responseTime: null,
+                  reason: idx === 0 && zoneMatch ? "Top-rated in zone" : zoneMatch ? "Zone and category match" : "Category match",
+                  recommended: idx === 0 && zoneMatch && (p.rating_average ?? 0) >= 3.5,
+                  categoryMatch: true,
+                  zoneMatch,
+                  availability: p.availability_status === "online" ? "available" as const : p.availability_status === "busy" ? "busy" as const : "offline" as const,
+                  completedJobs: p.completed_jobs_count ?? null,
+                  cautionNotes,
+                };
+              });
+
+              return (
+                <PartnerShortlistReviewPanel
+                  candidates={candidates}
+                  bookingCategory={selectedBooking.category_code}
+                  bookingZone={selectedBooking.zone_code || undefined}
+                />
+              );
+            })()}
           </div>
         </div>
 
