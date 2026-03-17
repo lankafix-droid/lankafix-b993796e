@@ -60,6 +60,8 @@ import SLAExpectationCard from "@/components/booking/SLAExpectationCard";
 import BookingCheckpointCard from "@/components/booking/BookingCheckpointCard";
 import CustomerCommunicationTimeline from "@/components/booking/CustomerCommunicationTimeline";
 import type { CommunicationMilestone } from "@/components/booking/CustomerCommunicationTimeline";
+import ActiveReminderCard from "@/components/booking/ActiveReminderCard";
+import ReminderStatusStrip from "@/components/booking/ReminderStatusStrip";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import CompletionConfirmationCard from "@/components/booking/CompletionConfirmationCard";
 import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
