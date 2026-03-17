@@ -53,6 +53,8 @@ import PostBookingStatusCard from "@/components/booking/PostBookingStatusCard";
 import CustomerTrustPanel from "@/components/trust/CustomerTrustPanel";
 import HumanSupportAvailableCard from "@/components/trust/HumanSupportAvailableCard";
 import BookingExceptionCard from "@/components/booking/BookingExceptionCard";
+import BookingProgressTimeline from "@/components/booking/BookingProgressTimeline";
+import QuoteTransparencyPanel from "@/components/trust/QuoteTransparencyPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import QuoteApprovalCard from "@/components/quotes/QuoteApprovalCard";
