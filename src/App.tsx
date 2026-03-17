@@ -115,6 +115,7 @@ const PrescriptiveInterventionWorkbenchPage = lazy(() => import("./pages/ops/Pre
 const AIModuleHealthPage = lazy(() => import("./pages/ops/AIModuleHealthPage"));
 const AIControlCenterPage = lazy(() => import("./pages/ops/AIControlCenterPage"));
 const AIAuditLogPage = lazy(() => import("./pages/ops/AIAuditLogPage"));
+const AILaunchReadinessPage = lazy(() => import("./pages/ops/AILaunchReadinessPage"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
@@ -283,6 +284,7 @@ const App = () => (
             <Route path="/ops/ai-module-health" element={<OpsRoute><AIModuleHealthPage /></OpsRoute>} />
             <Route path="/ops/ai-control-center" element={<OpsRoute><AIControlCenterPage /></OpsRoute>} />
             <Route path="/ops/ai-audit-log" element={<OpsRoute><AIAuditLogPage /></OpsRoute>} />
+            <Route path="/ops/ai-launch-readiness" element={<OpsRoute><AILaunchReadinessPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />

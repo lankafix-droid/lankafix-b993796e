@@ -11,7 +11,8 @@ import PageTransition from "@/components/motion/PageTransition";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Brain, Shield, Camera, Mic, Sparkles, Eye, ArrowLeft, Info, ShieldCheck } from "lucide-react";
+import { Brain, Shield, Camera, Mic, Sparkles, Eye, ArrowLeft, Info } from "lucide-react";
+import AITrustLaunchNote from "@/components/ai/AITrustLaunchNote";
 import {
   getAIConsent,
   revokeAllAIConsent,
@@ -115,16 +116,7 @@ const AIPreferencesPage = () => {
         </div>
 
         {/* Trust banner */}
-        <div className="rounded-xl border border-primary/15 bg-primary/5 p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-foreground">Your booking always works without AI</span>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            AI features are optional tools that provide helpful suggestions. They never make decisions for you.
-            A qualified technician always provides the final assessment.
-          </p>
-        </div>
+        <AITrustLaunchNote />
 
         {/* Status summary */}
         <div className="grid grid-cols-2 gap-3">
