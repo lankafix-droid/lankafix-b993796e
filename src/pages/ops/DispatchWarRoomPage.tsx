@@ -267,6 +267,10 @@ export default function DispatchWarRoomPage() {
         {/* Section 12: Dispatch Failures */}
         <DispatchFailurePanel escalations={escalations} />
 
+        {/* Reminder Ops Summary + SLA Breaches */}
+        <ReminderOpsSummaryCards />
+        <SLABreachBoard />
+
         {/* Main content: Table + Right Panel */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Section 3: Dispatch Table */}
