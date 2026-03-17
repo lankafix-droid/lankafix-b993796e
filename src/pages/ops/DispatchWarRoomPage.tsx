@@ -338,6 +338,14 @@ export default function DispatchWarRoomPage() {
               />
             )}
 
+            {/* Communication log — reminder history for selected booking */}
+            {selectedBookingId && (
+              <OperatorCommunicationLogPanel bookingId={selectedBookingId} />
+            )}
+
+            {/* Callback Task Queue — open human follow-up tasks */}
+            <CallbackTaskQueuePanel />
+
             {/* Partner Shortlist — for selected booking */}
             {selectedBooking && ["dispatching", "escalated", "no_provider_found", "pending_acceptance"].includes(selectedBooking.dispatch_status || "") && (() => {
               const matching = partners
