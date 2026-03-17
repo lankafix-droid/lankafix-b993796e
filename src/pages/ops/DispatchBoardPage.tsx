@@ -354,7 +354,7 @@ export default function DispatchBoardPage() {
                           recommended: idx === 0 && zoneMatch && (p.rating_average ?? 0) >= 3.5,
                           categoryMatch: true,
                           zoneMatch,
-                          availability: (p.availability_status === "available" || p.availability_status === "online")
+                          availability: (p.availability_status === "online")
                             ? "available" as const
                             : p.availability_status === "busy"
                             ? "busy" as const
