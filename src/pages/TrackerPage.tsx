@@ -187,14 +187,18 @@ function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; 
   if (!quote || bookingStatus !== "quote_submitted") return null;
 
   return (
-    <QuoteApprovalCard
-      quote={quote}
-      onAction={() => {
-        queryClient.invalidateQueries({ queryKey: ["tracker-quote", bookingId] });
-        queryClient.invalidateQueries({ queryKey: ["booking-db", bookingId] });
-        queryClient.invalidateQueries({ queryKey: ["booking-timeline", bookingId] });
-      }}
-    />
+    <div className="space-y-3">
+      <QuoteApprovalCard
+        quote={quote}
+        onAction={() => {
+          queryClient.invalidateQueries({ queryKey: ["tracker-quote", bookingId] });
+          queryClient.invalidateQueries({ queryKey: ["booking-db", bookingId] });
+          queryClient.invalidateQueries({ queryKey: ["booking-timeline", bookingId] });
+        }}
+      />
+      <QuoteTransparencyPanel />
+      <DecisionSafetyStrip variant="quote" />
+    </div>
   );
 }
 
