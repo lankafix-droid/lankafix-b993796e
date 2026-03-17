@@ -211,6 +211,17 @@ const AIControlCenterPage = () => {
 
         <AILaunchReadinessCard />
 
+        {/* Launch Readiness Summary */}
+        <Card className="border-primary/20 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate("/ops/ai-launch-readiness")}>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">AI Launch Readiness Dashboard</p>
+              <p className="text-[11px] text-muted-foreground">Per-module rollout eligibility, blockers & recommendations</p>
+            </div>
+            <Badge variant="outline" className="text-[10px]">View →</Badge>
+          </CardContent>
+        </Card>
+
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleClearCache}>
