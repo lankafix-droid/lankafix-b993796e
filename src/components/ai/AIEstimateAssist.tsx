@@ -110,6 +110,8 @@ const AIEstimateAssist = ({ categoryCode, issueType, className = "" }: AIEstimat
         </div>
       )}
 
+      <AIOperatorFeedback module="ai_estimate_assist" className="pt-1" />
+
       <AIAdvisoryFooter
         module="ai_estimate_assist"
         confidence={estimate.confidence.confidence_score}
