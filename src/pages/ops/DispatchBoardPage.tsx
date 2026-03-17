@@ -339,6 +339,11 @@ export default function DispatchBoardPage() {
                       <UserCheck className="w-3 h-3 mr-1" /> Assign
                     </Button>
                   </div>
+                  {/* Operator review summary */}
+                  <OperatorReviewSummaryPanel
+                    booking={b}
+                    recommendedAction={b.dispatch_status === "escalated" ? "Manual partner assignment required" : "Review and dispatch"}
+                  />
                   {/* Ops intervention actions */}
                   <div className="flex gap-1 mt-1">
                     <Button size="sm" variant="outline" className="text-[10px] h-6 text-destructive border-destructive/30"
