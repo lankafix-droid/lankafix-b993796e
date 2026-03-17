@@ -84,7 +84,7 @@ export default function DispatchWarRoomPage() {
         .order("created_at", { ascending: false })
         .limit(200),
       supabase.from("partners")
-        .select("id, full_name, availability_status, current_job_count, max_concurrent_jobs, active_job_id"),
+        .select("id, full_name, availability_status, current_job_count, max_concurrent_jobs, active_job_id, categories_supported, service_zones, rating_average, completed_jobs_count, business_name"),
       supabase.from("dispatch_escalations")
         .select("id, booking_id, reason, dispatch_rounds_attempted, created_at, resolved_at")
         .order("created_at", { ascending: false })
