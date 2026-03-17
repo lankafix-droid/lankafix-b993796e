@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Shield } from "lucide-react";
 import { createSupportCase, CUSTOMER_ISSUE_TYPES, PARTNER_ISSUE_TYPES } from "@/services/supportService";
 
 interface ReportIssueModalProps {
