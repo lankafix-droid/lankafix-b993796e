@@ -371,8 +371,7 @@ export default function DispatchBoardPage() {
                         bookingCategory={b.category_code}
                         bookingZone={b.zone_code || undefined}
                         onSelect={(partnerId) => {
-                          setSelectedPartnerId(partnerId);
-                          handleOpsAssign(b.id);
+                          handleOpsAssign(b.id, partnerId);
                         }}
                         loading={false}
                       />
