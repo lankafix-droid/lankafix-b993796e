@@ -284,6 +284,7 @@ const App = () => (
             <Route path="/ops/ai-module-health" element={<OpsRoute><AIModuleHealthPage /></OpsRoute>} />
             <Route path="/ops/ai-control-center" element={<OpsRoute><AIControlCenterPage /></OpsRoute>} />
             <Route path="/ops/ai-audit-log" element={<OpsRoute><AIAuditLogPage /></OpsRoute>} />
+            <Route path="/ops/ai-launch-readiness" element={<OpsRoute><AILaunchReadinessPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />

@@ -11,7 +11,8 @@ import PageTransition from "@/components/motion/PageTransition";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
-import { Brain, Shield, Camera, Mic, Sparkles, Eye, ArrowLeft, Info, ShieldCheck } from "lucide-react";
+import { Brain, Shield, Camera, Mic, Sparkles, Eye, ArrowLeft, Info } from "lucide-react";
+import AITrustLaunchNote from "@/components/ai/AITrustLaunchNote";
 import {
   getAIConsent,
   revokeAllAIConsent,
