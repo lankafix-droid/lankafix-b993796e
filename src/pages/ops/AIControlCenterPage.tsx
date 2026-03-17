@@ -200,6 +200,17 @@ const AIControlCenterPage = () => {
           </div>
         ))}
 
+        {/* Degradation Monitor */}
+        <AIDegradationMonitor />
+
+        {/* Analytics + Cache + Readiness */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <AIFeedbackAnalytics />
+          <AICacheDebugPanel />
+        </div>
+
+        <AILaunchReadinessCard />
+
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleClearCache}>
@@ -218,6 +229,7 @@ const AIControlCenterPage = () => {
           <CardContent className="p-4 flex flex-wrap gap-2">
             {[
               { label: "Module Health", route: "/ops/ai-module-health" },
+              { label: "AI Audit Log", route: "/ops/ai-audit-log" },
               { label: "AI Intelligence", route: "/ops/ai-intelligence" },
               { label: "Governance Hub", route: "/ops/governance-hub" },
               { label: "Operations Board", route: "/ops/operations-board" },
