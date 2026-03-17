@@ -66,7 +66,7 @@ export async function fetchAllOpenTasks(limit = 50): Promise<OperatorCallbackTas
       .order("priority", { ascending: true })
       .order("created_at", { ascending: true })
       .limit(limit);
-    return (data || []) as OperatorCallbackTask[];
+    return (data as unknown as OperatorCallbackTask[]) || [];
   } catch {
     return [];
   }

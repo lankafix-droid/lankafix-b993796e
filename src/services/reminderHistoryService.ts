@@ -57,7 +57,7 @@ export async function fetchSendLogs(bookingId: string): Promise<ReminderSendLog[
       .eq("booking_id", bookingId)
       .order("created_at", { ascending: false })
       .limit(50);
-    return (data || []) as ReminderSendLog[];
+    return (data as unknown as ReminderSendLog[]) || [];
   } catch {
     return [];
   }
