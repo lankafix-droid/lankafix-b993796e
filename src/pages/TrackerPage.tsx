@@ -1032,11 +1032,6 @@ const TrackerPage = () => {
               <span>Protected by LankaFix Service Guarantee</span>
             </div>
 
-            {/* Report Issue */}
-            <Button variant="outline" className="w-full rounded-xl h-11 text-sm" onClick={() => setShowReportIssue(true)}>
-              <Flag className="w-4 h-4 mr-1.5" />
-              Report an Issue
-            </Button>
 
             <Button onClick={() => navigate("/")} variant="secondary" className="w-full rounded-xl h-11">
               Back to Home
