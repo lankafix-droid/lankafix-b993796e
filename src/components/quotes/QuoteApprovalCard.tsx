@@ -6,9 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, FileText, Loader2, Shield } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, Loader2, Shield, ShieldCheck } from "lucide-react";
 import { notifyQuoteApproved } from "@/services/notificationService";
 import { createPaymentRecord } from "@/services/paymentService";
+import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
 
 interface QuoteApprovalCardProps {
   quote: {
@@ -217,9 +218,15 @@ export default function QuoteApprovalCard({ quote, onAction }: QuoteApprovalCard
           </div>
         )}
 
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          <Shield className="w-3 h-3 text-success" />
-          No work starts without your approval. Price is locked after approval.
+        {/* Trust reinforcement strip */}
+        <DecisionSafetyStrip variant="quote" />
+
+        {/* Advisory disclosure */}
+        <div className="flex items-start gap-2 bg-muted/30 rounded-lg p-2.5">
+          <ShieldCheck className="w-3 h-3 text-primary mt-0.5 shrink-0" />
+          <p className="text-[10px] text-muted-foreground leading-relaxed">
+            Final diagnosis is confirmed by the technician. No additional work will begin without separate approval.
+          </p>
         </div>
       </CardContent>
     </Card>

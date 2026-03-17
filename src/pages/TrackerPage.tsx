@@ -57,6 +57,8 @@ import BookingProgressTimeline from "@/components/booking/BookingProgressTimelin
 import QuoteTransparencyPanel from "@/components/trust/QuoteTransparencyPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
+import CompletionConfirmationCard from "@/components/booking/CompletionConfirmationCard";
+import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
 import QuoteApprovalCard from "@/components/quotes/QuoteApprovalCard";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
 import type { TrackingSimulation } from "@/lib/trackingEngine";
@@ -185,14 +187,18 @@ function TrackerQuoteSection({ bookingId, bookingStatus }: { bookingId: string; 
   if (!quote || bookingStatus !== "quote_submitted") return null;
 
   return (
-    <QuoteApprovalCard
-      quote={quote}
-      onAction={() => {
-        queryClient.invalidateQueries({ queryKey: ["tracker-quote", bookingId] });
-        queryClient.invalidateQueries({ queryKey: ["booking-db", bookingId] });
-        queryClient.invalidateQueries({ queryKey: ["booking-timeline", bookingId] });
-      }}
-    />
+    <div className="space-y-3">
+      <QuoteApprovalCard
+        quote={quote}
+        onAction={() => {
+          queryClient.invalidateQueries({ queryKey: ["tracker-quote", bookingId] });
+          queryClient.invalidateQueries({ queryKey: ["booking-db", bookingId] });
+          queryClient.invalidateQueries({ queryKey: ["booking-timeline", bookingId] });
+        }}
+      />
+      <QuoteTransparencyPanel />
+      <DecisionSafetyStrip variant="quote" />
+    </div>
   );
 }
 
@@ -800,6 +806,18 @@ const TrackerPage = () => {
                 <CustomerTrustPanel />
                 <HumanSupportAvailableCard />
               </>
+            )}
+
+            {/* Completion confirmation card — customer decision gate */}
+            {isCompleted && !existingRating && (
+              <CompletionConfirmationCard
+                completedAt={dbBooking.completed_at || undefined}
+                serviceSummary={dbBooking.service_type || undefined}
+                finalAmount={dbBooking.final_price_lkr || undefined}
+                categoryCode={dbBooking.category_code}
+                onConfirm={() => setShowRatingModal(true)}
+                onReportIssue={() => setShowReportIssue(true)}
+              />
             )}
 
             {/* Completion state — premium */}
