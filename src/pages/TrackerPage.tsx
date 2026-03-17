@@ -56,6 +56,10 @@ import BookingExceptionCard from "@/components/booking/BookingExceptionCard";
 import BookingProgressTimeline from "@/components/booking/BookingProgressTimeline";
 import QuoteTransparencyPanel from "@/components/trust/QuoteTransparencyPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
+import SLAExpectationCard from "@/components/booking/SLAExpectationCard";
+import BookingCheckpointCard from "@/components/booking/BookingCheckpointCard";
+import CustomerCommunicationTimeline from "@/components/booking/CustomerCommunicationTimeline";
+import type { CommunicationMilestone } from "@/components/booking/CustomerCommunicationTimeline";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import CompletionConfirmationCard from "@/components/booking/CompletionConfirmationCard";
 import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
@@ -680,6 +684,37 @@ const TrackerPage = () => {
             {/* Lifecycle status card */}
             <PostBookingStatusCard stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} />
 
+            {/* SLA expectation — advisory timing */}
+            {isActive && (
+              <SLAExpectationCard
+                stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)}
+                stageEnteredAt={dbBooking.updated_at}
+              />
+            )}
+
+            {/* Checkpoint card — waiting states */}
+            {isActive && (() => {
+              const stage = mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status);
+              const checkpoints: Record<string, { title: string; pending: string; actor: string; next?: string }> = {
+                awaiting_partner_selection: { title: "Finding Technician", pending: "Technician match", actor: "LankaFix Team", next: "We'll notify you once matched" },
+                awaiting_partner_response: { title: "Awaiting Technician", pending: "Technician confirmation", actor: "Technician", next: "You'll hear back shortly" },
+                awaiting_quote: { title: "Awaiting Quote", pending: "Quote preparation", actor: "Technician", next: "Review quote when ready" },
+                awaiting_quote_approval: { title: "Quote Ready", pending: "Your approval", actor: "You", next: "Review and approve to proceed" },
+                awaiting_completion_confirmation: { title: "Confirm Completion", pending: "Your confirmation", actor: "You", next: "Confirm if satisfied" },
+              };
+              const cp = checkpoints[stage];
+              if (!cp) return null;
+              return (
+                <BookingCheckpointCard
+                  title={cp.title}
+                  pendingAction={cp.pending}
+                  responsibleActor={cp.actor}
+                  recommendedAction={cp.next}
+                  showSupportCTA={stage !== "awaiting_quote_approval"}
+                />
+              );
+            })()}
+
             {/* Exception state banner */}
             {exceptionInfo && (
               <BookingExceptionCard
@@ -730,6 +765,34 @@ const TrackerPage = () => {
 
             {/* Payment Status */}
             <TrackerPaymentStatus bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
+
+            {/* Communication milestones — derived from timeline */}
+            {dbTimeline && dbTimeline.length > 0 && (() => {
+              const COMM_LABELS: Record<string, { title: string; desc: string; actor: CommunicationMilestone["actor"] }> = {
+                requested: { title: "Booking Received", desc: "Your service request was received.", actor: "You" },
+                matching: { title: "Finding Technician", desc: "We started searching for a verified technician.", actor: "LankaFix Team" },
+                assigned: { title: "Technician Assigned", desc: "A verified technician was assigned to your job.", actor: "LankaFix Team" },
+                tech_en_route: { title: "Technician En Route", desc: "Your technician is on the way.", actor: "Technician" },
+                arrived: { title: "Technician Arrived", desc: "Your technician has arrived at your location.", actor: "Technician" },
+                inspection_started: { title: "Inspection Started", desc: "The technician is diagnosing the issue.", actor: "Technician" },
+                quote_submitted: { title: "Quote Ready", desc: "A detailed quote is ready for your review.", actor: "Technician" },
+                quote_approved: { title: "Quote Approved", desc: "You approved the quote. Repair will begin.", actor: "You" },
+                repair_started: { title: "Repair In Progress", desc: "The technician is performing the repair.", actor: "Technician" },
+                completed: { title: "Service Completed", desc: "The service has been completed.", actor: "LankaFix Team" },
+              };
+              const milestones: CommunicationMilestone[] = dbTimeline
+                .filter(evt => COMM_LABELS[evt.status])
+                .map((evt, i) => ({
+                  id: evt.id,
+                  title: COMM_LABELS[evt.status].title,
+                  description: evt.note || COMM_LABELS[evt.status].desc,
+                  timestamp: evt.created_at,
+                  status: i === 0 ? "current" as const : "completed" as const,
+                  actor: COMM_LABELS[evt.status].actor,
+                }));
+              if (!milestones.length) return null;
+              return <CustomerCommunicationTimeline milestones={milestones} />;
+            })()}
 
             {/* Timeline events from DB — refined with current stage highlight */}
             {dbTimeline && dbTimeline.length > 0 && (

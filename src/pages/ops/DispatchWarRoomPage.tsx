@@ -16,6 +16,8 @@ import DispatchFailurePanel from "@/components/warroom/DispatchFailurePanel";
 import AIOperatorCopilot from "@/components/ai/AIOperatorCopilot";
 import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPanel";
 import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
+import OperatorCommunicationStatePanel from "@/components/ops/OperatorCommunicationStatePanel";
+import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface BookingRaw {
   id: string;
@@ -313,6 +315,15 @@ export default function DispatchWarRoomPage() {
                     ? "Awaiting partner response"
                     : "Review and dispatch"
                 }
+              />
+            )}
+
+            {/* Customer communication state — what customer sees */}
+            {selectedBooking && (
+              <OperatorCommunicationStatePanel
+                stage={mapBookingStatusToStage(selectedBooking.status, selectedBooking.dispatch_status)}
+                stageEnteredAt={selectedBooking.created_at}
+                hasActiveDispute={selectedBooking.dispatch_status === "escalated"}
               />
             )}
 
