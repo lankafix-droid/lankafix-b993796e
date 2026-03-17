@@ -993,17 +993,17 @@ const TrackerPage = () => {
               </>
             )}
 
-            {/* Support shortcut — active bookings */}
+            {/* Support entry — active bookings */}
             {isActive && (
-              <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)]">
+              <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)] space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
                       <Headphones className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-foreground">Need help?</p>
-                      <p className="text-[11px] text-muted-foreground">Chat with our support team</p>
+                      <p className="text-sm font-semibold text-foreground">Need help from LankaFix?</p>
+                      <p className="text-[11px] text-muted-foreground">Our team can review this for you</p>
                     </div>
                   </div>
                   <Button variant="outline" size="sm" className="rounded-xl h-9" asChild>
@@ -1012,6 +1012,17 @@ const TrackerPage = () => {
                     </a>
                   </Button>
                 </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" onClick={() => setShowReportIssue(true)}>
+                    <Flag className="w-3 h-3 mr-1.5" /> Report Issue
+                  </Button>
+                  <Button variant="outline" className="flex-1 h-9 rounded-xl text-xs" asChild>
+                    <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - something doesn't look right`)} target="_blank" rel="noopener noreferrer">
+                      <Headphones className="w-3 h-3 mr-1.5" /> Contact Support
+                    </a>
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">You can request human support anytime. We're here to help.</p>
               </div>
             )}
 
