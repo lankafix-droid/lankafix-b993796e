@@ -200,8 +200,9 @@ export default function DispatchBoardPage() {
     { label: "Consult Q", value: metrics?.consultation_queue ?? 0, icon: Users, color: (metrics?.consultation_queue ?? 0) > 5 ? "text-destructive" : (metrics?.consultation_queue ?? 0) > 0 ? "text-warning" : "text-muted-foreground" },
   ];
 
-  const handleOpsAssign = async (bookingId: string) => {
-    if (!selectedPartnerId) return;
+  const handleOpsAssign = async (bookingId: string, partnerId?: string) => {
+    const pid = partnerId || selectedPartnerId;
+    if (!pid) return;
     setAssigningId(bookingId);
     try {
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -216,7 +217,7 @@ export default function DispatchBoardPage() {
         },
         body: JSON.stringify({
           booking_id: bookingId,
-          partner_id: selectedPartnerId,
+          partner_id: pid,
           action: "ops_override",
           ops_user_id: session.data.session?.user?.id,
         }),
