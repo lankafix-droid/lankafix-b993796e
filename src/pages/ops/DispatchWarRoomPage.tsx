@@ -18,6 +18,8 @@ import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPa
 import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
 import OperatorCommunicationStatePanel from "@/components/ops/OperatorCommunicationStatePanel";
 import OperatorReminderPanel from "@/components/ops/OperatorReminderPanel";
+import OperatorCommunicationLogPanel from "@/components/ops/OperatorCommunicationLogPanel";
+import CallbackTaskQueuePanel from "@/components/ops/CallbackTaskQueuePanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface BookingRaw {
@@ -335,6 +337,14 @@ export default function DispatchWarRoomPage() {
                 stageEnteredAt={selectedBooking.created_at}
               />
             )}
+
+            {/* Communication log — reminder history for selected booking */}
+            {selectedBookingId && (
+              <OperatorCommunicationLogPanel bookingId={selectedBookingId} />
+            )}
+
+            {/* Callback Task Queue — open human follow-up tasks */}
+            <CallbackTaskQueuePanel />
 
             {/* Partner Shortlist — for selected booking */}
             {selectedBooking && ["dispatching", "escalated", "no_provider_found", "pending_acceptance"].includes(selectedBooking.dispatch_status || "") && (() => {

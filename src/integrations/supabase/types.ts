@@ -1804,6 +1804,68 @@ export type Database = {
           },
         ]
       }
+      operator_callback_tasks: {
+        Row: {
+          advisory_source: string | null
+          assigned_to: string | null
+          booking_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_from_reminder_key: string | null
+          due_at: string | null
+          id: string
+          notes: string | null
+          priority: string
+          reason: string | null
+          status: string
+          task_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          advisory_source?: string | null
+          assigned_to?: string | null
+          booking_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_from_reminder_key?: string | null
+          due_at?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          reason?: string | null
+          status?: string
+          task_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          advisory_source?: string | null
+          assigned_to?: string | null
+          booking_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_from_reminder_key?: string | null
+          due_at?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          reason?: string | null
+          status?: string
+          task_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_callback_tasks_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_bank_accounts: {
         Row: {
           account_holder_name: string
@@ -2930,6 +2992,125 @@ export type Database = {
           zone_summary_json?: Json | null
         }
         Relationships: []
+      }
+      reminder_jobs: {
+        Row: {
+          advisory_only: boolean
+          audience: string
+          booking_id: string | null
+          channel: string
+          created_at: string
+          created_by: string
+          failed_at: string | null
+          id: string
+          payload_summary: string | null
+          reminder_key: string
+          scheduled_for: string | null
+          send_count: number
+          sent_at: string | null
+          status: string
+          suppression_reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          advisory_only?: boolean
+          audience?: string
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          failed_at?: string | null
+          id?: string
+          payload_summary?: string | null
+          reminder_key: string
+          scheduled_for?: string | null
+          send_count?: number
+          sent_at?: string | null
+          status?: string
+          suppression_reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          advisory_only?: boolean
+          audience?: string
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string
+          failed_at?: string | null
+          id?: string
+          payload_summary?: string | null
+          reminder_key?: string
+          scheduled_for?: string | null
+          send_count?: number
+          sent_at?: string | null
+          status?: string
+          suppression_reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_jobs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminder_send_logs: {
+        Row: {
+          attempt_number: number
+          booking_id: string | null
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          outcome: string
+          reminder_job_id: string | null
+          reminder_key: string
+        }
+        Insert: {
+          attempt_number?: number
+          booking_id?: string | null
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          outcome?: string
+          reminder_job_id?: string | null
+          reminder_key: string
+        }
+        Update: {
+          attempt_number?: number
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          outcome?: string
+          reminder_job_id?: string | null
+          reminder_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_send_logs_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reminder_send_logs_reminder_job_id_fkey"
+            columns: ["reminder_job_id"]
+            isOneToOne: false
+            referencedRelation: "reminder_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       self_healing_events: {
         Row: {

@@ -62,6 +62,7 @@ import CustomerCommunicationTimeline from "@/components/booking/CustomerCommunic
 import type { CommunicationMilestone } from "@/components/booking/CustomerCommunicationTimeline";
 import ActiveReminderCard from "@/components/booking/ActiveReminderCard";
 import ReminderStatusStrip from "@/components/booking/ReminderStatusStrip";
+import CustomerNotificationHistoryCard from "@/components/booking/CustomerNotificationHistoryCard";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import CompletionConfirmationCard from "@/components/booking/CompletionConfirmationCard";
 import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
@@ -793,6 +794,9 @@ const TrackerPage = () => {
 
             {/* Payment Status */}
             <TrackerPaymentStatus bookingId={dbBooking.id} bookingStatus={dbBooking.status} />
+
+            {/* Notification history — updates sent to customer */}
+            <CustomerNotificationHistoryCard bookingId={dbBooking.id} />
 
             {/* Communication milestones — derived from timeline */}
             {dbTimeline && dbTimeline.length > 0 && (() => {
