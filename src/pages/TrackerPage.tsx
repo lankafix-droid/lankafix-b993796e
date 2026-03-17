@@ -784,6 +784,14 @@ const TrackerPage = () => {
               role="customer"
             />
 
+            {/* Trust & Support */}
+            {isActive && (
+              <>
+                <CustomerTrustPanel />
+                <HumanSupportAvailableCard />
+              </>
+            )}
+
             {/* Completion state — premium */}
             {isCompleted && (
               <motion.div
