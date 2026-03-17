@@ -239,6 +239,7 @@ const AIControlCenterPage = () => {
         <Card>
           <CardContent className="p-4 flex flex-wrap gap-2">
             {[
+              { label: "Launch Readiness", route: "/ops/ai-launch-readiness" },
               { label: "Module Health", route: "/ops/ai-module-health" },
               { label: "AI Audit Log", route: "/ops/ai-audit-log" },
               { label: "AI Intelligence", route: "/ops/ai-intelligence" },
