@@ -14,6 +14,8 @@ import DispatchTimelineViewer from "@/components/warroom/DispatchTimelineViewer"
 import OpsControlPanel from "@/components/warroom/OpsControlPanel";
 import DispatchFailurePanel from "@/components/warroom/DispatchFailurePanel";
 import AIOperatorCopilot from "@/components/ai/AIOperatorCopilot";
+import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPanel";
+import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
 
 interface BookingRaw {
   id: string;
