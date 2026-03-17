@@ -6,9 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, FileText, Loader2, Shield } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, Loader2, Shield, ShieldCheck } from "lucide-react";
 import { notifyQuoteApproved } from "@/services/notificationService";
 import { createPaymentRecord } from "@/services/paymentService";
+import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
 
 interface QuoteApprovalCardProps {
   quote: {
