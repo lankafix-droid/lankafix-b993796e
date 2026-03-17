@@ -13,6 +13,8 @@ export interface DeliveryResult {
   channel: ReminderChannel;
   error?: string;
   messageId?: string;
+  deliveredAt?: string;
+  advisory_only: boolean;
 }
 
 interface DeliveryPayload {
