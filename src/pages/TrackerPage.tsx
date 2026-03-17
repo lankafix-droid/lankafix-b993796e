@@ -668,6 +668,9 @@ const TrackerPage = () => {
               </div>
             </motion.div>
 
+            {/* Booking progress timeline */}
+            <BookingProgressTimeline currentStage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} compact />
+
             {/* Lifecycle status card */}
             <PostBookingStatusCard stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} />
 
