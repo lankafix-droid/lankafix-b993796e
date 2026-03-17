@@ -222,6 +222,16 @@ const AccountPage = () => {
             </div>
           </StaggerItem>
 
+          {/* ─── AI Preferences ─── */}
+          <StaggerItem>
+            <div className="space-y-0.5">
+              <SectionTitle>Smart Features</SectionTitle>
+              <div className="bg-card rounded-2xl border border-border/60 divide-y divide-border/40 overflow-hidden shadow-[var(--shadow-card)]">
+                <MenuRow icon={Brain} label="AI Preferences" desc="Manage optional smart suggestions" to="/settings/ai-preferences" />
+              </div>
+            </div>
+          </StaggerItem>
+
           {/* ─── Legal ─── */}
           <StaggerItem>
             <div className="space-y-0.5">

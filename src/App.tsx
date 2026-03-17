@@ -280,6 +280,10 @@ const App = () => (
             <Route path="/ops/reliability-scenarios" element={<OpsRoute><ReliabilityScenarioSimulatorPage /></OpsRoute>} />
             <Route path="/ops/prescriptive-interventions" element={<OpsRoute><PrescriptiveInterventionWorkbenchPage /></OpsRoute>} />
             <Route path="/ops/ai-module-health" element={<OpsRoute><AIModuleHealthPage /></OpsRoute>} />
+            <Route path="/ops/ai-control-center" element={<OpsRoute><AIControlCenterPage /></OpsRoute>} />
+
+            {/* ─── Settings Pages ─── */}
+            <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />
