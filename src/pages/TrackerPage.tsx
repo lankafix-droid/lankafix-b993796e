@@ -49,6 +49,11 @@ import { generateDemoQuote } from "@/engines/quoteEngine";
 // Zone intelligence now returns conservative defaults — real data comes from useOnlinePartners
 import { track } from "@/lib/analytics";
 import CareUpsellBanner from "@/components/tracker/CareUpsellBanner";
+import PostBookingStatusCard from "@/components/booking/PostBookingStatusCard";
+import CustomerTrustPanel from "@/components/trust/CustomerTrustPanel";
+import HumanSupportAvailableCard from "@/components/trust/HumanSupportAvailableCard";
+import BookingExceptionCard from "@/components/booking/BookingExceptionCard";
+import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import QuoteApprovalCard from "@/components/quotes/QuoteApprovalCard";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
