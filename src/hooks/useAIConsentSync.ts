@@ -25,13 +25,14 @@ export function useAIConsentSync() {
         // Try to load from backend profile metadata
         const { data: profile } = await supabase
           .from("profiles")
-          .select("ai_preferences")
+          .select("*")
           .eq("user_id", user.id)
           .single();
 
-        if (profile?.ai_preferences && typeof profile.ai_preferences === "object") {
+        const serverPrefsRaw = (profile as any)?.ai_preferences;
+        if (serverPrefsRaw && typeof serverPrefsRaw === "object") {
           // Server has preferences — merge with local (server wins for conflicts)
-          const serverPrefs = profile.ai_preferences as Partial<AIConsentState>;
+          const serverPrefs = serverPrefsRaw as Partial<AIConsentState>;
           const local = getAIConsent();
 
           // If server is newer, use server values
