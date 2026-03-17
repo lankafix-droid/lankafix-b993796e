@@ -14,11 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Brain, Shield, Camera, Mic, Sparkles, Eye, ArrowLeft, Info, ShieldCheck } from "lucide-react";
 import {
   getAIConsent,
-  setAIConsent,
   revokeAllAIConsent,
   type AIConsentState,
   type AIConsentCapability,
 } from "@/services/aiConsentService";
+import { useAIConsentSync, saveAndSyncConsent } from "@/hooks/useAIConsentSync";
 import { getAIFlags } from "@/lib/aiFeatureFlags";
 import { trackAIAnalytics } from "@/services/aiEventTracking";
 import { toast } from "@/hooks/use-toast";
