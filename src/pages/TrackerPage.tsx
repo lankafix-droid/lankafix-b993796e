@@ -684,6 +684,37 @@ const TrackerPage = () => {
             {/* Lifecycle status card */}
             <PostBookingStatusCard stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} />
 
+            {/* SLA expectation — advisory timing */}
+            {isActive && (
+              <SLAExpectationCard
+                stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)}
+                stageEnteredAt={dbBooking.updated_at}
+              />
+            )}
+
+            {/* Checkpoint card — waiting states */}
+            {isActive && (() => {
+              const stage = mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status);
+              const checkpoints: Record<string, { title: string; pending: string; actor: string; next?: string }> = {
+                awaiting_partner_selection: { title: "Finding Technician", pending: "Technician match", actor: "LankaFix Team", next: "We'll notify you once matched" },
+                awaiting_partner_response: { title: "Awaiting Technician", pending: "Technician confirmation", actor: "Technician", next: "You'll hear back shortly" },
+                awaiting_quote: { title: "Awaiting Quote", pending: "Quote preparation", actor: "Technician", next: "Review quote when ready" },
+                awaiting_quote_approval: { title: "Quote Ready", pending: "Your approval", actor: "You", next: "Review and approve to proceed" },
+                awaiting_completion_confirmation: { title: "Confirm Completion", pending: "Your confirmation", actor: "You", next: "Confirm if satisfied" },
+              };
+              const cp = checkpoints[stage];
+              if (!cp) return null;
+              return (
+                <BookingCheckpointCard
+                  title={cp.title}
+                  pendingAction={cp.pending}
+                  responsibleActor={cp.actor}
+                  recommendedAction={cp.next}
+                  showSupportCTA={stage !== "awaiting_quote_approval"}
+                />
+              );
+            })()}
+
             {/* Exception state banner */}
             {exceptionInfo && (
               <BookingExceptionCard
