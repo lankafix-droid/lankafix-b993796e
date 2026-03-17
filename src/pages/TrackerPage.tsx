@@ -808,6 +808,18 @@ const TrackerPage = () => {
               </>
             )}
 
+            {/* Completion confirmation card — customer decision gate */}
+            {isCompleted && !existingRating && (
+              <CompletionConfirmationCard
+                completedAt={dbBooking.completed_at || undefined}
+                serviceSummary={dbBooking.service_type || undefined}
+                finalAmount={dbBooking.final_price_lkr || undefined}
+                categoryCode={dbBooking.category_code}
+                onConfirm={() => setShowRatingModal(true)}
+                onReportIssue={() => setShowReportIssue(true)}
+              />
+            )}
+
             {/* Completion state — premium */}
             {isCompleted && (
               <motion.div
