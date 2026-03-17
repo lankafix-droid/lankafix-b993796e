@@ -318,6 +318,15 @@ export default function DispatchWarRoomPage() {
               />
             )}
 
+            {/* Customer communication state — what customer sees */}
+            {selectedBooking && (
+              <OperatorCommunicationStatePanel
+                stage={mapBookingStatusToStage(selectedBooking.status, selectedBooking.dispatch_status)}
+                stageEnteredAt={selectedBooking.created_at}
+                hasActiveDispute={selectedBooking.dispatch_status === "escalated"}
+              />
+            )}
+
             {/* Partner Shortlist — for selected booking */}
             {selectedBooking && ["dispatching", "escalated", "no_provider_found", "pending_acceptance"].includes(selectedBooking.dispatch_status || "") && (() => {
               const matching = partners
