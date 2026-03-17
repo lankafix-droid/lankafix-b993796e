@@ -294,6 +294,15 @@ const App = () => (
             <Route path="/ops/ai-control-center" element={<OpsRoute><AIControlCenterPage /></OpsRoute>} />
             <Route path="/ops/ai-audit-log" element={<OpsRoute><AIAuditLogPage /></OpsRoute>} />
             <Route path="/ops/ai-launch-readiness" element={<OpsRoute><AILaunchReadinessPage /></OpsRoute>} />
+            <Route path="/ops/launch-command-center" element={<OpsRoute><V2LaunchCommandCenterPage /></OpsRoute>} />
+            <Route path="/ops/category-launch-gating" element={<OpsRoute><CategoryLaunchGatingPage /></OpsRoute>} />
+            <Route path="/ops/zone-readiness" element={<OpsRoute><ZoneReadinessPage /></OpsRoute>} />
+            <Route path="/ops/partner-readiness-scorecard" element={<OpsRoute><PartnerReadinessScorecardPage /></OpsRoute>} />
+            <Route path="/ops/training-hub" element={<OpsRoute><OperatorTrainingHubPage /></OpsRoute>} />
+            <Route path="/ops/pilot-test-tracker" element={<OpsRoute><PilotTestTrackerPage /></OpsRoute>} />
+            <Route path="/ops/communication-readiness" element={<OpsRoute><CommunicationReadinessPage /></OpsRoute>} />
+            <Route path="/ops/customer-trust-audit" element={<OpsRoute><CustomerTrustAuditPage /></OpsRoute>} />
+            <Route path="/ops/launch-blockers" element={<OpsRoute><LaunchBlockersPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
