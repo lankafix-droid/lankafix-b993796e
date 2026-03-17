@@ -16,6 +16,10 @@ import {
   Eye, FlaskConical, Mic, MessageCircle, ArrowLeft, RefreshCw, Trash2,
 } from "lucide-react";
 import AIStatusStrip from "@/components/ai/AIStatusStrip";
+import AIFeedbackAnalytics from "@/components/ai/AIFeedbackAnalytics";
+import AILaunchReadinessCard from "@/components/ai/AILaunchReadinessCard";
+import AICacheDebugPanel from "@/components/ai/AICacheDebugPanel";
+import AIDegradationMonitor from "@/components/ai/AIDegradationMonitor";
 import { getAIFlags, type AIFeatureFlags } from "@/lib/aiFeatureFlags";
 import { getUsageSummary, clearUsageData } from "@/services/aiUsageMeter";
 import { toast } from "@/hooks/use-toast";
