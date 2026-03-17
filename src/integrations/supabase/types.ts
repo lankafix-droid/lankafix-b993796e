@@ -2434,6 +2434,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ai_preferences: Json | null
           avatar_url: string | null
           created_at: string
           default_address: Json | null
@@ -2444,6 +2445,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_preferences?: Json | null
           avatar_url?: string | null
           created_at?: string
           default_address?: Json | null
@@ -2454,6 +2456,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_preferences?: Json | null
           avatar_url?: string | null
           created_at?: string
           default_address?: Json | null
