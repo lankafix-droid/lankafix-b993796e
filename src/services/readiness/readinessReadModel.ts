@@ -412,7 +412,7 @@ export async function fetchTransactionProof(): Promise<TransactionProof> {
   const [bookings, completed, quotes, accepts, disputes, callbacks, payments] = await Promise.all([
     supabase.from("bookings").select("id", { count: "exact", head: true }),
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("status", "completed"),
-    supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["completed", "assigned", "service_in_progress"]),
+    supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["completed", "assigned", "quote_approved"]),
     supabase.from("dispatch_offers").select("id", { count: "exact", head: true }).eq("status", "accepted"),
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("under_mediation", true),
     supabase.from("operator_callback_tasks").select("id", { count: "exact", head: true }),
