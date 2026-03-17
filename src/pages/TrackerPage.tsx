@@ -53,6 +53,8 @@ import PostBookingStatusCard from "@/components/booking/PostBookingStatusCard";
 import CustomerTrustPanel from "@/components/trust/CustomerTrustPanel";
 import HumanSupportAvailableCard from "@/components/trust/HumanSupportAvailableCard";
 import BookingExceptionCard from "@/components/booking/BookingExceptionCard";
+import BookingProgressTimeline from "@/components/booking/BookingProgressTimeline";
+import QuoteTransparencyPanel from "@/components/trust/QuoteTransparencyPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import QuoteApprovalCard from "@/components/quotes/QuoteApprovalCard";
@@ -666,6 +668,9 @@ const TrackerPage = () => {
               </div>
             </motion.div>
 
+            {/* Booking progress timeline */}
+            <BookingProgressTimeline currentStage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} compact />
+
             {/* Lifecycle status card */}
             <PostBookingStatusCard stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} />
 
@@ -783,6 +788,11 @@ const TrackerPage = () => {
               bookingStatus={dbBooking.status}
               role="customer"
             />
+
+            {/* Quote transparency — shown near quote-related states */}
+            {["quote_submitted", "quote_approved", "quote_revised"].includes(dbBooking.status) && (
+              <QuoteTransparencyPanel />
+            )}
 
             {/* Trust & Support */}
             {isActive && (
