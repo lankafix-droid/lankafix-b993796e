@@ -17,6 +17,7 @@ import AIOperatorCopilot from "@/components/ai/AIOperatorCopilot";
 import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPanel";
 import PartnerShortlistReviewPanel, { type PartnerCandidate } from "@/components/ops/PartnerShortlistReviewPanel";
 import OperatorCommunicationStatePanel from "@/components/ops/OperatorCommunicationStatePanel";
+import OperatorReminderPanel from "@/components/ops/OperatorReminderPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface BookingRaw {
@@ -324,6 +325,14 @@ export default function DispatchWarRoomPage() {
                 stage={mapBookingStatusToStage(selectedBooking.status, selectedBooking.dispatch_status)}
                 stageEnteredAt={selectedBooking.created_at}
                 hasActiveDispute={selectedBooking.dispatch_status === "escalated"}
+              />
+            )}
+
+            {/* Reminder intelligence — advisory for operators */}
+            {selectedBooking && (
+              <OperatorReminderPanel
+                stage={mapBookingStatusToStage(selectedBooking.status, selectedBooking.dispatch_status)}
+                stageEnteredAt={selectedBooking.created_at}
               />
             )}
 

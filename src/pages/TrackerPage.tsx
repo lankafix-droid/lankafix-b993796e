@@ -60,6 +60,8 @@ import SLAExpectationCard from "@/components/booking/SLAExpectationCard";
 import BookingCheckpointCard from "@/components/booking/BookingCheckpointCard";
 import CustomerCommunicationTimeline from "@/components/booking/CustomerCommunicationTimeline";
 import type { CommunicationMilestone } from "@/components/booking/CustomerCommunicationTimeline";
+import ActiveReminderCard from "@/components/booking/ActiveReminderCard";
+import ReminderStatusStrip from "@/components/booking/ReminderStatusStrip";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
 import CompletionConfirmationCard from "@/components/booking/CompletionConfirmationCard";
 import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
@@ -692,7 +694,33 @@ const TrackerPage = () => {
               />
             )}
 
-            {/* Checkpoint card — waiting states */}
+            {/* Active reminder — context-aware nudge */}
+            {isActive && (() => {
+              const stage = mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status);
+              const stageAge = (Date.now() - new Date(dbBooking.updated_at).getTime()) / 60_000;
+              const REMINDER_MAP: Record<string, { title: string; message: string; actionLabel?: string; overdue: number }> = {
+                awaiting_quote_approval: { title: "Quote Awaiting Your Approval", message: "Your quote is ready for review. Take your time — nothing proceeds without your approval.", actionLabel: "Review Quote", overdue: 120 },
+                awaiting_completion_confirmation: { title: "Please Confirm Completion", message: "Your technician has finished the work. Please confirm if you're satisfied.", actionLabel: "Confirm Now", overdue: 240 },
+                awaiting_partner_selection: { title: "Finding Your Technician", message: "We're searching for the best verified technician in your area.", overdue: 45 },
+                awaiting_partner_response: { title: "Awaiting Technician Response", message: "A matched technician is reviewing your request. LankaFix is following up.", overdue: 15 },
+                escalated: { title: "Senior Operator Assigned", message: "A senior LankaFix team member is personally reviewing your case.", overdue: 120 },
+              };
+              const r = REMINDER_MAP[stage];
+              if (!r) return null;
+              return <ActiveReminderCard title={r.title} message={r.message} overdue={stageAge > r.overdue} actionLabel={r.actionLabel} followUpActive={stage === "escalated"} />;
+            })()}
+
+            {/* Reminder status strip — compact indicator */}
+            {isActive && (() => {
+              const stage = mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status);
+              const stageAge = (Date.now() - new Date(dbBooking.updated_at).getTime()) / 60_000;
+              if (stage === "awaiting_quote_approval" && stageAge > 30) return <ReminderStatusStrip title="Quote ready for your review" variant="warning" />;
+              if (stage === "awaiting_completion_confirmation") return <ReminderStatusStrip title="Completion confirmation pending" variant="default" />;
+              if (stage === "escalated") return <ReminderStatusStrip title="Senior operator handling your case" teamActive variant="success" />;
+              if (stage === "dispute_opened") return <ReminderStatusStrip title="Mediation team reviewing" teamActive variant="default" />;
+              return null;
+            })()}
+
             {isActive && (() => {
               const stage = mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status);
               const checkpoints: Record<string, { title: string; pending: string; actor: string; next?: string }> = {
