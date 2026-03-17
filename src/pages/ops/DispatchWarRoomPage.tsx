@@ -357,6 +357,8 @@ export default function DispatchWarRoomPage() {
                 />
               );
             })()}
+          </div>
+        </div>
 
         {/* Bottom row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
