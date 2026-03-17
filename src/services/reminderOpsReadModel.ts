@@ -58,3 +58,13 @@ export async function fetchReminderOpsSummary() {
     failed: failed.count || 0,
   };
 }
+
+export async function fetchOpenCallbackExecutionTasks() {
+  const { data } = await supabase
+    .from("operator_callback_tasks" as any)
+    .select("*")
+    .in("status", ["open", "in_progress"])
+    .order("created_at", { ascending: true })
+    .limit(50);
+  return data || [];
+}

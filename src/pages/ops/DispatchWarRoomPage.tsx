@@ -21,6 +21,10 @@ import OperatorReminderPanel from "@/components/ops/OperatorReminderPanel";
 import OperatorCommunicationLogPanel from "@/components/ops/OperatorCommunicationLogPanel";
 import CallbackTaskQueuePanel from "@/components/ops/CallbackTaskQueuePanel";
 import ReminderEngineRunCard from "@/components/ops/ReminderEngineRunCard";
+import CallbackExecutionQueue from "@/components/ops/CallbackExecutionQueue";
+import SLABreachBoard from "@/components/ops/SLABreachBoard";
+import ReminderOpsSummaryCards from "@/components/ops/ReminderOpsSummaryCards";
+import ReminderDeliveryHistoryPanel from "@/components/ops/ReminderDeliveryHistoryPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface BookingRaw {
@@ -263,6 +267,10 @@ export default function DispatchWarRoomPage() {
         {/* Section 12: Dispatch Failures */}
         <DispatchFailurePanel escalations={escalations} />
 
+        {/* Reminder Ops Summary + SLA Breaches */}
+        <ReminderOpsSummaryCards />
+        <SLABreachBoard />
+
         {/* Main content: Table + Right Panel */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           {/* Section 3: Dispatch Table */}
@@ -345,6 +353,14 @@ export default function DispatchWarRoomPage() {
             )}
 
             <CallbackTaskQueuePanel />
+
+            {/* Callback Execution Queue — full action center */}
+            <CallbackExecutionQueue />
+
+            {/* Delivery History — per-booking */}
+            {selectedBookingId && (
+              <ReminderDeliveryHistoryPanel bookingId={selectedBookingId} />
+            )}
 
             {/* Reminder Engine — manual processing control */}
             <ReminderEngineRunCard />
