@@ -50,7 +50,7 @@ export async function fetchOpenTasks(bookingId: string): Promise<OperatorCallbac
       .eq("booking_id", bookingId)
       .in("status", ["open", "in_progress"])
       .order("created_at", { ascending: false });
-    return (data || []) as OperatorCallbackTask[];
+    return (data as unknown as OperatorCallbackTask[]) || [];
   } catch {
     return [];
   }
