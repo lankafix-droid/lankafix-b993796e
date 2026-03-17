@@ -8,6 +8,7 @@ import { useAIAdvisory } from "@/hooks/useAIAdvisory";
 import { estimatePrice, formatPriceRange, type PriceEstimate } from "@/services/aiPriceEstimation";
 import { TrendingUp, Info } from "lucide-react";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
+import AIOperatorFeedback from "./AIOperatorFeedback";
 import AIConsentGate from "./AIConsentGate";
 import AIConfidenceBadge from "./AIConfidenceBadge";
 import AIEmptyState from "./AIEmptyState";
@@ -109,6 +110,8 @@ const AIEstimateAssist = ({ categoryCode, issueType, className = "" }: AIEstimat
           Low confidence — final price may vary significantly.
         </div>
       )}
+
+      <AIOperatorFeedback module="ai_estimate_assist" className="pt-1" />
 
       <AIAdvisoryFooter
         module="ai_estimate_assist"

@@ -8,6 +8,7 @@ import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Zap, Search, Loader2, Stethoscope } from "lucide-react";
 import AIAdvisoryFooter from "./AIAdvisoryFooter";
+import AIOperatorFeedback from "./AIOperatorFeedback";
 import AIConsentGate from "./AIConsentGate";
 import AIEmptyState from "./AIEmptyState";
 import { useAIAdvisory } from "@/hooks/useAIAdvisory";
@@ -201,6 +202,8 @@ const AIIssueTriage = ({ description, categoryCode, className = "" }: AIIssueTri
           Low confidence — please rely on technician inspection for final assessment.
         </div>
       )}
+
+      <AIOperatorFeedback module="ai_issue_triage" className="pt-1" />
 
       <AIAdvisoryFooter
         module="ai_issue_triage"

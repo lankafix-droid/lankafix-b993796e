@@ -113,6 +113,8 @@ const PrescriptiveReliabilityPage = lazy(() => import("./pages/ops/PrescriptiveR
 const ReliabilityScenarioSimulatorPage = lazy(() => import("./pages/ops/ReliabilityScenarioSimulatorPage"));
 const PrescriptiveInterventionWorkbenchPage = lazy(() => import("./pages/ops/PrescriptiveInterventionWorkbenchPage"));
 const AIModuleHealthPage = lazy(() => import("./pages/ops/AIModuleHealthPage"));
+const AIControlCenterPage = lazy(() => import("./pages/ops/AIControlCenterPage"));
+const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
@@ -278,6 +280,10 @@ const App = () => (
             <Route path="/ops/reliability-scenarios" element={<OpsRoute><ReliabilityScenarioSimulatorPage /></OpsRoute>} />
             <Route path="/ops/prescriptive-interventions" element={<OpsRoute><PrescriptiveInterventionWorkbenchPage /></OpsRoute>} />
             <Route path="/ops/ai-module-health" element={<OpsRoute><AIModuleHealthPage /></OpsRoute>} />
+            <Route path="/ops/ai-control-center" element={<OpsRoute><AIControlCenterPage /></OpsRoute>} />
+
+            {/* ─── Settings Pages ─── */}
+            <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
 
             {/* ─── Content Pages ─── */}
             <Route path="/about" element={<AboutPage />} />

@@ -11,7 +11,7 @@ import {
   User, MapPin, Clock, ShieldCheck, Phone, ChevronRight,
   Smartphone, Snowflake, Wrench, FileText, LogOut, Trash2,
   Lock, MessageCircle, Mail, Info, Heart, HelpCircle,
-  Star, Settings, Zap,
+  Star, Settings, Zap, Brain,
 } from "lucide-react";
 import { SUPPORT_EMAIL, SUPPORT_WHATSAPP, SUPPORT_PHONE, whatsappLink } from "@/config/contact";
 import { supabase } from "@/integrations/supabase/client";
@@ -218,6 +218,16 @@ const AccountPage = () => {
                 <MenuRow icon={Mail} label="Email Support" desc={SUPPORT_EMAIL} href={`mailto:${SUPPORT_EMAIL}`} />
                 <MenuRow icon={Phone} label="Call Support" desc={SUPPORT_PHONE} href={`tel:${SUPPORT_PHONE.replace(/\s/g, "")}`} />
                 <MenuRow icon={HelpCircle} label="FAQ" desc="Common questions answered" to="/faq" iconColor="text-muted-foreground" />
+              </div>
+            </div>
+          </StaggerItem>
+
+          {/* ─── AI Preferences ─── */}
+          <StaggerItem>
+            <div className="space-y-0.5">
+              <SectionTitle>Smart Features</SectionTitle>
+              <div className="bg-card rounded-2xl border border-border/60 divide-y divide-border/40 overflow-hidden shadow-[var(--shadow-card)]">
+                <MenuRow icon={Brain} label="AI Preferences" desc="Manage optional smart suggestions" to="/settings/ai-preferences" />
               </div>
             </div>
           </StaggerItem>
