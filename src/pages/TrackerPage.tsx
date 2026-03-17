@@ -894,7 +894,27 @@ const TrackerPage = () => {
               </motion.div>
             )}
 
-            {/* Cancelled booking state */}
+            {/* Post-completion safe path: issue / support */}
+            {isCompleted && (
+              <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)] space-y-3">
+                <p className="text-xs font-semibold text-foreground">How was the service?</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1 h-10 rounded-xl text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/5" onClick={() => setShowReportIssue(true)}>
+                    <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+                    Something's Wrong
+                  </Button>
+                  <Button variant="outline" className="flex-1 h-10 rounded-xl text-xs" asChild>
+                    <a href={whatsappLink(SUPPORT_WHATSAPP, `Booking ${shortId} - post-service support`)} target="_blank" rel="noopener noreferrer">
+                      <Headphones className="w-3.5 h-3.5 mr-1.5" />
+                      Need Help
+                    </a>
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  If something is wrong, let LankaFix know. Your warranty and service rights are protected through proper reporting.
+                </p>
+              </div>
+            )}
             {isCancelled && (
               <motion.div
                 className="bg-card rounded-2xl border border-destructive/20 overflow-hidden shadow-[var(--shadow-card)]"
