@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Shield } from "lucide-react";
 import { createSupportCase, CUSTOMER_ISSUE_TYPES, PARTNER_ISSUE_TYPES } from "@/services/supportService";
 
 interface ReportIssueModalProps {
@@ -55,8 +55,16 @@ export default function ReportIssueModal({ open, onClose, bookingId, userId, rol
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
+          {/* Reassurance header */}
+          <div className="flex items-start gap-2 bg-primary/5 border border-primary/10 rounded-xl p-3">
+            <Shield className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-[11px] text-foreground leading-relaxed">
+              Our team will review this fairly before any action is taken. You remain in control throughout the process.
+            </p>
+          </div>
+
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Issue Type</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">What went wrong?</label>
             <Select value={issueType} onValueChange={setIssueType}>
               <SelectTrigger className="h-10">
                 <SelectValue placeholder="Select issue type..." />
@@ -69,25 +77,35 @@ export default function ReportIssueModal({ open, onClose, bookingId, userId, rol
             </Select>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Description</label>
+            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tell us more</label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe the issue in detail..."
+              placeholder="Describe the issue — we'll review it carefully..."
               rows={4}
               maxLength={1000}
               className="resize-none"
             />
             <p className="text-[10px] text-muted-foreground mt-1 text-right">{description.length}/1000</p>
           </div>
+
+          {/* Photo hint */}
+          <div className="bg-muted/40 rounded-lg p-2.5">
+            <p className="text-[10px] text-muted-foreground">
+              📷 If you have photos of the issue, you can share them with our support team via WhatsApp after submitting.
+            </p>
+          </div>
+
           <div className="flex gap-3 pt-1">
             <Button variant="outline" className="flex-1 rounded-xl" onClick={onClose} disabled={submitting}>Cancel</Button>
             <Button className="flex-1 rounded-xl" onClick={handleSubmit} disabled={submitting || !issueType}>
               {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
-              Submit Report
+              Request LankaFix Review
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground text-center">Our team will review your case and respond as soon as possible.</p>
+          <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+            A human operator will review your case personally. No automatic penalties or actions are taken.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
