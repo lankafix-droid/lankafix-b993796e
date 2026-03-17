@@ -13,6 +13,7 @@ import {
   Zap, AlertTriangle, CheckCircle2, Users, ArrowRight,
   RefreshCw, MapPin, Radio, Flag, Clock, UserCheck, FileText, Sparkles,
 } from "lucide-react";
+import OperatorReviewSummaryPanel from "@/components/ops/OperatorReviewSummaryPanel";
 
 interface EscalatedBooking {
   id: string;
