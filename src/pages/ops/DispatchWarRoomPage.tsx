@@ -20,6 +20,7 @@ import OperatorCommunicationStatePanel from "@/components/ops/OperatorCommunicat
 import OperatorReminderPanel from "@/components/ops/OperatorReminderPanel";
 import OperatorCommunicationLogPanel from "@/components/ops/OperatorCommunicationLogPanel";
 import CallbackTaskQueuePanel from "@/components/ops/CallbackTaskQueuePanel";
+import ReminderEngineRunCard from "@/components/ops/ReminderEngineRunCard";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 
 interface BookingRaw {
