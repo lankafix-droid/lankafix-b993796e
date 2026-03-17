@@ -37,6 +37,11 @@ interface PartnerRaw {
   current_job_count: number | null;
   max_concurrent_jobs: number | null;
   active_job_id: string | null;
+  categories_supported?: string[];
+  service_zones?: string[];
+  rating_average?: number | null;
+  completed_jobs_count?: number | null;
+  business_name?: string | null;
 }
 
 interface EscalationRaw {
