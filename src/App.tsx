@@ -125,6 +125,16 @@ const PilotTestTrackerPage = lazy(() => import("./pages/ops/PilotTestTrackerPage
 const CommunicationReadinessPage = lazy(() => import("./pages/ops/CommunicationReadinessPage"));
 const CustomerTrustAuditPage = lazy(() => import("./pages/ops/CustomerTrustAuditPage"));
 const LaunchBlockersPage = lazy(() => import("./pages/ops/LaunchBlockersPage"));
+const LaunchCommandCenterV2Page = lazy(() => import("./pages/ops/LaunchCommandCenterV2Page"));
+const ReadinessCategoriesPage = lazy(() => import("./pages/ops/ReadinessCategoriesPage"));
+const ReadinessZonesPage = lazy(() => import("./pages/ops/ReadinessZonesPage"));
+const ReadinessPartnersPage = lazy(() => import("./pages/ops/ReadinessPartnersPage"));
+const ReadinessCommunicationsPage = lazy(() => import("./pages/ops/ReadinessCommunicationsPage"));
+const ReadinessPaymentsPage = lazy(() => import("./pages/ops/ReadinessPaymentsPage"));
+const ReadinessTrustPage = lazy(() => import("./pages/ops/ReadinessTrustPage"));
+const TrainingHubV2Page = lazy(() => import("./pages/ops/TrainingHubV2Page"));
+const PilotValidationPage = lazy(() => import("./pages/ops/PilotValidationPage"));
+const LaunchBlockersV2Page = lazy(() => import("./pages/ops/LaunchBlockersV2Page"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
@@ -303,6 +313,16 @@ const App = () => (
             <Route path="/ops/communication-readiness" element={<OpsRoute><CommunicationReadinessPage /></OpsRoute>} />
             <Route path="/ops/customer-trust-audit" element={<OpsRoute><CustomerTrustAuditPage /></OpsRoute>} />
             <Route path="/ops/launch-blockers" element={<OpsRoute><LaunchBlockersPage /></OpsRoute>} />
+            <Route path="/ops/launch-command-center-v2" element={<OpsRoute><LaunchCommandCenterV2Page /></OpsRoute>} />
+            <Route path="/ops/readiness-categories" element={<OpsRoute><ReadinessCategoriesPage /></OpsRoute>} />
+            <Route path="/ops/readiness-zones" element={<OpsRoute><ReadinessZonesPage /></OpsRoute>} />
+            <Route path="/ops/readiness-partners" element={<OpsRoute><ReadinessPartnersPage /></OpsRoute>} />
+            <Route path="/ops/readiness-communications" element={<OpsRoute><ReadinessCommunicationsPage /></OpsRoute>} />
+            <Route path="/ops/readiness-payments" element={<OpsRoute><ReadinessPaymentsPage /></OpsRoute>} />
+            <Route path="/ops/readiness-trust" element={<OpsRoute><ReadinessTrustPage /></OpsRoute>} />
+            <Route path="/ops/training-hub-v2" element={<OpsRoute><TrainingHubV2Page /></OpsRoute>} />
+            <Route path="/ops/pilot-validation" element={<OpsRoute><PilotValidationPage /></OpsRoute>} />
+            <Route path="/ops/launch-blockers-v2" element={<OpsRoute><LaunchBlockersV2Page /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
