@@ -57,6 +57,8 @@ import BookingProgressTimeline from "@/components/booking/BookingProgressTimelin
 import QuoteTransparencyPanel from "@/components/trust/QuoteTransparencyPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 import InlineQuoteCard from "@/components/tracker/InlineQuoteCard";
+import CompletionConfirmationCard from "@/components/booking/CompletionConfirmationCard";
+import DecisionSafetyStrip from "@/components/trust/DecisionSafetyStrip";
 import QuoteApprovalCard from "@/components/quotes/QuoteApprovalCard";
 import { createSimulation, advanceSimulation } from "@/lib/trackingEngine";
 import type { TrackingSimulation } from "@/lib/trackingEngine";
