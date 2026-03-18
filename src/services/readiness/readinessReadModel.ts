@@ -450,6 +450,15 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
   const launchReadyCats = cats.filter(c => c.status === "LAUNCH_READY").length;
   const zeroSupplyCats = cats.filter(c => c.partnerCount === 0).length;
 
+  // Fetch real (non-seeded) partner counts for verdict
+  const { count: realPartnerCount } = await supabase
+    .from("partners")
+    .select("id", { count: "exact", head: true })
+    .eq("verification_status", "verified")
+    .eq("is_seeded", false);
+
+  const readyZones = (await fetchZoneReadiness()).filter(z => z.status !== "DISABLED").length;
+
   const verdict = computeLaunchVerdict({
     verifiedLiveCompletedBookings: proof.completedBookings,
     launchReadyCategories: launchReadyCats,
@@ -459,8 +468,8 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
     operatorTrainingCompletion: 0,
     categoriesWithZeroSupply: zeroSupplyCats,
     unresolvedCriticalBlockers: blockers.filter(b => b.severity === "CRITICAL" && b.status !== "RESOLVED").length,
-    verifiedPartnerCount: 0,
-    readyZones: 0,
+    verifiedPartnerCount: realPartnerCount ?? 0,
+    readyZones,
     livePayments: proof.payments,
     liveDisputes: proof.disputes,
   });

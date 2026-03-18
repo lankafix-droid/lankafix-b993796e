@@ -241,7 +241,7 @@ export default function AdminSetupPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                <CheckCircle2 className="w-4 h-4 text-success" />
                 Pilot Ready Checklist
               </CardTitle>
             </CardHeader>
