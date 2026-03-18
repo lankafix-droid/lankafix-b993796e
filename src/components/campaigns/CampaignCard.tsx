@@ -192,7 +192,7 @@ const CampaignCard = memo(({ campaign, variant = 'hero', dismissible, onDismiss,
       <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-primary-foreground/5" />
       
       {/* Floating decorative orbs (subtle depth effect) */}
-      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary-foreground/8 blur-2xl" />
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary-foreground/[0.08] blur-2xl" />
       <div className="absolute -left-4 bottom-8 h-16 w-16 rounded-full bg-primary-foreground/5 blur-xl" />
 
       {/* Festive indicator */}
