@@ -38,12 +38,12 @@ export async function loadKillSwitchKeys(): Promise<void> {
   try {
     const { data } = await supabase
       .from('platform_settings')
-      .select('setting_value')
-      .eq('setting_key', 'campaign_kill_switches')
+      .select('value')
+      .eq('key', 'campaign_kill_switches')
       .maybeSingle();
 
-    if (data?.setting_value && typeof data.setting_value === 'object') {
-      const val = data.setting_value as { keys?: string[] };
+    if (data?.value && typeof data.value === 'object') {
+      const val = data.value as { keys?: string[] };
       if (Array.isArray(val.keys)) {
         setActivatedKillSwitchKeys(val.keys);
         return;
