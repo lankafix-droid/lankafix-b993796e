@@ -1,10 +1,13 @@
 import { memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, ArrowRight, Shield, Zap, X } from 'lucide-react';
+import { BadgeCheck, ArrowRight, Shield, Zap, X, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { Campaign, TrustBadge } from '@/types/campaign';
 import { TRUST_BADGE_LABELS } from '@/config/seededCampaigns';
 import { trackCampaignEvent, dismissCampaign } from '@/lib/campaignAnalytics';
+import { recordInteraction } from '@/services/userBehaviorEngine';
+import type { VisualContext } from '@/services/sriLankanThemeEngine';
 
 // ─── Gradient map by campaign type ───────────────────────────────
 const TYPE_GRADIENTS: Record<string, string> = {
@@ -44,17 +47,30 @@ interface CampaignCardProps {
   dismissible?: boolean;
   onDismiss?: (id: string) => void;
   className?: string;
+  /** Visual context for cultural/time theming */
+  visualContext?: VisualContext;
 }
 
-const CampaignCard = memo(({ campaign, variant = 'hero', dismissible, onDismiss, className }: CampaignCardProps) => {
+const CampaignCard = memo(({ campaign, variant = 'hero', dismissible, onDismiss, className, visualContext }: CampaignCardProps) => {
   const navigate = useNavigate();
-  const gradient = TYPE_GRADIENTS[campaign.campaign_type] || TYPE_GRADIENTS.hero_promotion;
+  
+  // Use cultural moment gradient if festive, otherwise campaign type gradient
+  const gradient = visualContext?.isFestive && variant === 'hero'
+    ? visualContext.heroGradient
+    : TYPE_GRADIENTS[campaign.campaign_type] || TYPE_GRADIENTS.hero_promotion;
   const Icon = TYPE_ICONS[campaign.campaign_type];
 
   const handleClick = useCallback(() => {
     trackCampaignEvent(campaign.id, 'card_click', {
       campaign_type: campaign.campaign_type,
       cta_deep_link: campaign.cta_deep_link,
+    });
+    // AI: Record interaction for personalization
+    recordInteraction({
+      categoryId: campaign.category_ids[0],
+      campaignType: campaign.campaign_type,
+      interactionType: 'click',
+      timestamp: Date.now(),
     });
     if (campaign.cta_deep_link) navigate(campaign.cta_deep_link);
   }, [campaign, navigate]);
@@ -65,22 +81,36 @@ const CampaignCard = memo(({ campaign, variant = 'hero', dismissible, onDismiss,
       campaign_type: campaign.campaign_type,
       cta_label: campaign.cta_label,
     });
+    recordInteraction({
+      categoryId: campaign.category_ids[0],
+      campaignType: campaign.campaign_type,
+      interactionType: 'cta_click',
+      timestamp: Date.now(),
+    });
     if (campaign.cta_deep_link) navigate(campaign.cta_deep_link);
   }, [campaign, navigate]);
 
   const handleDismiss = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     dismissCampaign(campaign.id);
+    recordInteraction({
+      categoryId: campaign.category_ids[0],
+      campaignType: campaign.campaign_type,
+      interactionType: 'dismiss',
+      timestamp: Date.now(),
+    });
     onDismiss?.(campaign.id);
-  }, [campaign.id, onDismiss]);
+  }, [campaign, onDismiss]);
 
   // ─── Mini Variant ──────────────────────────────────────────────
   if (variant === 'mini') {
     return (
-      <button
+      <motion.button
+        whileTap={{ scale: 0.98 }}
         onClick={handleClick}
         className={cn(
-          'flex items-center gap-3 rounded-xl bg-gradient-to-r p-3 text-left text-primary-foreground transition-transform active:scale-[0.98]',
+          'flex items-center gap-3 rounded-xl bg-gradient-to-r p-3 text-left text-primary-foreground',
+          'shadow-md backdrop-blur-sm',
           gradient, className,
         )}
       >
@@ -92,75 +122,101 @@ const CampaignCard = memo(({ campaign, variant = 'hero', dismissible, onDismiss,
           )}
         </div>
         <ArrowRight className="h-4 w-4 shrink-0 opacity-60" />
-      </button>
+      </motion.button>
     );
   }
 
-  // ─── Compact Variant ───────────────────────────────────────────
+  // ─── Compact Variant (Glassmorphism) ───────────────────────────
   if (variant === 'compact') {
     return (
-      <button
+      <motion.button
+        whileHover={{ y: -2 }}
+        whileTap={{ scale: 0.98 }}
         onClick={handleClick}
         className={cn(
-          'relative flex flex-col gap-2 rounded-2xl bg-gradient-to-br p-4 text-left text-primary-foreground shadow-md transition-all active:scale-[0.98]',
+          'relative flex flex-col gap-2 rounded-2xl bg-gradient-to-br p-4 text-left text-primary-foreground',
+          'shadow-lg backdrop-blur-sm border border-primary-foreground/10',
+          'overflow-hidden',
           gradient, 'min-w-[200px] max-w-[220px] shrink-0', className,
         )}
       >
+        {/* Glassmorphism overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-foreground/10 to-transparent pointer-events-none" />
+        
         {dismissible && (
-          <button onClick={handleDismiss} className="absolute right-2 top-2 rounded-full bg-background/20 p-1 backdrop-blur-sm" aria-label="Dismiss">
+          <button onClick={handleDismiss} className="absolute right-2 top-2 z-10 rounded-full bg-background/20 p-1 backdrop-blur-sm" aria-label="Dismiss">
             <X className="h-3 w-3" />
           </button>
         )}
         {campaign.urgency_tag && (
-          <span className="self-start rounded-full bg-background/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
+          <span className="relative z-10 self-start rounded-full bg-background/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md">
             {campaign.urgency_tag}
           </span>
         )}
-        <p className="text-sm font-bold leading-tight">{campaign.title}</p>
+        <p className="relative z-10 text-sm font-bold leading-tight">{campaign.title}</p>
         {campaign.subtitle && (
-          <p className="text-xs leading-snug opacity-85">{campaign.subtitle}</p>
+          <p className="relative z-10 text-xs leading-snug opacity-85">{campaign.subtitle}</p>
         )}
         {campaign.trust_badges.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1">
+          <div className="relative z-10 flex flex-wrap gap-1 pt-1">
             {campaign.trust_badges.slice(0, 2).map(b => (
               <TrustBadgePill key={b} badge={b} />
             ))}
           </div>
         )}
         {campaign.cta_label && (
-          <span className="mt-auto inline-flex items-center gap-1 self-start rounded-full bg-background/25 px-3 py-1 text-xs font-semibold backdrop-blur-sm">
+          <span className="relative z-10 mt-auto inline-flex items-center gap-1 self-start rounded-full bg-background/25 px-3 py-1 text-xs font-semibold backdrop-blur-md">
             {campaign.cta_label}
             <ArrowRight className="h-3 w-3" />
           </span>
         )}
-      </button>
+      </motion.button>
     );
   }
 
-  // ─── Hero Variant (default) ────────────────────────────────────
+  // ─── Hero Variant (Premium Glassmorphism + Animated) ────────────
   return (
-    <button
+    <motion.button
+      whileTap={{ scale: 0.99 }}
       onClick={handleClick}
       className={cn(
-        'relative flex w-full flex-col justify-end overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-left text-primary-foreground shadow-lg transition-all active:scale-[0.99]',
-        gradient, 'min-h-[168px]', className,
+        'relative flex w-full flex-col justify-end overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-left text-primary-foreground',
+        'shadow-xl border border-primary-foreground/10',
+        gradient, 'min-h-[180px]', className,
       )}
     >
-      {/* Subtle overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+      {/* Animated gradient shimmer overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-foreground/5 to-transparent animate-shimmer bg-[length:200%_100%]" />
+      
+      {/* Depth glass layers */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-primary-foreground/5" />
+      
+      {/* Floating decorative orbs (subtle depth effect) */}
+      <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-primary-foreground/8 blur-2xl" />
+      <div className="absolute -left-4 bottom-8 h-16 w-16 rounded-full bg-primary-foreground/5 blur-xl" />
+
+      {/* Festive indicator */}
+      {visualContext?.isFestive && (
+        <div className="absolute left-4 top-4 z-10 flex items-center gap-1">
+          <Sparkles className="h-3.5 w-3.5 text-primary-foreground/70" />
+          <span className="text-[10px] font-medium text-primary-foreground/70">
+            {visualContext.culturalMoment?.icon} {visualContext.culturalMoment?.name}
+          </span>
+        </div>
+      )}
 
       {/* Urgency tag */}
       {campaign.urgency_tag && (
-        <span className="absolute right-4 top-4 z-10 rounded-full bg-background/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
+        <span className="absolute right-4 top-4 z-10 rounded-full bg-background/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border border-primary-foreground/10">
           {campaign.urgency_tag}
         </span>
       )}
 
       <div className="relative z-10 flex flex-col gap-2">
         {Icon && <Icon className="h-6 w-6 opacity-80" />}
-        <h3 className="font-heading text-lg font-bold leading-tight">{campaign.title}</h3>
+        <h3 className="font-heading text-lg font-bold leading-tight drop-shadow-sm">{campaign.title}</h3>
         {campaign.subtitle && (
-          <p className="text-sm leading-snug opacity-90">{campaign.subtitle}</p>
+          <p className="text-sm leading-snug opacity-90 drop-shadow-sm">{campaign.subtitle}</p>
         )}
         {campaign.trust_badges.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
@@ -170,16 +226,18 @@ const CampaignCard = memo(({ campaign, variant = 'hero', dismissible, onDismiss,
           </div>
         )}
         {campaign.cta_label && (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={handleCTA}
-            className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-background/25 px-4 py-2 text-sm font-semibold backdrop-blur-sm transition-colors hover:bg-background/35"
+            className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-background/25 px-4 py-2 text-sm font-semibold backdrop-blur-md border border-primary-foreground/10 transition-colors hover:bg-background/35"
           >
             {campaign.cta_label}
             <ArrowRight className="h-4 w-4" />
-          </button>
+          </motion.button>
         )}
       </div>
-    </button>
+    </motion.button>
   );
 });
 

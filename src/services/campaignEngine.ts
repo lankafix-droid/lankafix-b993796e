@@ -21,6 +21,7 @@ import {
   evaluateSuppressionRules,
 } from '@/services/campaignRuleEngine';
 import { computeTrustScore } from '@/services/campaignTrustScoring';
+import { buildPreferenceProfile, computePersonalizationBoost } from '@/services/userBehaviorEngine';
 
 // ─── Activated Kill Switch Keys ─────────────────────────────────
 /**
@@ -340,18 +341,24 @@ function computeNearbyRelevance(campaign: Campaign, supply: SupplyContext, ctx: 
   return score;
 }
 
-// ─── Full Scoring ────────────────────────────────────────────────
+// ─── Full Scoring (with AI Personalization) ──────────────────────
 function scoreCampaign(
   campaign: Campaign,
   ctx: UserCampaignContext,
   supply: SupplyContext,
   lifecycleActive: boolean,
+  userProfile?: ReturnType<typeof buildPreferenceProfile>,
 ): CampaignScore {
   const { penalty: suppressionPenalty } = evaluateSuppressionRules(
     campaign, ctx, supply, lifecycleActive,
   );
 
   const trustScore = computeTrustScore(campaign, supply);
+
+  // AI Personalization: boost campaigns matching user behavior patterns
+  const personalizationBoost = userProfile
+    ? computePersonalizationBoost(campaign.category_ids, campaign.campaign_type, userProfile)
+    : 0;
 
   const breakdown = {
     basePriority: campaign.priority,
@@ -365,6 +372,7 @@ function scoreCampaign(
     fatiguePenalty: 0,
     suppressionPenalty: -suppressionPenalty,
     nearbyRelevance: computeNearbyRelevance(campaign, supply, ctx),
+    personalizationBoost,
   };
 
   if (ctx.lastViewedCategory && campaign.category_ids.includes(ctx.lastViewedCategory)) {
@@ -499,6 +507,9 @@ export function rankCampaigns(
   const lifecycleActive = hasActiveLifecycleCards(userCtx);
   const userIdentifier = userCtx.userId;
 
+  // AI Personalization: build user preference profile from behavior history
+  const userProfile = buildPreferenceProfile();
+
   // V3: Context campaigns go through full governance
   const contextInjected = getGovernedContextCampaigns(
     userCtx, supplyCtx, lifecycleActive, userIdentifier,
@@ -509,9 +520,9 @@ export function rankCampaigns(
     passesGovernance(c, userCtx, supplyCtx, lifecycleActive, userIdentifier)
   );
 
-  // ── Phase 2: Score and Sort ──────────────────────────────────
+  // ── Phase 2: Score and Sort (with AI personalization) ────────
   const scored = eligible
-    .map(c => scoreCampaign(c, userCtx, supplyCtx, lifecycleActive))
+    .map(c => scoreCampaign(c, userCtx, supplyCtx, lifecycleActive, userProfile))
     .sort((a, b) => b.totalScore - a.totalScore);
 
   // ── Phase 3: Allocate into slot buckets ──────────────────────
