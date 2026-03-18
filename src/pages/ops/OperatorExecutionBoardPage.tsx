@@ -99,7 +99,7 @@ async function fetchExecutionItems(): Promise<ActionItem[]> {
     .from("bookings")
     .select("id, category_code")
     .eq("status", "completed")
-    .in("payment_status", ["pending", "unpaid"])
+    .eq("payment_status", "pending")
     .limit(20);
 
   (unpaid || []).forEach((b: any) => {
