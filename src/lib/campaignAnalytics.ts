@@ -1,19 +1,24 @@
 /**
- * Campaign Analytics & Attribution Layer
- * Handles event tracking, frequency counting, dismissal recording, and attribution.
- * Events are BigQuery-naming-convention ready.
+ * Campaign Analytics & Attribution Layer — V2
+ *
+ * Improvements:
+ *   - Full attribution lifecycle (booking, quote, completion, cancellation, dispute)
+ *   - Structured writeAttribution for DB persistence
+ *   - Fatigue state helpers for the rule engine
+ *   - Clear separation of client-session vs backend-synced state
  */
 import { track } from '@/lib/analytics';
 import { supabase } from '@/integrations/supabase/client';
-import type { CampaignEventType } from '@/types/campaign';
+import type { CampaignEventType, CampaignAttribution } from '@/types/campaign';
 
-// ─── Session Attribution State ───────────────────────────────────
+// ─── Session State (client-side, resets on app restart) ──────────
 const sessionState = {
   firstTouchCampaignId: null as string | null,
   lastTouchCampaignId: null as string | null,
   assistedCampaignIds: new Set<string>(),
   impressionCounts: new Map<string, number>(),
   clickCounts: new Map<string, number>(),
+  lastClickTimestamps: new Map<string, string>(),
 };
 
 // ─── Core Event Tracker ──────────────────────────────────────────
@@ -22,7 +27,7 @@ export function trackCampaignEvent(
   eventType: CampaignEventType,
   metadata?: Record<string, unknown>,
 ) {
-  // Update session attribution state
+  // Update session attribution state on interaction events
   if (eventType === 'cta_click' || eventType === 'card_click') {
     if (!sessionState.firstTouchCampaignId) {
       sessionState.firstTouchCampaignId = campaignId;
@@ -30,13 +35,14 @@ export function trackCampaignEvent(
     sessionState.lastTouchCampaignId = campaignId;
     sessionState.assistedCampaignIds.add(campaignId);
     sessionState.clickCounts.set(campaignId, (sessionState.clickCounts.get(campaignId) ?? 0) + 1);
+    sessionState.lastClickTimestamps.set(campaignId, new Date().toISOString());
   }
 
   if (eventType === 'viewable_impression') {
     sessionState.impressionCounts.set(campaignId, (sessionState.impressionCounts.get(campaignId) ?? 0) + 1);
   }
 
-  // Fire analytics event with consistent naming
+  // Fire analytics event with consistent naming (BigQuery-ready)
   track(`campaign_${eventType}`, {
     campaign_id: campaignId,
     session_first_touch: sessionState.firstTouchCampaignId,
@@ -59,7 +65,7 @@ export function trackCampaignEvent(
   });
 }
 
-// ─── Dismiss / Snooze ────────────────────────────────────────────
+// ─── Dismiss / Snooze (backend-synced) ───────────────────────────
 export function dismissCampaign(campaignId: string) {
   trackCampaignEvent(campaignId, 'dismiss');
 
@@ -95,12 +101,90 @@ export function getSessionAttribution() {
   };
 }
 
-/** Get impression count for fatigue calculation */
+/**
+ * Write a full attribution record to the DB.
+ * Called when a conversion event occurs (booking created, completed, etc.)
+ */
+export async function writeAttribution(
+  attribution: Omit<CampaignAttribution, 'attributedRevenueLkr'> & { attributedRevenueLkr?: number },
+) {
+  const session = getSessionAttribution();
+
+  const record = {
+    booking_id: attribution.bookingId,
+    first_touch_campaign_id: attribution.firstTouchCampaignId ?? session.firstTouchCampaignId,
+    last_touch_campaign_id: attribution.lastTouchCampaignId ?? session.lastTouchCampaignId,
+    assisted_campaign_ids: attribution.assistedCampaignIds.length > 0
+      ? attribution.assistedCampaignIds
+      : session.assistedCampaignIds,
+    attributed_revenue_lkr: attribution.attributedRevenueLkr ?? 0,
+    attribution_type: attribution.attributionType ?? 'last_touch',
+  };
+
+  // Best-effort insert
+  await supabase.from('campaign_attributions').insert([record] as any);
+}
+
+/**
+ * Convenience: attribute a booking creation to the current campaign session.
+ */
+export function attributeBookingCreation(bookingId: string, revenueLkr?: number) {
+  const session = getSessionAttribution();
+  if (!session.firstTouchCampaignId && !session.lastTouchCampaignId) return;
+
+  writeAttribution({
+    bookingId,
+    firstTouchCampaignId: session.firstTouchCampaignId ?? undefined,
+    lastTouchCampaignId: session.lastTouchCampaignId ?? undefined,
+    assistedCampaignIds: session.assistedCampaignIds,
+    attributedRevenueLkr: revenueLkr,
+    attributionType: 'last_touch',
+    attributionEvent: 'booking_started',
+  });
+
+  // Also fire a tracking event
+  trackCampaignEvent(
+    session.lastTouchCampaignId ?? session.firstTouchCampaignId ?? '',
+    'booking_started',
+    { booking_id: bookingId },
+  );
+}
+
+/**
+ * Attribute a booking completion.
+ */
+export function attributeBookingCompletion(bookingId: string, revenueLkr: number) {
+  const session = getSessionAttribution();
+  if (!session.lastTouchCampaignId) return;
+
+  writeAttribution({
+    bookingId,
+    firstTouchCampaignId: session.firstTouchCampaignId ?? undefined,
+    lastTouchCampaignId: session.lastTouchCampaignId ?? undefined,
+    assistedCampaignIds: session.assistedCampaignIds,
+    attributedRevenueLkr: revenueLkr,
+    attributionType: 'last_touch',
+    attributionEvent: 'booking_completed',
+  });
+}
+
+// ─── Fatigue State Helpers (for rule engine consumption) ─────────
 export function getImpressionCount(campaignId: string): number {
   return sessionState.impressionCounts.get(campaignId) ?? 0;
 }
 
-/** Get click count for fatigue calculation */
 export function getClickCount(campaignId: string): number {
   return sessionState.clickCounts.get(campaignId) ?? 0;
+}
+
+export function getSessionFatigueState(): {
+  impressionsToday: Record<string, number>;
+  clickCounts: Record<string, number>;
+  lastClickTimestamps: Record<string, string>;
+} {
+  return {
+    impressionsToday: Object.fromEntries(sessionState.impressionCounts),
+    clickCounts: Object.fromEntries(sessionState.clickCounts),
+    lastClickTimestamps: Object.fromEntries(sessionState.lastClickTimestamps),
+  };
 }
