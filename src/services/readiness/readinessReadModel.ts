@@ -84,10 +84,11 @@ export interface ZoneReadiness {
 
 export async function fetchZoneReadiness(): Promise<ZoneReadiness[]> {
   const [partnersRes, bookingsRes] = await Promise.all([
-    supabase.from("partners").select("id, service_zones, categories_supported, availability_status, verification_status"),
+    supabase.from("partners").select("id, service_zones, categories_supported, availability_status, verification_status, is_seeded"),
     supabase.from("bookings").select("id, zone_code, status").limit(500),
   ]);
-  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified");
+  // Exclude seeded partners
+  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified" && !p.is_seeded);
   const bookings = bookingsRes.data || [];
 
   return COLOMBO_ZONES_DATA.map(zone => {
