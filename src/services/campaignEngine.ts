@@ -1,11 +1,13 @@
 /**
- * LankaFix Campaign Decision Engine — Production V2.1 (Final Hardening)
+ * LankaFix Campaign Decision Engine — Production V3 (Ultra-Hardened)
  *
- * V2.1 changes:
- *   1. User-hash rollout sampling (userId + campaignId)
- *   2. Kill switch reads from activated keys set, not mere existence
- *   3. Category-specific nearby travel tolerance
- *   4. Strict cross-bucket deduplication (set-based, single pass)
+ * V3 changes over V2.1:
+ *   1. Context-injected campaigns pass through full governance pipeline
+ *      (suppression, fatigue, publishing safety, deduplication)
+ *   2. Fallback fill participates in the global dedup set
+ *   3. Kill switch activation source wired to campaignKillSwitch service
+ *   4. Rollout sampling documented for multi-session / anon behavior
+ *   5. All output paths guaranteed deduplicated — no campaign in >1 bucket
  */
 import type {
   Campaign, UserCampaignContext, SupplyContext,
@@ -20,18 +22,24 @@ import {
 } from '@/services/campaignRuleEngine';
 import { computeTrustScore } from '@/services/campaignTrustScoring';
 
-// ─── Activated kill switch keys (populated from remote config / platform_settings) ──
+// ─── Activated Kill Switch Keys ─────────────────────────────────
+/**
+ * Populated by campaignKillSwitch.ts on app init.
+ * Source of truth: platform_settings table → 'campaign_kill_switches' row.
+ * If empty, all campaigns with kill_switch_key references still run.
+ * See campaignKillSwitch.ts for full integration docs.
+ */
 let activatedKillSwitchKeys = new Set<string>();
 
-/**
- * Call this on app init to load activated kill switches from remote config,
- * platform_settings, or feature flag service.
- */
 export function setActivatedKillSwitchKeys(keys: string[]) {
   activatedKillSwitchKeys = new Set(keys);
 }
 
 // ─── Deterministic Hash (FNV-1a 32-bit) ─────────────────────────
+/**
+ * Used for rollout sampling. FNV-1a gives good distribution for short strings.
+ * The same input always produces the same output → deterministic bucketing.
+ */
 function fnv1aHash(str: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
@@ -41,7 +49,18 @@ function fnv1aHash(str: string): number {
   return hash;
 }
 
-// ─── Anonymous Session ID (fallback for unauthenticated users) ──
+// ─── Anonymous Session ID ───────────────────────────────────────
+/**
+ * Persistent anonymous identifier for rollout sampling when user is not logged in.
+ *
+ * ROLLOUT BEHAVIOR BY USER STATE:
+ *   - Logged in: userId + campaignId → stable across devices & sessions
+ *   - Logged out: localStorage anon ID + campaignId → stable per device
+ *   - Storage cleared: new anon ID generated → may change rollout bucket
+ *     (acceptable: storage clears are rare and not adversarial)
+ *   - Multi-device (logged out): different buckets per device (acceptable)
+ *   - Multi-device (logged in): same bucket everywhere (correct)
+ */
 let _anonymousSessionId: string | null = null;
 function getAnonymousSessionId(): string {
   if (_anonymousSessionId) return _anonymousSessionId;
@@ -126,7 +145,7 @@ function passesSupplyGate(campaign: Campaign, supply: SupplyContext): boolean {
   return true;
 }
 
-// ─── Publishing Safety Gate (V2.1: user-hash rollout + proper kill switch) ──
+// ─── Publishing Safety Gate ─────────────────────────────────────
 function passesPublishingSafety(campaign: Campaign, userIdentifier?: string): boolean {
   const safety = campaign.publishing_safety;
   if (!safety) return true;
@@ -134,19 +153,48 @@ function passesPublishingSafety(campaign: Campaign, userIdentifier?: string): bo
   // Test campaigns only visible in dev/staging
   if (safety.is_test_campaign && import.meta.env.PROD) return false;
 
-  // V2.1 ROLLOUT: deterministic user-hash sampling
-  // Same user always gets the same result for the same campaign
+  // Deterministic user-hash rollout sampling
   if (safety.rollout_percentage !== undefined && safety.rollout_percentage < 100) {
     const uid = userIdentifier || getAnonymousSessionId();
     const bucket = fnv1aHash(`${uid}:${campaign.id}`) % 100;
     if (bucket >= safety.rollout_percentage) return false;
   }
 
-  // V2.1 KILL SWITCH: only disable if the key is in the activated set
-  // kill_switch_key is a reference key, not an auto-disable flag
+  // Kill switch: only disable if key is in the activated set
+  // The set is populated by campaignKillSwitch.ts from platform_settings
   if (safety.kill_switch_key && activatedKillSwitchKeys.has(safety.kill_switch_key)) {
     return false;
   }
+
+  return true;
+}
+
+// ─── Full Campaign Governance Check ─────────────────────────────
+/**
+ * V3: Unified governance check used for ALL campaigns, including
+ * context-injected lifecycle cards. No campaign bypasses governance.
+ */
+function passesGovernance(
+  campaign: Campaign,
+  ctx: UserCampaignContext,
+  supply: SupplyContext,
+  lifecycleActive: boolean,
+  userIdentifier?: string,
+): boolean {
+  if (campaign.status !== 'active') return false;
+  if (campaign.approval_status !== 'approved' && campaign.approval_status !== 'active') return false;
+  // Context campaigns don't have schedule windows — skip for them
+  const isContextCampaign = campaign.id.startsWith('ctx-');
+  if (!isContextCampaign && !isWithinSchedule(campaign)) return false;
+  if (!matchesAudience(campaign, ctx)) return false;
+  // Context campaigns are category-agnostic — skip supply gate
+  if (!isContextCampaign && !passesSupplyGate(campaign, supply)) return false;
+  if (!passesPublishingSafety(campaign, userIdentifier)) return false;
+  if (!evaluateUserSegmentRules(campaign.user_segment_rules, ctx)) return false;
+  if (!evaluateBookingStateRules(campaign.booking_state_rules, ctx)) return false;
+
+  const { suppressed } = evaluateSuppressionRules(campaign, ctx, supply, lifecycleActive);
+  if (suppressed) return false;
 
   return true;
 }
@@ -171,25 +219,32 @@ function getSeasonalBoost(campaign: Campaign): number {
 
 // ─── Category-Specific Travel Tolerance ──────────────────────────
 /**
- * Different categories have different "nearby" expectations.
- * Mobile drop-off: user travels → wider radius OK.
- * AC home service: technician travels → tighter ETA.
- * Solar inspection: scheduled → ETA less critical.
- * Emergency IT: time-critical → tight ETA.
+ * SERVICE MODEL CATEGORIES:
+ *   Drop-off (user travels to shop): MOBILE → wider radius, less ETA-sensitive
+ *   Home visit (tech travels): AC, CONSUMER_ELEC → moderate ETA, on-site
+ *   Scheduled inspection: SOLAR, CCTV → flexible ETA, planned visit
+ *   Urgent response: IT (business) → tight ETA, time-critical
+ *
+ * FUTURE ZONE MAP INTEGRATION:
+ *   When zone adjacency data is available from the zone intelligence service,
+ *   replace the static adjacentZones list with dynamic lookups from
+ *   zoneIntelligenceService.getAdjacentZones(userZone).
  */
 const CATEGORY_ETA_TOLERANCE: Record<string, { maxEtaMinutes: number; adjacentBoost: number }> = {
-  MOBILE: { maxEtaMinutes: 60, adjacentBoost: 10 },   // Drop-off model, wider tolerance
+  MOBILE: { maxEtaMinutes: 60, adjacentBoost: 10 },
   AC: { maxEtaMinutes: 45, adjacentBoost: 6 },
-  IT: { maxEtaMinutes: 30, adjacentBoost: 4 },         // Often urgent
-  CCTV: { maxEtaMinutes: 60, adjacentBoost: 8 },       // Scheduled
-  SOLAR: { maxEtaMinutes: 90, adjacentBoost: 10 },     // Planned site visit
+  IT: { maxEtaMinutes: 30, adjacentBoost: 4 },
+  CCTV: { maxEtaMinutes: 60, adjacentBoost: 8 },
+  SOLAR: { maxEtaMinutes: 90, adjacentBoost: 10 },
   CONSUMER_ELEC: { maxEtaMinutes: 50, adjacentBoost: 6 },
   SMART_HOME_OFFICE: { maxEtaMinutes: 45, adjacentBoost: 6 },
   POWER_BACKUP: { maxEtaMinutes: 60, adjacentBoost: 8 },
+  COPIER: { maxEtaMinutes: 45, adjacentBoost: 6 },
+  ELECTRICAL: { maxEtaMinutes: 40, adjacentBoost: 5 },
 };
 const DEFAULT_ETA_TOLERANCE = { maxEtaMinutes: 45, adjacentBoost: 6 };
 
-// ─── Nearby Relevance (V2.1: category-specific tolerance) ────────
+// ─── Nearby Relevance ────────────────────────────────────────────
 function computeNearbyRelevance(campaign: Campaign, supply: SupplyContext, ctx: UserCampaignContext): number {
   if (campaign.campaign_type !== 'nearby_technicians' && campaign.campaign_type !== 'partner_spotlight') {
     return 0;
@@ -198,28 +253,29 @@ function computeNearbyRelevance(campaign: Campaign, supply: SupplyContext, ctx: 
   let score = 0;
   const nearby = supply.nearby;
 
-  // Direct zone match
+  // Exact zone match — strongest signal
   if (ctx.zone && campaign.zones.includes(ctx.zone)) {
     score += 15;
   }
 
-  // Category-specific adjacent zone and ETA scoring
   for (const cat of campaign.category_ids) {
     const tolerance = CATEGORY_ETA_TOLERANCE[cat] || DEFAULT_ETA_TOLERANCE;
 
-    // Adjacent zone reach (weighted by category)
+    // Adjacent zone reach (weighted by category service model)
     if (nearby?.adjacentZones && campaign.zones.length > 0) {
       const adjacentMatch = campaign.zones.some(z => nearby.adjacentZones?.includes(z));
       if (adjacentMatch) score += tolerance.adjacentBoost;
     }
 
-    // ETA confidence: boost if within category-specific tolerance
+    // ETA confidence (category-aware thresholds)
     if (ctx.zone && nearby?.zoneEtaEstimates?.[ctx.zone]) {
       const eta = nearby.zoneEtaEstimates[ctx.zone];
       if (eta <= tolerance.maxEtaMinutes * 0.5) score += 10;
       else if (eta <= tolerance.maxEtaMinutes) score += 5;
-      // Beyond tolerance → penalty
-      else score -= 5;
+      else score -= 5; // Beyond tolerance → penalty
+
+      // Future: service radius check
+      // if (nearby.serviceRadiusKm && eta exceeds radius-based limit) score -= 8;
     }
 
     // Category-zone partner density
@@ -314,20 +370,36 @@ function allocateToSlot(campaign: Campaign): SlotStrategy {
   return 'trending_slot';
 }
 
-// ─── Context Injection ───────────────────────────────────────────
-function getContextCampaigns(ctx: UserCampaignContext): Campaign[] {
-  const result: Campaign[] = [];
-  if (ctx.hasPendingQuote) result.push(CONTEXT_CAMPAIGNS.pendingQuote);
-  if (ctx.hasPendingBooking) result.push(CONTEXT_CAMPAIGNS.pendingBooking);
-  if (ctx.hasAbandonedBooking && !ctx.hasPendingBooking) result.push(CONTEXT_CAMPAIGNS.abandonedBooking);
-  return result;
+// ─── Context Injection (V3: governed) ────────────────────────────
+/**
+ * V3: Context campaigns now pass through full governance checks.
+ * Previously they were injected directly, bypassing suppression/fatigue.
+ * Now they respect dismissal cooldowns, fatigue caps, and publishing safety.
+ */
+function getGovernedContextCampaigns(
+  ctx: UserCampaignContext,
+  supply: SupplyContext,
+  lifecycleActive: boolean,
+  userIdentifier?: string,
+): Campaign[] {
+  const candidates: Campaign[] = [];
+  if (ctx.hasPendingQuote) candidates.push(CONTEXT_CAMPAIGNS.pendingQuote);
+  if (ctx.hasPendingBooking) candidates.push(CONTEXT_CAMPAIGNS.pendingBooking);
+  if (ctx.hasAbandonedBooking && !ctx.hasPendingBooking) candidates.push(CONTEXT_CAMPAIGNS.abandonedBooking);
+
+  // Filter through governance — context campaigns can be dismissed/snoozed
+  return candidates.filter(c =>
+    passesGovernance(c, ctx, supply, lifecycleActive, userIdentifier)
+  );
 }
 
-// ─── Strict Cross-Surface Deduplication (V2.1) ──────────────────
+// ─── Strict Cross-Surface Deduplication (V3) ────────────────────
 /**
- * Single-pass deduplication across all slot buckets.
- * Priority order: hero > recovery > trust > trending > business > nearby > education > contextRows
- * A campaign ID can appear in exactly ONE output bucket.
+ * DEDUPLICATION PRIORITY ORDER (highest to lowest):
+ *   hero > recovery > trust > trending > business > nearby > education > contextRows
+ *
+ * GUARANTEE: A campaign ID appears in exactly ONE output bucket.
+ * This includes context-injected campaigns and fallback fills.
  */
 function deduplicateAcrossSlots(
   hero: Campaign[],
@@ -373,26 +445,18 @@ export function rankCampaigns(
   maxContext = 6,
 ): RankedCampaigns {
   const pool = remoteCampaigns.length > 0 ? remoteCampaigns : FALLBACK_CAMPAIGNS;
-  const contextInjected = getContextCampaigns(userCtx);
   const lifecycleActive = hasActiveLifecycleCards(userCtx);
   const userIdentifier = userCtx.userId;
 
-  // ── Phase 1: Filter ──────────────────────────────────────────
-  const eligible = pool.filter(c => {
-    if (c.status !== 'active') return false;
-    if (c.approval_status !== 'approved' && c.approval_status !== 'active') return false;
-    if (!isWithinSchedule(c)) return false;
-    if (!matchesAudience(c, userCtx)) return false;
-    if (!passesSupplyGate(c, supplyCtx)) return false;
-    if (!passesPublishingSafety(c, userIdentifier)) return false;
-    if (!evaluateUserSegmentRules(c.user_segment_rules, userCtx)) return false;
-    if (!evaluateBookingStateRules(c.booking_state_rules, userCtx)) return false;
+  // V3: Context campaigns go through full governance
+  const contextInjected = getGovernedContextCampaigns(
+    userCtx, supplyCtx, lifecycleActive, userIdentifier,
+  );
 
-    const { suppressed } = evaluateSuppressionRules(c, userCtx, supplyCtx, lifecycleActive);
-    if (suppressed) return false;
-
-    return true;
-  });
+  // ── Phase 1: Filter all pool campaigns ───────────────────────
+  const eligible = pool.filter(c =>
+    passesGovernance(c, userCtx, supplyCtx, lifecycleActive, userIdentifier)
+  );
 
   // ── Phase 2: Score and Sort ──────────────────────────────────
   const scored = eligible
@@ -416,28 +480,31 @@ export function rankCampaigns(
     slots[slot].push(s.campaign);
   }
 
-  // ── Phase 4: Build hero ──────────────────────────────────────
+  // ── Phase 4: Build hero (context cards first, then scored) ───
   const hero = [
     ...slots.urgent_alert_slot.slice(0, 1),
     ...contextInjected.slice(0, 2),
     ...slots.top_hero_slot,
   ].slice(0, maxHero);
 
+  // V3: Fallback fill also goes through dedup (handled by deduplicateAcrossSlots)
   if (hero.length < 2) {
     const safePool = SAFE_FALLBACK_CAMPAIGNS.length > 0 ? SAFE_FALLBACK_CAMPAIGNS : FALLBACK_CAMPAIGNS;
+    const existingIds = new Set(hero.map(h => h.id));
     const fallbackFill = safePool
-      .filter(f => !hero.some(h => h.id === f.id))
+      .filter(f => !existingIds.has(f.id))
       .slice(0, 2 - hero.length);
     hero.push(...fallbackFill);
   }
 
-  // ── Phase 5: Build slot outputs ──────────────────────────────
+  // ── Phase 5: Build contextRows from remaining scored ─────────
+  const heroIds = new Set(hero.map(h => h.id));
   const contextRows = scored
     .map(s => s.campaign)
-    .filter(c => !hero.includes(c))
+    .filter(c => !heroIds.has(c.id))
     .slice(0, maxContext);
 
-  // ── Phase 6: Strict deduplication across all surfaces ────────
+  // ── Phase 6: Strict deduplication across ALL surfaces ────────
   return deduplicateAcrossSlots(
     hero,
     [...contextInjected, ...slots.recovery_slot].slice(0, 3),
