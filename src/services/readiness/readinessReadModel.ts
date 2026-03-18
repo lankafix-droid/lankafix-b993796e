@@ -411,7 +411,7 @@ export interface TransactionProof {
 }
 
 export async function fetchTransactionProof(): Promise<TransactionProof> {
-  const [bookings, completed, quotes, accepts, disputes, callbacks, payments] = await Promise.all([
+  const [bookings, completed, quotes, accepts, disputes, callbacks, payments, users] = await Promise.all([
     supabase.from("bookings").select("id", { count: "exact", head: true }),
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("status", "completed"),
     supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["completed", "assigned", "quote_approved"]),
@@ -419,9 +419,10 @@ export async function fetchTransactionProof(): Promise<TransactionProof> {
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("under_mediation", true),
     supabase.from("operator_callback_tasks").select("id", { count: "exact", head: true }),
     supabase.from("bookings").select("id", { count: "exact", head: true }).in("payment_status", ["paid", "cash_collected", "payment_verified"]),
+    supabase.from("profiles").select("user_id", { count: "exact", head: true }),
   ]);
   return {
-    liveUsers: 0, // Would need auth.users count, approximated
+    liveUsers: users.count ?? 0,
     liveBookings: bookings.count ?? 0, completedBookings: completed.count ?? 0,
     liveQuotes: quotes.count ?? 0, partnerAcceptances: accepts.count ?? 0,
     disputes: disputes.count ?? 0, callbackTasks: callbacks.count ?? 0,
