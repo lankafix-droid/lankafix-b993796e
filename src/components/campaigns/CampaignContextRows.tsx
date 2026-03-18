@@ -26,12 +26,12 @@ const CampaignContextRows = memo(({ ranked, className }: CampaignContextRowsProp
     items.filter(c => !dismissed.has(c.id));
 
   const rows: RowConfig[] = [
-    { label: 'Continue Your Action', items: filterDismissed(ranked.recovery), variant: 'mini', dismissible: true },
-    { label: 'Trending in Your Area', items: filterDismissed(ranked.trending), variant: 'compact' },
-    { label: 'Verified Nearby Services', items: filterDismissed(ranked.nearby), variant: 'compact' },
-    { label: 'Business Solutions', items: filterDismissed(ranked.business), variant: 'compact' },
-    { label: 'Trust & Warranty', items: filterDismissed(ranked.trust), variant: 'mini' },
-    { label: 'Tips & Guides', items: filterDismissed(ranked.education), variant: 'compact' },
+    { label: 'Continue Your Action', items: filterDismissed(ranked.recovery), variant: 'mini' as const, dismissible: true },
+    { label: 'Trending in Your Area', items: filterDismissed(ranked.trending), variant: 'compact' as const },
+    { label: 'Verified Nearby Services', items: filterDismissed(ranked.nearby), variant: 'compact' as const },
+    { label: 'Business Solutions', items: filterDismissed(ranked.business), variant: 'compact' as const },
+    { label: 'Trust & Warranty', items: filterDismissed(ranked.trust), variant: 'mini' as const },
+    { label: 'Tips & Guides', items: filterDismissed(ranked.education), variant: 'compact' as const },
   ].filter(r => r.items.length > 0);
 
   if (rows.length === 0) return null;
