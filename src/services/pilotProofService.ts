@@ -39,7 +39,7 @@ export async function fetchPilotProofReport(): Promise<PilotProofReport> {
     supabase.from("bookings").select("id", { count: "exact", head: true }),
     supabase.from("dispatch_offers").select("id", { count: "exact", head: true }).eq("status", "accepted"),
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("status", "completed"),
-    supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["assigned", "service_in_progress", "completed"]),
+    supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["assigned", "quality_check", "completed"]),
     supabase.from("bookings").select("id", { count: "exact", head: true }).in("payment_status", ["paid", "cash_collected", "payment_verified"]),
     supabase.from("ratings").select("id", { count: "exact", head: true }),
     supabase.from("support_cases" as any).select("id", { count: "exact", head: true }),
