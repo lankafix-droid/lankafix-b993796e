@@ -145,6 +145,52 @@ function passesSupplyGate(campaign: Campaign, supply: SupplyContext): boolean {
   return true;
 }
 
+// ─── Kill Switch Config Readiness ────────────────────────────────
+/**
+ * INITIALIZATION ORDER:
+ *   1. On app mount, call loadKillSwitchKeys() (from campaignKillSwitch.ts)
+ *   2. That sets killSwitchConfigReady = true via markKillSwitchConfigReady()
+ *   3. Until ready, campaigns with kill_switch_key are conservatively ALLOWED
+ *      (safe default: campaigns run unless explicitly killed)
+ *   4. localStorage cache provides last-known keys for instant startup
+ *
+ * WHY NOT BLOCK RENDER:
+ *   Blocking first render on a network call creates poor UX. The safe default
+ *   (allow all) means at worst a killed campaign shows for one frame before
+ *   the config loads and triggers a re-rank. This is acceptable because
+ *   kill switches are emergency-only and rare.
+ */
+let killSwitchConfigReady = false;
+
+export function markKillSwitchConfigReady() {
+  killSwitchConfigReady = true;
+}
+
+export function isKillSwitchConfigReady(): boolean {
+  return killSwitchConfigReady;
+}
+
+// ─── Critical Lifecycle Campaign Detection ──────────────────────
+/**
+ * LIFECYCLE ROLLOUT EXEMPTION:
+ *   Critical lifecycle campaigns (pending quote, continue booking, abandoned
+ *   recovery) must NOT be hidden by rollout-percentage experiments unless
+ *   explicitly marked as test campaigns via is_test_campaign = true.
+ *
+ *   WHY: LankaFix must not lose quote-completion or booking-recovery
+ *   opportunities because of experimentation logic. These campaigns
+ *   directly affect revenue and user trust.
+ */
+const CRITICAL_LIFECYCLE_IDS = new Set([
+  'ctx-pending-booking',
+  'ctx-pending-quote',
+  'ctx-abandoned',
+]);
+
+function isCriticalLifecycleCampaign(campaign: Campaign): boolean {
+  return CRITICAL_LIFECYCLE_IDS.has(campaign.id);
+}
+
 // ─── Publishing Safety Gate ─────────────────────────────────────
 function passesPublishingSafety(campaign: Campaign, userIdentifier?: string): boolean {
   const safety = campaign.publishing_safety;
@@ -154,14 +200,19 @@ function passesPublishingSafety(campaign: Campaign, userIdentifier?: string): bo
   if (safety.is_test_campaign && import.meta.env.PROD) return false;
 
   // Deterministic user-hash rollout sampling
+  // CRITICAL: Lifecycle campaigns bypass rollout unless explicitly experimental
   if (safety.rollout_percentage !== undefined && safety.rollout_percentage < 100) {
-    const uid = userIdentifier || getAnonymousSessionId();
-    const bucket = fnv1aHash(`${uid}:${campaign.id}`) % 100;
-    if (bucket >= safety.rollout_percentage) return false;
+    const isExempt = isCriticalLifecycleCampaign(campaign) && !safety.is_test_campaign;
+    if (!isExempt) {
+      const uid = userIdentifier || getAnonymousSessionId();
+      const bucket = fnv1aHash(`${uid}:${campaign.id}`) % 100;
+      if (bucket >= safety.rollout_percentage) return false;
+    }
   }
 
   // Kill switch: only disable if key is in the activated set
   // The set is populated by campaignKillSwitch.ts from platform_settings
+  // If config hasn't loaded yet, allow all (safe default — campaigns run)
   if (safety.kill_switch_key && activatedKillSwitchKeys.has(safety.kill_switch_key)) {
     return false;
   }
