@@ -21,9 +21,13 @@ const c = (
   priority: 50,
   active_days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'],
   required_supply_threshold: 1,
+  minimum_supply_confidence: 0,
+  slot_strategy: 'top_hero_slot',
   booking_state_rules: {},
   user_segment_rules: {},
   suppression_rules: {},
+  fatigue_rules: {},
+  approval_status: 'approved',
   trust_badges: [],
   status: 'active',
   created_at: new Date().toISOString(),
@@ -41,6 +45,7 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     cta_deep_link: '/book/ac',
     category_ids: ['AC'],
     priority: 80,
+    slot_strategy: 'top_hero_slot',
     trust_badges: ['verified_partner', 'transparent_pricing'],
     urgency_tag: 'High Demand',
   }),
@@ -54,6 +59,7 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     cta_deep_link: '/book/mobile',
     category_ids: ['MOBILE'],
     priority: 75,
+    slot_strategy: 'top_hero_slot',
     trust_badges: ['verified_partner', 'genuine_parts', 'warranty_backed'],
   }),
   c({
@@ -65,7 +71,8 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     cta_label: 'Book Inspection',
     cta_deep_link: '/diagnose',
     priority: 70,
-    trust_badges: ['inspection_first', 'transparent_pricing'],
+    slot_strategy: 'trust_slot',
+    trust_badges: ['inspection_first', 'transparent_pricing', 'diagnostic_protected'],
   }),
   c({
     id: 'fallback-sme-it',
@@ -78,6 +85,7 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     category_ids: ['IT'],
     audience_type: 'business',
     priority: 60,
+    slot_strategy: 'business_slot',
     trust_badges: ['business_ready', 'verified_partner'],
   }),
   c({
@@ -90,6 +98,7 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     cta_deep_link: '/book/solar',
     category_ids: ['SOLAR'],
     priority: 55,
+    slot_strategy: 'trending_slot',
     trust_badges: ['sri_lanka_aligned', 'structured_tracking'],
   }),
   c({
@@ -102,6 +111,7 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     cta_deep_link: '/book/consumer-electronics',
     category_ids: ['CONSUMER_ELEC'],
     priority: 50,
+    slot_strategy: 'trust_slot',
     trust_badges: ['warranty_backed', 'genuine_parts', 'transparent_pricing'],
   }),
   c({
@@ -114,6 +124,7 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     cta_deep_link: '/book/cctv',
     category_ids: ['CCTV'],
     priority: 45,
+    slot_strategy: 'business_slot',
     trust_badges: ['verified_partner', 'business_ready'],
   }),
   c({
@@ -123,7 +134,32 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     title: 'Every LankaFix partner is verified',
     subtitle: 'Background checked • Skill verified • Tracked service',
     priority: 30,
+    slot_strategy: 'trust_slot',
     trust_badges: ['verified_partner', 'structured_tracking', 'data_safe'],
+  }),
+  c({
+    id: 'fallback-education-tips',
+    campaign_name: 'Service Tips',
+    campaign_type: 'education_info',
+    title: 'Know before you book',
+    subtitle: 'Quick tips to get the best service experience on LankaFix',
+    cta_label: 'Read Tips',
+    cta_deep_link: '/tips',
+    priority: 25,
+    slot_strategy: 'education_slot',
+  }),
+  c({
+    id: 'fallback-power-backup',
+    campaign_name: 'Power Backup Solutions',
+    campaign_type: 'hero_promotion',
+    title: 'Power backup consultation available',
+    subtitle: 'Protect your home & office from outages',
+    cta_label: 'Get Consultation',
+    cta_deep_link: '/book/power-backup',
+    category_ids: ['POWER_BACKUP'],
+    priority: 40,
+    slot_strategy: 'trending_slot',
+    trust_badges: ['sri_lanka_aligned', 'ceb_compliant'],
   }),
 ];
 
@@ -138,6 +174,7 @@ export const CONTEXT_CAMPAIGNS = {
     cta_label: 'Continue',
     cta_deep_link: '/bookings',
     priority: 95,
+    slot_strategy: 'recovery_slot',
   }),
   pendingQuote: c({
     id: 'ctx-pending-quote',
@@ -148,6 +185,7 @@ export const CONTEXT_CAMPAIGNS = {
     cta_label: 'View Quote',
     cta_deep_link: '/bookings',
     priority: 98,
+    slot_strategy: 'recovery_slot',
   }),
   abandonedBooking: c({
     id: 'ctx-abandoned',
@@ -158,6 +196,7 @@ export const CONTEXT_CAMPAIGNS = {
     cta_label: 'Get Inspection',
     cta_deep_link: '/diagnose',
     priority: 90,
+    slot_strategy: 'recovery_slot',
     trust_badges: ['inspection_first'],
   }),
 } as const;
@@ -172,6 +211,8 @@ export const TRUST_BADGE_LABELS: Record<TrustBadge, string> = {
   data_safe: 'Data Safe',
   genuine_parts: 'Genuine Parts',
   structured_tracking: 'Tracked Service',
+  ceb_compliant: 'CEB Compliant',
+  diagnostic_protected: 'Diagnostic Protected',
 };
 
 export const CAMPAIGN_TYPE_ICONS: Record<CampaignType, string> = {
