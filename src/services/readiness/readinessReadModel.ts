@@ -37,10 +37,11 @@ export interface CategoryReadiness {
 
 export async function fetchCategoryReadiness(): Promise<CategoryReadiness[]> {
   const [partnersRes, bookingsRes] = await Promise.all([
-    supabase.from("partners").select("id, categories_supported, service_zones, verification_status"),
-    supabase.from("bookings").select("id, category_code, status, payment_status").eq("status", "completed").limit(500),
+    supabase.from("partners").select("id, categories_supported, service_zones, verification_status, is_seeded"),
+    supabase.from("bookings").select("id, category_code, status, payment_status, is_pilot_test").eq("status", "completed").limit(500),
   ]);
-  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified");
+  // Exclude seeded partners from readiness calculations
+  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified" && !p.is_seeded);
   const bookings = bookingsRes.data || [];
 
   return Object.entries(CATEGORY_LABELS).map(([code, label]) => {
