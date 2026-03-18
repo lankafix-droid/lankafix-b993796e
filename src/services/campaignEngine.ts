@@ -341,18 +341,24 @@ function computeNearbyRelevance(campaign: Campaign, supply: SupplyContext, ctx: 
   return score;
 }
 
-// ─── Full Scoring ────────────────────────────────────────────────
+// ─── Full Scoring (with AI Personalization) ──────────────────────
 function scoreCampaign(
   campaign: Campaign,
   ctx: UserCampaignContext,
   supply: SupplyContext,
   lifecycleActive: boolean,
+  userProfile?: ReturnType<typeof buildPreferenceProfile>,
 ): CampaignScore {
   const { penalty: suppressionPenalty } = evaluateSuppressionRules(
     campaign, ctx, supply, lifecycleActive,
   );
 
   const trustScore = computeTrustScore(campaign, supply);
+
+  // AI Personalization: boost campaigns matching user behavior patterns
+  const personalizationBoost = userProfile
+    ? computePersonalizationBoost(campaign.category_ids, campaign.campaign_type, userProfile)
+    : 0;
 
   const breakdown = {
     basePriority: campaign.priority,
@@ -366,6 +372,7 @@ function scoreCampaign(
     fatiguePenalty: 0,
     suppressionPenalty: -suppressionPenalty,
     nearbyRelevance: computeNearbyRelevance(campaign, supply, ctx),
+    personalizationBoost,
   };
 
   if (ctx.lastViewedCategory && campaign.category_ids.includes(ctx.lastViewedCategory)) {
