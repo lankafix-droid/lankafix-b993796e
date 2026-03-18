@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { useCampaigns } from '@/hooks/useCampaigns';
+import { useVisualContext } from '@/hooks/useVisualContext';
 import CampaignHeroStrip from './CampaignHeroStrip';
 import CampaignContextRows from './CampaignContextRows';
 import type { UserCampaignContext, SupplyContext } from '@/types/campaign';
 
 /**
  * Top-level smart campaign section for the home page.
- * Wires user context + supply context → campaign engine → slotted UI.
+ * Wires user context + supply context + AI personalization + cultural theming
+ * → campaign engine → slotted UI.
  */
 export default function SmartCampaignSection() {
   // TODO: Wire real user context from auth/booking state
@@ -31,9 +33,16 @@ export default function SmartCampaignSection() {
 
   const { hero, loading, ...ranked } = useCampaigns(userCtx, supplyCtx);
 
+  // Sri Lankan cultural + time-of-day visual context
+  const visualContext = useVisualContext(userCtx.zone);
+
   return (
     <section aria-label="Smart campaigns" className="py-3">
-      <CampaignHeroStrip campaigns={hero} loading={loading} />
+      <CampaignHeroStrip 
+        campaigns={hero} 
+        loading={loading} 
+        visualContext={visualContext}
+      />
       <CampaignContextRows
         ranked={{ hero, ...ranked }}
         className="mt-1"
