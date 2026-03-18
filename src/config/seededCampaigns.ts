@@ -79,8 +79,25 @@ export const SAFE_FALLBACK_CAMPAIGNS: Campaign[] = [
   }),
 ];
 
+/**
+ * FALLBACK_CAMPAIGNS — Phase-1 Launch Safety Audit
+ *
+ * AUDIT CRITERIA:
+ *   ✅ HIGH CONFIDENCE: Category has confirmed pilot partners, tested SLA,
+ *      real booking history → can use booking CTA
+ *   ⚠️ MEDIUM CONFIDENCE: Category has partners but limited coverage →
+ *      use softer CTA, add trust badges, require supply gating
+ *   🔸 LOW CONFIDENCE: Category has sparse/uncertain supply →
+ *      consultation, education, or inspection-first only. NEVER booking CTA.
+ *
+ * SAFETY RULES:
+ *   - Never over-promise supply, ETA, or urgency for weak categories
+ *   - Never use hero_promotion for categories without confirmed fulfillment
+ *   - Always add suppression_rules.yieldToLifecycleCards for promo cards
+ *   - Fallback must reflect what LankaFix can confidently fulfill at launch
+ */
 export const FALLBACK_CAMPAIGNS: Campaign[] = [
-  // ── HIGH CONFIDENCE: AC and Mobile have strongest pilot supply ──
+  // ── ✅ HIGH CONFIDENCE: AC and Mobile have strongest pilot supply ──
   c({
     id: 'fallback-ac-demand',
     campaign_name: 'AC Seasonal Demand',
@@ -94,7 +111,6 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     slot_strategy: 'top_hero_slot',
     trust_badges: ['verified_partner', 'transparent_pricing'],
     urgency_tag: 'High Demand',
-    // Supply-safe: AC is a launch category with real partners
     suppression_rules: { yieldToLifecycleCards: true },
   }),
   c({
@@ -112,83 +128,99 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     suppression_rules: { yieldToLifecycleCards: true },
   }),
 
-  // ── MEDIUM CONFIDENCE: IT, Electronics, CCTV ──
+  // ── ⚠️ MEDIUM CONFIDENCE: IT, Electronics, CCTV ──
+  // Have partners but coverage varies. Use softer CTAs, business-gated.
   c({
     id: 'fallback-sme-it',
     campaign_name: 'SME IT Support',
     campaign_type: 'sme_business',
-    title: 'SME IT support slots open tomorrow',
-    subtitle: 'Verified technicians for your business IT needs',
-    cta_label: 'Book IT Support',
+    title: 'IT support for your business',
+    subtitle: 'Verified technicians available — request a consultation',
+    cta_label: 'Request IT Support',  // Softer than "Book IT Support"
     cta_deep_link: '/book/it',
     category_ids: ['IT'],
     audience_type: 'business',
-    priority: 60,
+    priority: 55,  // Lowered: medium confidence
     slot_strategy: 'business_slot',
     trust_badges: ['business_ready', 'verified_partner'],
-    // Only show to business users
     user_segment_rules: { isBusinessUser: true },
+    suppression_rules: { yieldToLifecycleCards: true },
   }),
   c({
     id: 'fallback-warranty',
     campaign_name: 'Warranty Repairs',
-    campaign_type: 'warranty_assurance',
-    title: 'Warranty-backed electronics repairs',
+    campaign_type: 'trust_reassurance',  // Changed from warranty_assurance: trust-led
+    title: 'Electronics repairs with warranty protection',
     subtitle: 'Genuine parts • Transparent process • Service guarantee',
-    cta_label: 'Book Repair',
+    cta_label: 'View Options',  // Softer than "Book Repair"
     cta_deep_link: '/book/consumer-electronics',
     category_ids: ['CONSUMER_ELEC'],
-    priority: 50,
+    priority: 45,  // Lowered: medium confidence
     slot_strategy: 'trust_slot',
     trust_badges: ['warranty_backed', 'genuine_parts', 'transparent_pricing'],
+    suppression_rules: { yieldToLifecycleCards: true },
   }),
   c({
     id: 'fallback-cctv',
     campaign_name: 'CCTV for Business',
-    campaign_type: 'sme_business',
-    title: 'Book verified CCTV support for your office',
-    subtitle: 'Installation, repair & maintenance by verified partners',
-    cta_label: 'Get CCTV Help',
+    campaign_type: 'trust_reassurance',  // Changed from sme_business: trust-led
+    title: 'Verified CCTV support for your premises',
+    subtitle: 'Installation, repair & maintenance — consultation available',
+    cta_label: 'Request Consultation',  // Softer than "Get CCTV Help"
     cta_deep_link: '/book/cctv',
     category_ids: ['CCTV'],
-    priority: 45,
-    slot_strategy: 'business_slot',
-    trust_badges: ['verified_partner', 'business_ready'],
+    priority: 40,  // Lowered
+    slot_strategy: 'trust_slot',  // Moved from business → trust
+    trust_badges: ['verified_partner', 'business_ready', 'structured_tracking'],
     user_segment_rules: { isBusinessUser: true },
+    suppression_rules: { yieldToLifecycleCards: true, minSupplyConfidence: 20 },
   }),
 
-  // ── LOWER CONFIDENCE: Consultation/education CTAs only ──
-  // Phase-1 safety: Solar & Power Backup lack guaranteed supply.
-  // Use trust_reassurance or education_info type, never hero_promotion.
+  // ── 🔸 LOW CONFIDENCE: Consultation/education CTAs only ──
+  // Phase-1: Solar, Power Backup, Smart Home lack guaranteed supply.
+  // NEVER use hero_promotion or booking CTA for these categories.
   c({
     id: 'fallback-solar',
     campaign_name: 'Solar Site Visits',
-    campaign_type: 'trust_reassurance',  // V2.1: downgraded from hero_promotion
+    campaign_type: 'trust_reassurance',
     title: 'Solar consultation available',
     subtitle: 'Free site assessment — no obligation, verified partners only',
     cta_label: 'Request Consultation',
     cta_deep_link: '/book/solar',
     category_ids: ['SOLAR'],
-    priority: 35,                        // V2.1: lowered from 40
-    slot_strategy: 'trust_slot',         // V2.1: moved from trending → trust
+    priority: 30,
+    slot_strategy: 'trust_slot',
     trust_badges: ['sri_lanka_aligned', 'structured_tracking', 'inspection_first'],
     required_supply_threshold: 1,
-    // V2.1: suppress if no confirmed solar partner in zone
-    suppression_rules: { minSupplyConfidence: 30 },
+    suppression_rules: { minSupplyConfidence: 30, yieldToLifecycleCards: true },
   }),
   c({
     id: 'fallback-power-backup',
-    campaign_name: 'Power Backup Solutions',
+    campaign_name: 'Power Backup Info',
     campaign_type: 'education_info',
     title: 'Understanding power backup options',
     subtitle: 'Learn about UPS, inverter & solar solutions for Sri Lanka',
-    cta_label: 'Learn More',             // V2.1: softest possible CTA
-    cta_deep_link: '/tips/power-backup',  // V2.1: education link, not booking
+    cta_label: 'Learn More',
+    cta_deep_link: '/tips/power-backup',
     category_ids: ['POWER_BACKUP'],
-    priority: 25,                         // V2.1: lowered from 35
+    priority: 20,
     slot_strategy: 'education_slot',
     trust_badges: ['sri_lanka_aligned', 'ceb_compliant'],
-    suppression_rules: { minSupplyConfidence: 30 },
+    suppression_rules: { minSupplyConfidence: 30, yieldToLifecycleCards: true },
+  }),
+  c({
+    id: 'fallback-smart-home',
+    campaign_name: 'Smart Home Discovery',
+    campaign_type: 'education_info',
+    title: 'Smart home solutions for Sri Lanka',
+    subtitle: 'Explore automation options — consultation available',
+    cta_label: 'Explore',
+    cta_deep_link: '/tips/smart-home',
+    category_ids: ['SMART_HOME_OFFICE'],
+    priority: 20,
+    slot_strategy: 'education_slot',
+    trust_badges: ['sri_lanka_aligned', 'business_ready'],
+    suppression_rules: { minSupplyConfidence: 30, yieldToLifecycleCards: true },
   }),
 
   // ── ALWAYS SAFE: Category-agnostic trust cards ──
