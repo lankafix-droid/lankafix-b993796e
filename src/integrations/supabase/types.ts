@@ -3645,6 +3645,30 @@ export type Database = {
         }
         Relationships: []
       }
+      training_completions: {
+        Row: {
+          completed_at: string
+          id: string
+          module_id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          module_id: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          module_id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
