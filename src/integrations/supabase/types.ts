@@ -564,6 +564,7 @@ export type Database = {
           final_price_lkr: number | null
           id: string
           is_emergency: boolean | null
+          is_pilot_test: boolean
           notes: string | null
           partner_id: string | null
           payment_method: string | null
@@ -624,6 +625,7 @@ export type Database = {
           final_price_lkr?: number | null
           id?: string
           is_emergency?: boolean | null
+          is_pilot_test?: boolean
           notes?: string | null
           partner_id?: string | null
           payment_method?: string | null
@@ -684,6 +686,7 @@ export type Database = {
           final_price_lkr?: number | null
           id?: string
           is_emergency?: boolean | null
+          is_pilot_test?: boolean
           notes?: string | null
           partner_id?: string | null
           payment_method?: string | null
@@ -2175,6 +2178,7 @@ export type Database = {
           full_name: string
           id: string
           inspection_capable: boolean | null
+          is_seeded: boolean
           last_location_ping_at: string | null
           late_arrival_count: number | null
           max_concurrent_jobs: number | null
@@ -2224,6 +2228,7 @@ export type Database = {
           full_name: string
           id?: string
           inspection_capable?: boolean | null
+          is_seeded?: boolean
           last_location_ping_at?: string | null
           late_arrival_count?: number | null
           max_concurrent_jobs?: number | null
@@ -2273,6 +2278,7 @@ export type Database = {
           full_name?: string
           id?: string
           inspection_capable?: boolean | null
+          is_seeded?: boolean
           last_location_ping_at?: string | null
           late_arrival_count?: number | null
           max_concurrent_jobs?: number | null
