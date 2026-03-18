@@ -49,6 +49,9 @@ const V2HomePage = () => {
         {/* 1. Hero — search, location, emergency, trust pills */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
+        {/* 1.5 Smart Campaign Engine */}
+        <SmartCampaignSection />
+
         {/* 2. Trust Strip — immediate confidence builder */}
         <Suspense fallback={<SectionFallback />}>
           <V2TrustStrip />
