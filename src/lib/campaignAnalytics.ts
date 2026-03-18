@@ -51,10 +51,10 @@ export function trackCampaignEvent(
       user_id: data?.user?.id ?? null,
       event_type: eventType,
       metadata: {
-        ...metadata,
+        ...(metadata || {}),
         first_touch: sessionState.firstTouchCampaignId,
         last_touch: sessionState.lastTouchCampaignId,
-      } ?? {},
+      },
     }] as any).then(() => {});
   });
 }

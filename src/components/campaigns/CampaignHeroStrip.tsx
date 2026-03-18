@@ -11,11 +11,18 @@ interface CampaignHeroStripProps {
   className?: string;
 }
 
-const AUTOPLAY_MS = 5000;
+const AUTOPLAY_MS = 5500;
 
-/** Skeleton loading placeholder */
+/** Shimmer skeleton matching hero card dimensions */
 const HeroSkeleton = () => (
-  <div className="mx-4 h-[160px] animate-pulse rounded-2xl bg-muted" />
+  <div className="mx-4 space-y-3">
+    <div className="h-[168px] animate-pulse rounded-2xl bg-muted" />
+    <div className="flex justify-center gap-1.5">
+      {[0, 1, 2].map(i => (
+        <div key={i} className="h-1.5 w-4 animate-pulse rounded-full bg-muted" />
+      ))}
+    </div>
+  </div>
 );
 
 const CampaignHeroStrip = memo(({ campaigns, loading, className }: CampaignHeroStripProps) => {
@@ -23,10 +30,9 @@ const CampaignHeroStrip = memo(({ campaigns, loading, className }: CampaignHeroS
   const [paused, setPaused] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const touchStartX = useRef(0);
-
   const count = campaigns.length;
 
-  // Autoplay
+  // Autoplay with pause support
   useEffect(() => {
     if (paused || count <= 1) return;
     timerRef.current = setInterval(() => {
@@ -35,11 +41,12 @@ const CampaignHeroStrip = memo(({ campaigns, loading, className }: CampaignHeroS
     return () => clearInterval(timerRef.current);
   }, [paused, count]);
 
-  // Track impressions
+  // Track viewable impressions
   useEffect(() => {
     if (campaigns[activeIndex]) {
       trackCampaignEvent(campaigns[activeIndex].id, 'viewable_impression', {
         index: activeIndex,
+        campaign_type: campaigns[activeIndex].campaign_type,
       });
     }
   }, [activeIndex, campaigns]);
@@ -54,9 +61,11 @@ const CampaignHeroStrip = memo(({ campaigns, loading, className }: CampaignHeroS
     if (Math.abs(diff) > 40) {
       const direction = diff > 0 ? 1 : -1;
       setActiveIndex(i => (i + direction + count) % count);
-      trackCampaignEvent(campaigns[activeIndex]?.id || '', 'card_swipe', { direction: diff > 0 ? 'left' : 'right' });
+      trackCampaignEvent(campaigns[activeIndex]?.id || '', 'card_swipe', {
+        direction: diff > 0 ? 'left' : 'right',
+      });
     }
-    setTimeout(() => setPaused(false), 3000);
+    setTimeout(() => setPaused(false), 4000);
   }, [count, activeIndex, campaigns]);
 
   if (loading) return <HeroSkeleton />;
@@ -74,30 +83,34 @@ const CampaignHeroStrip = memo(({ campaigns, loading, className }: CampaignHeroS
         <AnimatePresence mode="wait">
           <motion.div
             key={campaigns[activeIndex].id}
-            initial={{ opacity: 0, x: 30 }}
+            initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -30 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.28, ease: [0.25, 0.1, 0.25, 1] }}
           >
             <CampaignCard campaign={campaigns[activeIndex]} variant="hero" />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Dots indicator */}
+      {/* Dot indicators */}
       {count > 1 && (
         <div className="mt-3 flex justify-center gap-1.5">
           {campaigns.map((_, i) => (
             <button
               key={i}
-              onClick={() => { setActiveIndex(i); setPaused(true); setTimeout(() => setPaused(false), 3000); }}
+              onClick={() => {
+                setActiveIndex(i);
+                setPaused(true);
+                setTimeout(() => setPaused(false), 4000);
+              }}
               className={cn(
                 'h-1.5 rounded-full transition-all duration-300',
                 i === activeIndex
                   ? 'w-6 bg-primary'
-                  : 'w-1.5 bg-muted-foreground/30',
+                  : 'w-1.5 bg-muted-foreground/25',
               )}
-              aria-label={`Go to slide ${i + 1}`}
+              aria-label={`Campaign ${i + 1}`}
             />
           ))}
         </div>
