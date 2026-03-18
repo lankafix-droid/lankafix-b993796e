@@ -157,35 +157,38 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     user_segment_rules: { isBusinessUser: true },
   }),
 
-  // ── LOWER CONFIDENCE: Use consultation CTAs, not direct booking ──
-  // Solar & Power Backup may not have guaranteed supply everywhere
+  // ── LOWER CONFIDENCE: Consultation/education CTAs only ──
+  // Phase-1 safety: Solar & Power Backup lack guaranteed supply.
+  // Use trust_reassurance or education_info type, never hero_promotion.
   c({
     id: 'fallback-solar',
     campaign_name: 'Solar Site Visits',
-    campaign_type: 'hero_promotion',
+    campaign_type: 'trust_reassurance',  // V2.1: downgraded from hero_promotion
     title: 'Solar consultation available',
-    subtitle: 'Free site assessment for home & commercial solar solutions',
-    cta_label: 'Request Consultation',  // Softer CTA — not "Book Now"
+    subtitle: 'Free site assessment — no obligation, verified partners only',
+    cta_label: 'Request Consultation',
     cta_deep_link: '/book/solar',
     category_ids: ['SOLAR'],
-    priority: 40,
-    slot_strategy: 'trending_slot',
-    trust_badges: ['sri_lanka_aligned', 'structured_tracking'],
-    // Lower threshold — only show if at least 1 partner available
+    priority: 35,                        // V2.1: lowered from 40
+    slot_strategy: 'trust_slot',         // V2.1: moved from trending → trust
+    trust_badges: ['sri_lanka_aligned', 'structured_tracking', 'inspection_first'],
     required_supply_threshold: 1,
+    // V2.1: suppress if no confirmed solar partner in zone
+    suppression_rules: { minSupplyConfidence: 30 },
   }),
   c({
     id: 'fallback-power-backup',
     campaign_name: 'Power Backup Solutions',
-    campaign_type: 'education_info',  // Changed from hero_promotion → education
-    title: 'Power backup consultation available',
-    subtitle: 'Protect your home & office from outages',
-    cta_label: 'Get Consultation',  // Softer CTA
-    cta_deep_link: '/book/power-backup',
+    campaign_type: 'education_info',
+    title: 'Understanding power backup options',
+    subtitle: 'Learn about UPS, inverter & solar solutions for Sri Lanka',
+    cta_label: 'Learn More',             // V2.1: softest possible CTA
+    cta_deep_link: '/tips/power-backup',  // V2.1: education link, not booking
     category_ids: ['POWER_BACKUP'],
-    priority: 35,
-    slot_strategy: 'education_slot',  // Moved to education slot — less aggressive
+    priority: 25,                         // V2.1: lowered from 35
+    slot_strategy: 'education_slot',
     trust_badges: ['sri_lanka_aligned', 'ceb_compliant'],
+    suppression_rules: { minSupplyConfidence: 30 },
   }),
 
   // ── ALWAYS SAFE: Category-agnostic trust cards ──
