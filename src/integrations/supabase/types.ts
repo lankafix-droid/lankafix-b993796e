@@ -773,6 +773,71 @@ export type Database = {
           },
         ]
       }
+      campaign_attributions: {
+        Row: {
+          assisted_campaign_ids: string[] | null
+          attributed_revenue_lkr: number | null
+          attribution_type: string
+          booking_id: string | null
+          created_at: string
+          first_touch_campaign_id: string | null
+          id: string
+          last_touch_campaign_id: string | null
+        }
+        Insert: {
+          assisted_campaign_ids?: string[] | null
+          attributed_revenue_lkr?: number | null
+          attribution_type?: string
+          booking_id?: string | null
+          created_at?: string
+          first_touch_campaign_id?: string | null
+          id?: string
+          last_touch_campaign_id?: string | null
+        }
+        Update: {
+          assisted_campaign_ids?: string[] | null
+          attributed_revenue_lkr?: number | null
+          attribution_type?: string
+          booking_id?: string | null
+          created_at?: string
+          first_touch_campaign_id?: string | null
+          id?: string
+          last_touch_campaign_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_attributions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_dismissals: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          dismissal_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          dismissal_type?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          dismissal_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       campaign_events: {
         Row: {
           campaign_id: string

@@ -1,45 +1,67 @@
-import { memo } from 'react';
-import type { Campaign } from '@/types/campaign';
+import { memo, useState, useCallback } from 'react';
+import type { Campaign, RankedCampaigns } from '@/types/campaign';
 import CampaignCard from './CampaignCard';
 
 interface CampaignContextRowsProps {
-  campaigns: Campaign[];
+  ranked: RankedCampaigns;
   className?: string;
 }
 
-/** Horizontal scrolling rows of contextual campaign cards below the hero */
-const CampaignContextRows = memo(({ campaigns, className }: CampaignContextRowsProps) => {
-  if (campaigns.length === 0) return null;
+interface RowConfig {
+  label: string;
+  items: Campaign[];
+  variant: 'compact' | 'mini';
+  dismissible?: boolean;
+}
 
-  // Group campaigns by type for display sections
-  const groups: { label: string; items: Campaign[] }[] = [];
-  const recovery = campaigns.filter(c => c.campaign_type === 'user_recovery' || c.campaign_type === 'pending_quote');
-  const business = campaigns.filter(c => c.campaign_type === 'sme_business');
-  const trust = campaigns.filter(c => c.campaign_type === 'trust_reassurance' || c.campaign_type === 'warranty_assurance');
-  const rest = campaigns.filter(c =>
-    !recovery.includes(c) && !business.includes(c) && !trust.includes(c)
-  );
+/** Modular below-hero campaign rows, driven by slot-allocated data */
+const CampaignContextRows = memo(({ ranked, className }: CampaignContextRowsProps) => {
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  if (recovery.length > 0) groups.push({ label: 'Continue Your Action', items: recovery });
-  if (rest.length > 0) groups.push({ label: 'Relevant to You', items: rest });
-  if (business.length > 0) groups.push({ label: 'Business Solutions', items: business });
-  if (trust.length > 0) groups.push({ label: 'Trust & Warranty', items: trust });
+  const handleDismiss = useCallback((id: string) => {
+    setDismissed(prev => new Set(prev).add(id));
+  }, []);
+
+  const filterDismissed = (items: Campaign[]) =>
+    items.filter(c => !dismissed.has(c.id));
+
+  const rows: RowConfig[] = [
+    { label: 'Continue Your Action', items: filterDismissed(ranked.recovery), variant: 'mini' as const, dismissible: true },
+    { label: 'Trending in Your Area', items: filterDismissed(ranked.trending), variant: 'compact' as const },
+    { label: 'Verified Nearby Services', items: filterDismissed(ranked.nearby), variant: 'compact' as const },
+    { label: 'Business Solutions', items: filterDismissed(ranked.business), variant: 'compact' as const },
+    { label: 'Trust & Warranty', items: filterDismissed(ranked.trust), variant: 'mini' as const },
+    { label: 'Tips & Guides', items: filterDismissed(ranked.education), variant: 'compact' as const },
+  ].filter(r => r.items.length > 0);
+
+  if (rows.length === 0) return null;
 
   return (
     <div className={className}>
-      {groups.map(group => (
-        <div key={group.label} className="py-3">
+      {rows.map(row => (
+        <div key={row.label} className="py-3">
           <h3 className="px-4 pb-2 font-heading text-sm font-bold text-foreground">
-            {group.label}
+            {row.label}
           </h3>
-          {group.items.length === 1 ? (
+          {row.items.length === 1 && row.variant === 'mini' ? (
             <div className="px-4">
-              <CampaignCard campaign={group.items[0]} variant="mini" />
+              <CampaignCard
+                campaign={row.items[0]}
+                variant="mini"
+                dismissible={row.dismissible}
+                onDismiss={handleDismiss}
+              />
             </div>
           ) : (
             <div className="flex gap-3 overflow-x-auto px-4 pb-1 scrollbar-none">
-              {group.items.map(c => (
-                <CampaignCard key={c.id} campaign={c} variant="compact" />
+              {row.items.map(c => (
+                <CampaignCard
+                  key={c.id}
+                  campaign={c}
+                  variant={row.variant}
+                  dismissible={row.dismissible}
+                  onDismiss={handleDismiss}
+                />
               ))}
             </div>
           )}

@@ -6,7 +6,7 @@ import type { UserCampaignContext, SupplyContext } from '@/types/campaign';
 
 /**
  * Top-level smart campaign section for the home page.
- * Wires up user context + supply context → campaign engine → UI.
+ * Wires user context + supply context → campaign engine → slotted UI.
  */
 export default function SmartCampaignSection() {
   // TODO: Wire real user context from auth/booking state
@@ -24,17 +24,20 @@ export default function SmartCampaignSection() {
   const supplyCtx = useMemo<SupplyContext>(() => ({
     categorySupply: {
       MOBILE: 2, AC: 1, IT: 1, CCTV: 1, SOLAR: 1,
-      CONSUMER_ELEC: 1,
+      CONSUMER_ELEC: 1, POWER_BACKUP: 1,
     },
     zoneSupply: {},
   }), []);
 
-  const { hero, contextRows, loading } = useCampaigns(userCtx, supplyCtx);
+  const { hero, loading, ...ranked } = useCampaigns(userCtx, supplyCtx);
 
   return (
     <section aria-label="Smart campaigns" className="py-3">
       <CampaignHeroStrip campaigns={hero} loading={loading} />
-      <CampaignContextRows campaigns={contextRows} className="mt-1" />
+      <CampaignContextRows
+        ranked={{ hero, ...ranked }}
+        className="mt-1"
+      />
     </section>
   );
 }
