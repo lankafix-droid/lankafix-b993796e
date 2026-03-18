@@ -7,6 +7,7 @@ import V2CategoryGrid from "@/components/v2/V2CategoryGrid";
 import Footer from "@/components/landing/Footer";
 import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
+import SmartCampaignSection from "@/components/campaigns/SmartCampaignSection";
 
 // Lazy-load below-fold sections for mobile performance
 const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
@@ -47,6 +48,9 @@ const V2HomePage = () => {
       <main className="flex-1">
         {/* 1. Hero — search, location, emergency, trust pills */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
+
+        {/* 1.5 Smart Campaign Engine */}
+        <SmartCampaignSection />
 
         {/* 2. Trust Strip — immediate confidence builder */}
         <Suspense fallback={<SectionFallback />}>
