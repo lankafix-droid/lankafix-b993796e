@@ -124,7 +124,7 @@ export interface PartnerReadiness {
 
 export async function fetchPartnerReadiness(): Promise<PartnerReadiness[]> {
   const [partnersRes, bookingsRes, bankRes] = await Promise.all([
-    supabase.from("partners").select("id, full_name, verification_status, categories_supported, service_zones, availability_status, acceptance_rate, cancellation_rate, rating_average, completed_jobs_count, phone_number, email, nic_number, user_id").order("full_name"),
+    supabase.from("partners").select("id, full_name, verification_status, categories_supported, service_zones, availability_status, acceptance_rate, cancellation_rate, rating_average, completed_jobs_count, phone_number, email, nic_number, user_id, is_seeded").order("full_name"),
     supabase.from("bookings").select("id, partner_id, status").eq("status", "completed").limit(500),
     supabase.from("partner_bank_accounts").select("partner_id, verification_status"),
   ]);
