@@ -1,8 +1,13 @@
 import type { Campaign, CampaignType, TrustBadge } from '@/types/campaign';
 
 /**
- * Fallback / seeded campaigns shown when no remote campaigns are available.
- * These are static, operationally safe, and trust-led.
+ * Fallback / seeded campaigns — operationally safe, trust-led.
+ *
+ * V2 SAFETY REVIEW:
+ *   - Category-specific fallbacks only show for categories likely to have supply
+ *   - Weak-supply categories (POWER_BACKUP, SOLAR) use consultation CTAs, not booking CTAs
+ *   - Generic trust and education cards serve as safe defaults when supply is uncertain
+ *   - SAFE_FALLBACK_CAMPAIGNS = category-agnostic, always safe to show
  */
 
 const c = (
@@ -34,7 +39,48 @@ const c = (
   ...overrides,
 });
 
+/**
+ * SAFE_FALLBACK_CAMPAIGNS: Category-agnostic, always safe to display.
+ * Used as final fallback when no category-specific campaigns pass supply gating.
+ */
+export const SAFE_FALLBACK_CAMPAIGNS: Campaign[] = [
+  c({
+    id: 'safe-trust-general',
+    campaign_name: 'Trust General',
+    campaign_type: 'trust_reassurance',
+    title: 'Every LankaFix partner is verified',
+    subtitle: 'Background checked • Skill verified • Tracked service',
+    priority: 70,
+    slot_strategy: 'trust_slot',
+    trust_badges: ['verified_partner', 'structured_tracking', 'data_safe'],
+  }),
+  c({
+    id: 'safe-inspection-first',
+    campaign_name: 'Inspection First',
+    campaign_type: 'trust_reassurance',
+    title: "Not sure what's wrong?",
+    subtitle: 'Get an inspection-first diagnosis — no obligation to repair',
+    cta_label: 'Book Inspection',
+    cta_deep_link: '/diagnose',
+    priority: 65,
+    slot_strategy: 'top_hero_slot',
+    trust_badges: ['inspection_first', 'transparent_pricing', 'diagnostic_protected'],
+  }),
+  c({
+    id: 'safe-education-tips',
+    campaign_name: 'Service Tips',
+    campaign_type: 'education_info',
+    title: 'Know before you book',
+    subtitle: 'Quick tips to get the best service experience on LankaFix',
+    cta_label: 'Read Tips',
+    cta_deep_link: '/tips',
+    priority: 25,
+    slot_strategy: 'education_slot',
+  }),
+];
+
 export const FALLBACK_CAMPAIGNS: Campaign[] = [
+  // ── HIGH CONFIDENCE: AC and Mobile have strongest pilot supply ──
   c({
     id: 'fallback-ac-demand',
     campaign_name: 'AC Seasonal Demand',
@@ -48,6 +94,8 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     slot_strategy: 'top_hero_slot',
     trust_badges: ['verified_partner', 'transparent_pricing'],
     urgency_tag: 'High Demand',
+    // Supply-safe: AC is a launch category with real partners
+    suppression_rules: { yieldToLifecycleCards: true },
   }),
   c({
     id: 'fallback-mobile-repair',
@@ -61,19 +109,10 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     priority: 75,
     slot_strategy: 'top_hero_slot',
     trust_badges: ['verified_partner', 'genuine_parts', 'warranty_backed'],
+    suppression_rules: { yieldToLifecycleCards: true },
   }),
-  c({
-    id: 'fallback-inspection-first',
-    campaign_name: 'Inspection First',
-    campaign_type: 'trust_reassurance',
-    title: "Not sure what's wrong?",
-    subtitle: 'Get an inspection-first diagnosis — no obligation to repair',
-    cta_label: 'Book Inspection',
-    cta_deep_link: '/diagnose',
-    priority: 70,
-    slot_strategy: 'trust_slot',
-    trust_badges: ['inspection_first', 'transparent_pricing', 'diagnostic_protected'],
-  }),
+
+  // ── MEDIUM CONFIDENCE: IT, Electronics, CCTV ──
   c({
     id: 'fallback-sme-it',
     campaign_name: 'SME IT Support',
@@ -87,19 +126,8 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     priority: 60,
     slot_strategy: 'business_slot',
     trust_badges: ['business_ready', 'verified_partner'],
-  }),
-  c({
-    id: 'fallback-solar',
-    campaign_name: 'Solar Site Visits',
-    campaign_type: 'hero_promotion',
-    title: 'Solar site visits now available',
-    subtitle: 'Free consultation for home & commercial solar solutions',
-    cta_label: 'Schedule Visit',
-    cta_deep_link: '/book/solar',
-    category_ids: ['SOLAR'],
-    priority: 55,
-    slot_strategy: 'trending_slot',
-    trust_badges: ['sri_lanka_aligned', 'structured_tracking'],
+    // Only show to business users
+    user_segment_rules: { isBusinessUser: true },
   }),
   c({
     id: 'fallback-warranty',
@@ -126,41 +154,42 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     priority: 45,
     slot_strategy: 'business_slot',
     trust_badges: ['verified_partner', 'business_ready'],
+    user_segment_rules: { isBusinessUser: true },
   }),
+
+  // ── LOWER CONFIDENCE: Use consultation CTAs, not direct booking ──
+  // Solar & Power Backup may not have guaranteed supply everywhere
   c({
-    id: 'fallback-trust-general',
-    campaign_name: 'Trust General',
-    campaign_type: 'trust_reassurance',
-    title: 'Every LankaFix partner is verified',
-    subtitle: 'Background checked • Skill verified • Tracked service',
-    priority: 30,
-    slot_strategy: 'trust_slot',
-    trust_badges: ['verified_partner', 'structured_tracking', 'data_safe'],
-  }),
-  c({
-    id: 'fallback-education-tips',
-    campaign_name: 'Service Tips',
-    campaign_type: 'education_info',
-    title: 'Know before you book',
-    subtitle: 'Quick tips to get the best service experience on LankaFix',
-    cta_label: 'Read Tips',
-    cta_deep_link: '/tips',
-    priority: 25,
-    slot_strategy: 'education_slot',
+    id: 'fallback-solar',
+    campaign_name: 'Solar Site Visits',
+    campaign_type: 'hero_promotion',
+    title: 'Solar consultation available',
+    subtitle: 'Free site assessment for home & commercial solar solutions',
+    cta_label: 'Request Consultation',  // Softer CTA — not "Book Now"
+    cta_deep_link: '/book/solar',
+    category_ids: ['SOLAR'],
+    priority: 40,
+    slot_strategy: 'trending_slot',
+    trust_badges: ['sri_lanka_aligned', 'structured_tracking'],
+    // Lower threshold — only show if at least 1 partner available
+    required_supply_threshold: 1,
   }),
   c({
     id: 'fallback-power-backup',
     campaign_name: 'Power Backup Solutions',
-    campaign_type: 'hero_promotion',
+    campaign_type: 'education_info',  // Changed from hero_promotion → education
     title: 'Power backup consultation available',
     subtitle: 'Protect your home & office from outages',
-    cta_label: 'Get Consultation',
+    cta_label: 'Get Consultation',  // Softer CTA
     cta_deep_link: '/book/power-backup',
     category_ids: ['POWER_BACKUP'],
-    priority: 40,
-    slot_strategy: 'trending_slot',
+    priority: 35,
+    slot_strategy: 'education_slot',  // Moved to education slot — less aggressive
     trust_badges: ['sri_lanka_aligned', 'ceb_compliant'],
   }),
+
+  // ── ALWAYS SAFE: Category-agnostic trust cards ──
+  ...SAFE_FALLBACK_CAMPAIGNS,
 ];
 
 /** User-context recovery campaign templates */
@@ -175,6 +204,7 @@ export const CONTEXT_CAMPAIGNS = {
     cta_deep_link: '/bookings',
     priority: 95,
     slot_strategy: 'recovery_slot',
+    booking_state_rules: { requirePendingBooking: true },
   }),
   pendingQuote: c({
     id: 'ctx-pending-quote',
@@ -186,6 +216,7 @@ export const CONTEXT_CAMPAIGNS = {
     cta_deep_link: '/bookings',
     priority: 98,
     slot_strategy: 'recovery_slot',
+    booking_state_rules: { requirePendingQuote: true },
   }),
   abandonedBooking: c({
     id: 'ctx-abandoned',
@@ -198,6 +229,7 @@ export const CONTEXT_CAMPAIGNS = {
     priority: 90,
     slot_strategy: 'recovery_slot',
     trust_badges: ['inspection_first'],
+    booking_state_rules: { requireAbandonedBooking: true },
   }),
 } as const;
 

@@ -1,6 +1,7 @@
 /**
- * LankaFix Smart Campaign System — Production-Grade Type Definitions
- * Supports: ranking, suppression, fatigue, supply-gating, attribution, slots, multilingual
+ * LankaFix Smart Campaign System — Production-Grade V2 Type Definitions
+ * Supports: rule engine, suppression, fatigue, supply-gating, attribution,
+ * slots, deduplication, trust scoring, publishing safety, multilingual
  */
 
 // ─── Campaign Types ───────────────────────────────────────────────
@@ -47,24 +48,66 @@ export type TrustBadge =
   | 'ceb_compliant'
   | 'diagnostic_protected';
 
+// ─── Rule Engine Types ───────────────────────────────────────────
+/**
+ * User segment rules — evaluated against UserCampaignContext.
+ * Each key is a field, value is a condition object.
+ * Example: { "isBusinessUser": true, "bookingCount": { "lt": 3 } }
+ */
+export interface UserSegmentRules {
+  isBusinessUser?: boolean;
+  isReturningUser?: boolean;
+  bookingCount?: { lt?: number; gt?: number; eq?: number };
+  language?: CampaignLanguage | CampaignLanguage[];
+  zone?: string | string[];
+}
+
+/**
+ * Booking state rules — evaluated against UserCampaignContext booking flags.
+ * Example: { "requirePendingQuote": true, "pendingQuoteMinHours": 4 }
+ */
+export interface BookingStateRules {
+  requirePendingBooking?: boolean;
+  requirePendingQuote?: boolean;
+  requireAbandonedBooking?: boolean;
+  requireNoActiveBooking?: boolean;
+  pendingQuoteMinHours?: number;
+  /** Suppress if user has active booking in any of these categories */
+  suppressIfActiveInCategories?: string[];
+  /** Suppress if user completed booking in these categories within N days */
+  suppressIfCompletedInCategories?: string[];
+  suppressIfCompletedWithinDays?: number;
+}
+
+/**
+ * Suppression rules — granular suppression conditions.
+ * Example: { "dismissCooldownHours": 48, "maxImpressionsPerDay": 5 }
+ */
+export interface SuppressionRules {
+  /** Suppress for N hours after dismiss */
+  dismissCooldownHours?: number;
+  /** Suppress for N hours after click */
+  clickCooldownHours?: number;
+  /** Hard suppress after N impressions per day */
+  maxImpressionsPerDay?: number;
+  /** Suppress if a stronger lifecycle card exists (auto-detected) */
+  yieldToLifecycleCards?: boolean;
+  /** Suppress if supply confidence < this for campaign categories */
+  minSupplyConfidence?: number;
+}
+
 // ─── Fatigue Rules ────────────────────────────────────────────────
 export interface FatigueRules {
-  /** Max impressions per user per day for this campaign */
   maxImpressionsPerDay?: number;
-  /** Max clicks before cooldown */
   maxClicksBeforeCooldown?: number;
-  /** Cooldown hours after dismiss */
   cooldownHoursAfterDismiss?: number;
-  /** Cooldown hours after CTA click */
   cooldownHoursAfterClick?: number;
-  /** Separate hero/compact caps */
   heroMaxPerDay?: number;
   compactMaxPerDay?: number;
 }
 
 // ─── Supply Confidence ────────────────────────────────────────────
 export interface SupplyConfidence {
-  /** 0-100 score representing supply health for a category/zone */
   score: number;
   verifiedActiveCount: number;
   availableNowCount: number;
@@ -72,6 +115,27 @@ export interface SupplyConfidence {
   avgEtaMinutes: number;
   recentSlaBreaches: number;
   backlogCount: number;
+}
+
+// ─── Nearby Context ──────────────────────────────────────────────
+export interface NearbyContext {
+  userZone?: string;
+  adjacentZones?: string[];
+  serviceRadiusKm?: number;
+  /** zone → { category → partner count } */
+  zonePartnerMatrix?: Record<string, Record<string, number>>;
+  /** zone → avg ETA minutes */
+  zoneEtaEstimates?: Record<string, number>;
+}
+
+// ─── Publishing Safety ──────────────────────────────────────────
+export interface PublishingSafety {
+  is_test_campaign?: boolean;
+  rollout_percentage?: number;
+  kill_switch_key?: string;
+  reviewed_by?: string;
+  approved_at?: string;
+  qa_notes?: string;
 }
 
 // ─── Campaign Entity ──────────────────────────────────────────────
@@ -98,10 +162,11 @@ export interface Campaign {
   required_supply_threshold: number;
   minimum_supply_confidence: number;
   slot_strategy: SlotStrategy;
-  booking_state_rules: Record<string, unknown>;
-  user_segment_rules: Record<string, unknown>;
-  suppression_rules: Record<string, unknown>;
+  booking_state_rules: BookingStateRules;
+  user_segment_rules: UserSegmentRules;
+  suppression_rules: SuppressionRules;
   fatigue_rules: FatigueRules;
+  publishing_safety?: PublishingSafety;
   experiment_id?: string;
   variant?: string;
   trust_badges: TrustBadge[];
@@ -124,22 +189,30 @@ export interface UserCampaignContext {
   isReturningUser: boolean;
   isBusinessUser: boolean;
   bookingCount: number;
+  /** Categories where user has an active (non-completed) booking */
+  activeBookingCategories?: string[];
+  /** Categories where user completed a booking recently */
+  recentCompletedCategories?: string[];
+  /** Days since last completed booking (per category) */
+  daysSinceCompletionByCategory?: Record<string, number>;
   /** Campaign IDs the user has dismissed, with timestamps */
   dismissedCampaigns?: Record<string, string>;
   /** Campaign ID → impression count today */
   impressionsToday?: Record<string, number>;
   /** Campaign ID → click count */
   clickCounts?: Record<string, number>;
+  /** Campaign ID → last click timestamp */
+  lastClickTimestamps?: Record<string, string>;
+  /** Campaign IDs the user has snoozed, with timestamps */
+  snoozedCampaigns?: Record<string, string>;
 }
 
 // ─── Supply Context ───────────────────────────────────────────────
 export interface SupplyContext {
-  /** category_code → count of real non-seeded verified partners */
   categorySupply: Record<string, number>;
-  /** zone_code → count of real available partners */
   zoneSupply: Record<string, number>;
-  /** category_code → supply confidence model */
   supplyConfidence?: Record<string, SupplyConfidence>;
+  nearby?: NearbyContext;
 }
 
 // ─── Scoring Output ───────────────────────────────────────────────
@@ -157,6 +230,7 @@ export interface CampaignScore {
     bookingStateRelevance: number;
     fatiguePenalty: number;
     suppressionPenalty: number;
+    nearbyRelevance: number;
   };
 }
 
@@ -188,7 +262,8 @@ export type CampaignEventType =
   | 'no_provider_found'
   | 'cancellation'
   | 'dismiss'
-  | 'snooze';
+  | 'snooze'
+  | 'dispute_escalated';
 
 // ─── Attribution ──────────────────────────────────────────────────
 export interface CampaignAttribution {
@@ -197,18 +272,43 @@ export interface CampaignAttribution {
   lastTouchCampaignId?: string;
   assistedCampaignIds: string[];
   attributedRevenueLkr: number;
+  attributionType: 'first_touch' | 'last_touch' | 'assisted' | 'linear';
+  /** The lifecycle event that triggered attribution */
+  attributionEvent: CampaignEventType;
 }
 
 // ─── Seasonal Trigger ─────────────────────────────────────────────
 export interface SeasonalTrigger {
   id: string;
   name: string;
-  /** Months active (1-12) */
   activeMonths: number[];
-  /** Categories to boost */
   boostedCategories: string[];
-  /** Priority boost amount */
   priorityBoost: number;
-  /** Optional condition description */
   condition?: string;
 }
+
+// ─── Fatigue Persistence Strategy ────────────────────────────────
+/**
+ * FATIGUE PERSISTENCE ARCHITECTURE:
+ *
+ * Client-side (session memory, resets on app restart):
+ *   - impressionsToday: incremented in-memory per session
+ *   - clickCounts: incremented in-memory per session
+ *   - Best-effort: fast, no latency, acceptable data loss
+ *
+ * Backend-synced (campaign_dismissals table):
+ *   - dismissedCampaigns: written to DB on dismiss, loaded on session start
+ *   - snoozedCampaigns: written to DB on snooze, loaded on session start
+ *   - Strict enforcement: persists across devices and sessions
+ *
+ * Daily reset strategy:
+ *   - impressionsToday resets naturally on new session (client-side)
+ *   - Backend dismissals use timestamp comparison (cooldownHours)
+ *   - No cron needed — all time-based via comparison at read time
+ *
+ * Multi-device behavior:
+ *   - Dismissals sync across devices (DB-backed)
+ *   - Impression counts are per-device (acceptable for fatigue)
+ *   - Click counts are per-device (acceptable for cooldown)
+ */
+export type FatiguePersistenceLayer = 'client_session' | 'backend_synced';
