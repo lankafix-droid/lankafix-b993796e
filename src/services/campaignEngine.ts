@@ -21,6 +21,7 @@ import {
   evaluateSuppressionRules,
 } from '@/services/campaignRuleEngine';
 import { computeTrustScore } from '@/services/campaignTrustScoring';
+import { buildPreferenceProfile, computePersonalizationBoost } from '@/services/userBehaviorEngine';
 
 // ─── Activated Kill Switch Keys ─────────────────────────────────
 /**
