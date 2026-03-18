@@ -507,6 +507,9 @@ export function rankCampaigns(
   const lifecycleActive = hasActiveLifecycleCards(userCtx);
   const userIdentifier = userCtx.userId;
 
+  // AI Personalization: build user preference profile from behavior history
+  const userProfile = buildPreferenceProfile();
+
   // V3: Context campaigns go through full governance
   const contextInjected = getGovernedContextCampaigns(
     userCtx, supplyCtx, lifecycleActive, userIdentifier,
@@ -517,9 +520,9 @@ export function rankCampaigns(
     passesGovernance(c, userCtx, supplyCtx, lifecycleActive, userIdentifier)
   );
 
-  // ── Phase 2: Score and Sort ──────────────────────────────────
+  // ── Phase 2: Score and Sort (with AI personalization) ────────
   const scored = eligible
-    .map(c => scoreCampaign(c, userCtx, supplyCtx, lifecycleActive))
+    .map(c => scoreCampaign(c, userCtx, supplyCtx, lifecycleActive, userProfile))
     .sort((a, b) => b.totalScore - a.totalScore);
 
   // ── Phase 3: Allocate into slot buckets ──────────────────────
