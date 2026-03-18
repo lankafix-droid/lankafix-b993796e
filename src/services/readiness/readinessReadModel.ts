@@ -37,10 +37,11 @@ export interface CategoryReadiness {
 
 export async function fetchCategoryReadiness(): Promise<CategoryReadiness[]> {
   const [partnersRes, bookingsRes] = await Promise.all([
-    supabase.from("partners").select("id, categories_supported, service_zones, verification_status"),
-    supabase.from("bookings").select("id, category_code, status, payment_status").eq("status", "completed").limit(500),
+    supabase.from("partners").select("id, categories_supported, service_zones, verification_status, is_seeded"),
+    supabase.from("bookings").select("id, category_code, status, payment_status, is_pilot_test").eq("status", "completed").limit(500),
   ]);
-  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified");
+  // Exclude seeded partners from readiness calculations
+  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified" && !p.is_seeded);
   const bookings = bookingsRes.data || [];
 
   return Object.entries(CATEGORY_LABELS).map(([code, label]) => {
@@ -83,10 +84,11 @@ export interface ZoneReadiness {
 
 export async function fetchZoneReadiness(): Promise<ZoneReadiness[]> {
   const [partnersRes, bookingsRes] = await Promise.all([
-    supabase.from("partners").select("id, service_zones, categories_supported, availability_status, verification_status"),
+    supabase.from("partners").select("id, service_zones, categories_supported, availability_status, verification_status, is_seeded"),
     supabase.from("bookings").select("id, zone_code, status").limit(500),
   ]);
-  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified");
+  // Exclude seeded partners
+  const verified = (partnersRes.data || []).filter((p: any) => p.verification_status === "verified" && !p.is_seeded);
   const bookings = bookingsRes.data || [];
 
   return COLOMBO_ZONES_DATA.map(zone => {
@@ -122,7 +124,7 @@ export interface PartnerReadiness {
 
 export async function fetchPartnerReadiness(): Promise<PartnerReadiness[]> {
   const [partnersRes, bookingsRes, bankRes] = await Promise.all([
-    supabase.from("partners").select("id, full_name, verification_status, categories_supported, service_zones, availability_status, acceptance_rate, cancellation_rate, rating_average, completed_jobs_count, phone_number, email, nic_number, user_id").order("full_name"),
+    supabase.from("partners").select("id, full_name, verification_status, categories_supported, service_zones, availability_status, acceptance_rate, cancellation_rate, rating_average, completed_jobs_count, phone_number, email, nic_number, user_id, is_seeded").order("full_name"),
     supabase.from("bookings").select("id, partner_id, status").eq("status", "completed").limit(500),
     supabase.from("partner_bank_accounts").select("partner_id, verification_status"),
   ]);
@@ -143,7 +145,7 @@ export async function fetchPartnerReadiness(): Promise<PartnerReadiness[]> {
     const realJobs = completedMap.get(p.id) || 0;
     const acceptance = p.acceptance_rate ?? 0;
     const cancellationRisk = (p.cancellation_rate ?? 0) > 30;
-    const isSeeded = !p.user_id;
+    const isSeeded = p.is_seeded || !p.user_id;
 
     let status: PartnerStatus;
     if (isVerified && hasProfile && hasZones && acceptance >= 50 && realJobs >= 1 && !isSeeded)
@@ -409,7 +411,7 @@ export interface TransactionProof {
 }
 
 export async function fetchTransactionProof(): Promise<TransactionProof> {
-  const [bookings, completed, quotes, accepts, disputes, callbacks, payments] = await Promise.all([
+  const [bookings, completed, quotes, accepts, disputes, callbacks, payments, users] = await Promise.all([
     supabase.from("bookings").select("id", { count: "exact", head: true }),
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("status", "completed"),
     supabase.from("bookings").select("id", { count: "exact", head: true }).in("status", ["completed", "assigned", "quote_approved"]),
@@ -417,9 +419,10 @@ export async function fetchTransactionProof(): Promise<TransactionProof> {
     supabase.from("bookings").select("id", { count: "exact", head: true }).eq("under_mediation", true),
     supabase.from("operator_callback_tasks").select("id", { count: "exact", head: true }),
     supabase.from("bookings").select("id", { count: "exact", head: true }).in("payment_status", ["paid", "cash_collected", "payment_verified"]),
+    supabase.from("profiles").select("user_id", { count: "exact", head: true }),
   ]);
   return {
-    liveUsers: 0, // Would need auth.users count, approximated
+    liveUsers: users.count ?? 0,
     liveBookings: bookings.count ?? 0, completedBookings: completed.count ?? 0,
     liveQuotes: quotes.count ?? 0, partnerAcceptances: accepts.count ?? 0,
     disputes: disputes.count ?? 0, callbackTasks: callbacks.count ?? 0,
@@ -448,6 +451,15 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
   const launchReadyCats = cats.filter(c => c.status === "LAUNCH_READY").length;
   const zeroSupplyCats = cats.filter(c => c.partnerCount === 0).length;
 
+  // Fetch real (non-seeded) partner counts for verdict
+  const { count: realPartnerCount } = await supabase
+    .from("partners")
+    .select("id", { count: "exact", head: true })
+    .eq("verification_status", "verified")
+    .eq("is_seeded", false);
+
+  const readyZones = (await fetchZoneReadiness()).filter(z => z.status !== "DISABLED").length;
+
   const verdict = computeLaunchVerdict({
     verifiedLiveCompletedBookings: proof.completedBookings,
     launchReadyCategories: launchReadyCats,
@@ -457,8 +469,8 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
     operatorTrainingCompletion: 0,
     categoriesWithZeroSupply: zeroSupplyCats,
     unresolvedCriticalBlockers: blockers.filter(b => b.severity === "CRITICAL" && b.status !== "RESOLVED").length,
-    verifiedPartnerCount: 0,
-    readyZones: 0,
+    verifiedPartnerCount: realPartnerCount ?? 0,
+    readyZones,
     livePayments: proof.payments,
     liveDisputes: proof.disputes,
   });
