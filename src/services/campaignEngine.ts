@@ -1,13 +1,11 @@
 /**
- * LankaFix Campaign Decision Engine — Production-Grade V2
+ * LankaFix Campaign Decision Engine — Production V2.1 (Final Hardening)
  *
- * Key V2 improvements:
- *   1. Real rule engine evaluation (user_segment, booking_state, suppression)
- *   2. Cross-surface deduplication — no campaign appears in multiple slots
- *   3. Weighted trust scoring model (not badge count)
- *   4. Nearby slot uses zone-adjacency and ETA context
- *   5. Publishing safety controls (kill switch, rollout %, test campaigns)
- *   6. Fallback supply safety — downgrades weak-supply promos to trust cards
+ * V2.1 changes:
+ *   1. User-hash rollout sampling (userId + campaignId)
+ *   2. Kill switch reads from activated keys set, not mere existence
+ *   3. Category-specific nearby travel tolerance
+ *   4. Strict cross-bucket deduplication (set-based, single pass)
  */
 import type {
   Campaign, UserCampaignContext, SupplyContext,
@@ -21,6 +19,44 @@ import {
   evaluateSuppressionRules,
 } from '@/services/campaignRuleEngine';
 import { computeTrustScore } from '@/services/campaignTrustScoring';
+
+// ─── Activated kill switch keys (populated from remote config / platform_settings) ──
+let activatedKillSwitchKeys = new Set<string>();
+
+/**
+ * Call this on app init to load activated kill switches from remote config,
+ * platform_settings, or feature flag service.
+ */
+export function setActivatedKillSwitchKeys(keys: string[]) {
+  activatedKillSwitchKeys = new Set(keys);
+}
+
+// ─── Deterministic Hash (FNV-1a 32-bit) ─────────────────────────
+function fnv1aHash(str: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = (hash * 0x01000193) >>> 0;
+  }
+  return hash;
+}
+
+// ─── Anonymous Session ID (fallback for unauthenticated users) ──
+let _anonymousSessionId: string | null = null;
+function getAnonymousSessionId(): string {
+  if (_anonymousSessionId) return _anonymousSessionId;
+  const stored = typeof localStorage !== 'undefined'
+    ? localStorage.getItem('lf_anon_session_id')
+    : null;
+  if (stored) {
+    _anonymousSessionId = stored;
+    return stored;
+  }
+  const id = `anon_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  _anonymousSessionId = id;
+  try { localStorage.setItem('lf_anon_session_id', id); } catch { /* SSR safe */ }
+  return id;
+}
 
 // ─── Schedule Check ───────────────────────────────────────────────
 function isWithinSchedule(campaign: Campaign): boolean {
@@ -90,22 +126,27 @@ function passesSupplyGate(campaign: Campaign, supply: SupplyContext): boolean {
   return true;
 }
 
-// ─── Publishing Safety Gate ──────────────────────────────────────
-function passesPublishingSafety(campaign: Campaign): boolean {
+// ─── Publishing Safety Gate (V2.1: user-hash rollout + proper kill switch) ──
+function passesPublishingSafety(campaign: Campaign, userIdentifier?: string): boolean {
   const safety = campaign.publishing_safety;
   if (!safety) return true;
 
   // Test campaigns only visible in dev/staging
   if (safety.is_test_campaign && import.meta.env.PROD) return false;
 
-  // Rollout percentage: deterministic hash-based sampling
+  // V2.1 ROLLOUT: deterministic user-hash sampling
+  // Same user always gets the same result for the same campaign
   if (safety.rollout_percentage !== undefined && safety.rollout_percentage < 100) {
-    const hash = campaign.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-    if ((hash % 100) >= safety.rollout_percentage) return false;
+    const uid = userIdentifier || getAnonymousSessionId();
+    const bucket = fnv1aHash(`${uid}:${campaign.id}`) % 100;
+    if (bucket >= safety.rollout_percentage) return false;
   }
 
-  // Kill switch: if key is set, campaign is force-disabled
-  if (safety.kill_switch_key) return false;
+  // V2.1 KILL SWITCH: only disable if the key is in the activated set
+  // kill_switch_key is a reference key, not an auto-disable flag
+  if (safety.kill_switch_key && activatedKillSwitchKeys.has(safety.kill_switch_key)) {
+    return false;
+  }
 
   return true;
 }
@@ -128,7 +169,27 @@ function getSeasonalBoost(campaign: Campaign): number {
   return boost;
 }
 
-// ─── Nearby Relevance ────────────────────────────────────────────
+// ─── Category-Specific Travel Tolerance ──────────────────────────
+/**
+ * Different categories have different "nearby" expectations.
+ * Mobile drop-off: user travels → wider radius OK.
+ * AC home service: technician travels → tighter ETA.
+ * Solar inspection: scheduled → ETA less critical.
+ * Emergency IT: time-critical → tight ETA.
+ */
+const CATEGORY_ETA_TOLERANCE: Record<string, { maxEtaMinutes: number; adjacentBoost: number }> = {
+  MOBILE: { maxEtaMinutes: 60, adjacentBoost: 10 },   // Drop-off model, wider tolerance
+  AC: { maxEtaMinutes: 45, adjacentBoost: 6 },
+  IT: { maxEtaMinutes: 30, adjacentBoost: 4 },         // Often urgent
+  CCTV: { maxEtaMinutes: 60, adjacentBoost: 8 },       // Scheduled
+  SOLAR: { maxEtaMinutes: 90, adjacentBoost: 10 },     // Planned site visit
+  CONSUMER_ELEC: { maxEtaMinutes: 50, adjacentBoost: 6 },
+  SMART_HOME_OFFICE: { maxEtaMinutes: 45, adjacentBoost: 6 },
+  POWER_BACKUP: { maxEtaMinutes: 60, adjacentBoost: 8 },
+};
+const DEFAULT_ETA_TOLERANCE = { maxEtaMinutes: 45, adjacentBoost: 6 };
+
+// ─── Nearby Relevance (V2.1: category-specific tolerance) ────────
 function computeNearbyRelevance(campaign: Campaign, supply: SupplyContext, ctx: UserCampaignContext): number {
   if (campaign.campaign_type !== 'nearby_technicians' && campaign.campaign_type !== 'partner_spotlight') {
     return 0;
@@ -142,24 +203,30 @@ function computeNearbyRelevance(campaign: Campaign, supply: SupplyContext, ctx: 
     score += 15;
   }
 
-  // Adjacent zone reach
-  if (nearby?.adjacentZones && campaign.zones.length > 0) {
-    const adjacentMatch = campaign.zones.some(z => nearby.adjacentZones?.includes(z));
-    if (adjacentMatch) score += 8;
-  }
+  // Category-specific adjacent zone and ETA scoring
+  for (const cat of campaign.category_ids) {
+    const tolerance = CATEGORY_ETA_TOLERANCE[cat] || DEFAULT_ETA_TOLERANCE;
 
-  // ETA confidence: boost if nearby partners have good ETA
-  if (ctx.zone && nearby?.zoneEtaEstimates?.[ctx.zone]) {
-    const eta = nearby.zoneEtaEstimates[ctx.zone];
-    if (eta <= 20) score += 10;
-    else if (eta <= 40) score += 5;
-  }
+    // Adjacent zone reach (weighted by category)
+    if (nearby?.adjacentZones && campaign.zones.length > 0) {
+      const adjacentMatch = campaign.zones.some(z => nearby.adjacentZones?.includes(z));
+      if (adjacentMatch) score += tolerance.adjacentBoost;
+    }
 
-  // Category-zone partner density
-  if (ctx.zone && nearby?.zonePartnerMatrix?.[ctx.zone]) {
-    const zonePartners = nearby.zonePartnerMatrix[ctx.zone];
-    for (const cat of campaign.category_ids) {
-      if ((zonePartners[cat] ?? 0) >= 2) score += 5;
+    // ETA confidence: boost if within category-specific tolerance
+    if (ctx.zone && nearby?.zoneEtaEstimates?.[ctx.zone]) {
+      const eta = nearby.zoneEtaEstimates[ctx.zone];
+      if (eta <= tolerance.maxEtaMinutes * 0.5) score += 10;
+      else if (eta <= tolerance.maxEtaMinutes) score += 5;
+      // Beyond tolerance → penalty
+      else score -= 5;
+    }
+
+    // Category-zone partner density
+    if (ctx.zone && nearby?.zonePartnerMatrix?.[ctx.zone]) {
+      const count = nearby.zonePartnerMatrix[ctx.zone][cat] ?? 0;
+      if (count >= 3) score += 8;
+      else if (count >= 1) score += 3;
     }
   }
 
@@ -173,12 +240,10 @@ function scoreCampaign(
   supply: SupplyContext,
   lifecycleActive: boolean,
 ): CampaignScore {
-  // Evaluate suppression rules
   const { penalty: suppressionPenalty } = evaluateSuppressionRules(
     campaign, ctx, supply, lifecycleActive,
   );
 
-  // Trust score via weighted model
   const trustScore = computeTrustScore(campaign, supply);
 
   const breakdown = {
@@ -186,7 +251,7 @@ function scoreCampaign(
     contextRelevance: 0,
     zoneRelevance: 0,
     categoryAffinity: 0,
-    trustScore: Math.round(trustScore / 5), // Normalize to ~0-20 range for scoring
+    trustScore: Math.round(trustScore / 5),
     supplyConfidence: 0,
     seasonalRelevance: getSeasonalBoost(campaign),
     bookingStateRelevance: 0,
@@ -195,25 +260,18 @@ function scoreCampaign(
     nearbyRelevance: computeNearbyRelevance(campaign, supply, ctx),
   };
 
-  // Category affinity
   if (ctx.lastViewedCategory && campaign.category_ids.includes(ctx.lastViewedCategory)) {
     breakdown.categoryAffinity += 15;
   }
   if (ctx.lastCompletedCategory && campaign.category_ids.includes(ctx.lastCompletedCategory)) {
     breakdown.categoryAffinity += 10;
   }
-
-  // Zone relevance
   if (ctx.zone && campaign.zones.includes(ctx.zone)) {
     breakdown.zoneRelevance += 12;
   }
-
-  // Language match
   if (campaign.language === ctx.language || campaign.language === 'mixed') {
     breakdown.contextRelevance += 5;
   }
-
-  // Booking state relevance
   if (ctx.hasPendingQuote && campaign.campaign_type === 'pending_quote') {
     breakdown.bookingStateRelevance += 30;
   }
@@ -223,8 +281,6 @@ function scoreCampaign(
   if (ctx.hasAbandonedBooking && campaign.campaign_type === 'user_recovery') {
     breakdown.bookingStateRelevance += 20;
   }
-
-  // Supply confidence scoring
   if (supply.supplyConfidence && campaign.category_ids.length > 0) {
     const avgConf = campaign.category_ids.reduce((sum, cat) => {
       return sum + (supply.supplyConfidence?.[cat]?.score ?? 50);
@@ -267,10 +323,11 @@ function getContextCampaigns(ctx: UserCampaignContext): Campaign[] {
   return result;
 }
 
-// ─── Cross-Surface Deduplication ─────────────────────────────────
+// ─── Strict Cross-Surface Deduplication (V2.1) ──────────────────
 /**
- * Ensures no campaign ID appears in more than one slot bucket.
- * Priority: hero > recovery > trust > trending > business > nearby > education > contextRows
+ * Single-pass deduplication across all slot buckets.
+ * Priority order: hero > recovery > trust > trending > business > nearby > education > contextRows
+ * A campaign ID can appear in exactly ONE output bucket.
  */
 function deduplicateAcrossSlots(
   hero: Campaign[],
@@ -295,25 +352,15 @@ function deduplicateAcrossSlots(
     return result;
   };
 
-  // Deduplicate in priority order
-  const dHero = dedup(hero);
-  const dRecovery = dedup(recovery);
-  const dTrust = dedup(trust);
-  const dTrending = dedup(trending);
-  const dBusiness = dedup(business);
-  const dNearby = dedup(nearby);
-  const dEducation = dedup(education);
-  const dContext = dedup(contextRows);
-
   return {
-    hero: dHero,
-    recovery: dRecovery,
-    trust: dTrust,
-    trending: dTrending,
-    business: dBusiness,
-    nearby: dNearby,
-    education: dEducation,
-    contextRows: dContext,
+    hero: dedup(hero),
+    recovery: dedup(recovery),
+    trust: dedup(trust),
+    trending: dedup(trending),
+    business: dedup(business),
+    nearby: dedup(nearby),
+    education: dedup(education),
+    contextRows: dedup(contextRows),
   };
 }
 
@@ -328,6 +375,7 @@ export function rankCampaigns(
   const pool = remoteCampaigns.length > 0 ? remoteCampaigns : FALLBACK_CAMPAIGNS;
   const contextInjected = getContextCampaigns(userCtx);
   const lifecycleActive = hasActiveLifecycleCards(userCtx);
+  const userIdentifier = userCtx.userId;
 
   // ── Phase 1: Filter ──────────────────────────────────────────
   const eligible = pool.filter(c => {
@@ -336,13 +384,10 @@ export function rankCampaigns(
     if (!isWithinSchedule(c)) return false;
     if (!matchesAudience(c, userCtx)) return false;
     if (!passesSupplyGate(c, supplyCtx)) return false;
-    if (!passesPublishingSafety(c)) return false;
-
-    // V2: Evaluate real rule engines
+    if (!passesPublishingSafety(c, userIdentifier)) return false;
     if (!evaluateUserSegmentRules(c.user_segment_rules, userCtx)) return false;
     if (!evaluateBookingStateRules(c.booking_state_rules, userCtx)) return false;
 
-    // Hard suppression check (dismiss/snooze/impression cap)
     const { suppressed } = evaluateSuppressionRules(c, userCtx, supplyCtx, lifecycleActive);
     if (suppressed) return false;
 
@@ -378,7 +423,6 @@ export function rankCampaigns(
     ...slots.top_hero_slot,
   ].slice(0, maxHero);
 
-  // Fallback: ensure at least 2 hero cards from safe fallbacks
   if (hero.length < 2) {
     const safePool = SAFE_FALLBACK_CAMPAIGNS.length > 0 ? SAFE_FALLBACK_CAMPAIGNS : FALLBACK_CAMPAIGNS;
     const fallbackFill = safePool
@@ -393,7 +437,7 @@ export function rankCampaigns(
     .filter(c => !hero.includes(c))
     .slice(0, maxContext);
 
-  // ── Phase 6: Deduplicate across all surfaces ─────────────────
+  // ── Phase 6: Strict deduplication across all surfaces ────────
   return deduplicateAcrossSlots(
     hero,
     [...contextInjected, ...slots.recovery_slot].slice(0, 3),
