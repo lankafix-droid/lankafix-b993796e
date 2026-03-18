@@ -60,7 +60,7 @@ export const FALLBACK_CAMPAIGNS: Campaign[] = [
     id: 'fallback-inspection-first',
     campaign_name: 'Inspection First',
     campaign_type: 'trust_reassurance',
-    title: 'Not sure what's wrong?',
+    title: "Not sure what's wrong?",
     subtitle: 'Get an inspection-first diagnosis — no obligation to repair',
     cta_label: 'Book Inspection',
     cta_deep_link: '/diagnose',

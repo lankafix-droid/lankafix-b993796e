@@ -773,6 +773,143 @@ export type Database = {
           },
         ]
       }
+      campaign_events: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          active_days: string[] | null
+          active_from: string | null
+          active_hours: unknown
+          active_to: string | null
+          audience_type: string
+          body: string | null
+          booking_state_rules: Json | null
+          campaign_name: string
+          campaign_type: string
+          category_ids: string[] | null
+          created_at: string
+          created_by: string | null
+          cta_deep_link: string | null
+          cta_label: string | null
+          experiment_id: string | null
+          id: string
+          image_url: string | null
+          language: string
+          mobile_image_url: string | null
+          priority: number
+          required_supply_threshold: number | null
+          status: string
+          subtitle: string | null
+          suppression_rules: Json | null
+          title: string
+          trust_badges: string[] | null
+          updated_at: string
+          urgency_tag: string | null
+          user_segment_rules: Json | null
+          variant: string | null
+          zones: string[] | null
+        }
+        Insert: {
+          active_days?: string[] | null
+          active_from?: string | null
+          active_hours?: unknown
+          active_to?: string | null
+          audience_type?: string
+          body?: string | null
+          booking_state_rules?: Json | null
+          campaign_name: string
+          campaign_type?: string
+          category_ids?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          cta_deep_link?: string | null
+          cta_label?: string | null
+          experiment_id?: string | null
+          id?: string
+          image_url?: string | null
+          language?: string
+          mobile_image_url?: string | null
+          priority?: number
+          required_supply_threshold?: number | null
+          status?: string
+          subtitle?: string | null
+          suppression_rules?: Json | null
+          title: string
+          trust_badges?: string[] | null
+          updated_at?: string
+          urgency_tag?: string | null
+          user_segment_rules?: Json | null
+          variant?: string | null
+          zones?: string[] | null
+        }
+        Update: {
+          active_days?: string[] | null
+          active_from?: string | null
+          active_hours?: unknown
+          active_to?: string | null
+          audience_type?: string
+          body?: string | null
+          booking_state_rules?: Json | null
+          campaign_name?: string
+          campaign_type?: string
+          category_ids?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          cta_deep_link?: string | null
+          cta_label?: string | null
+          experiment_id?: string | null
+          id?: string
+          image_url?: string | null
+          language?: string
+          mobile_image_url?: string | null
+          priority?: number
+          required_supply_threshold?: number | null
+          status?: string
+          subtitle?: string | null
+          suppression_rules?: Json | null
+          title?: string
+          trust_badges?: string[] | null
+          updated_at?: string
+          urgency_tag?: string | null
+          user_segment_rules?: Json | null
+          variant?: string | null
+          zones?: string[] | null
+        }
+        Relationships: []
+      }
       customer_addresses: {
         Row: {
           address_line_1: string | null
