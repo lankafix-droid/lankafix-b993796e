@@ -231,6 +231,8 @@ export interface CampaignScore {
     fatiguePenalty: number;
     suppressionPenalty: number;
     nearbyRelevance: number;
+    /** AI behavior-based personalization boost (-10 to +25) */
+    personalizationBoost: number;
   };
 }
 
