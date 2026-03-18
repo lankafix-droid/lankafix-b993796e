@@ -252,7 +252,7 @@ export default function AdminSetupPage() {
                 { label: "Support assigned", done: assignments.some(a => a.role === "support") },
               ].map(item => (
                 <div key={item.label} className="flex items-center gap-2 text-sm">
-                  <div className={`w-2 h-2 rounded-full ${item.done ? "bg-green-500" : "bg-muted"}`} />
+                  <div className={`w-2 h-2 rounded-full ${item.done ? "bg-success" : "bg-muted"}`} />
                   <span className={item.done ? "text-foreground" : "text-muted-foreground"}>{item.label}</span>
                 </div>
               ))}
