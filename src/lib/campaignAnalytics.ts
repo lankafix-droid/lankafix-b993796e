@@ -20,11 +20,11 @@ export function trackCampaignEvent(
   // Best-effort DB insert (non-blocking)
   supabase.auth.getUser().then(({ data }) => {
     if (!data.user) return;
-    supabase.from('campaign_events').insert({
+    supabase.from('campaign_events').insert([{
       campaign_id: campaignId,
       user_id: data.user.id,
       event_type: eventType,
       metadata: metadata ?? {},
-    } as Record<string, unknown>).then(() => {});
+    }] as any).then(() => {});
   });
 }
