@@ -259,11 +259,12 @@ serve(async (req) => {
     // Track excluded partners for decision log
     const exclusionLog: Array<{ partner_id: string; reason: string }> = [];
 
-    // 2. Query eligible partners
+    // 2. Query eligible partners (exclude seeded partners)
     let query = supabase
       .from("partners")
       .select("*")
       .eq("verification_status", "verified")
+      .eq("is_seeded", false)
       .contains("categories_supported", [category_code]);
 
     query = query.neq("availability_status", "offline");

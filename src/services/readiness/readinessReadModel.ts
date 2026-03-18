@@ -145,7 +145,7 @@ export async function fetchPartnerReadiness(): Promise<PartnerReadiness[]> {
     const realJobs = completedMap.get(p.id) || 0;
     const acceptance = p.acceptance_rate ?? 0;
     const cancellationRisk = (p.cancellation_rate ?? 0) > 30;
-    const isSeeded = !p.user_id;
+    const isSeeded = p.is_seeded || !p.user_id;
 
     let status: PartnerStatus;
     if (isVerified && hasProfile && hasZones && acceptance >= 50 && realJobs >= 1 && !isSeeded)
