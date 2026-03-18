@@ -34,7 +34,7 @@ export async function fetchPilotProofReport(): Promise<PilotProofReport> {
     ratings, support,
   ] = await Promise.all([
     supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "admin"),
-    supabase.from("user_roles").select("id", { count: "exact", head: true }).in("role", ["operator", "support"]),
+    supabase.from("user_roles").select("id", { count: "exact", head: true }).in("role", ["moderator", "user"]),
     supabase.from("partners").select("id", { count: "exact", head: true }).eq("is_seeded", false).eq("verification_status", "verified").not("user_id", "is", null),
     supabase.from("bookings").select("id", { count: "exact", head: true }),
     supabase.from("dispatch_offers").select("id", { count: "exact", head: true }).eq("status", "accepted"),
