@@ -141,6 +141,7 @@ const AdminSetupPage = lazy(() => import("./pages/ops/AdminSetupPage"));
 const PilotProofDashboardPage = lazy(() => import("./pages/ops/PilotProofDashboardPage"));
 const OperatorExecutionBoardPage = lazy(() => import("./pages/ops/OperatorExecutionBoardPage"));
 const TrainingCompletionPage = lazy(() => import("./pages/ops/TrainingCompletionPage"));
+const DemandDashboardPage = lazy(() => import("./pages/ops/DemandDashboardPage"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
