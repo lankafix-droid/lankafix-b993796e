@@ -487,6 +487,7 @@ serve(async (req) => {
     // 3. Surface publishing
     if (mode === 'full' || mode === 'publish') {
       await publishToSurfaces();
+      results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
     }
 
     // 4. Decay
