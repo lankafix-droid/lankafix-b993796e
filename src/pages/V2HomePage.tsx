@@ -69,6 +69,9 @@ const V2HomePage = () => {
         {/* 5. Category Grid — Launch → More Solutions → Coming Soon */}
         <V2CategoryGrid />
 
+        {/* 5.5 Content Intelligence Layer */}
+        <ContentIntelligenceLayer />
+
         {/* 6. Nearby Verified Technicians — trust + social proof */}
         <Suspense fallback={<SectionFallback />}>
           <V2NearbyTechnicians />
