@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.dispatch-offer-timer]
 verify_jwt = false
+
+[functions.classify-demand]
+verify_jwt = false
