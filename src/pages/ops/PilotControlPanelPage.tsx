@@ -35,7 +35,8 @@ import {
 import { executeAction } from "@/hooks/useOpsActions";
 import {
   getContextActions, RECOVERY_PLAYBOOKS, isActionAllowed, logOpsEvent,
-  type RecoveryPlaybook, type OpsRole, type InterventionResult,
+  resolveCurrentOpsRole, resolveOpsQueue, QUEUE_LABELS,
+  type RecoveryPlaybook, type OpsRole, type InterventionResult, type OpsQueue, type BookingActionContext,
 } from "@/engines/interventionEngine";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
