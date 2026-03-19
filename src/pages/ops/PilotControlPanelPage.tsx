@@ -41,34 +41,17 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-// ── Queue State Model ──
-// Each queue maps to a filtered view. KPI cards set the active queue.
-type OpsQueue =
-  | "all"
-  | "unassigned"
-  | "pending_partner_response"
-  | "quote_pending"
-  | "in_progress"
-  | "payment_pending"
-  | "low_rated"
-  | "escalated"
-  | "stuck"
-  | "completed_today"
-  | "cancelled_today";
-
-const QUEUE_LABELS: Record<OpsQueue, string> = {
-  all: "All Bookings",
-  unassigned: "Unassigned",
-  pending_partner_response: "Pending Response",
-  quote_pending: "Quote Pending",
-  in_progress: "In Progress",
-  payment_pending: "Payment Pending",
-  low_rated: "Low Rated",
-  escalated: "Escalations",
-  stuck: "Stuck Bookings",
-  completed_today: "Completed",
-  cancelled_today: "Cancelled",
-};
+// ── Hook: resolve current user's ops role via verified helper ──
+function useOpsRole(): OpsRole {
+  const [role, setRole] = useState<OpsRole>("operator");
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user?.id) return;
+      resolveCurrentOpsRole(data.user.id).then(setRole);
+    });
+  }, []);
+  return role;
+}
 
 const CATEGORIES = [
   { value: "", label: "All Categories" },
