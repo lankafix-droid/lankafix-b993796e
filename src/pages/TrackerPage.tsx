@@ -81,6 +81,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getPaymentForBooking } from "@/services/paymentService";
 import { useTechnicianTracking } from "@/hooks/useTechnicianTracking";
 import { getTrafficLabel } from "@/lib/etaEngine"; // kept for legacy tracker fallback
+import LiveTrackingMap from "@/components/maps/LiveTrackingMap";
 import RatingModal from "@/components/ratings/RatingModal";
 import { getRatingForBooking } from "@/services/ratingService";
 import { useAuth } from "@/hooks/useAuth";

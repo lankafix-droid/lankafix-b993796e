@@ -179,8 +179,13 @@ const OpsRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute requiredRole="admin">{children}</ProtectedRoute>
 );
 
+const GoogleMapsProvider = lazy(() => import("./components/maps/GoogleMapsProvider"));
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <Suspense fallback={null}>
+      <GoogleMapsProvider>
+    </Suspense>
     <TooltipProvider>
       <Toaster />
       <Sonner />
