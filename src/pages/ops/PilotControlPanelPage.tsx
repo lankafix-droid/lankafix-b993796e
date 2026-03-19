@@ -169,8 +169,13 @@ function StuckRow({ b, onAction }: { b: StuckBooking; onAction: () => void }) {
 }
 
 /* ── Status-Aware Action Dialog with live execution, playbook, role checks ── */
-function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }: {
-  bookingId: string; status: string; recommended?: StuckBooking["recommended"]; userRole: OpsRole; onDone: (result?: InterventionResult) => void;
+function SmartActionDialog({ bookingId, status, recommended, userRole, bookingCtx, onDone }: {
+  bookingId: string;
+  status: string;
+  recommended?: StuckBooking["recommended"];
+  userRole: OpsRole;
+  bookingCtx: BookingActionContext;
+  onDone: (result?: InterventionResult) => void;
 }) {
   const [loading, setLoading] = useState(false);
   const [partnerId, setPartnerId] = useState("");
@@ -178,11 +183,7 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
   const [note, setNote] = useState("");
   const [lastResult, setLastResult] = useState<InterventionResult | null>(null);
 
-  // Build real booking context — never hardcode
-  const bookingCtx: import("@/engines/interventionEngine").BookingActionContext = {
-    hasPartner: !!recommended && ["reassign_partner", "resend_assignment", "contact_partner_progress"].includes(recommended.action),
-    lowRating: !!recommended && recommended.action === "open_quality_recovery",
-  };
+  // Use real booking context passed from the caller — never infer from recommended action
   const contextActions = getContextActions(status, bookingCtx);
 
   const needsPartnerId = (key: string) => key === "assign" || key === "reassign";
@@ -196,14 +197,11 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
       if (needsPartnerId(actionKey)) params.partnerId = partnerId;
       if (needsReason(actionKey)) params.reason = reason;
       if (needsNote(actionKey)) params.note = note;
-      if (actionKey === "verify_payment") params.method = "cash_collected";
+      if (actionKey === "verify_payment") params.method = bookingCtx.paymentMethod || "cash_collected";
 
       const result = await executeAction(actionKey, bookingId, params);
       setLastResult(result);
-
-      // Log intervention result for analytics
       logOpsEvent("intervention_marked_resolved", bookingId, { action_key: actionKey, result });
-
       onDone(result);
     } catch (e: any) {
       toast({ title: "Action failed", description: e?.message || "Unknown error", variant: "destructive" });
@@ -211,7 +209,6 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
     setLoading(false);
   };
 
-  // Show the playbook for the recommended action at the top of the dialog
   const playbookKey = recommended?.playbookKey;
 
   return (
@@ -219,6 +216,8 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
       <div className="flex items-center gap-2 flex-wrap">
         <p className="text-xs font-mono text-muted-foreground">Booking: {bookingId.slice(0, 12)}…</p>
         <Badge variant="outline" className="text-[10px]">{status}</Badge>
+        {bookingCtx.underMediation && <Badge variant="destructive" className="text-[9px]">Under Mediation</Badge>}
+        {bookingCtx.escalationExists && <Badge variant="secondary" className="text-[9px]">Escalated</Badge>}
         {lastResult && (
           <Badge variant={lastResult === "resolved" ? "default" : "secondary"} className="text-[9px]">
             Result: {lastResult}
@@ -238,7 +237,7 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
         </div>
       )}
 
-      {/* Inline playbook for the recommended action */}
+      {/* Inline playbook */}
       {playbookKey && (
         <div className="border rounded-lg p-2 bg-muted/30">
           <PlaybookPanel playbookKey={playbookKey} />
@@ -296,7 +295,7 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
           );
         })}
 
-        {/* Contact actions — always available for ops */}
+        {/* Contact actions — always available, safe even during mediation */}
         <Separator className="my-1" />
         <div className="flex gap-1.5">
           <Button size="sm" variant="outline" className="h-7 text-[10px] flex-1" onClick={() => run("call_customer")}>
