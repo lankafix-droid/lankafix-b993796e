@@ -443,6 +443,12 @@ serve(async (req) => {
 
       if (unbriefed?.length) {
         for (const item of unbriefed) {
+          // Skip if already briefed (idempotent)
+          const { data: existingBrief } = await supabase.from('content_ai_briefs').select('id').eq('content_item_id', item.id).limit(1);
+          if (existingBrief?.length) {
+            // Already briefed — just ensure status is correct
+            continue;
+          }
           const { data: tags } = await supabase.from('content_category_tags').select('category_code').eq('content_item_id', item.id);
           const categories = (tags ?? []).map((t: any) => t.category_code);
 
