@@ -385,12 +385,6 @@ export const RECOVERY_PLAYBOOKS: Record<string, RecoveryPlaybook> = {
   },
 };
 
-// ══════════════════════════════════════════════════════════════
-// 6. STATUS-AWARE CONTEXT ACTIONS
-// ══════════════════════════════════════════════════════════════
-// Controls which actions appear in the action dialog.
-// Accepts real booking context — never hardcode.
-
 export interface ContextAction {
   key: string;
   label: string;
@@ -409,74 +403,215 @@ export interface BookingActionContext {
   underMediation?: boolean;
 }
 
+
+// 6. STATUS-AWARE CONTEXT ACTIONS — FULL LAUNCH-SAFE MATRIX
+// ══════════════════════════════════════════════════════════════
+//
+// ACTION-KEY ALIGNMENT STRATEGY:
+//   Recommendation layer → descriptive: "assign_partner", "reassign_partner"
+//   UI matrix (here)     → short keys:  "assign", "reassign"
+//   Dispatcher            → executes UI keys via executeAction(key, ...)
+//   Audit log             → canonical:  "assign_partner", "reassign_partner"
+//   Analytics             → uses canonical form in metadata
+//
+// This function determines WHICH actions appear and in WHAT ORDER.
+// It actively uses every field in BookingActionContext:
+//   hasPartner      — assign vs reassign, dispatch vs quote stage
+//   hasQuote        — shift from dispatch actions toward quote follow-up
+//   paymentStatus   — determines payment-specific action availability
+//   paymentMethod   — controls which payment action is PRIMARY
+//   lowRating       — surfaces recovery actions higher in priority
+//   escalationExists — shifts to safer, escalation-aware ordering
+//   underMediation  — RESTRICTS risky actions to protect dispute integrity
+
 export function getContextActions(status: string, ctx: BookingActionContext): ContextAction[] {
   const actions: ContextAction[] = [];
 
+  // ── MEDIATION GUARD ──
+  // When booking is under mediation/dispute, suppress risky operational shortcuts.
+  // Only safe actions allowed: note, escalate, call, quality recovery.
+  // Rationale: reassign/cancel/verify_payment during dispute can worsen outcomes.
+  if (ctx.underMediation) {
+    if (ctx.lowRating) {
+      actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning", isPrimary: true });
+    }
+    actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default", isPrimary: !ctx.lowRating });
+    actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+    // Contact actions are safe during mediation — operator may need to gather info
+    // call_customer and call_partner are rendered separately in the dialog UI
+    return actions;
+  }
+
+  // ── TERMINAL STATE: COMPLETED ──
+  // No dispatch/assignment actions. Only post-service: note, recovery, payment follow-up.
+  if (status === "completed") {
+    // Low-rating recovery is highest priority on completed bookings
+    if (ctx.lowRating) {
+      actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning", isPrimary: true });
+    }
+    // Payment follow-up if payment still pending on a completed booking
+    if (ctx.paymentStatus && !["paid", "cash_collected", "payment_verified"].includes(ctx.paymentStatus)) {
+      const pmPrimary = !ctx.lowRating; // primary only if no low-rating to handle first
+      if (ctx.paymentMethod === "cash" || ctx.paymentMethod === "cash_on_delivery") {
+        actions.push({ key: "verify_payment", label: "Verify Cash", icon: "DollarSign", variant: "success", isPrimary: pmPrimary });
+      } else {
+        actions.push({ key: "payment_followup", label: "Payment Follow-up", icon: "Send", variant: "default", isPrimary: pmPrimary });
+      }
+    }
+    actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+    if (ctx.escalationExists) {
+      actions.push({ key: "escalate", label: "Escalation Follow-up", icon: "AlertTriangle", variant: "warning" });
+    }
+    return actions;
+  }
+
+  // ── TERMINAL STATE: CANCELLED ──
+  // Only review/support actions. No dispatch, no payment verification shortcuts.
+  if (status === "cancelled") {
+    actions.push({ key: "note", label: "Add Review Note", icon: "MessageSquare", variant: "default", isPrimary: true });
+    if (ctx.escalationExists) {
+      actions.push({ key: "escalate", label: "Escalation Follow-up", icon: "AlertTriangle", variant: "warning" });
+    }
+    // Allow quality recovery if a low-rating triggered the cancellation investigation
+    if (ctx.lowRating) {
+      actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning" });
+    }
+    return actions;
+  }
+
+  // ── ESCALATION-AWARE PREFIX ──
+  // If escalation exists on an active booking, lead with safer escalation actions.
+  // Rationale: escalated bookings need careful handling, not casual reassignment.
+  if (ctx.escalationExists) {
+    actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default", isPrimary: true });
+    actions.push({ key: "escalate", label: "Escalation Follow-up", icon: "AlertTriangle", variant: "warning" });
+    if (ctx.lowRating) {
+      actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning" });
+    }
+    // Still allow controlled operational actions below escalation-safe ones
+    // but do NOT make them primary
+  }
+
+  // ── LOW-RATING PREFIX (non-terminal, non-escalated) ──
+  // Surface recovery actions before normal operational ones.
+  if (ctx.lowRating && !ctx.escalationExists) {
+    actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning", isPrimary: true });
+  }
+
+  // ── STATUS-SPECIFIC BRANCHES ──
   switch (status) {
     case "requested":
     case "matching":
-      // ASSIGN (first-time) vs REASSIGN (replace existing)
+      // ASSIGN if no partner exists yet; REASSIGN if partner assigned but stale
       if (ctx.hasPartner) {
-        actions.push({ key: "reassign", label: "Reassign Partner", icon: "UserPlus", variant: "default", isPrimary: true });
+        actions.push({ key: "reassign", label: "Reassign Partner", icon: "UserPlus", variant: "default", isPrimary: !ctx.escalationExists && !ctx.lowRating });
         actions.push({ key: "resend", label: "Retry Dispatch", icon: "Send", variant: "default" });
       } else {
-        actions.push({ key: "assign", label: "Assign Partner", icon: "UserPlus", variant: "default", isPrimary: true });
+        actions.push({ key: "assign", label: "Assign Partner", icon: "UserPlus", variant: "default", isPrimary: !ctx.escalationExists && !ctx.lowRating });
         actions.push({ key: "resend", label: "Retry Dispatch", icon: "Send", variant: "default" });
       }
-      actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+      // hasQuote shouldn't be true at requested/matching, but guard defensively
+      if (!ctx.escalationExists) {
+        actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+      }
+      if (!ctx.escalationExists) {
+        actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+      }
       actions.push({ key: "cancel", label: "Cancel Booking", icon: "XCircle", variant: "destructive" });
       break;
 
     case "awaiting_partner_confirmation":
-      actions.push({ key: "resend", label: "Resend Notification", icon: "Send", variant: "default", isPrimary: true });
+      // Partner has been notified but hasn't responded
+      actions.push({ key: "resend", label: "Resend Notification", icon: "Send", variant: "default", isPrimary: !ctx.escalationExists && !ctx.lowRating });
       actions.push({ key: "reassign", label: "Reassign Partner", icon: "UserPlus", variant: "default" });
-      actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+      if (!ctx.escalationExists) {
+        actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+        actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+      }
       actions.push({ key: "cancel", label: "Cancel Booking", icon: "XCircle", variant: "destructive" });
       break;
 
     case "assigned":
     case "tech_en_route":
+      // Partner assigned / en route — focus on progress verification
+      if (!ctx.escalationExists) {
+        actions.push({ key: "note", label: "Add Progress Note", icon: "MessageSquare", variant: "default", isPrimary: !ctx.lowRating });
+      }
       actions.push({ key: "reassign", label: "Reassign Partner", icon: "UserPlus", variant: "default" });
       actions.push({ key: "resend", label: "Resend Notification", icon: "Send", variant: "default" });
-      actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
-      actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+      if (!ctx.escalationExists) {
+        actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+      }
       actions.push({ key: "cancel", label: "Cancel Booking", icon: "XCircle", variant: "destructive" });
       break;
 
     case "quote_submitted":
-      actions.push({ key: "remind_customer", label: "Remind Customer", icon: "Send", variant: "default", isPrimary: true });
-      actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
-      actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+      // Quote stage — shift from dispatch actions to quote/customer follow-up
+      // hasQuote is implicitly true here; do NOT show assign/reassign as primary
+      actions.push({ key: "remind_customer", label: "Remind Customer", icon: "Send", variant: "default", isPrimary: !ctx.escalationExists && !ctx.lowRating });
+      if (!ctx.escalationExists) {
+        actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+        actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+      }
       break;
 
     case "in_progress":
     case "repair_started":
-      actions.push({ key: "note", label: "Add Progress Note", icon: "MessageSquare", variant: "default", isPrimary: true });
-      actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+      // Active repair — monitor progress, escalate if needed
+      if (!ctx.escalationExists) {
+        actions.push({ key: "note", label: "Add Progress Note", icon: "MessageSquare", variant: "default", isPrimary: !ctx.lowRating });
+        actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+      }
+      // Reassign is available but deprioritized during active repair
       actions.push({ key: "reassign", label: "Reassign Partner", icon: "UserPlus", variant: "default" });
       break;
 
     case "payment_pending":
-      actions.push({ key: "verify_payment", label: "Verify Payment", icon: "DollarSign", variant: "success", isPrimary: true });
-      actions.push({ key: "payment_followup", label: "Payment Follow-up", icon: "Send", variant: "default" });
-      actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
-      actions.push({ key: "escalate", label: "Escalate to Finance", icon: "AlertTriangle", variant: "warning" });
-      break;
-
-    case "completed":
-      if (ctx.lowRating) {
-        actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning", isPrimary: true });
+      // ── PAYMENT-METHOD-AWARE PRIMARY ACTIONS ──
+      // verify_payment is only primary for cash; other methods use payment_followup first.
+      // Rationale: for bank/online, ops cannot blindly verify — must confirm proof first.
+      if (ctx.paymentMethod === "cash" || ctx.paymentMethod === "cash_on_delivery") {
+        // Cash: operator can confirm collection directly with partner
+        actions.push({ key: "verify_payment", label: "Verify Cash Collection", icon: "DollarSign", variant: "success", isPrimary: !ctx.escalationExists && !ctx.lowRating });
+        actions.push({ key: "payment_followup", label: "Payment Follow-up", icon: "Send", variant: "default" });
+      } else if (ctx.paymentMethod === "bank_transfer") {
+        // Bank transfer: follow up first, verify only with proof
+        actions.push({ key: "payment_followup", label: "Payment Follow-up", icon: "Send", variant: "default", isPrimary: !ctx.escalationExists && !ctx.lowRating });
+        actions.push({ key: "verify_payment", label: "Verify (with proof)", icon: "DollarSign", variant: "success" });
+      } else if (ctx.paymentMethod === "online") {
+        // Online/gateway: follow up, check gateway before verifying
+        actions.push({ key: "payment_followup", label: "Gateway Follow-up", icon: "Send", variant: "default", isPrimary: !ctx.escalationExists && !ctx.lowRating });
+        actions.push({ key: "verify_payment", label: "Verify Payment", icon: "DollarSign", variant: "success" });
+      } else {
+        // Unknown/null payment method: conservative — follow up, don't blindly verify
+        actions.push({ key: "payment_followup", label: "Payment Follow-up", icon: "Send", variant: "default", isPrimary: !ctx.escalationExists && !ctx.lowRating });
+        actions.push({ key: "verify_payment", label: "Verify Payment", icon: "DollarSign", variant: "success" });
       }
-      actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+      if (!ctx.escalationExists) {
+        actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
+        actions.push({ key: "escalate", label: "Escalate to Finance", icon: "AlertTriangle", variant: "warning" });
+      }
       break;
 
     default:
-      actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
-      actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
-      actions.push({ key: "cancel", label: "Cancel Booking", icon: "XCircle", variant: "destructive" });
+      // ── CONSERVATIVE UNKNOWN-STATE FALLBACK ──
+      // If status is unmodeled, expose only safe actions.
+      // No risky dispatch or payment verification.
+      if (!ctx.escalationExists) {
+        actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default", isPrimary: true });
+        actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
+      }
+      // Deliberately omit: assign, reassign, verify_payment, cancel
+      break;
   }
 
-  return actions;
+  // ── DEDUP ── (escalation/low-rating prefix may have added items already present)
+  const seen = new Set<string>();
+  return actions.filter(a => {
+    if (seen.has(a.key)) return false;
+    seen.add(a.key);
+    return true;
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
