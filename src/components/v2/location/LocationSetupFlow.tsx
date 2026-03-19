@@ -22,15 +22,8 @@ import {
 } from "@/store/locationStore";
 import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
 import GoogleAddressAutocomplete, { type PlaceResult } from "@/components/maps/GoogleAddressAutocomplete";
-import {
-  useLocationStore,
-  requestCurrentPosition,
-  validateServiceZone,
-  ADDRESS_LABEL_OPTIONS,
-  type AddressLabel,
-  type GeoPosition,
-} from "@/store/locationStore";
-import { COLOMBO_ZONES_DATA } from "@/data/colomboZones";
+
+
 
 interface Props {
   onComplete: () => void;
