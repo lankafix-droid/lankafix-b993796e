@@ -91,7 +91,11 @@ export function getCategoryCTA(
 
   const cta = CTA_MATRIX[archetype][effectiveLevel];
   const isFallback = effectiveLevel === 'none';
-  const route = isFallback ? `/request/${categoryCode}` : `/book/${categoryCode}`;
+  const route = isFallback
+    ? `/request/${categoryCode}`
+    : cta.action === 'submit'
+      ? `/submit/${categoryCode}`
+      : `/book/${categoryCode}`;
 
   const result: CategoryCTA = {
     label: cta.label,
