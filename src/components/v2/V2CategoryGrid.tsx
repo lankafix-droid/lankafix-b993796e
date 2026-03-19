@@ -153,6 +153,11 @@ const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, 
                 Consultation
               </Badge>
             )}
+            {!isComingSoon && !isConsultation && recentlyUsed && (
+              <Badge variant="outline" className="text-[9px] bg-primary/90 text-primary-foreground border-none font-bold shadow-sm px-2 py-0.5">
+                Recently Used
+              </Badge>
+            )}
             {!isComingSoon && !isConsultation && !recentlyUsed && hasEmergency && (
               <Badge variant="outline" className="text-[9px] bg-destructive text-destructive-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 ⚡ Emergency
@@ -164,6 +169,15 @@ const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, 
               </Badge>
             )}
           </div>
+
+          {/* Availability badge — bottom-right */}
+          {!isComingSoon && availabilityLevel && AVAILABILITY_BADGES[availabilityLevel] && (
+            <div className="absolute top-2.5 right-2.5">
+              <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${AVAILABILITY_BADGES[availabilityLevel]!.className}`}>
+                {AVAILABILITY_BADGES[availabilityLevel]!.label}
+              </Badge>
+            </div>
+          )}
 
           <div className="absolute bottom-2.5 left-3 right-3">
             <h3 className="font-heading font-bold text-white text-sm leading-tight drop-shadow-lg">{cat.name}</h3>
