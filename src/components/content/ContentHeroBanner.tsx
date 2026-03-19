@@ -49,8 +49,10 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
 
   if (!items?.length) return null;
 
-  const item = items[active];
-  const brief = item?.ai_brief;
+  const safeIdx = active < items.length ? active : 0;
+  const item = items[safeIdx];
+  if (!item) return null;
+  const brief = item.ai_brief;
   const Icon = TYPE_ICONS[item.content_type] ?? TrendingUp;
 
   return (
