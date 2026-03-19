@@ -49,10 +49,13 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
   const summary = brief?.ai_summary_short ?? item.raw_excerpt ?? '';
   const whyMatters = brief?.ai_why_it_matters;
   const categoryTags = item.category_tags.slice(0, 2);
-  const impressionRef = useTrackContentImpression(item.id);
+  const impressionRef = useTrackContentImpression(item.id, variant);
 
   const handleClick = () => {
-    trackContentEvent(item.id, 'click');
+    // Skip DB writes for evergreen fallback items
+    if (!item.id.startsWith('evergreen-')) {
+      trackContentEvent(item.id, 'click', { variant });
+    }
     onOpen?.(item);
   };
 

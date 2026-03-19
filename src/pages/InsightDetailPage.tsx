@@ -98,7 +98,7 @@ function InsightMeta({ item }: { item: EnrichedContentItem }) {
       <Badge variant="secondary" className="text-xs font-semibold capitalize">
         {item.content_type.replace(/_/g, ' ')}
       </Badge>
-      {item.category_tags.map(t => (
+      {(item.category_tags ?? []).map(t => (
         <Badge key={t.id} variant="outline" className="text-xs">
           {t.category_code}
         </Badge>
@@ -192,7 +192,7 @@ export default function InsightDetailPage() {
 
   const brief = item.ai_brief;
   const headline = brief?.ai_headline ?? item.title;
-  const primaryCategory = item.category_tags[0]?.category_code ?? null;
+  const primaryCategory = (item.category_tags ?? [])[0]?.category_code ?? null;
 
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
@@ -246,7 +246,7 @@ export default function InsightDetailPage() {
             </div>
           )}
 
-          {brief?.ai_risk_flags && brief.ai_risk_flags.length > 0 && (
+          {Array.isArray(brief?.ai_risk_flags) && brief.ai_risk_flags.length > 0 && (
             <div className="flex items-start gap-2 rounded-xl bg-destructive/5 border border-destructive/10 p-3">
               <Shield className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
               <div className="text-sm text-foreground/80">

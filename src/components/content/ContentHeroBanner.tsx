@@ -49,8 +49,10 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
 
   if (!items?.length) return null;
 
-  const item = items[active];
-  const brief = item?.ai_brief;
+  const safeIdx = active < items.length ? active : 0;
+  const item = items[safeIdx];
+  if (!item) return null;
+  const brief = item.ai_brief;
   const Icon = TYPE_ICONS[item.content_type] ?? TrendingUp;
 
   return (
@@ -85,7 +87,9 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="relative z-10 w-full text-left p-4 pt-11"
             onClick={() => {
-              trackContentEvent(item.id, 'click', { surface: 'ai_banner_forum' });
+              if (!item.id.startsWith('evergreen-')) {
+                trackContentEvent(item.id, 'click', { surface: 'ai_banner_forum' });
+              }
               onOpenItem?.(item);
             }}
           >
