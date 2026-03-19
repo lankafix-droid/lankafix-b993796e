@@ -1095,6 +1095,72 @@ export type Database = {
         }
         Relationships: []
       }
+      demand_requests: {
+        Row: {
+          budget_range: string | null
+          category_code: string
+          created_at: string
+          description: string | null
+          id: string
+          images: Json | null
+          latitude: number | null
+          location: string | null
+          longitude: number | null
+          metadata: Json | null
+          name: string
+          phone: string
+          preferred_time: string | null
+          priority: string
+          priority_score: number | null
+          request_type: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          budget_range?: string | null
+          category_code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: Json | null
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          metadata?: Json | null
+          name: string
+          phone: string
+          preferred_time?: string | null
+          priority?: string
+          priority_score?: number | null
+          request_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          budget_range?: string | null
+          category_code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: Json | null
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          metadata?: Json | null
+          name?: string
+          phone?: string
+          preferred_time?: string | null
+          priority?: string
+          priority_score?: number | null
+          request_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       device_passports: {
         Row: {
           brand: string

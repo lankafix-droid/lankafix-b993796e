@@ -29,6 +29,8 @@ const TrackJob = lazy(() => import("./pages/TrackJob"));
 const TrackerPage = lazy(() => import("./pages/TrackerPage"));
 // BookingTracker removed — TrackerPage is the unified tracker with DB-first state
 const WaitlistPage = lazy(() => import("./pages/WaitlistPage"));
+const DemandRequestPage = lazy(() => import("./pages/DemandRequestPage"));
+const SubmitRequirementPage = lazy(() => import("./pages/SubmitRequirementPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const DispatchBoardPage = lazy(() => import("./pages/ops/DispatchBoardPage"));
 const FinanceBoardPage = lazy(() => import("./pages/ops/FinanceBoardPage"));
@@ -139,6 +141,7 @@ const AdminSetupPage = lazy(() => import("./pages/ops/AdminSetupPage"));
 const PilotProofDashboardPage = lazy(() => import("./pages/ops/PilotProofDashboardPage"));
 const OperatorExecutionBoardPage = lazy(() => import("./pages/ops/OperatorExecutionBoardPage"));
 const TrainingCompletionPage = lazy(() => import("./pages/ops/TrainingCompletionPage"));
+const DemandDashboardPage = lazy(() => import("./pages/ops/DemandDashboardPage"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
@@ -202,6 +205,8 @@ const App = () => (
             <Route path="/track/:jobId" element={<RedirectTracker />} />
             <Route path="/track" element={<TrackJob />} />
             <Route path="/waitlist" element={<WaitlistPage />} />
+            <Route path="/request/:category" element={<DemandRequestPage />} />
+            <Route path="/submit/:category" element={<SubmitRequirementPage />} />
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
             <Route path="/account/delete" element={<ProtectedRoute><AccountDeletionPage /></ProtectedRoute>} />
             <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
@@ -331,6 +336,7 @@ const App = () => (
             <Route path="/ops/pilot-proof" element={<OpsRoute><PilotProofDashboardPage /></OpsRoute>} />
             <Route path="/ops/execution-board" element={<OpsRoute><OperatorExecutionBoardPage /></OpsRoute>} />
             <Route path="/ops/training-completion" element={<OpsRoute><TrainingCompletionPage /></OpsRoute>} />
+            <Route path="/ops/demand-dashboard" element={<OpsRoute><DemandDashboardPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
