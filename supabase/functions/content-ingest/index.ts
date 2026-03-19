@@ -369,7 +369,7 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const mode = body.mode ?? 'full';
-    const results: Record<string, number> = { processed: 0, briefed: 0, published: 0, decayed: 0, clustered: 0 };
+    const results: Record<string, number> = { processed: 0, briefed: 0, published: 0, decayed: 0, clustered: 0, surfaces_refreshed: 0 };
 
     // 1. Ingest from sources
     if (mode === 'full' || mode === 'ingest') {
