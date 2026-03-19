@@ -124,6 +124,19 @@ function DBBookingLiveTracking({ bookingId, partnerId, bookingStatus }: { bookin
         )}
       </div>
 
+      {/* Google Maps Live Tracking */}
+      <LiveTrackingMap
+        technicianLat={tracking.technicianLat}
+        technicianLng={tracking.technicianLng}
+        customerLat={tracking.customerLat}
+        customerLng={tracking.customerLng}
+        technicianName={tracking.partnerName}
+        isLive={tracking.isLive}
+        distanceKm={tracking.distanceKm}
+        etaMinutes={tracking.etaMinutes}
+        etaRange={tracking.etaRange}
+      />
+
       {/* Smart ETA Display */}
       <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
         <div className="flex items-center justify-between mb-1">
