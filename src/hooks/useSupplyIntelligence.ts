@@ -73,7 +73,7 @@ export function useSupplyIntelligence(): SupplyIntelligence {
         .from('partners')
         .select('availability_status, categories_supported, service_zones, rating_average, performance_score, is_seeded, verification_status')
         .eq('is_seeded', false)
-        .in('verification_status', ['verified', 'approved']);
+        .eq('verification_status', 'verified');
 
       if (!cancelled) {
         setPartners(data ?? []);
