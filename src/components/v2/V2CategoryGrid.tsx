@@ -92,17 +92,37 @@ function reorderByBehavior(codes: string[], rankedCategories: string[]): string[
 
 const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, supplyDetail }: { cat: typeof categories[0]; featured?: boolean; index?: number; recentlyUsed?: boolean; supplyDetail?: CategorySupplyDetail }) => {
   const thumb = categoryThumbs[cat.code];
-  const flow = v2CategoryFlows[cat.code];
   const launchState = getCategoryLaunchState(cat.code);
   const hasEmergency = cat.tags.includes("Emergency");
   const hasSameDay = cat.tags.includes("Same Day");
-  const pricingChip = flow ? PRICING_CHIPS[flow.pricingArchetype] : null;
   const estTime = ESTIMATED_TIMES[cat.code];
   const pricingMicrocopy = PRICING_MICROCOPY[cat.code];
   const isComingSoon = launchState === "coming_soon";
   const isConsultation = launchState === "consultation";
 
-  const linkTarget = isComingSoon ? "/waitlist" : `/book/${cat.code}`;
+  // Archetype-aware CTA
+  const archetype = supplyDetail?.archetype ?? getCategoryArchetype(cat.code);
+  const effectiveLevel = supplyDetail?.effectiveLevel ?? 'none';
+  const cta = getCategoryCTA(cat.code, archetype, effectiveLevel, isComingSoon);
+
+  const linkTarget = cta.route;
+
+  const handleClick = () => {
+    track("homepage_category_click", {
+      category: cat.code,
+      launchState,
+      cta_label: cta.label,
+      cta_action: cta.action,
+      is_fallback: cta.isFallback,
+      effective_level: effectiveLevel,
+    });
+    if (isComingSoon) {
+      logCategoryInterest(cat.code, "category_grid");
+    }
+    if (cta.isFallback) {
+      logFallbackDemand(cat.code, cta.action === 'callback' ? 'callback' : 'request', "category_card");
+    }
+  };
 
   return (
     <motion.div
@@ -113,12 +133,7 @@ const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, 
     >
       <Link
         to={linkTarget}
-        onClick={() => {
-          track("homepage_category_click", { category: cat.code, launchState });
-          if (isComingSoon) {
-            logCategoryInterest(cat.code, "category_grid");
-          }
-        }}
+        onClick={handleClick}
         className={`group block bg-card rounded-2xl border border-border/40 overflow-hidden transition-all duration-300 hover:shadow-card-hover hover:border-primary/20 active:scale-[0.97] ${isComingSoon ? "opacity-60" : ""}`}
       >
         <div className={`relative ${featured ? "h-32 sm:h-36" : "h-24 sm:h-28"} overflow-hidden`}>
@@ -142,14 +157,9 @@ const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, 
                 Coming Soon
               </Badge>
             )}
-            {isConsultation && (
+            {isConsultation && !recentlyUsed && (
               <Badge variant="outline" className="text-[9px] bg-accent text-accent-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 Consultation
-              </Badge>
-            )}
-            {!isComingSoon && !isConsultation && recentlyUsed && (
-              <Badge variant="outline" className="text-[9px] bg-primary/90 text-primary-foreground border-none font-bold shadow-sm px-2 py-0.5">
-                Recently Used
               </Badge>
             )}
             {!isComingSoon && !isConsultation && !recentlyUsed && hasEmergency && (
@@ -182,17 +192,33 @@ const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, 
           <p className="text-[11px] text-muted-foreground leading-relaxed mb-2.5">
             {isComingSoon ? "Launching soon — join the waitlist" : isConsultation ? "Submit your requirement for a custom quote" : (pricingMicrocopy || cat.description)}
           </p>
-          <div className="flex items-center justify-between">
+
+          {/* Dynamic CTA zone */}
+          <div className="flex items-center justify-between gap-2">
             {!isComingSoon && estTime && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-medium shrink-0">
                 <Clock className="w-3 h-3" />
                 {estTime}
               </span>
             )}
-            <div className="w-7 h-7 rounded-full bg-primary/8 flex items-center justify-center group-hover:bg-gradient-brand group-hover:text-primary-foreground text-primary transition-colors ml-auto">
-              <ArrowRight className="w-3.5 h-3.5" />
+            <div className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded-full transition-colors ml-auto ${
+              cta.isFallback
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground'
+            }`}>
+              {cta.isFallback && <PhoneCall className="w-3 h-3" />}
+              {cta.label}
+              {!cta.isFallback && <ArrowRight className="w-3 h-3" />}
             </div>
           </div>
+
+          {/* Secondary fallback action */}
+          {cta.secondaryLabel && (
+            <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+              <MessageCircle className="w-3 h-3" />
+              <span>{cta.secondaryLabel}</span>
+            </div>
+          )}
         </div>
       </Link>
     </motion.div>
