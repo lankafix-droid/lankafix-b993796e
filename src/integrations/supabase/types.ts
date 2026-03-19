@@ -1980,6 +1980,7 @@ export type Database = {
           reassigned_from_partner_id: string | null
           rejection_reason: string | null
           request_type: string
+          response_notes: string | null
           routing_status: string | null
           status: string
           updated_at: string
@@ -2013,6 +2014,7 @@ export type Database = {
           reassigned_from_partner_id?: string | null
           rejection_reason?: string | null
           request_type?: string
+          response_notes?: string | null
           routing_status?: string | null
           status?: string
           updated_at?: string
@@ -2046,6 +2048,7 @@ export type Database = {
           reassigned_from_partner_id?: string | null
           rejection_reason?: string | null
           request_type?: string
+          response_notes?: string | null
           routing_status?: string | null
           status?: string
           updated_at?: string
@@ -2615,6 +2618,7 @@ export type Database = {
         Row: {
           acceptance_rate: number | null
           active_job_id: string | null
+          availability_last_updated: string | null
           availability_status: Database["public"]["Enums"]["partner_availability"]
           average_response_time_minutes: number | null
           base_latitude: number | null
@@ -2665,6 +2669,7 @@ export type Database = {
         Insert: {
           acceptance_rate?: number | null
           active_job_id?: string | null
+          availability_last_updated?: string | null
           availability_status?: Database["public"]["Enums"]["partner_availability"]
           average_response_time_minutes?: number | null
           base_latitude?: number | null
@@ -2715,6 +2720,7 @@ export type Database = {
         Update: {
           acceptance_rate?: number | null
           active_job_id?: string | null
+          availability_last_updated?: string | null
           availability_status?: Database["public"]["Enums"]["partner_availability"]
           average_response_time_minutes?: number | null
           base_latitude?: number | null
