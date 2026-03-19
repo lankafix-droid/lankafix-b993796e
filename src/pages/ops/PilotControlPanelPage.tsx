@@ -454,18 +454,8 @@ export default function PilotControlPanelPage() {
     logOpsEvent("kpi_queue_opened", "", { queue: q });
   }, []);
 
-  // Filter stuck bookings by active queue
-  const filteredStuck = summary?.stuckBookings.filter(b => {
-    if (activeQueue === "all" || activeQueue === "stuck") return true;
-    if (activeQueue === "unassigned") return !b.partner_id && !["completed", "cancelled"].includes(b.status);
-    if (activeQueue === "pending_partner_response") return b.status === "awaiting_partner_confirmation";
-    if (activeQueue === "quote_pending") return b.status === "quote_submitted";
-    if (activeQueue === "payment_pending") return b.status === "payment_pending";
-    if (activeQueue === "in_progress") return ["in_progress", "repair_started", "tech_en_route"].includes(b.status);
-    if (activeQueue === "low_rated") return b.recommended.action === "open_quality_recovery";
-    if (activeQueue === "escalated") return b.status === "escalated";
-    return true;
-  }) || [];
+  // Filter stuck bookings via central queue resolver
+  const filteredStuck = resolveOpsQueue(activeQueue, summary?.stuckBookings || []);
 
   // Determine which day summary counts to highlight based on queue
   const shouldShowStuck = activeQueue === "all" || activeQueue === "stuck" || filteredStuck.length > 0;
