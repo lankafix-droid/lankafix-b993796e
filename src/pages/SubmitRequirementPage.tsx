@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { categories } from "@/data/categories";
 import { logFallbackDemand } from "@/lib/demandCapture";
 import { whatsappLink, SUPPORT_WHATSAPP } from "@/config/contact";
+import { isValidSLPhone, normalizeSLPhone, canSubmitRequest, recordSubmission, isDuplicateRequest, recordRequest } from "@/lib/phoneValidation";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
