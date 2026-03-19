@@ -122,4 +122,17 @@ export const EVERGREEN_FALLBACKS: EvergreenFallback[] = [
     ai_keywords: ['electrical safety', 'fire prevention', 'wiring inspection'],
     category_code: 'ELECTRICAL',
   },
+  {
+    content_type: 'innovation',
+    title: 'Smart home automation adoption growing 45% year-over-year in Sri Lanka',
+    ai_headline: 'Smart Homes Are No Longer Just for the Wealthy',
+    ai_summary_short: 'Affordable smart home devices are driving a 45% annual growth in home automation across Sri Lanka.',
+    ai_summary_medium: 'Smart plugs, automated lighting, and voice-controlled systems are becoming mainstream in Sri Lankan households. With devices now available from LKR 2,000, the barrier to entry has dropped significantly. This trend is driving demand for professional installation and network setup services.',
+    ai_why_it_matters: 'Smart home technology is creating new service opportunities and changing how Sri Lankans interact with their homes.',
+    ai_lankafix_angle: 'LankaFix smart home specialists can set up, configure, and maintain your connected home devices.',
+    ai_banner_text: '45% growth',
+    ai_cta_label: 'Smart Home Setup',
+    ai_keywords: ['smart home', 'home automation', 'IoT'],
+    category_code: 'SMART_HOME_OFFICE',
+  },
 ];
