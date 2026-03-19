@@ -588,10 +588,10 @@ export function logOpsEvent(eventType: string, bookingId: string, metadata?: Rec
   // Non-blocking analytics event — fire and forget
   supabase.from("automation_event_log").insert([{
     event_type: eventType,
-    booking_id: bookingId,
+    booking_id: bookingId || null,
     trigger_reason: "ops_ui_interaction",
     action_taken: eventType,
     severity: "info",
-    metadata: metadata || {},
+    metadata: (metadata || {}) as any,
   }]).then(() => {});
 }
