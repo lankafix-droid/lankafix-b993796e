@@ -192,7 +192,7 @@ export default function InsightDetailPage() {
 
   const brief = item.ai_brief;
   const headline = brief?.ai_headline ?? item.title;
-  const primaryCategory = item.category_tags[0]?.category_code ?? null;
+  const primaryCategory = (item.category_tags ?? [])[0]?.category_code ?? null;
 
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
