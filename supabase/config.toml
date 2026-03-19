@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.partner-respond]
 verify_jwt = false
+
+[functions.content-ingest]
+verify_jwt = false
