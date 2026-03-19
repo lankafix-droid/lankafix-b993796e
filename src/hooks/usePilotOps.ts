@@ -285,7 +285,7 @@ async function fetchPartnerSLA(filters: OpsFilters): Promise<PartnerSLA[]> {
   const [offersRes, partnersRes, ratingsRes] = await Promise.all([
     offersQ,
     supabase.from("partners").select("id, full_name"),
-    supabase.from("ratings" as any).select("partner_id, rating").gte("created_at", since).lt("rating", 3),
+    supabase.from("ratings").select("partner_id, rating").gte("created_at", since).lt("rating", 3),
   ]);
 
   const nameMap: Record<string, string> = {};
