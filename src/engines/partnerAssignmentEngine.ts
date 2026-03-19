@@ -11,8 +11,8 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getAcceptWindowMinutes, type ServiceArchetype } from "@/engines/archetypeTimeoutHelper";
 
-const ACCEPT_WINDOW_MINUTES = 10;
 const MAX_ASSIGNMENT_ATTEMPTS = 5;
 
 export interface AssignmentResult {
@@ -23,20 +23,47 @@ export interface AssignmentResult {
   error?: string;
 }
 
+// ── Assignment History Helper ──
+
+interface AssignmentHistoryEntry {
+  attempt: number;
+  partner_id: string;
+  partner_name: string;
+  assigned_at: string;
+  accept_by: string;
+  response_status: "assigned" | "accepted" | "rejected" | "unavailable" | "expired" | "reassigned";
+  response_at?: string | null;
+  rejection_reason?: string | null;
+  operator_notes?: string | null;
+  reassigned_from_partner_id?: string | null;
+  outcome?: string;
+  reassignment_reason?: string;
+  expired_at?: string;
+}
+
+function appendHistoryEntry(
+  history: AssignmentHistoryEntry[],
+  entry: Partial<AssignmentHistoryEntry> & Pick<AssignmentHistoryEntry, "attempt" | "partner_id" | "partner_name" | "assigned_at" | "accept_by">
+): AssignmentHistoryEntry[] {
+  return [...history, { response_status: "assigned", ...entry }];
+}
+
 // ── Assignment ──
 
 /**
  * Assign a partner to a LEAD (not a demand_request).
- * Sets accept_by deadline and records assignment in history.
+ * Sets accept_by deadline (archetype-aware) and records assignment in history.
  */
 export async function assignPartnerToLead(
   leadId: string,
   partnerId: string,
   partnerName: string,
-  operatorNotes?: string
+  operatorNotes?: string,
+  archetype?: ServiceArchetype
 ): Promise<AssignmentResult> {
   const now = new Date();
-  const acceptBy = new Date(now.getTime() + ACCEPT_WINDOW_MINUTES * 60000);
+  const windowMinutes = getAcceptWindowMinutes(archetype);
+  const acceptBy = new Date(now.getTime() + windowMinutes * 60000);
 
   // Fetch current lead state for history tracking
   const { data: existingLead } = await supabase
@@ -46,15 +73,16 @@ export async function assignPartnerToLead(
     .single();
 
   const currentAttempt = ((existingLead as any)?.assignment_attempt || 0) + 1;
-  const history = ((existingLead as any)?.assignment_history || []) as any[];
+  const history = ((existingLead as any)?.assignment_history || []) as AssignmentHistoryEntry[];
 
   // Append to assignment history for audit trail
-  history.push({
+  const updatedHistory = appendHistoryEntry(history, {
     attempt: currentAttempt,
     partner_id: partnerId,
     partner_name: partnerName,
     assigned_at: now.toISOString(),
     accept_by: acceptBy.toISOString(),
+    response_status: "assigned",
     operator_notes: operatorNotes || null,
   });
 
@@ -66,10 +94,11 @@ export async function assignPartnerToLead(
       partner_response_status: "pending",
       partner_response_at: null,
       rejection_reason: null,
+      response_notes: null,
       assignment_sent_at: now.toISOString(),
       accept_by: acceptBy.toISOString(),
       assignment_attempt: currentAttempt,
-      assignment_history: history,
+      assignment_history: updatedHistory,
       routing_status: "awaiting_response",
       operator_notes: operatorNotes || (existingLead as any)?.operator_notes || null,
     } as any)
@@ -81,21 +110,20 @@ export async function assignPartnerToLead(
   }
 
   // Log analytics event
-  await supabase.from("notification_events").insert({
-    event_type: "lead_partner_assigned",
-    metadata: {
-      lead_id: leadId,
-      partner_id: partnerId,
-      partner_name: partnerName,
-      attempt: currentAttempt,
-    },
+  await logRoutingEvent("lead_partner_assigned", {
+    lead_id: leadId,
+    partner_id: partnerId,
+    partner_name: partnerName,
+    attempt: currentAttempt,
+    accept_window_minutes: windowMinutes,
+    archetype: archetype || "unknown",
   });
 
-  toast.success(`Assigned to ${partnerName} (attempt ${currentAttempt})`);
+  toast.success(`Assigned to ${partnerName} (attempt ${currentAttempt}, ${windowMinutes}m window)`);
   return { success: true, leadId, partnerId };
 }
 
-// ── Partner Accept / Reject ──
+// ── Partner Accept / Reject / Unavailable ──
 
 /** Partner accepts an assigned lead */
 export async function partnerAcceptLead(
@@ -103,6 +131,21 @@ export async function partnerAcceptLead(
   partnerId: string
 ): Promise<AssignmentResult> {
   const now = new Date();
+
+  // Fetch history to record acceptance
+  const { data: lead } = await supabase
+    .from("leads" as any)
+    .select("assignment_history")
+    .eq("id", leadId)
+    .single();
+
+  const history = ((lead as any)?.assignment_history || []) as AssignmentHistoryEntry[];
+  // Mark last entry as accepted
+  if (history.length > 0) {
+    const last = history[history.length - 1];
+    last.response_status = "accepted";
+    last.response_at = now.toISOString();
+  }
 
   const { error } = await supabase
     .from("leads" as any)
@@ -112,6 +155,7 @@ export async function partnerAcceptLead(
       accepted_by_partner_id: partnerId,
       status: "accepted",
       routing_status: "accepted",
+      assignment_history: history,
     } as any)
     .eq("id", leadId)
     .eq("assigned_partner_id", partnerId);
@@ -120,11 +164,7 @@ export async function partnerAcceptLead(
     return { success: false, leadId, error: error.message };
   }
 
-  await supabase.from("notification_events").insert({
-    event_type: "lead_partner_accepted",
-    metadata: { lead_id: leadId, partner_id: partnerId },
-  });
-
+  await logRoutingEvent("lead_partner_accepted", { lead_id: leadId, partner_id: partnerId });
   toast.success("Partner accepted the assignment");
   return { success: true, leadId, partnerId };
 }
@@ -137,7 +177,20 @@ export async function partnerRejectLead(
 ): Promise<AssignmentResult> {
   const now = new Date();
 
-  // Update lead: mark rejection but keep routable
+  const { data: lead } = await supabase
+    .from("leads" as any)
+    .select("assignment_history")
+    .eq("id", leadId)
+    .single();
+
+  const history = ((lead as any)?.assignment_history || []) as AssignmentHistoryEntry[];
+  if (history.length > 0) {
+    const last = history[history.length - 1];
+    last.response_status = "rejected";
+    last.response_at = now.toISOString();
+    last.rejection_reason = reason;
+  }
+
   const { error } = await supabase
     .from("leads" as any)
     .update({
@@ -146,7 +199,8 @@ export async function partnerRejectLead(
       rejection_reason: reason,
       assigned_partner_id: null,
       routing_status: "needs_reassignment",
-      status: "qualified", // Return to routable state
+      status: "qualified",
+      assignment_history: history,
     } as any)
     .eq("id", leadId)
     .eq("assigned_partner_id", partnerId);
@@ -155,65 +209,59 @@ export async function partnerRejectLead(
     return { success: false, leadId, error: error.message };
   }
 
-  await supabase.from("notification_events").insert({
-    event_type: "lead_partner_rejected",
-    metadata: { lead_id: leadId, partner_id: partnerId, reason },
-  });
-
+  await logRoutingEvent("lead_partner_rejected", { lead_id: leadId, partner_id: partnerId, reason });
   toast.info("Partner rejected — lead returned to queue for reassignment");
   return { success: true, leadId };
 }
 
-// ── Reassignment ──
-
 /**
- * Reassign a lead to a different partner.
- * Preserves the full assignment history for audit.
+ * Partner marks themselves temporarily unavailable for this assignment.
+ * Lighter than a full rejection — doesn't count as a hard refusal.
  */
-export async function reassignLead(
+export async function partnerMarkUnavailable(
   leadId: string,
-  newPartnerId: string,
-  newPartnerName: string,
-  previousPartnerId: string,
-  reason?: string
+  partnerId: string,
+  notes?: string
 ): Promise<AssignmentResult> {
-  // Fetch current state
+  const now = new Date();
+
   const { data: lead } = await supabase
     .from("leads" as any)
-    .select("assignment_attempt, assignment_history")
+    .select("assignment_history")
     .eq("id", leadId)
     .single();
 
-  const currentAttempt = ((lead as any)?.assignment_attempt || 0);
-
-  if (currentAttempt >= MAX_ASSIGNMENT_ATTEMPTS) {
-    // Escalate to operator review
-    await supabase
-      .from("leads" as any)
-      .update({
-        routing_status: "routing_failed",
-        status: "qualified",
-        operator_notes: `Max reassignment attempts (${MAX_ASSIGNMENT_ATTEMPTS}) reached. Manual intervention required.`,
-      } as any)
-      .eq("id", leadId);
-
-    toast.error("Max reassignment attempts reached — escalated to operator review");
-    return { success: false, leadId, error: "max_attempts_reached" };
+  const history = ((lead as any)?.assignment_history || []) as AssignmentHistoryEntry[];
+  if (history.length > 0) {
+    const last = history[history.length - 1];
+    last.response_status = "unavailable";
+    last.response_at = now.toISOString();
   }
 
-  // Record reassignment in history
-  const history = ((lead as any)?.assignment_history || []) as any[];
-  if (previousPartnerId) {
-    // Mark previous assignment as reassigned
-    const lastEntry = history[history.length - 1];
-    if (lastEntry) {
-      lastEntry.outcome = "reassigned";
-      lastEntry.reassignment_reason = reason || "timeout_or_manual";
-    }
+  const { error } = await supabase
+    .from("leads" as any)
+    .update({
+      partner_response_status: "unavailable",
+      partner_response_at: now.toISOString(),
+      response_notes: notes || "Temporarily unavailable",
+      assigned_partner_id: null,
+      routing_status: "needs_reassignment",
+      status: "qualified",
+      assignment_history: history,
+    } as any)
+    .eq("id", leadId)
+    .eq("assigned_partner_id", partnerId);
+
+  if (error) {
+    return { success: false, leadId, error: error.message };
   }
 
-  return assignPartnerToLead(leadId, newPartnerId, newPartnerName, reason);
+  await logRoutingEvent("lead_partner_unavailable", { lead_id: leadId, partner_id: partnerId, notes });
+  toast.info("Partner unavailable — lead returned to queue");
+  return { success: true, leadId };
 }
+
+// ── Timeout / Expiry ──
 
 /**
  * Handle assignment timeout: mark as expired and prepare for reassignment.
@@ -228,11 +276,11 @@ export async function expireAssignment(leadId: string): Promise<void> {
 
   if (!lead) return;
 
-  const history = ((lead as any)?.assignment_history || []) as any[];
-  const lastEntry = history[history.length - 1];
-  if (lastEntry) {
-    lastEntry.outcome = "expired";
-    lastEntry.expired_at = new Date().toISOString();
+  const history = ((lead as any)?.assignment_history || []) as AssignmentHistoryEntry[];
+  if (history.length > 0) {
+    const last = history[history.length - 1];
+    last.response_status = "expired";
+    last.expired_at = new Date().toISOString();
   }
 
   await supabase
@@ -246,10 +294,87 @@ export async function expireAssignment(leadId: string): Promise<void> {
     } as any)
     .eq("id", leadId);
 
-  await supabase.from("notification_events").insert({
-    event_type: "lead_assignment_expired",
-    metadata: { lead_id: leadId, partner_id: (lead as any).assigned_partner_id },
+  await logRoutingEvent("lead_partner_expired", {
+    lead_id: leadId,
+    partner_id: (lead as any).assigned_partner_id,
   });
+}
+
+// ── Reassignment ──
+
+/**
+ * Reassign a lead to a different partner.
+ * Excludes partners that already failed/expired for this lead.
+ * Preserves the full assignment history for audit.
+ */
+export async function reassignLead(
+  leadId: string,
+  newPartnerId: string,
+  newPartnerName: string,
+  reason?: string,
+  archetype?: ServiceArchetype
+): Promise<AssignmentResult> {
+  const { data: lead } = await supabase
+    .from("leads" as any)
+    .select("assignment_attempt, assignment_history, assigned_partner_id")
+    .eq("id", leadId)
+    .single();
+
+  const currentAttempt = (lead as any)?.assignment_attempt || 0;
+
+  if (currentAttempt >= MAX_ASSIGNMENT_ATTEMPTS) {
+    await supabase
+      .from("leads" as any)
+      .update({
+        routing_status: "routing_failed",
+        status: "qualified",
+        operator_notes: `Max reassignment attempts (${MAX_ASSIGNMENT_ATTEMPTS}) reached. Manual intervention required.`,
+      } as any)
+      .eq("id", leadId);
+
+    await logRoutingEvent("lead_no_supply", { lead_id: leadId, reason: "max_attempts_reached" });
+    toast.error("Max reassignment attempts reached — escalated to operator review");
+    return { success: false, leadId, error: "max_attempts_reached" };
+  }
+
+  // Mark previous assignment as reassigned in history
+  const history = ((lead as any)?.assignment_history || []) as AssignmentHistoryEntry[];
+  if (history.length > 0) {
+    const last = history[history.length - 1];
+    if (!last.outcome) {
+      last.outcome = "reassigned";
+      last.reassignment_reason = reason || "timeout_or_manual";
+    }
+  }
+
+  // Update history in DB before new assignment writes its own entry
+  await supabase
+    .from("leads" as any)
+    .update({
+      assignment_history: history,
+      reassigned_from_partner_id: (lead as any)?.assigned_partner_id || null,
+    } as any)
+    .eq("id", leadId);
+
+  await logRoutingEvent("lead_partner_reassigned", {
+    lead_id: leadId,
+    new_partner_id: newPartnerId,
+    reason,
+    attempt: currentAttempt + 1,
+  });
+
+  return assignPartnerToLead(leadId, newPartnerId, newPartnerName, reason, archetype);
+}
+
+/**
+ * Get partner IDs that have already been tried (and failed) for this lead.
+ * Used to exclude them from reassignment ranking.
+ */
+export function getExcludedPartnerIds(assignmentHistory: AssignmentHistoryEntry[] | null): string[] {
+  if (!assignmentHistory) return [];
+  return assignmentHistory
+    .filter((h) => ["rejected", "unavailable", "expired", "reassigned"].includes(h.response_status) || h.outcome === "reassigned")
+    .map((h) => h.partner_id);
 }
 
 // ── Operator Manual Controls ──
@@ -264,6 +389,8 @@ export async function markNoSupply(leadId: string, notes: string): Promise<void>
       operator_notes: notes,
     } as any)
     .eq("id", leadId);
+
+  await logRoutingEvent("lead_no_supply", { lead_id: leadId, reason: notes });
   toast.info("Marked as no supply — lead held for follow-up");
 }
 
@@ -288,7 +415,6 @@ export async function holdLead(leadId: string, reason: string): Promise<void> {
 export async function convertLeadToBooking(
   leadId: string
 ): Promise<{ success: boolean; bookingId?: string; error?: string }> {
-  // Fetch lead with all context
   const { data: lead, error: fetchErr } = await supabase
     .from("leads" as any)
     .select("*")
@@ -355,21 +481,26 @@ export async function convertLeadToBooking(
       .eq("id", l.demand_request_id);
   }
 
-  // Analytics
-  await supabase.from("notification_events").insert({
-    event_type: "lead_converted_to_booking",
-    metadata: {
-      lead_id: leadId,
-      booking_id: booking.id,
-      partner_id: partnerId,
-      demand_request_id: l.demand_request_id,
-      category_code: l.category_code,
-      zone_code: l.zone_code,
-    },
+  await logRoutingEvent("lead_converted_to_booking", {
+    lead_id: leadId,
+    booking_id: booking.id,
+    partner_id: partnerId,
+    demand_request_id: l.demand_request_id,
+    category_code: l.category_code,
+    zone_code: l.zone_code,
   });
 
   toast.success("Lead converted to booking");
   return { success: true, bookingId: booking.id };
+}
+
+// ── Analytics / Event Logging ──
+
+async function logRoutingEvent(eventType: string, metadata: Record<string, unknown>) {
+  await supabase.from("notification_events").insert([{
+    event_type: eventType,
+    metadata: metadata as any,
+  }]);
 }
 
 // ── WhatsApp Message Payloads ──
@@ -378,7 +509,8 @@ export function buildPartnerAssignmentMessage(
   partnerName: string,
   categoryName: string,
   location: string | null,
-  customerName: string | null
+  customerName: string | null,
+  acceptWindowMinutes: number = 10
 ): string {
   return [
     `🚀 New Job Assignment — LankaFix`,
@@ -390,7 +522,7 @@ export function buildPartnerAssignmentMessage(
     customerName ? `Customer: ${customerName}` : null,
     ``,
     `👉 Accept or Reject in the LankaFix Partner Portal`,
-    `⏱ You have ${ACCEPT_WINDOW_MINUTES} minutes to respond.`,
+    `⏱ You have ${acceptWindowMinutes} minutes to respond.`,
   ].filter(Boolean).join("\n");
 }
 
@@ -407,6 +539,15 @@ export function buildReassignmentMessage(
     reason ? `Reason: ${reason}` : null,
     ``,
     `👉 Accept or Reject in the LankaFix Partner Portal`,
-    `⏱ You have ${ACCEPT_WINDOW_MINUTES} minutes to respond.`,
+  ].filter(Boolean).join("\n");
+}
+
+export function buildExpiredMessage(partnerName: string, categoryName: string): string {
+  return [
+    `⏰ Assignment Expired — LankaFix`,
+    ``,
+    `Hi ${partnerName},`,
+    `Your ${categoryName} job assignment has expired as no response was received.`,
+    `The job has been reassigned to another partner.`,
   ].filter(Boolean).join("\n");
 }

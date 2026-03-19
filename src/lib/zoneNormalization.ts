@@ -81,11 +81,20 @@ export function resolveZone(location: string | null | undefined): ZoneMatch {
     }
   }
 
-  // 2. Partial match — input contains an alias or alias contains the input
+  // 2. Safer partial match
+  // SAFETY: require minimum 4 chars to avoid false positives from short fragments
+  // like "col" matching "col_01". Also require the alias to be at least 4 chars
+  // when checking if the alias is contained in the input.
+  const MIN_TOKEN_LENGTH = 4;
   const partialMatches: { code: string; name: string; aliasLen: number }[] = [];
   for (const [code, zone] of Object.entries(ZONE_REGISTRY)) {
     for (const alias of zone.aliases) {
-      if (normalized.includes(alias) || alias.includes(normalized)) {
+      // Input contains alias — alias must be long enough to be meaningful
+      if (alias.length >= MIN_TOKEN_LENGTH && normalized.includes(alias)) {
+        partialMatches.push({ code, name: zone.name, aliasLen: alias.length });
+      }
+      // Alias contains input — input must be long enough to avoid "col" → "col_01"
+      else if (normalized.length >= MIN_TOKEN_LENGTH && alias.includes(normalized)) {
         partialMatches.push({ code, name: zone.name, aliasLen: alias.length });
       }
     }

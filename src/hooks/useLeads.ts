@@ -35,6 +35,7 @@ export interface Lead {
   assignment_history: any[] | null;
   routing_status: string | null;
   operator_notes: string | null;
+  response_notes: string | null;
   operator_hold_reason: string | null;
   created_at: string;
   updated_at: string;
