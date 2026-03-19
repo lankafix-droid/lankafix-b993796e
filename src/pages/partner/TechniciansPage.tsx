@@ -30,7 +30,7 @@ export default function TechniciansPage() {
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("partner_id", partner.id)
-        .in("status", ["assigned", "started", "tech_en_route", "arrived", "inspection_started"]);
+        .in("status", ["assigned", "tech_en_route", "arrived", "inspection_started", "repair_in_progress"]);
       const { count: completed } = await supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
