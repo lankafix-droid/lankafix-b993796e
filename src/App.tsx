@@ -139,6 +139,7 @@ const TrainingHubV2Page = lazy(() => import("./pages/ops/TrainingHubV2Page"));
 const PilotValidationPage = lazy(() => import("./pages/ops/PilotValidationPage"));
 const LaunchBlockersV2Page = lazy(() => import("./pages/ops/LaunchBlockersV2Page"));
 const AdminSetupPage = lazy(() => import("./pages/ops/AdminSetupPage"));
+const PartnerProvisioningPage = lazy(() => import("./pages/ops/PartnerProvisioningPage"));
 const PilotProofDashboardPage = lazy(() => import("./pages/ops/PilotProofDashboardPage"));
 const OperatorExecutionBoardPage = lazy(() => import("./pages/ops/OperatorExecutionBoardPage"));
 const TrainingCompletionPage = lazy(() => import("./pages/ops/TrainingCompletionPage"));
@@ -336,6 +337,7 @@ const App = () => (
             <Route path="/ops/pilot-validation" element={<OpsRoute><PilotValidationPage /></OpsRoute>} />
             <Route path="/ops/launch-blockers-v2" element={<OpsRoute><LaunchBlockersV2Page /></OpsRoute>} />
             <Route path="/ops/admin-setup" element={<ProtectedRoute><AdminSetupPage /></ProtectedRoute>} />
+            <Route path="/ops/partner-provisioning" element={<OpsRoute><PartnerProvisioningPage /></OpsRoute>} />
             <Route path="/ops/pilot-proof" element={<OpsRoute><PilotProofDashboardPage /></OpsRoute>} />
             <Route path="/ops/execution-board" element={<OpsRoute><OperatorExecutionBoardPage /></OpsRoute>} />
             <Route path="/ops/training-completion" element={<OpsRoute><TrainingCompletionPage /></OpsRoute>} />
