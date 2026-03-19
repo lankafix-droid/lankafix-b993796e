@@ -163,11 +163,11 @@ const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, 
             )}
           </div>
 
-          {/* Availability badge — bottom-right */}
-          {!isComingSoon && availabilityLevel && AVAILABILITY_BADGES[availabilityLevel] && (
+          {/* Archetype-aware availability badge */}
+          {!isComingSoon && supplyDetail && (
             <div className="absolute top-2.5 right-2.5">
-              <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${AVAILABILITY_BADGES[availabilityLevel]!.className}`}>
-                {AVAILABILITY_BADGES[availabilityLevel]!.label}
+              <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${supplyDetail.badgeClass}`}>
+                {supplyDetail.availabilityLabel}
               </Badge>
             </div>
           )}
