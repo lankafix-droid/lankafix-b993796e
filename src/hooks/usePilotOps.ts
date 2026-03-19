@@ -1,31 +1,33 @@
 /**
- * Phase 3 — Pilot Operations Hook
- * Central data layer for Colombo Mobile Repairs pilot ops dashboard.
- * Fetches live booking counts, stuck detection, partner SLA, and daily KPIs.
+ * Phase 3+ — Smart Pilot Operations Hook
+ * Scalable data layer with category/zone filters, archetype-aware stuck detection,
+ * and recommended action resolution.
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getStuckThreshold, resolveRecommendedAction, type RecommendedAction } from "@/engines/interventionEngine";
 
-/* ── Stuck-state thresholds (minutes) ── */
-const STUCK_THRESHOLDS: Record<string, number> = {
-  requested: 30,
-  matching: 20,
-  awaiting_partner_confirmation: 15,
-  assigned: 60,
-  quote_submitted: 120,
-  in_progress: 480,
-  payment_pending: 1440,
-};
+/* ── Filter Model ── */
+export interface OpsFilters {
+  category?: string;
+  zone?: string;
+  dateRange: "today" | "week" | "month";
+  severity?: "all" | "warning" | "critical";
+}
 
+/* ── Stuck Booking with Recommended Action ── */
 export type StuckBooking = {
   id: string;
   status: string;
   category_code: string;
+  zone_code: string | null;
   partner_id: string | null;
   created_at: string;
+  payment_method: string | null;
   minutes_stuck: number;
   stuck_reason: string;
   severity: "warning" | "critical";
+  recommended: RecommendedAction;
 };
 
 export interface PilotDaySummary {
@@ -51,6 +53,8 @@ export interface PartnerSLA {
   offers_expired: number;
   acceptance_rate: number;
   avg_response_time_sec: number | null;
+  reassignment_count: number;
+  low_rating_count: number;
 }
 
 export interface PilotKPIs {
@@ -63,25 +67,38 @@ export interface PilotKPIs {
   paymentCollectionRate: number;
   ratingAverage: number | null;
   escalationCount: number;
+  stuckCount: number;
+  lowRatedCount: number;
 }
 
-function todayStart(): string {
-  const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
-}
-function weekStart(): string {
-  const d = new Date(); d.setDate(d.getDate() - 7); d.setHours(0, 0, 0, 0); return d.toISOString();
+function rangeStart(range: "today" | "week" | "month"): string {
+  const d = new Date();
+  if (range === "week") d.setDate(d.getDate() - 7);
+  else if (range === "month") d.setDate(d.getDate() - 30);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
 }
 
-async function fetchPilotDaySummary(): Promise<PilotDaySummary> {
-  const today = todayStart();
+async function fetchPilotDaySummary(filters: OpsFilters): Promise<PilotDaySummary> {
+  const since = rangeStart(filters.dateRange);
+
+  // Build booking query with filters
+  let bookingQ = supabase.from("bookings")
+    .select("id, status, category_code, zone_code, partner_id, created_at, dispatch_status, payment_status, payment_method, completed_at")
+    .gte("created_at", since).order("created_at", { ascending: false }).limit(500);
+
+  if (filters.category) bookingQ = bookingQ.eq("category_code", filters.category);
+  if (filters.zone) bookingQ = bookingQ.eq("zone_code", filters.zone);
+
+  let offersQ = supabase.from("dispatch_offers").select("id, status, booking_id").gte("created_at", since).eq("status", "pending");
+  let escalQ = supabase.from("dispatch_escalations").select("id, booking_id, reason, created_at").gte("created_at", since).is("resolved_at", null);
 
   const [bRes, offersRes, quotesRes, ratingsRes, escalRes] = await Promise.all([
-    supabase.from("bookings").select("id, status, category_code, partner_id, created_at, dispatch_status, payment_status, completed_at")
-      .gte("created_at", today).order("created_at", { ascending: false }).limit(500),
-    supabase.from("dispatch_offers").select("id, status, booking_id").gte("created_at", today).eq("status", "pending"),
-    supabase.from("quotes" as any).select("id, booking_id, status").gte("created_at", today),
-    supabase.from("ratings" as any).select("id, booking_id, rating").gte("created_at", today).lt("rating", 3),
-    supabase.from("dispatch_escalations").select("id").gte("created_at", today).is("resolved_at", null),
+    bookingQ,
+    offersQ,
+    supabase.from("quotes" as any).select("id, booking_id, status").gte("created_at", since),
+    supabase.from("ratings" as any).select("id, booking_id, rating").gte("created_at", since).lt("rating", 3),
+    escalQ,
   ]);
 
   const bookings = bRes.data || [];
@@ -94,32 +111,56 @@ async function fetchPilotDaySummary(): Promise<PilotDaySummary> {
   const cancelledToday = bookings.filter(b => b.status === "cancelled").length;
   const paymentPending = bookings.filter(b => b.status === "completed" && b.payment_status !== "paid").length;
   const lowRated = (ratingsRes.data || []).length;
-  const escalations = escalRes.count ?? (escalRes.data || []).length;
+  const escalations = (escalRes.data || []).length;
 
-  // Stuck detection — scan ALL bookings not just today
-  const { data: allActive } = await supabase.from("bookings")
-    .select("id, status, category_code, partner_id, created_at")
+  // Stuck detection — all active bookings with category-aware thresholds
+  let activeQ = supabase.from("bookings")
+    .select("id, status, category_code, zone_code, partner_id, created_at, payment_method")
     .not("status", "in", '("completed","cancelled")')
-    .order("created_at", { ascending: true }).limit(200);
+    .order("created_at", { ascending: true }).limit(300);
+
+  if (filters.category) activeQ = activeQ.eq("category_code", filters.category);
+  if (filters.zone) activeQ = activeQ.eq("zone_code", filters.zone);
+
+  const { data: allActive } = await activeQ;
 
   const stuckBookings: StuckBooking[] = [];
   const now = Date.now();
   for (const b of (allActive || [])) {
     const ageMin = Math.round((now - new Date(b.created_at).getTime()) / 60000);
-    const threshold = STUCK_THRESHOLDS[b.status];
-    if (threshold && ageMin > threshold) {
+    const threshold = getStuckThreshold(b.status, b.category_code, b.payment_method);
+    if (threshold > 0 && ageMin > threshold) {
+      const severity: "warning" | "critical" = ageMin > threshold * 2 ? "critical" : "warning";
+
+      // Apply severity filter if set
+      if (filters.severity && filters.severity !== "all" && filters.severity !== severity) continue;
+
+      const recommended = resolveRecommendedAction(
+        b.status, ageMin, severity, b.category_code,
+        !!b.partner_id, b.payment_method
+      );
+
       stuckBookings.push({
         id: b.id,
         status: b.status,
         category_code: b.category_code,
+        zone_code: b.zone_code,
         partner_id: b.partner_id,
         created_at: b.created_at,
+        payment_method: b.payment_method,
         minutes_stuck: ageMin,
-        stuck_reason: `${b.status} for ${ageMin}min (threshold: ${threshold}min)`,
-        severity: ageMin > threshold * 2 ? "critical" : "warning",
+        stuck_reason: `${b.status} for ${ageMin}min (threshold: ${threshold}min for ${b.category_code})`,
+        severity,
+        recommended,
       });
     }
   }
+
+  // Sort stuck bookings: critical first, then by age descending
+  stuckBookings.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
+    return b.minutes_stuck - a.minutes_stuck;
+  });
 
   return {
     created, unassigned, pendingPartnerResponse, pendingQuoteApproval,
@@ -128,24 +169,36 @@ async function fetchPilotDaySummary(): Promise<PilotDaySummary> {
   };
 }
 
-async function fetchPartnerSLA(): Promise<PartnerSLA[]> {
-  const since = weekStart();
-  const { data: offers } = await supabase.from("dispatch_offers")
+async function fetchPartnerSLA(filters: OpsFilters): Promise<PartnerSLA[]> {
+  const since = rangeStart(filters.dateRange === "today" ? "week" : filters.dateRange);
+
+  let offersQ = supabase.from("dispatch_offers")
     .select("partner_id, status, response_time_ms, created_at")
     .gte("created_at", since);
-  const { data: partners } = await supabase.from("partners").select("id, full_name");
+  if (filters.category) offersQ = offersQ.eq("category_code", filters.category);
+
+  const [offersRes, partnersRes, ratingsRes] = await Promise.all([
+    offersQ,
+    supabase.from("partners").select("id, full_name"),
+    supabase.from("ratings" as any).select("partner_id, rating").gte("created_at", since).lt("rating", 3),
+  ]);
 
   const nameMap: Record<string, string> = {};
-  (partners || []).forEach(p => { nameMap[p.id] = p.full_name; });
+  (partnersRes.data || []).forEach(p => { nameMap[p.id] = p.full_name; });
 
-  const grouped: Record<string, { accepted: number; declined: number; expired: number; total: number; responseTimes: number[] }> = {};
-  for (const o of (offers || [])) {
-    if (!grouped[o.partner_id]) grouped[o.partner_id] = { accepted: 0, declined: 0, expired: 0, total: 0, responseTimes: [] };
+  const lowRatings: Record<string, number> = {};
+  ((ratingsRes.data || []) as any[]).forEach(r => {
+    lowRatings[r.partner_id] = (lowRatings[r.partner_id] || 0) + 1;
+  });
+
+  const grouped: Record<string, { accepted: number; declined: number; expired: number; total: number; responseTimes: number[]; reassignments: number }> = {};
+  for (const o of (offersRes.data || [])) {
+    if (!grouped[o.partner_id]) grouped[o.partner_id] = { accepted: 0, declined: 0, expired: 0, total: 0, responseTimes: [], reassignments: 0 };
     const g = grouped[o.partner_id];
     g.total++;
     if (o.status === "accepted") g.accepted++;
     else if (o.status === "declined") g.declined++;
-    else if (o.status === "expired" || o.status === "expired_by_accept") g.expired++;
+    else if (o.status === "expired" || o.status === "expired_by_accept") { g.expired++; g.reassignments++; }
     if (o.response_time_ms) g.responseTimes.push(o.response_time_ms / 1000);
   }
 
@@ -158,14 +211,21 @@ async function fetchPartnerSLA(): Promise<PartnerSLA[]> {
     offers_expired: g.expired,
     acceptance_rate: g.total > 0 ? Math.round((g.accepted / g.total) * 100) : 0,
     avg_response_time_sec: g.responseTimes.length > 0 ? Math.round(g.responseTimes.reduce((a, b) => a + b, 0) / g.responseTimes.length) : null,
+    reassignment_count: g.reassignments,
+    low_rating_count: lowRatings[pid] || 0,
   }));
 }
 
-async function fetchPilotKPIs(): Promise<PilotKPIs> {
-  const since = weekStart();
+async function fetchPilotKPIs(filters: OpsFilters): Promise<PilotKPIs> {
+  const since = rangeStart(filters.dateRange);
+  const days = filters.dateRange === "today" ? 1 : filters.dateRange === "week" ? 7 : 30;
+
+  let bQ = supabase.from("bookings").select("id, status, payment_status, created_at, completed_at, assigned_at, partner_id").gte("created_at", since);
+  if (filters.category) bQ = bQ.eq("category_code", filters.category);
+  if (filters.zone) bQ = bQ.eq("zone_code", filters.zone);
 
   const [bRes, offersRes, quotesRes, ratingsRes, escalRes] = await Promise.all([
-    supabase.from("bookings").select("id, status, payment_status, created_at, completed_at, assigned_at").gte("created_at", since),
+    bQ,
     supabase.from("dispatch_offers").select("id, status, response_time_ms").gte("created_at", since),
     supabase.from("quotes" as any).select("id, status").gte("created_at", since),
     supabase.from("ratings" as any).select("id, rating").gte("created_at", since),
@@ -176,24 +236,20 @@ async function fetchPilotKPIs(): Promise<PilotKPIs> {
   const offers = offersRes.data || [];
   const quotes = (quotesRes.data || []) as any[];
   const ratings = (ratingsRes.data || []) as any[];
-  const days = 7;
 
   const completed = bookings.filter(b => b.status === "completed");
-  const assigned = bookings.filter(b => (b as any).partner_id || b.status === "completed" || b.status === "assigned");
-
+  const assigned = bookings.filter(b => b.partner_id || b.status === "completed" || b.status === "assigned");
   const responseTimes = offers.filter(o => o.response_time_ms).map(o => o.response_time_ms! / 1000);
   const avgResponse = responseTimes.length > 0 ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : null;
-
   const approved = quotes.filter(q => q.status === "approved" || q.status === "accepted").length;
   const totalQuotes = quotes.filter(q => q.status !== "draft").length;
-
   const completionTimes = completed.filter(b => b.completed_at && b.created_at).map(b =>
     (new Date(b.completed_at!).getTime() - new Date(b.created_at).getTime()) / 3600000
   );
   const avgCompletion = completionTimes.length > 0 ? Math.round(completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length * 10) / 10 : null;
-
   const paid = completed.filter(b => b.payment_status === "paid").length;
   const ratingAvg = ratings.length > 0 ? Math.round(ratings.reduce((a: number, r: any) => a + r.rating, 0) / ratings.length * 10) / 10 : null;
+  const lowRatedCount = ratings.filter((r: any) => r.rating < 3).length;
 
   return {
     bookingsPerDay: Math.round(bookings.length / days * 10) / 10,
@@ -205,17 +261,31 @@ async function fetchPilotKPIs(): Promise<PilotKPIs> {
     paymentCollectionRate: completed.length > 0 ? Math.round((paid / completed.length) * 100) : 0,
     ratingAverage: ratingAvg,
     escalationCount: (escalRes.data || []).length,
+    stuckCount: 0, // Filled by panel from summary
+    lowRatedCount,
   };
 }
 
-export function usePilotDaySummary() {
-  return useQuery({ queryKey: ["pilot-day-summary"], queryFn: fetchPilotDaySummary, staleTime: 15_000, refetchInterval: 30_000 });
+export function usePilotDaySummary(filters: OpsFilters) {
+  return useQuery({
+    queryKey: ["pilot-day-summary", filters],
+    queryFn: () => fetchPilotDaySummary(filters),
+    staleTime: 15_000, refetchInterval: 30_000,
+  });
 }
 
-export function usePartnerSLA() {
-  return useQuery({ queryKey: ["partner-sla"], queryFn: fetchPartnerSLA, staleTime: 60_000, refetchInterval: 60_000 });
+export function usePartnerSLA(filters: OpsFilters) {
+  return useQuery({
+    queryKey: ["partner-sla", filters],
+    queryFn: () => fetchPartnerSLA(filters),
+    staleTime: 60_000, refetchInterval: 60_000,
+  });
 }
 
-export function usePilotKPIs() {
-  return useQuery({ queryKey: ["pilot-kpis"], queryFn: fetchPilotKPIs, staleTime: 60_000, refetchInterval: 60_000 });
+export function usePilotKPIs(filters: OpsFilters) {
+  return useQuery({
+    queryKey: ["pilot-kpis", filters],
+    queryFn: () => fetchPilotKPIs(filters),
+    staleTime: 60_000, refetchInterval: 60_000,
+  });
 }
