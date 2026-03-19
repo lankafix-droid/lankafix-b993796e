@@ -8,7 +8,7 @@ const InnovationsSection = lazy(() => import('./InnovationsSection'));
 const SafetyAlertsSection = lazy(() => import('./SafetyAlertsSection'));
 const NumbersInsightSection = lazy(() => import('./NumbersInsightSection'));
 const PopularThisWeekSection = lazy(() => import('./PopularThisWeekSection'));
-const AIBannerForum = lazy(() => import('./AIBannerForum'));
+const ContentHeroBanner = lazy(() => import('./ContentHeroBanner'));
 
 const Fallback = () => <div className="h-16" aria-hidden />;
 
