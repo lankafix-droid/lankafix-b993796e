@@ -987,6 +987,447 @@ export type Database = {
         }
         Relationships: []
       }
+      content_ai_briefs: {
+        Row: {
+          ai_banner_text: string | null
+          ai_cta_label: string | null
+          ai_headline: string | null
+          ai_keywords: string[] | null
+          ai_lankafix_angle: string | null
+          ai_model: string | null
+          ai_quality_score: number | null
+          ai_risk_flags: string[] | null
+          ai_summary_long: string | null
+          ai_summary_medium: string | null
+          ai_summary_short: string | null
+          ai_why_it_matters: string | null
+          content_item_id: string
+          generated_at: string | null
+          id: string
+          prompt_version: string | null
+        }
+        Insert: {
+          ai_banner_text?: string | null
+          ai_cta_label?: string | null
+          ai_headline?: string | null
+          ai_keywords?: string[] | null
+          ai_lankafix_angle?: string | null
+          ai_model?: string | null
+          ai_quality_score?: number | null
+          ai_risk_flags?: string[] | null
+          ai_summary_long?: string | null
+          ai_summary_medium?: string | null
+          ai_summary_short?: string | null
+          ai_why_it_matters?: string | null
+          content_item_id: string
+          generated_at?: string | null
+          id?: string
+          prompt_version?: string | null
+        }
+        Update: {
+          ai_banner_text?: string | null
+          ai_cta_label?: string | null
+          ai_headline?: string | null
+          ai_keywords?: string[] | null
+          ai_lankafix_angle?: string | null
+          ai_model?: string | null
+          ai_quality_score?: number | null
+          ai_risk_flags?: string[] | null
+          ai_summary_long?: string | null
+          ai_summary_medium?: string | null
+          ai_summary_short?: string | null
+          ai_why_it_matters?: string | null
+          content_item_id?: string
+          generated_at?: string | null
+          id?: string
+          prompt_version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_ai_briefs_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_category_tags: {
+        Row: {
+          category_code: string
+          confidence_score: number | null
+          content_item_id: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          category_code: string
+          confidence_score?: number | null
+          content_item_id: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          category_code?: string
+          confidence_score?: number | null
+          content_item_id?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_category_tags_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_editorial_actions: {
+        Row: {
+          action_type: string
+          actor_id: string | null
+          content_item_id: string
+          created_at: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          action_type: string
+          actor_id?: string | null
+          content_item_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string | null
+          content_item_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_editorial_actions_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_events: {
+        Row: {
+          content_item_id: string
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          content_item_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          content_item_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_events_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_items: {
+        Row: {
+          canonical_url: string | null
+          content_type: string
+          created_at: string
+          dedupe_key: string | null
+          fetch_hash: string | null
+          fetched_at: string | null
+          freshness_score: number | null
+          id: string
+          image_url: string | null
+          language: string | null
+          published_at: string | null
+          raw_body: string | null
+          raw_excerpt: string | null
+          raw_payload: Json | null
+          rejection_reason: string | null
+          source_country: string | null
+          source_id: string | null
+          source_item_id: string | null
+          source_name: string | null
+          source_trust_score: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          canonical_url?: string | null
+          content_type?: string
+          created_at?: string
+          dedupe_key?: string | null
+          fetch_hash?: string | null
+          fetched_at?: string | null
+          freshness_score?: number | null
+          id?: string
+          image_url?: string | null
+          language?: string | null
+          published_at?: string | null
+          raw_body?: string | null
+          raw_excerpt?: string | null
+          raw_payload?: Json | null
+          rejection_reason?: string | null
+          source_country?: string | null
+          source_id?: string | null
+          source_item_id?: string | null
+          source_name?: string | null
+          source_trust_score?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          canonical_url?: string | null
+          content_type?: string
+          created_at?: string
+          dedupe_key?: string | null
+          fetch_hash?: string | null
+          fetched_at?: string | null
+          freshness_score?: number | null
+          id?: string
+          image_url?: string | null
+          language?: string | null
+          published_at?: string | null
+          raw_body?: string | null
+          raw_excerpt?: string | null
+          raw_payload?: Json | null
+          rejection_reason?: string | null
+          source_country?: string | null
+          source_id?: string | null
+          source_item_id?: string | null
+          source_name?: string | null
+          source_trust_score?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_items_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "content_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_publish_rules: {
+        Row: {
+          category_code: string | null
+          commercial_priority: number | null
+          content_type_allowlist: string[] | null
+          enabled: boolean | null
+          freshness_limit_hours: number | null
+          id: string
+          max_items: number | null
+          minimum_ai_quality: number | null
+          minimum_relevance: number | null
+          minimum_source_trust: number | null
+          slot_code: string
+          sri_lanka_priority: number | null
+        }
+        Insert: {
+          category_code?: string | null
+          commercial_priority?: number | null
+          content_type_allowlist?: string[] | null
+          enabled?: boolean | null
+          freshness_limit_hours?: number | null
+          id?: string
+          max_items?: number | null
+          minimum_ai_quality?: number | null
+          minimum_relevance?: number | null
+          minimum_source_trust?: number | null
+          slot_code: string
+          sri_lanka_priority?: number | null
+        }
+        Update: {
+          category_code?: string | null
+          commercial_priority?: number | null
+          content_type_allowlist?: string[] | null
+          enabled?: boolean | null
+          freshness_limit_hours?: number | null
+          id?: string
+          max_items?: number | null
+          minimum_ai_quality?: number | null
+          minimum_relevance?: number | null
+          minimum_source_trust?: number | null
+          slot_code?: string
+          sri_lanka_priority?: number | null
+        }
+        Relationships: []
+      }
+      content_sources: {
+        Row: {
+          active: boolean
+          base_url: string | null
+          category_allowlist: string[] | null
+          category_blocklist: string[] | null
+          created_at: string
+          freshness_priority: number
+          id: string
+          language_support: string[] | null
+          last_fetched_at: string | null
+          legal_notes: string | null
+          refresh_interval_minutes: number
+          source_name: string
+          source_type: string
+          source_vendor: string | null
+          sri_lanka_bias: number | null
+          trust_score: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_url?: string | null
+          category_allowlist?: string[] | null
+          category_blocklist?: string[] | null
+          created_at?: string
+          freshness_priority?: number
+          id?: string
+          language_support?: string[] | null
+          last_fetched_at?: string | null
+          legal_notes?: string | null
+          refresh_interval_minutes?: number
+          source_name: string
+          source_type?: string
+          source_vendor?: string | null
+          sri_lanka_bias?: number | null
+          trust_score?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_url?: string | null
+          category_allowlist?: string[] | null
+          category_blocklist?: string[] | null
+          created_at?: string
+          freshness_priority?: number
+          id?: string
+          language_support?: string[] | null
+          last_fetched_at?: string | null
+          legal_notes?: string | null
+          refresh_interval_minutes?: number
+          source_name?: string
+          source_type?: string
+          source_vendor?: string | null
+          sri_lanka_bias?: number | null
+          trust_score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      content_surface_state: {
+        Row: {
+          active: boolean | null
+          category_code: string | null
+          content_item_id: string
+          ends_at: string | null
+          id: string
+          rank_score: number | null
+          starts_at: string | null
+          surface_code: string
+        }
+        Insert: {
+          active?: boolean | null
+          category_code?: string | null
+          content_item_id: string
+          ends_at?: string | null
+          id?: string
+          rank_score?: number | null
+          starts_at?: string | null
+          surface_code: string
+        }
+        Update: {
+          active?: boolean | null
+          category_code?: string | null
+          content_item_id?: string
+          ends_at?: string | null
+          id?: string
+          rank_score?: number | null
+          starts_at?: string | null
+          surface_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_surface_state_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "content_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_trend_clusters: {
+        Row: {
+          active: boolean | null
+          category_code: string | null
+          cluster_key: string
+          cluster_label: string
+          commercial_relevance_score: number | null
+          content_count: number | null
+          first_seen_at: string | null
+          id: string
+          last_seen_at: string | null
+          momentum_score: number | null
+          sri_lanka_relevance_score: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          category_code?: string | null
+          cluster_key: string
+          cluster_label: string
+          commercial_relevance_score?: number | null
+          content_count?: number | null
+          first_seen_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          momentum_score?: number | null
+          sri_lanka_relevance_score?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          category_code?: string | null
+          cluster_key?: string
+          cluster_label?: string
+          commercial_relevance_score?: number | null
+          content_count?: number | null
+          first_seen_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          momentum_score?: number | null
+          sri_lanka_relevance_score?: number | null
+        }
+        Relationships: []
+      }
       customer_addresses: {
         Row: {
           address_line_1: string | null
