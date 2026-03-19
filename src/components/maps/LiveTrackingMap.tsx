@@ -58,6 +58,8 @@ export default function LiveTrackingMap({
 }: Props) {
   const mapRef = useRef<google.maps.Map | null>(null);
 
+  const mapsLoaded = useGoogleMapsLoaded();
+
   const techPos = useMemo(
     () => (technicianLat && technicianLng ? { lat: technicianLat, lng: technicianLng } : null),
     [technicianLat, technicianLng]
@@ -84,7 +86,7 @@ export default function LiveTrackingMap({
   }, [techPos, custPos]);
 
   // Fallback CSS map if no API key
-  if (!GOOGLE_MAPS_API_KEY) {
+  if (!mapsLoaded) {
     return <FallbackMap {...{ technicianName, distanceKm, etaMinutes, etaRange, isLive, arrived, className }} />;
   }
 
