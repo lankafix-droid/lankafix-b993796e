@@ -220,6 +220,7 @@ const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string })
 
 const V2CategoryGrid = () => {
   const { rankedCategories, isReturningUser } = useUserBehavior();
+  const { categorySupply } = useSupplyIntelligence();
 
   const primary = categories.filter((c) => PRIMARY_CATS.includes(c.code));
   const secondary = categories.filter((c) => SECONDARY_CATS.includes(c.code));
