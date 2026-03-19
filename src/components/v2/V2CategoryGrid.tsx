@@ -89,7 +89,14 @@ function reorderByBehavior(codes: string[], rankedCategories: string[]): string[
   });
 }
 
-const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false }: { cat: typeof categories[0]; featured?: boolean; index?: number; recentlyUsed?: boolean }) => {
+const AVAILABILITY_BADGES: Record<AvailabilityLevel, { label: string; className: string } | null> = {
+  high: { label: "Available Today", className: "bg-success/90 text-success-foreground" },
+  medium: { label: "Limited Slots", className: "bg-warning/90 text-warning-foreground" },
+  low: { label: "Next Day", className: "bg-muted text-muted-foreground" },
+  none: null,
+};
+
+const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, availabilityLevel }: { cat: typeof categories[0]; featured?: boolean; index?: number; recentlyUsed?: boolean; availabilityLevel?: AvailabilityLevel }) => {
   const thumb = categoryThumbs[cat.code];
   const flow = v2CategoryFlows[cat.code];
   const launchState = getCategoryLaunchState(cat.code);
