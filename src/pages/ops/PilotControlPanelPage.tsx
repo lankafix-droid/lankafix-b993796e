@@ -552,14 +552,7 @@ export default function PilotControlPanelPage() {
                           b={b}
                           onAction={() => setActionBooking({
                             id: b.id, status: b.status, recommended: b.recommended,
-                            ctx: {
-                              hasPartner: !!b.partner_id,
-                              paymentMethod: b.payment_method,
-                              paymentStatus: b.status === "payment_pending" ? "pending" : undefined,
-                              lowRating: b.recommended.action === "open_quality_recovery",
-                              escalationExists: b.status === "escalated",
-                              underMediation: false, // TODO: enrich from booking data when available
-                            },
+                            ctx: buildBookingActionContext(b),
                           })}
                         />
                       ))}
