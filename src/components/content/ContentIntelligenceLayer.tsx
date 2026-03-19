@@ -8,7 +8,7 @@ const InnovationsSection = lazy(() => import('./InnovationsSection'));
 const SafetyAlertsSection = lazy(() => import('./SafetyAlertsSection'));
 const NumbersInsightSection = lazy(() => import('./NumbersInsightSection'));
 const PopularThisWeekSection = lazy(() => import('./PopularThisWeekSection'));
-const AIBannerForum = lazy(() => import('./AIBannerForum'));
+const ContentHeroBanner = lazy(() => import('./ContentHeroBanner'));
 
 const Fallback = () => <div className="h-16" aria-hidden />;
 
@@ -26,7 +26,7 @@ export default function ContentIntelligenceLayer() {
   return (
     <div className="space-y-0">
       <Suspense fallback={<Fallback />}>
-        <AIBannerForum onOpenItem={handleOpenItem} />
+        <ContentHeroBanner onOpenItem={handleOpenItem} />
       </Suspense>
       <Suspense fallback={<Fallback />}>
         <HotNowSection onOpenItem={handleOpenItem} />
