@@ -64,12 +64,6 @@ const PRICING_MICROCOPY: Record<string, string> = {
   APPLIANCE_INSTALL: "From Rs 2,500",
 };
 
-const PRICING_CHIPS: Record<V2PricingArchetype, { label: string; className: string }> = {
-  fixed_price: { label: "Fixed Price", className: "bg-success/90 text-success-foreground" },
-  diagnostic_first: { label: "Diagnostic First", className: "bg-warning/90 text-warning-foreground" },
-  quote_required: { label: "Quote Required", className: "bg-primary/90 text-primary-foreground" },
-};
-
 // Phase-1 launch priority: primary categories first, then secondary, then coming soon
 const PRIMARY_CATS = ["AC", "MOBILE", "CONSUMER_ELEC", "IT"];
 const SECONDARY_CATS = ["CCTV", "SOLAR", "SMART_HOME_OFFICE"];
