@@ -385,7 +385,25 @@ export const RECOVERY_PLAYBOOKS: Record<string, RecoveryPlaybook> = {
   },
 };
 
-// ══════════════════════════════════════════════════════════════
+export interface ContextAction {
+  key: string;
+  label: string;
+  icon: string;
+  variant: "default" | "destructive" | "warning" | "success";
+  isPrimary?: boolean;
+}
+
+export interface BookingActionContext {
+  hasPartner: boolean;
+  hasQuote?: boolean;
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  lowRating?: boolean;
+  escalationExists?: boolean;
+  underMediation?: boolean;
+}
+
+
 // 6. STATUS-AWARE CONTEXT ACTIONS — FULL LAUNCH-SAFE MATRIX
 // ══════════════════════════════════════════════════════════════
 //

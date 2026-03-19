@@ -445,7 +445,10 @@ export default function PilotControlPanelPage() {
   const [filters, setFilters] = useState<OpsFilters>({ dateRange: "today" });
   const [activeQueue, setActiveQueue] = useState<OpsQueue>("all");
   const { data: summary, isLoading, refetch } = usePilotDaySummary(filters);
-  const [actionBooking, setActionBooking] = useState<{ id: string; status: string; recommended?: StuckBooking["recommended"] } | null>(null);
+  const [actionBooking, setActionBooking] = useState<{
+    id: string; status: string; recommended?: StuckBooking["recommended"];
+    ctx: BookingActionContext;
+  } | null>(null);
 
   // KPI queue routing handler
   const handleQueueChange = useCallback((q: OpsQueue) => {
