@@ -78,7 +78,7 @@ export function useContentIntelligence({
       const liveContent = await fetchSurfaceContent(surface, categoryCode, limit);
       if (liveContent.length > 0) return liveContent;
       // Fallback to evergreen content
-      return buildEvergreenFallbacks(surface, categoryCode, limit);
+      return getEvergreenFallbacksForSurface(surface, categoryCode, limit);
     },
     staleTime: 5 * 60 * 1000,
     refetchInterval: 10 * 60 * 1000,
