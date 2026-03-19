@@ -98,10 +98,10 @@ export async function trackContentEvent(
   metadata?: Record<string, unknown>
 ) {
   const { data: { user } } = await supabase.auth.getUser();
-  await supabase.from('content_events').insert({
+  await supabase.from('content_events').insert([{
     content_item_id: contentItemId,
-    user_id: user?.id ?? null,
+    user_id: user?.id ?? undefined,
     event_type: eventType,
-    metadata: metadata ?? null,
-  });
+    metadata: (metadata as any) ?? undefined,
+  }]);
 }
