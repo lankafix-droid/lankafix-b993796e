@@ -141,14 +141,17 @@ export default function AdminSetupPage() {
                 <div className="space-y-2">
                   <p className="text-sm font-medium">No admin users configured</p>
                   <p className="text-xs text-muted-foreground">
-                    Bootstrap your account as admin to access all ops dashboards.
+                    No admin users exist yet. Click below to make yourself the first admin.
+                    This uses a secure one-time function that only works when zero admins exist.
                   </p>
                   <Button
                     size="sm"
-                    onClick={() => assignSelf.mutate("admin")}
-                    disabled={assignSelf.isPending}
+                    onClick={() => bootstrapAdmin.mutate()}
+                    disabled={bootstrapAdmin.isPending}
                   >
-                    <Shield className="w-4 h-4 mr-1.5" />
+                    {bootstrapAdmin.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Shield className="w-4 h-4 mr-1.5" />}
+                    Make Me Admin (One-Time Bootstrap)
+                  </Button>
                     Make Me Admin
                   </Button>
                 </div>
