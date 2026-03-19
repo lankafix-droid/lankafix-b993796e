@@ -1,11 +1,17 @@
 /**
  * Phase 3+ — Smart Pilot Operations Hook
  * Scalable data layer with category/zone filters, archetype-aware stuck detection,
- * and recommended action resolution.
+ * recommended action resolution, and REAL enriched booking context.
+ *
+ * ENRICHMENT STRATEGY:
+ * - Stuck bookings are fetched with real fields: under_mediation, payment_status, payment_method
+ * - Supplementary data (quotes, ratings, escalations, support cases) is batch-fetched
+ *   per stuck-booking set and joined client-side by booking_id
+ * - This avoids N+1 queries while providing real signals for the action matrix
  */
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getStuckThreshold, resolveRecommendedAction, type RecommendedAction } from "@/engines/interventionEngine";
+import { getStuckThreshold, resolveRecommendedAction, type RecommendedAction, type BookingActionContext } from "@/engines/interventionEngine";
 
 /* ── Filter Model ── */
 export interface OpsFilters {
@@ -15,7 +21,7 @@ export interface OpsFilters {
   severity?: "all" | "warning" | "critical";
 }
 
-/* ── Stuck Booking with Recommended Action ── */
+/* ── Enriched Stuck Booking — carries REAL context signals ── */
 export type StuckBooking = {
   id: string;
   status: string;
@@ -24,11 +30,47 @@ export type StuckBooking = {
   partner_id: string | null;
   created_at: string;
   payment_method: string | null;
+  payment_status: string | null;       // SOURCE: bookings.payment_status (real DB field)
+  under_mediation: boolean;             // SOURCE: bookings.under_mediation (real DB flag)
+  has_quote: boolean;                   // SOURCE: quotes table lookup by booking_id
+  quote_status: string | null;          // SOURCE: most recent quote status for this booking
+  rating: number | null;                // SOURCE: ratings table lookup by booking_id
+  low_rating: boolean;                  // SOURCE: rating < 3 from real ratings data
+  escalation_exists: boolean;           // SOURCE: unresolved dispatch_escalations by booking_id
+  support_case_open: boolean;           // SOURCE: unresolved support_cases by booking_id
   minutes_stuck: number;
   stuck_reason: string;
   severity: "warning" | "critical";
   recommended: RecommendedAction;
 };
+
+/**
+ * Builds a BookingActionContext from real StuckBooking data.
+ * This is the SINGLE SOURCE for dialog context — no inline heuristics.
+ *
+ * FALLBACK POLICY:
+ * - underMediation: true if booking.under_mediation OR open support case exists
+ * - escalationExists: true if unresolved dispatch_escalation exists for this booking
+ * - lowRating: true only if a real rating < 3 exists in ratings table
+ * - hasQuote: true only if quotes table has a record for this booking
+ * - paymentStatus/Method: direct from booking fields, null if unavailable
+ * - hasPartner: direct from booking.partner_id
+ */
+export function buildBookingActionContext(b: StuckBooking): BookingActionContext {
+  return {
+    hasPartner: !!b.partner_id,
+    hasQuote: b.has_quote,
+    paymentStatus: b.payment_status,
+    paymentMethod: b.payment_method,
+    lowRating: b.low_rating,
+    // Escalation: real unresolved escalation record takes precedence
+    escalationExists: b.escalation_exists,
+    // Mediation: true if booking flag is set OR an open support case exists
+    // This dual-source approach ensures mediation-safe actions even if only
+    // one system has been updated (booking flag vs support case)
+    underMediation: b.under_mediation || b.support_case_open,
+  };
+}
 
 export interface PilotDaySummary {
   created: number;
@@ -96,8 +138,8 @@ async function fetchPilotDaySummary(filters: OpsFilters): Promise<PilotDaySummar
   const [bRes, offersRes, quotesRes, ratingsRes, escalRes] = await Promise.all([
     bookingQ,
     offersQ,
-    supabase.from("quotes" as any).select("id, booking_id, status").gte("created_at", since),
-    supabase.from("ratings" as any).select("id, booking_id, rating").gte("created_at", since).lt("rating", 3),
+    supabase.from("quotes").select("id, booking_id, status").gte("created_at", since),
+    supabase.from("ratings").select("id, booking_id, rating").gte("created_at", since).lt("rating", 3),
     escalQ,
   ]);
 
@@ -105,7 +147,7 @@ async function fetchPilotDaySummary(filters: OpsFilters): Promise<PilotDaySummar
   const created = bookings.length;
   const unassigned = bookings.filter(b => !b.partner_id && !["completed", "cancelled"].includes(b.status)).length;
   const pendingPartnerResponse = (offersRes.data || []).length;
-  const pendingQuoteApproval = ((quotesRes.data || []) as any[]).filter(q => q.status === "submitted" || q.status === "pending").length;
+  const pendingQuoteApproval = (quotesRes.data || []).filter((q: any) => q.status === "submitted" || q.status === "pending").length;
   const activeInProgress = bookings.filter(b => ["in_progress", "assigned", "tech_en_route", "repair_started"].includes(b.status)).length;
   const completedToday = bookings.filter(b => b.status === "completed").length;
   const cancelledToday = bookings.filter(b => b.status === "cancelled").length;
@@ -113,9 +155,10 @@ async function fetchPilotDaySummary(filters: OpsFilters): Promise<PilotDaySummar
   const lowRated = (ratingsRes.data || []).length;
   const escalations = (escalRes.data || []).length;
 
-  // Stuck detection — all active bookings with category-aware thresholds
+  // ── STUCK DETECTION with REAL ENRICHMENT ──
+  // Fetch active bookings with real fields including under_mediation
   let activeQ = supabase.from("bookings")
-    .select("id, status, category_code, zone_code, partner_id, created_at, payment_method")
+    .select("id, status, category_code, zone_code, partner_id, created_at, payment_method, payment_status, under_mediation")
     .not("status", "in", '("completed","cancelled")')
     .order("created_at", { ascending: true }).limit(300);
 
@@ -124,37 +167,99 @@ async function fetchPilotDaySummary(filters: OpsFilters): Promise<PilotDaySummar
 
   const { data: allActive } = await activeQ;
 
-  const stuckBookings: StuckBooking[] = [];
+  // Identify stuck bookings first (before enrichment queries)
+  const stuckRaw: Array<{ booking: typeof allActive extends (infer T)[] | null ? T : never; ageMin: number; severity: "warning" | "critical"; threshold: number }> = [];
   const now = Date.now();
   for (const b of (allActive || [])) {
     const ageMin = Math.round((now - new Date(b.created_at).getTime()) / 60000);
     const threshold = getStuckThreshold(b.status, b.category_code, b.payment_method);
     if (threshold > 0 && ageMin > threshold) {
       const severity: "warning" | "critical" = ageMin > threshold * 2 ? "critical" : "warning";
-
-      // Apply severity filter if set
       if (filters.severity && filters.severity !== "all" && filters.severity !== severity) continue;
-
-      const recommended = resolveRecommendedAction(
-        b.status, ageMin, severity, b.category_code,
-        !!b.partner_id, b.payment_method
-      );
-
-      stuckBookings.push({
-        id: b.id,
-        status: b.status,
-        category_code: b.category_code,
-        zone_code: b.zone_code,
-        partner_id: b.partner_id,
-        created_at: b.created_at,
-        payment_method: b.payment_method,
-        minutes_stuck: ageMin,
-        stuck_reason: `${b.status} for ${ageMin}min (threshold: ${threshold}min for ${b.category_code})`,
-        severity,
-        recommended,
-      });
+      stuckRaw.push({ booking: b, ageMin, severity, threshold });
     }
   }
+
+  // Batch-fetch enrichment data for stuck booking IDs only (lightweight)
+  const stuckIds = stuckRaw.map(s => s.booking.id);
+  let quotesMap: Record<string, { has: boolean; status: string | null }> = {};
+  let ratingsMap: Record<string, { rating: number; low: boolean }> = {};
+  let escalMap: Record<string, boolean> = {};
+  let supportMap: Record<string, boolean> = {};
+
+  if (stuckIds.length > 0) {
+    // Batch fetch: quotes, ratings, escalations, support cases for stuck bookings
+    const [qRes, rRes, eRes, sRes] = await Promise.all([
+      supabase.from("quotes").select("booking_id, status").in("booking_id", stuckIds),
+      supabase.from("ratings").select("booking_id, rating").in("booking_id", stuckIds),
+      supabase.from("dispatch_escalations").select("booking_id").in("booking_id", stuckIds).is("resolved_at", null),
+      supabase.from("support_cases").select("booking_id").in("booking_id", stuckIds).is("resolved_at", null),
+    ]);
+
+    // Build quote map — use most recent non-draft status per booking
+    for (const q of (qRes.data || []) as any[]) {
+      const existing = quotesMap[q.booking_id];
+      if (!existing || q.status !== "draft") {
+        quotesMap[q.booking_id] = { has: true, status: q.status };
+      }
+    }
+
+    // Build ratings map — use lowest rating per booking (worst signal)
+    for (const r of (rRes.data || []) as any[]) {
+      const existing = ratingsMap[r.booking_id];
+      if (!existing || r.rating < existing.rating) {
+        ratingsMap[r.booking_id] = { rating: r.rating, low: r.rating < 3 };
+      }
+    }
+
+    // Build escalation map — any unresolved escalation = true
+    for (const e of (eRes.data || [])) {
+      if (e.booking_id) escalMap[e.booking_id] = true;
+    }
+
+    // Build support case map — any open support case = true
+    for (const s of (sRes.data || [])) {
+      if (s.booking_id) supportMap[s.booking_id] = true;
+    }
+  }
+
+  // Assemble enriched stuck bookings
+  const stuckBookings: StuckBooking[] = stuckRaw.map(({ booking: b, ageMin, severity, threshold }) => {
+    const quoteInfo = quotesMap[b.id];
+    const ratingInfo = ratingsMap[b.id];
+    const hasEscalation = !!escalMap[b.id];
+    const hasSupportCase = !!supportMap[b.id];
+    const isLowRated = ratingInfo?.low ?? false;
+    const isUnderMediation = !!(b.under_mediation) || hasSupportCase;
+
+    const recommended = resolveRecommendedAction(
+      b.status, ageMin, severity, b.category_code,
+      !!b.partner_id, b.payment_method,
+      ratingInfo?.rating ?? null
+    );
+
+    return {
+      id: b.id,
+      status: b.status,
+      category_code: b.category_code,
+      zone_code: b.zone_code,
+      partner_id: b.partner_id,
+      created_at: b.created_at,
+      payment_method: b.payment_method,
+      payment_status: b.payment_status as string | null,
+      under_mediation: isUnderMediation,
+      has_quote: quoteInfo?.has ?? false,
+      quote_status: quoteInfo?.status ?? null,
+      rating: ratingInfo?.rating ?? null,
+      low_rating: isLowRated,
+      escalation_exists: hasEscalation,
+      support_case_open: hasSupportCase,
+      minutes_stuck: ageMin,
+      stuck_reason: `${b.status} for ${ageMin}min (threshold: ${threshold}min for ${b.category_code})`,
+      severity,
+      recommended,
+    };
+  });
 
   // Sort stuck bookings: critical first, then by age descending
   stuckBookings.sort((a, b) => {
