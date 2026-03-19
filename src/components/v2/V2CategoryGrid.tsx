@@ -8,7 +8,7 @@ import { track } from "@/lib/analytics";
 import { logCategoryInterest } from "@/lib/demandCapture";
 import { motion } from "framer-motion";
 import { useUserBehavior } from "@/hooks/useUserBehavior";
-import { useSupplyIntelligence, type AvailabilityLevel } from "@/hooks/useSupplyIntelligence";
+import { useSupplyIntelligence, type CategorySupplyDetail } from "@/hooks/useSupplyIntelligence";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
