@@ -96,7 +96,7 @@ export async function convertLeadToBooking(
     .insert([{
       category_code: categoryCode,
       partner_id: partnerId,
-      status: "pending" as const,
+      status: "matching" as const,
       assignment_mode: "ops_manual",
       dispatch_mode: "manual",
       booking_source: "demand_conversion",
