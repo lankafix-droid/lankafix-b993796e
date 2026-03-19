@@ -1981,6 +1981,8 @@ export type Database = {
           rejection_reason: string | null
           request_type: string
           response_notes: string | null
+          response_token: string | null
+          response_token_expires_at: string | null
           routing_status: string | null
           status: string
           updated_at: string
@@ -2015,6 +2017,8 @@ export type Database = {
           rejection_reason?: string | null
           request_type?: string
           response_notes?: string | null
+          response_token?: string | null
+          response_token_expires_at?: string | null
           routing_status?: string | null
           status?: string
           updated_at?: string
@@ -2049,6 +2053,8 @@ export type Database = {
           rejection_reason?: string | null
           request_type?: string
           response_notes?: string | null
+          response_token?: string | null
+          response_token_expires_at?: string | null
           routing_status?: string | null
           status?: string
           updated_at?: string

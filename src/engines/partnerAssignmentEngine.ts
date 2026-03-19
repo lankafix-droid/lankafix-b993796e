@@ -86,6 +86,9 @@ export async function assignPartnerToLead(
     operator_notes: operatorNotes || null,
   });
 
+  // Generate secure response token for partner portal link
+  const responseToken = crypto.randomUUID();
+
   const { error } = await supabase
     .from("leads" as any)
     .update({
@@ -101,6 +104,8 @@ export async function assignPartnerToLead(
       assignment_history: updatedHistory,
       routing_status: "awaiting_response",
       operator_notes: operatorNotes || (existingLead as any)?.operator_notes || null,
+      response_token: responseToken,
+      response_token_expires_at: acceptBy.toISOString(),
     } as any)
     .eq("id", leadId);
 

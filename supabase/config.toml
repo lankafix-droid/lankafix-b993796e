@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.classify-demand]
 verify_jwt = false
+
+[functions.check-assignment-timeouts]
+verify_jwt = false
+
+[functions.partner-respond]
+verify_jwt = false

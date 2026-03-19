@@ -80,6 +80,7 @@ const ReferralPage = lazy(() => import("./pages/ReferralPage"));
 const CorporateServicesPage = lazy(() => import("./pages/CorporateServicesPage"));
 const ExpansionRoadmapPage = lazy(() => import("./pages/ops/ExpansionRoadmapPage"));
 const PartnerPremiumPage = lazy(() => import("./pages/partner/PartnerPremiumPage"));
+const PartnerRespondPage = lazy(() => import("./pages/partner/PartnerRespondPage"));
 const ConsumablesPage = lazy(() => import("./pages/ConsumablesPage"));
 const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
 const MarketplaceIntelligencePage = lazy(() => import("./pages/ops/MarketplaceIntelligencePage"));
@@ -247,6 +248,8 @@ const App = () => (
             <Route path="/partner/quotes" element={<PartnerRoute><PartnerQuoteHistoryPage /></PartnerRoute>} />
             <Route path="/partner/performance" element={<PartnerRoute><PartnerPerformancePage /></PartnerRoute>} />
             <Route path="/partner/premium" element={<PartnerRoute><PartnerPremiumPage /></PartnerRoute>} />
+            {/* Partner response portal — token-based, no auth required */}
+            <Route path="/partner/respond/:token" element={<PartnerRespondPage />} />
 
             {/* ─── Technician routes (requires partner record) ─── */}
             <Route path="/technician" element={<PartnerRoute><TechnicianDashboardPage /></PartnerRoute>} />
