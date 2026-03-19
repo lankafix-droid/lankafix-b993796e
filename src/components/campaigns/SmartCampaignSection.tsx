@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useVisualContext } from '@/hooks/useVisualContext';
 import { useUserBehavior } from '@/hooks/useUserBehavior';
+import { useSupplyIntelligence } from '@/hooks/useSupplyIntelligence';
 import CampaignHeroStrip from './CampaignHeroStrip';
 import CampaignContextRows from './CampaignContextRows';
-import type { UserCampaignContext, SupplyContext } from '@/types/campaign';
-
+import type { UserCampaignContext } from '@/types/campaign';
 /**
  * Top-level smart campaign section for the home page.
  * Wires real user behavior signals + supply context + AI personalization + cultural theming
@@ -26,14 +26,8 @@ export default function SmartCampaignSection() {
     preferredCategories: behavior.rankedCategories,
   }), [behavior]);
 
-  // TODO: Wire real supply from readiness service
-  const supplyCtx = useMemo<SupplyContext>(() => ({
-    categorySupply: {
-      MOBILE: 2, AC: 1, IT: 1, CCTV: 1, SOLAR: 1,
-      CONSUMER_ELEC: 1, POWER_BACKUP: 1,
-    },
-    zoneSupply: {},
-  }), []);
+  // Real-time supply from partners table
+  const { campaignSupplyContext: supplyCtx } = useSupplyIntelligence();
 
   const { hero, loading, ...ranked } = useCampaigns(userCtx, supplyCtx);
 
