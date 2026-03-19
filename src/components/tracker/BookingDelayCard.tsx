@@ -91,9 +91,9 @@ export default function BookingDelayCard({ bookingStatus, stageEnteredAt, onCont
 
         {/* Delay warning */}
         {delayMsg && (
-          <div className="flex items-start gap-2 bg-amber-500/10 rounded-lg p-2.5">
-            <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700">{delayMsg}</p>
+          <div className="flex items-start gap-2 bg-destructive/10 rounded-lg p-2.5">
+            <AlertTriangle size={14} className="text-destructive shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive">{delayMsg}</p>
           </div>
         )}
 

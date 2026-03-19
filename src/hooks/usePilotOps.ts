@@ -179,7 +179,7 @@ async function fetchPilotKPIs(): Promise<PilotKPIs> {
   const days = 7;
 
   const completed = bookings.filter(b => b.status === "completed");
-  const assigned = bookings.filter(b => b.partner_id || b.status === "completed" || b.status === "assigned");
+  const assigned = bookings.filter(b => (b as any).partner_id || b.status === "completed" || b.status === "assigned");
 
   const responseTimes = offers.filter(o => o.response_time_ms).map(o => o.response_time_ms! / 1000);
   const avgResponse = responseTimes.length > 0 ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : null;
