@@ -367,6 +367,7 @@ const App = () => (
         </TermsGuard>
       </BrowserRouter>
     </TooltipProvider>
+    </GoogleMapsProvider>
   </QueryClientProvider>
 );
 
