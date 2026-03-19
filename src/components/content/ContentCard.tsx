@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, TrendingUp, Shield, Zap, Lightbulb, Hash, BookOpen } from 'lucide-react';
 import type { EnrichedContentItem, ContentType } from '@/types/contentIntelligence';
 import { trackContentEvent } from '@/hooks/useContentIntelligence';
+import { useTrackContentImpression } from '@/hooks/useTrackContentImpression';
 
 interface ContentCardProps {
   item: EnrichedContentItem;
@@ -48,6 +49,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
   const summary = brief?.ai_summary_short ?? item.raw_excerpt ?? '';
   const whyMatters = brief?.ai_why_it_matters;
   const categoryTags = item.category_tags.slice(0, 2);
+  const impressionRef = useTrackContentImpression(item.id);
 
   const handleClick = () => {
     trackContentEvent(item.id, 'click');
@@ -56,120 +58,106 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
 
   if (variant === 'compact') {
     return (
-      <button
-        onClick={handleClick}
-        className={cn(
-          'flex items-start gap-3 rounded-xl border border-border/50 bg-card p-3 text-left',
-          'transition-all hover:shadow-sm hover:border-border/70 active:scale-[0.98]',
-          'w-[260px] shrink-0 snap-start',
-          className
-        )}
-      >
-        <div className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', config.accent)}>
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{headline}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{formatTimeAgo(item.published_at)}</p>
-        </div>
-      </button>
+      <div ref={impressionRef}>
+        <button
+          onClick={handleClick}
+          className={cn(
+            'flex items-start gap-3 rounded-xl border border-border/50 bg-card p-3 text-left',
+            'transition-all hover:shadow-sm hover:border-border/70 active:scale-[0.98]',
+            'w-[260px] shrink-0 snap-start',
+            className
+          )}
+        >
+          <div className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', config.accent)}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{headline}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{formatTimeAgo(item.published_at)}</p>
+          </div>
+        </button>
+      </div>
     );
   }
 
   if (variant === 'hero') {
     return (
-      <button
-        onClick={handleClick}
-        className={cn(
-          'relative w-full overflow-hidden rounded-2xl bg-card text-left',
-          'transition-all hover:shadow-md active:scale-[0.99]',
-          className
-        )}
-      >
-        {item.image_url ? (
-          <div className="relative h-44 w-full">
-            <img
-              src={item.image_url}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
-          </div>
-        ) : (
-          <div className="h-28 w-full bg-gradient-to-br from-primary/10 via-accent/5 to-transparent" />
-        )}
-        <div className={cn('p-4', item.image_url ? '-mt-16 relative z-10' : '')}>
-          <div className="flex items-center gap-2 mb-1.5">
-            <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase tracking-wider', config.accent)}>
-              <Icon className="mr-1 h-3 w-3" />
-              {config.label}
-            </Badge>
-            {categoryTags.map(t => (
-              <Badge key={t.id} variant="outline" className="text-[10px]">
-                {t.category_code}
+      <div ref={impressionRef}>
+        <button
+          onClick={handleClick}
+          className={cn(
+            'relative w-full overflow-hidden rounded-2xl bg-card text-left',
+            'transition-all hover:shadow-md active:scale-[0.99]',
+            className
+          )}
+        >
+          {item.image_url ? (
+            <div className="relative h-44 w-full">
+              <img src={item.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+            </div>
+          ) : (
+            <div className="h-28 w-full bg-gradient-to-br from-primary/10 via-accent/5 to-transparent" />
+          )}
+          <div className={cn('p-4', item.image_url ? '-mt-16 relative z-10' : '')}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase tracking-wider', config.accent)}>
+                <Icon className="mr-1 h-3 w-3" />
+                {config.label}
               </Badge>
-            ))}
+              {categoryTags.map(t => (
+                <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
+              ))}
+            </div>
+            <h3 className="text-base font-bold leading-tight text-foreground line-clamp-2">{headline}</h3>
+            {summary && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{summary}</p>}
+            {whyMatters && (
+              <p className="mt-2 text-xs font-medium text-primary line-clamp-1">💡 {whyMatters}</p>
+            )}
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              {item.source_name && <span>{item.source_name}</span>}
+              <span>·</span>
+              <span>{formatTimeAgo(item.published_at)}</span>
+            </div>
           </div>
-          <h3 className="text-base font-bold leading-tight text-foreground line-clamp-2">{headline}</h3>
-          {summary && (
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{summary}</p>
-          )}
-          {whyMatters && (
-            <p className="mt-2 text-xs font-medium text-primary line-clamp-1">
-              💡 {whyMatters}
-            </p>
-          )}
-          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-            {item.source_name && <span>{item.source_name}</span>}
-            <span>·</span>
-            <span>{formatTimeAgo(item.published_at)}</span>
-          </div>
-        </div>
-      </button>
+        </button>
+      </div>
     );
   }
 
   // Standard card
   return (
-    <button
-      onClick={handleClick}
-      className={cn(
-        'flex gap-3 rounded-xl border border-border/50 bg-card p-3.5 text-left',
-        'transition-all hover:shadow-sm hover:border-border/70 active:scale-[0.98]',
-        className
-      )}
-    >
-      {item.image_url && (
-        <img
-          src={item.image_url}
-          alt=""
-          className="h-20 w-20 shrink-0 rounded-lg object-cover"
-          loading="lazy"
-        />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 mb-1">
-          <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase', config.accent)}>
-            {config.label}
-          </Badge>
-          <span className="text-[10px] text-muted-foreground">{formatTimeAgo(item.published_at)}</span>
-        </div>
-        <h4 className="text-sm font-bold leading-tight text-foreground line-clamp-2">{headline}</h4>
-        {summary && (
-          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{summary}</p>
+    <div ref={impressionRef}>
+      <button
+        onClick={handleClick}
+        className={cn(
+          'flex gap-3 rounded-xl border border-border/50 bg-card p-3.5 text-left w-full',
+          'transition-all hover:shadow-sm hover:border-border/70 active:scale-[0.98]',
+          className
         )}
-        {categoryTags.length > 0 && (
-          <div className="mt-1.5 flex gap-1">
-            {categoryTags.map(t => (
-              <span key={t.id} className="text-[10px] text-primary font-medium">
-                #{t.category_code}
-              </span>
-            ))}
+      >
+        {item.image_url && (
+          <img src={item.image_url} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" loading="lazy" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase', config.accent)}>
+              {config.label}
+            </Badge>
+            <span className="text-[10px] text-muted-foreground">{formatTimeAgo(item.published_at)}</span>
           </div>
-        )}
-      </div>
-    </button>
+          <h4 className="text-sm font-bold leading-tight text-foreground line-clamp-2">{headline}</h4>
+          {summary && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{summary}</p>}
+          {categoryTags.length > 0 && (
+            <div className="mt-1.5 flex gap-1">
+              {categoryTags.map(t => (
+                <span key={t.id} className="text-[10px] text-primary font-medium">#{t.category_code}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </button>
+    </div>
   );
 });
 
