@@ -87,7 +87,9 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="relative z-10 w-full text-left p-4 pt-11"
             onClick={() => {
-              trackContentEvent(item.id, 'click', { surface: 'ai_banner_forum' });
+              if (!item.id.startsWith('evergreen-')) {
+                trackContentEvent(item.id, 'click', { surface: 'ai_banner_forum' });
+              }
               onOpenItem?.(item);
             }}
           >

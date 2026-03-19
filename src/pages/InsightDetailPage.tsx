@@ -98,7 +98,7 @@ function InsightMeta({ item }: { item: EnrichedContentItem }) {
       <Badge variant="secondary" className="text-xs font-semibold capitalize">
         {item.content_type.replace(/_/g, ' ')}
       </Badge>
-      {item.category_tags.map(t => (
+      {(item.category_tags ?? []).map(t => (
         <Badge key={t.id} variant="outline" className="text-xs">
           {t.category_code}
         </Badge>
