@@ -74,23 +74,21 @@ export default function AdminSetupPage() {
     },
   });
 
-  // Assign role to self (bootstrap)
-  const assignSelf = useMutation({
-    mutationFn: async (role: AppRole) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase.from("user_roles").insert({
-        user_id: user.id,
-        role,
-      } as any);
+  // Bootstrap using the secure RPC (only works when zero admins exist)
+  const bootstrapAdmin = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("bootstrap_admin_if_none");
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
-      toast.success("Admin role assigned to your account");
+      queryClient.invalidateQueries({ queryKey: ["user-role"] });
+      toast.success("🎉 You are now an admin! Ops dashboards are accessible.");
     },
     onError: (e: any) => {
-      toast.error(e.message?.includes("duplicate") ? "You already have this role" : e.message);
+      toast.error(e.message?.includes("Admin already exists")
+        ? "An admin already exists. Use the form below to assign roles."
+        : e.message);
     },
   });
 
