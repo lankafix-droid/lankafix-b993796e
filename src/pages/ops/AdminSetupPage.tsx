@@ -237,26 +237,47 @@ export default function AdminSetupPage() {
 
         {/* Quick Access */}
         {hasAdmins && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-success" />
-                Pilot Ready Checklist
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {[
-                { label: "Admin configured", done: hasAdmins },
-                { label: "Operator assigned", done: assignments.some(a => a.role === "operator") },
-                { label: "Support assigned", done: assignments.some(a => a.role === "support") },
-              ].map(item => (
-                <div key={item.label} className="flex items-center gap-2 text-sm">
-                  <div className={`w-2 h-2 rounded-full ${item.done ? "bg-success" : "bg-muted"}`} />
-                  <span className={item.done ? "text-foreground" : "text-muted-foreground"}>{item.label}</span>
+          <>
+            {/* Partner Provisioning Link */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Provision Pilot Partners</p>
+                    <p className="text-xs text-muted-foreground">
+                      Create and verify partner records for the Colombo Mobile Repair pilot.
+                    </p>
+                    <Button size="sm" onClick={() => navigate("/ops/partner-provisioning")}>
+                      <UserPlus className="w-4 h-4 mr-1.5" />
+                      Partner Provisioning Tool
+                    </Button>
+                  </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-success" />
+                  Pilot Ready Checklist
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  { label: "Admin configured", done: hasAdmins },
+                  { label: "Operator assigned", done: assignments.some(a => a.role === "operator") },
+                  { label: "Support assigned", done: assignments.some(a => a.role === "support") },
+                ].map(item => (
+                  <div key={item.label} className="flex items-center gap-2 text-sm">
+                    <div className={`w-2 h-2 rounded-full ${item.done ? "bg-success" : "bg-muted"}`} />
+                    <span className={item.done ? "text-foreground" : "text-muted-foreground"}>{item.label}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </div>
