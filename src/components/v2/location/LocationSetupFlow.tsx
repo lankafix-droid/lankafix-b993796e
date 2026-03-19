@@ -251,46 +251,39 @@ const LocationSetupFlow = ({ onComplete, onSkip }: Props) => {
           )}
         </div>
 
-        {/* Area search */}
-        <div className="relative">
-          <div className="flex items-center gap-2 bg-card rounded-xl border p-3">
-            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              placeholder="Search area: Colombo 7, Nugegoda, Dehiwala..."
-              value={areaSearch}
-              onChange={(e) => {
-                setAreaSearch(e.target.value);
-                setShowAreaResults(true);
-              }}
-              onFocus={() => areaResults.length > 0 && setShowAreaResults(true)}
-              className="flex-1 bg-transparent text-sm outline-none text-foreground placeholder:text-muted-foreground"
-            />
-            {areaSearch && (
-              <button onClick={() => { setAreaSearch(""); setShowAreaResults(false); }}>
-                <X className="w-4 h-4 text-muted-foreground" />
-              </button>
-            )}
-          </div>
+        {/* Google Places Address Autocomplete */}
+        <GoogleAddressAutocomplete
+          value={areaSearch}
+          onChange={setAreaSearch}
+          onPlaceSelect={(place: PlaceResult) => {
+            setPosition({ lat: place.lat, lng: place.lng });
+            setManualArea(place.area || place.address);
+            setAreaSearch(place.address);
+            setShowAreaResults(false);
+            const info = reverseGeocode({ lat: place.lat, lng: place.lng });
+            setGeoInfo(info);
+          }}
+          placeholder="Search address: Colombo 7, Nugegoda, Dehiwala..."
+        />
 
-          {showAreaResults && areaResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-card rounded-xl border shadow-xl z-50 overflow-hidden">
-              {areaResults.map((zone) => (
-                <button
-                  key={zone.id}
-                  onClick={() => handleSelectArea(zone)}
-                  className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0 flex items-center gap-3"
-                >
-                  <MapPin className="w-4 h-4 text-primary shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{zone.label}</p>
-                    <p className="text-xs text-muted-foreground">{zone.city}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Fallback local zone search results (when Google isn't loaded) */}
+        {showAreaResults && areaResults.length > 0 && (
+          <div className="bg-card rounded-xl border shadow-xl z-50 overflow-hidden">
+            {areaResults.map((zone) => (
+              <button
+                key={zone.id}
+                onClick={() => handleSelectArea(zone)}
+                className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/30 last:border-0 flex items-center gap-3"
+              >
+                <MapPin className="w-4 h-4 text-primary shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">{zone.label}</p>
+                  <p className="text-xs text-muted-foreground">{zone.city}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Outside zone warning with lead capture */}
         {geoInfo?.status === "outside" && (
