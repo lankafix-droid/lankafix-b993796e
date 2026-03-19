@@ -26,7 +26,7 @@ export default function ContentIntelligenceLayer() {
   return (
     <div className="space-y-0">
       <Suspense fallback={<Fallback />}>
-        <AIBannerForum onOpenItem={handleOpenItem} />
+        <ContentHeroBanner onOpenItem={handleOpenItem} />
       </Suspense>
       <Suspense fallback={<Fallback />}>
         <HotNowSection onOpenItem={handleOpenItem} />
