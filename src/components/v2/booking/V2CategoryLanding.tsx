@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, Clock, ArrowRight, Stethoscope, Zap, Eye, Award, Lock, CheckCircle2, Timer } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import CategoryContentIntelligence from "@/components/content/CategoryContentIntelligence";
 import { useMemo } from "react";
 import { getArrivalEstimate } from "@/utils/arrivalEstimate";
 
@@ -197,6 +198,9 @@ const V2CategoryLanding = ({ flow, onContinue, isEmergency, onEmergencyToggle }:
       <Button onClick={onContinue} size="lg" className="w-full gap-2 min-h-[52px] rounded-2xl text-base font-bold">
         Get Started <ArrowRight className="w-4 h-4" />
       </Button>
+
+      {/* Category Content Intelligence */}
+      <CategoryContentIntelligence categoryCode={flow.code} categoryLabel={flow.name} />
     </div>
   );
 };
