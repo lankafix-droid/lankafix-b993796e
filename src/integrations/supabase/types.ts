@@ -1951,6 +1951,106 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          accept_by: string | null
+          ai_classification: Json | null
+          ai_priority_score: number | null
+          ai_suggested_partners: Json | null
+          assigned_operator_id: string | null
+          assigned_partner_id: string | null
+          assignment_attempt: number | null
+          assignment_sent_at: string | null
+          booking_id: string | null
+          category_code: string
+          created_at: string
+          customer_location: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          demand_request_id: string | null
+          description: string | null
+          estimated_complexity: string | null
+          id: string
+          reassigned_from_partner_id: string | null
+          request_type: string
+          status: string
+          updated_at: string
+          zone_code: string | null
+        }
+        Insert: {
+          accept_by?: string | null
+          ai_classification?: Json | null
+          ai_priority_score?: number | null
+          ai_suggested_partners?: Json | null
+          assigned_operator_id?: string | null
+          assigned_partner_id?: string | null
+          assignment_attempt?: number | null
+          assignment_sent_at?: string | null
+          booking_id?: string | null
+          category_code: string
+          created_at?: string
+          customer_location?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          demand_request_id?: string | null
+          description?: string | null
+          estimated_complexity?: string | null
+          id?: string
+          reassigned_from_partner_id?: string | null
+          request_type?: string
+          status?: string
+          updated_at?: string
+          zone_code?: string | null
+        }
+        Update: {
+          accept_by?: string | null
+          ai_classification?: Json | null
+          ai_priority_score?: number | null
+          ai_suggested_partners?: Json | null
+          assigned_operator_id?: string | null
+          assigned_partner_id?: string | null
+          assignment_attempt?: number | null
+          assignment_sent_at?: string | null
+          booking_id?: string | null
+          category_code?: string
+          created_at?: string
+          customer_location?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          demand_request_id?: string | null
+          description?: string | null
+          estimated_complexity?: string | null
+          id?: string
+          reassigned_from_partner_id?: string | null
+          request_type?: string
+          status?: string
+          updated_at?: string
+          zone_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_assigned_partner_id_fkey"
+            columns: ["assigned_partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_demand_request_id_fkey"
+            columns: ["demand_request_id"]
+            isOneToOne: false
+            referencedRelation: "demand_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loyalty_points: {
         Row: {
           booking_id: string | null
