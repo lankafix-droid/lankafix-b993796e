@@ -6,8 +6,9 @@ import Header from '@/components/layout/Header';
 import Footer from '@/components/landing/Footer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ExternalLink, Clock, Shield, BookOpen, Wrench } from 'lucide-react';
-import { trackContentEvent } from '@/hooks/useContentIntelligence';
+import { ArrowLeft, ExternalLink, Clock, Shield, BookOpen, Wrench, TrendingUp } from 'lucide-react';
+import { trackContentEvent, useContentIntelligence } from '@/hooks/useContentIntelligence';
+import ContentCard from '@/components/content/ContentCard';
 import type { EnrichedContentItem } from '@/types/contentIntelligence';
 
 async function fetchContentDetail(id: string): Promise<EnrichedContentItem | null> {
@@ -39,6 +40,56 @@ function formatDate(dateStr: string | null) {
   });
 }
 
+function InsightMeta({ item }: { item: EnrichedContentItem }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Badge variant="secondary" className="text-xs font-semibold capitalize">
+        {item.content_type.replace(/_/g, ' ')}
+      </Badge>
+      {item.category_tags.map(t => (
+        <Badge key={t.id} variant="outline" className="text-xs">
+          {t.category_code}
+        </Badge>
+      ))}
+      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+        <Clock className="h-3 w-3" />
+        {formatDate(item.published_at)}
+      </span>
+    </div>
+  );
+}
+
+function RelatedInsights({ categoryCode, currentId }: { categoryCode: string; currentId: string }) {
+  const navigate = useNavigate();
+  const { data: related } = useContentIntelligence({
+    surface: 'homepage_popular',
+    limit: 4,
+  });
+
+  const filtered = (related ?? []).filter(i => i.id !== currentId).slice(0, 3);
+  if (!filtered.length) return null;
+
+  return (
+    <div className="pt-4 border-t border-border/50">
+      <h3 className="flex items-center gap-1.5 text-sm font-bold text-foreground mb-3">
+        <TrendingUp className="h-4 w-4 text-primary" />
+        Related Insights
+      </h3>
+      <div className="space-y-2">
+        {filtered.map(item => (
+          <ContentCard
+            key={item.id}
+            item={item}
+            variant="compact"
+            className="w-full"
+            onOpen={() => navigate(`/insights/${item.id}`)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function InsightDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -49,10 +100,9 @@ export default function InsightDetailPage() {
     enabled: !!id,
   });
 
-  // Track open
-  if (item) {
-    trackContentEvent(item.id, 'open');
-  }
+  // Track open (only once via query side-effect)
+  const tracked = item?.id;
+  if (tracked) trackContentEvent(tracked, 'open');
 
   if (isLoading) {
     return (
@@ -94,7 +144,6 @@ export default function InsightDetailPage() {
     <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
-        {/* Back nav */}
         <div className="container max-w-2xl pt-4 pb-2">
           <button
             onClick={() => navigate(-1)}
@@ -105,47 +154,25 @@ export default function InsightDetailPage() {
           </button>
         </div>
 
-        {/* Hero image */}
         {item.image_url && (
           <div className="w-full max-w-2xl mx-auto">
-            <img
-              src={item.image_url}
-              alt=""
-              className="w-full h-56 object-cover rounded-b-2xl"
-            />
+            <img src={item.image_url} alt="" className="w-full h-56 object-cover rounded-b-2xl" />
           </div>
         )}
 
         <article className="container max-w-2xl py-4 space-y-4">
-          {/* Meta badges */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary" className="text-xs font-semibold capitalize">
-              {item.content_type.replace(/_/g, ' ')}
-            </Badge>
-            {item.category_tags.map(t => (
-              <Badge key={t.id} variant="outline" className="text-xs">
-                {t.category_code}
-              </Badge>
-            ))}
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {formatDate(item.published_at)}
-            </span>
-          </div>
+          <InsightMeta item={item} />
 
-          {/* Headline */}
           <h1 className="font-heading text-2xl font-bold leading-tight text-foreground">
             {headline}
           </h1>
 
-          {/* AI Summary */}
           {brief?.ai_summary_medium && (
             <div className="text-base text-foreground/90 leading-relaxed">
               {brief.ai_summary_medium}
             </div>
           )}
 
-          {/* Why it matters */}
           {brief?.ai_why_it_matters && (
             <div className="rounded-xl bg-primary/5 border border-primary/10 p-4">
               <h3 className="text-sm font-bold text-primary mb-1 flex items-center gap-1.5">
@@ -155,7 +182,6 @@ export default function InsightDetailPage() {
             </div>
           )}
 
-          {/* LankaFix Angle */}
           {brief?.ai_lankafix_angle && (
             <div className="rounded-xl bg-accent/5 border border-accent/10 p-4">
               <h3 className="text-sm font-bold text-accent-foreground mb-1 flex items-center gap-1.5">
@@ -166,7 +192,6 @@ export default function InsightDetailPage() {
             </div>
           )}
 
-          {/* Risk flags */}
           {brief?.ai_risk_flags && brief.ai_risk_flags.length > 0 && (
             <div className="flex items-start gap-2 rounded-xl bg-destructive/5 border border-destructive/10 p-3">
               <Shield className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
@@ -210,6 +235,12 @@ export default function InsightDetailPage() {
               </Link>
             </Button>
           </div>
+
+          {/* Related Insights */}
+          <RelatedInsights
+            categoryCode={primaryCategory ?? ''}
+            currentId={item.id}
+          />
         </article>
       </main>
       <Footer />
