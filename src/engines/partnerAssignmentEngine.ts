@@ -499,7 +499,7 @@ export async function convertLeadToBooking(
 async function logRoutingEvent(eventType: string, metadata: Record<string, unknown>) {
   await supabase.from("notification_events").insert([{
     event_type: eventType,
-    metadata,
+    metadata: metadata as any,
   }]);
 }
 
