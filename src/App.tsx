@@ -13,6 +13,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PartnerRoute from "@/components/auth/PartnerRoute";
 // Eager-load homepage for fast first paint
 import HomePage from "./pages/V2HomePage";
+import GoogleMapsProvider from "./components/maps/GoogleMapsProvider";
 
 // Auth pages
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
@@ -181,6 +182,7 @@ const OpsRoute = ({ children }: { children: React.ReactNode }) => (
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <GoogleMapsProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -366,6 +368,7 @@ const App = () => (
         </TermsGuard>
       </BrowserRouter>
     </TooltipProvider>
+    </GoogleMapsProvider>
   </QueryClientProvider>
 );
 
