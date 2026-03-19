@@ -332,8 +332,8 @@ async function fetchPilotKPIs(filters: OpsFilters): Promise<PilotKPIs> {
   const [bRes, offersRes, quotesRes, ratingsRes, escalRes] = await Promise.all([
     bQ,
     supabase.from("dispatch_offers").select("id, status, response_time_ms").gte("created_at", since),
-    supabase.from("quotes" as any).select("id, status").gte("created_at", since),
-    supabase.from("ratings" as any).select("id, rating").gte("created_at", since),
+    supabase.from("quotes").select("id, status").gte("created_at", since),
+    supabase.from("ratings").select("id, rating").gte("created_at", since),
     supabase.from("dispatch_escalations").select("id").gte("created_at", since).is("resolved_at", null),
   ]);
 
