@@ -2,10 +2,10 @@ import { useMemo } from 'react';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useVisualContext } from '@/hooks/useVisualContext';
 import { useUserBehavior } from '@/hooks/useUserBehavior';
+import { useSupplyIntelligence } from '@/hooks/useSupplyIntelligence';
 import CampaignHeroStrip from './CampaignHeroStrip';
 import CampaignContextRows from './CampaignContextRows';
-import type { UserCampaignContext, SupplyContext } from '@/types/campaign';
-
+import type { UserCampaignContext } from '@/types/campaign';
 /**
  * Top-level smart campaign section for the home page.
  * Wires real user behavior signals + supply context + AI personalization + cultural theming
