@@ -659,8 +659,14 @@ export function isActionAllowed(actionKey: string, userRole: OpsRole): boolean {
  * via the has_role() RPC. Falls back to direct query if RPC fails.
  * Returns "operator" as safe default if role cannot be determined.
  */
+/**
+ * Resolves current user's ops role.
+ * The DB app_role enum is (admin, moderator, user).
+ * We map: admin→admin, moderator→support, user→operator.
+ * Uses has_role() RPC first, falls back to direct user_roles query.
+ */
 export async function resolveCurrentOpsRole(userId: string): Promise<OpsRole> {
-  // Try has_role RPC for admin first (most privileged)
+  // Check admin via has_role RPC
   try {
     const { data: isAdmin, error } = await supabase.rpc("has_role", {
       _user_id: userId,
@@ -668,28 +674,28 @@ export async function resolveCurrentOpsRole(userId: string): Promise<OpsRole> {
     });
     if (!error && isAdmin === true) return "admin";
   } catch {
-    // RPC may not exist — fall through to direct query
+    // RPC unavailable — fall through
   }
 
-  // Try has_role for support
+  // Check moderator (maps to "support" ops role)
   try {
-    const { data: isSupport, error } = await supabase.rpc("has_role", {
+    const { data: isMod, error } = await supabase.rpc("has_role", {
       _user_id: userId,
-      _role: "support",
+      _role: "moderator",
     });
-    if (!error && isSupport === true) return "support";
+    if (!error && isMod === true) return "support";
   } catch {
     // Fall through
   }
 
-  // Fallback: query user_roles directly
+  // Fallback: direct query
   try {
     const { data: roles } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
     if (roles?.some(r => (r.role as string) === "admin")) return "admin";
-    if (roles?.some(r => (r.role as string) === "support")) return "support";
+    if (roles?.some(r => (r.role as string) === "moderator")) return "support";
   } catch {
     // Safe default
   }

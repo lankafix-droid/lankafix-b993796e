@@ -207,7 +207,12 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
   const [note, setNote] = useState("");
   const [lastResult, setLastResult] = useState<InterventionResult | null>(null);
 
-  const contextActions = getContextActions(status, false);
+  // Build real booking context — never hardcode
+  const bookingCtx: import("@/engines/interventionEngine").BookingActionContext = {
+    hasPartner: !!recommended && ["reassign_partner", "resend_assignment", "contact_partner_progress"].includes(recommended.action),
+    lowRating: !!recommended && recommended.action === "open_quality_recovery",
+  };
+  const contextActions = getContextActions(status, bookingCtx);
 
   const needsPartnerId = (key: string) => key === "assign" || key === "reassign";
   const needsReason = (key: string) => ["escalate", "cancel", "remind_customer"].includes(key);
