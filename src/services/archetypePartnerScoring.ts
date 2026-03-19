@@ -221,7 +221,7 @@ function scoreOnePartner(
   // --- Penalties ---
 
   // Availability freshness penalty
-  const freshness = getAvailabilityFreshnessPenalty(p.updated_at);
+  const freshness = getAvailabilityFreshnessPenalty(p.availability_last_updated, p.updated_at);
   if (freshness.penalty > 0) {
     totalScore -= freshness.penalty;
     penalties.push(`availability_${freshness.label}`);
