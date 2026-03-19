@@ -326,6 +326,11 @@ export default function TechnicianJobDetailPage() {
           </Card>
         )}
 
+        {/* Technician Job Notes */}
+        {isMyJob && !["completed", "cancelled", "no_show"].includes(status) && (
+          <TechnicianNotesSection bookingId={booking.id} partnerId={partner?.id || ""} />
+        )}
+
         {/* Service Evidence */}
         {isMyJob && ["assigned", "tech_en_route", "arrived", "inspection_started", "in_progress", "repair_started"].includes(status) && (
           <ServiceEvidencePanel
