@@ -1,6 +1,13 @@
 /**
  * /ops/demand-dashboard — Operator Demand Intelligence Dashboard
- * Live feed of demand requests with assignment, SLA tracking, and analytics.
+ *
+ * SEPARATION OF CONCERNS:
+ * - "Demand Feed" tab: raw incoming demand_requests (callback / submit / chat)
+ *   → Operators can classify these into leads via "AI Classify & Match"
+ * - "Leads Pipeline" tab: classified leads with partner suggestions,
+ *   assignment, accept/reject, and conversion controls
+ *
+ * Partner assignment only happens on LEADS, never on raw demand requests.
  */
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -12,7 +19,6 @@ import DemandFilters from "@/components/ops/demand/DemandFilters";
 import DemandRequestCard from "@/components/ops/demand/DemandRequestCard";
 import DemandInsightsPanel from "@/components/ops/demand/DemandInsightsPanel";
 import LeadsPipelinePanel from "@/components/ops/demand/LeadsPipelinePanel";
-import PartnerSuggestionsPanel from "@/components/ops/demand/PartnerSuggestionsPanel";
 import { useClassifyDemand } from "@/hooks/useLeads";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,7 +55,6 @@ const DemandDashboardPage = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterAssigned, setFilterAssigned] = useState("all");
-  const [selectedRequest, setSelectedRequest] = useState<DemandRequest | null>(null);
   const [activeTab, setActiveTab] = useState("demand");
 
   const classifyMutation = useClassifyDemand();
@@ -87,7 +92,12 @@ const DemandDashboardPage = () => {
   };
 
   const handleClassify = (req: DemandRequest) => {
-    classifyMutation.mutate(req.id);
+    classifyMutation.mutate(req.id, {
+      onSuccess: () => {
+        // After classification, switch to leads tab to show the new lead
+        setActiveTab("leads");
+      },
+    });
   };
 
   const uniqueCategories = [...new Set(requests.map((r) => r.category_code))];
@@ -97,7 +107,9 @@ const DemandDashboardPage = () => {
       <Header />
       <main className="flex-1 container py-6">
         <h1 className="text-2xl font-bold text-foreground mb-1">Demand Dashboard</h1>
-        <p className="text-sm text-muted-foreground mb-6">Live demand feed — own, track, convert every lead.</p>
+        <p className="text-sm text-muted-foreground mb-6">
+          Demand Feed → Classify → Leads Pipeline → Partner Assignment → Booking
+        </p>
 
         <DemandStatsStrip requests={requests} />
 
@@ -107,6 +119,7 @@ const DemandDashboardPage = () => {
             <TabsTrigger value="leads">Leads Pipeline</TabsTrigger>
           </TabsList>
 
+          {/* ─── DEMAND FEED: raw requests, classify into leads ─── */}
           <TabsContent value="demand">
             <DemandInsightsPanel requests={requests} catNameMap={catNameMap} />
             <DemandFilters
@@ -125,61 +138,35 @@ const DemandDashboardPage = () => {
             ) : requests.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">No demand requests yet.</div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* Demand cards */}
-                <div className="lg:col-span-2 space-y-3">
-                  {requests.map((req) => (
-                    <div key={req.id}>
-                      <DemandRequestCard
-                        req={req}
-                        catNameMap={catNameMap}
-                        onUpdate={updateRequest}
-                        onLogContact={logContact}
-                      />
-                      <div className="flex gap-2 mt-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[10px] text-primary"
-                          onClick={() => handleClassify(req)}
-                          disabled={classifyMutation.isPending}
-                        >
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          AI Classify & Match
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 text-[10px]"
-                          onClick={() => setSelectedRequest(selectedRequest?.id === req.id ? null : req)}
-                        >
-                          {selectedRequest?.id === req.id ? "Hide Partners" : "Show Partners"}
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Right sidebar: AI partner suggestions */}
-                <div className="space-y-3">
-                  {selectedRequest ? (
-                    <PartnerSuggestionsPanel
-                      req={selectedRequest}
-                      onAssigned={() => {
-                        refetch();
-                        setSelectedRequest(null);
-                      }}
+              <div className="space-y-3">
+                {requests.map((req) => (
+                  <div key={req.id}>
+                    <DemandRequestCard
+                      req={req}
+                      catNameMap={catNameMap}
+                      onUpdate={updateRequest}
+                      onLogContact={logContact}
                     />
-                  ) : (
-                    <div className="text-center py-8 text-xs text-muted-foreground border border-dashed rounded-lg">
-                      Select a request to view AI partner suggestions
+                    {/* Classify action: creates a Lead from this DemandRequest */}
+                    <div className="mt-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-[10px] text-primary"
+                        onClick={() => handleClassify(req)}
+                        disabled={classifyMutation.isPending}
+                      >
+                        <Sparkles className="w-3 h-3 mr-1" />
+                        AI Classify → Create Lead
+                      </Button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
             )}
           </TabsContent>
 
+          {/* ─── LEADS PIPELINE: classified leads with partner assignment ─── */}
           <TabsContent value="leads">
             <LeadsPipelinePanel />
           </TabsContent>
