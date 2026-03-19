@@ -1,26 +1,30 @@
 import { useMemo } from 'react';
 import { useCampaigns } from '@/hooks/useCampaigns';
 import { useVisualContext } from '@/hooks/useVisualContext';
+import { useUserBehavior } from '@/hooks/useUserBehavior';
 import CampaignHeroStrip from './CampaignHeroStrip';
 import CampaignContextRows from './CampaignContextRows';
 import type { UserCampaignContext, SupplyContext } from '@/types/campaign';
 
 /**
  * Top-level smart campaign section for the home page.
- * Wires user context + supply context + AI personalization + cultural theming
+ * Wires real user behavior signals + supply context + AI personalization + cultural theming
  * → campaign engine → slotted UI.
  */
 export default function SmartCampaignSection() {
-  // TODO: Wire real user context from auth/booking state
+  const behavior = useUserBehavior();
+
   const userCtx = useMemo<UserCampaignContext>(() => ({
     language: 'en',
-    hasPendingBooking: false,
+    userId: behavior.userId ?? undefined,
+    hasPendingBooking: behavior.hasPendingBooking,
     hasPendingQuote: false,
     hasAbandonedBooking: false,
-    isReturningUser: false,
+    isReturningUser: behavior.isReturningUser,
     isBusinessUser: false,
-    bookingCount: 0,
-  }), []);
+    bookingCount: behavior.bookingCount,
+    preferredCategories: behavior.rankedCategories,
+  }), [behavior]);
 
   // TODO: Wire real supply from readiness service
   const supplyCtx = useMemo<SupplyContext>(() => ({
