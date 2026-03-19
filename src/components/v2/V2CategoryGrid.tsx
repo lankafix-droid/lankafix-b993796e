@@ -262,7 +262,7 @@ const V2CategoryGrid = () => {
                 cat={cat}
                 index={i}
                 recentlyUsed={isReturningUser && usedCategorySet.has(cat.code)}
-                availabilityLevel={categorySupply[cat.code]?.availabilityLevel}
+                supplyDetail={categorySupply[cat.code]}
               />
             ))}
           </div>
