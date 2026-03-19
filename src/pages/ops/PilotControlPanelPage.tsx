@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import {
   usePilotDaySummary, usePartnerSLA, usePilotKPIs,
-  type StuckBooking, type OpsFilters,
+  type StuckBooking, type OpsFilters, buildBookingActionContext,
 } from "@/hooks/usePilotOps";
 import { executeAction } from "@/hooks/useOpsActions";
 import {
