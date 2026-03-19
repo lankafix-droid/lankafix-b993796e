@@ -566,8 +566,12 @@ export type Database = {
           is_emergency: boolean | null
           is_pilot_test: boolean
           notes: string | null
+          paid_at: string | null
           partner_id: string | null
+          payment_amount_lkr: number | null
+          payment_gateway: string | null
           payment_method: string | null
+          payment_reference: string | null
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           photos: Json | null
           pricing_archetype: Database["public"]["Enums"]["pricing_archetype"]
@@ -627,8 +631,12 @@ export type Database = {
           is_emergency?: boolean | null
           is_pilot_test?: boolean
           notes?: string | null
+          paid_at?: string | null
           partner_id?: string | null
+          payment_amount_lkr?: number | null
+          payment_gateway?: string | null
           payment_method?: string | null
+          payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
@@ -688,8 +696,12 @@ export type Database = {
           is_emergency?: boolean | null
           is_pilot_test?: boolean
           notes?: string | null
+          paid_at?: string | null
           partner_id?: string | null
+          payment_amount_lkr?: number | null
+          payment_gateway?: string | null
           payment_method?: string | null
+          payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           photos?: Json | null
           pricing_archetype?: Database["public"]["Enums"]["pricing_archetype"]
@@ -1913,6 +1925,57 @@ export type Database = {
         }
         Relationships: []
       }
+      job_parts_used: {
+        Row: {
+          booking_id: string
+          created_at: string
+          id: string
+          part_name: string
+          partner_id: string
+          quantity: number
+          source: string | null
+          total_cost_lkr: number | null
+          unit_cost_lkr: number | null
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          id?: string
+          part_name: string
+          partner_id: string
+          quantity?: number
+          source?: string | null
+          total_cost_lkr?: number | null
+          unit_cost_lkr?: number | null
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          id?: string
+          part_name?: string
+          partner_id?: string
+          quantity?: number
+          source?: string | null
+          total_cost_lkr?: number | null
+          unit_cost_lkr?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_parts_used_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_parts_used_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_timeline: {
         Row: {
           actor: string | null
@@ -2226,6 +2289,68 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notification_events_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_queue: {
+        Row: {
+          body: string | null
+          booking_id: string | null
+          channel: string
+          created_at: string
+          delivered_at: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          read_at: string | null
+          recipient_id: string
+          recipient_type: string
+          sent_at: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          read_at?: string | null
+          recipient_id: string
+          recipient_type?: string
+          sent_at?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          body?: string | null
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          delivered_at?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          read_at?: string | null
+          recipient_id?: string
+          recipient_type?: string
+          sent_at?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_queue_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
@@ -4082,6 +4207,48 @@ export type Database = {
           },
         ]
       }
+      technician_job_notes: {
+        Row: {
+          booking_id: string
+          content: string
+          created_at: string
+          id: string
+          note_type: string
+          partner_id: string
+        }
+        Insert: {
+          booking_id: string
+          content: string
+          created_at?: string
+          id?: string
+          note_type?: string
+          partner_id: string
+        }
+        Update: {
+          booking_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          note_type?: string
+          partner_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technician_job_notes_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technician_job_notes_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       terms_acceptances: {
         Row: {
           accepted_at: string
@@ -4162,6 +4329,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bootstrap_admin_if_none: { Args: never; Returns: undefined }
       check_rate_limit: {
         Args: {
           _endpoint: string
