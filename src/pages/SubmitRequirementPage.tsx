@@ -98,6 +98,8 @@ const SubmitRequirementPage = () => {
 
       if (error) throw error;
 
+      recordSubmission();
+      recordRequest(normalizedPhone, category || "");
       logFallbackDemand(category || "UNKNOWN", "request", "submit_page");
       setSubmitted(true);
     } catch (e) {
