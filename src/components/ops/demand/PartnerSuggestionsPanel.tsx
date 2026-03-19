@@ -3,14 +3,21 @@
  *
  * SOURCE OF TRUTH: This panel operates on Lead objects, NOT DemandRequests.
  * Assignment always uses lead.id — never demand_request_id.
+ *
+ * Lifecycle states handled:
+ * - Default: show ranked suggestions for assignment
+ * - Assigned (awaiting_response): show accept/reject/unavailable controls
+ * - Accepted: show convert-to-booking button
+ * - Needs reassignment: show re-ranked suggestions excluding failed partners
  */
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Sparkles, Star, Clock, CheckCircle, UserPlus, Loader2,
-  MapPin, AlertTriangle, XCircle, Pause, ArrowRight
+  MapPin, AlertTriangle, XCircle, Pause, ArrowRight, Ban
 } from "lucide-react";
 import { useOnlinePartners } from "@/hooks/usePartners";
 import { scorePartnersForLead, type ScoredPartner } from "@/services/archetypePartnerScoring";
@@ -18,12 +25,15 @@ import {
   assignPartnerToLead,
   partnerAcceptLead,
   partnerRejectLead,
+  partnerMarkUnavailable,
   markNoSupply,
   holdLead,
   convertLeadToBooking,
+  reassignLead,
+  getExcludedPartnerIds,
 } from "@/engines/partnerAssignmentEngine";
 import type { Lead } from "@/hooks/useLeads";
-import type { ServiceArchetype } from "@/hooks/useSupplyIntelligence";
+import type { ServiceArchetype } from "@/engines/archetypeTimeoutHelper";
 import { getZoneDisplayName } from "@/lib/zoneNormalization";
 
 // Category → archetype mapping
@@ -45,6 +55,16 @@ const ARCHETYPE_MAP: Record<string, ServiceArchetype> = {
   PRINT_SUPPLIES: "delivery",
 };
 
+const REJECTION_REASONS = [
+  { value: "too_far", label: "Too far away" },
+  { value: "too_busy", label: "Too busy" },
+  { value: "wrong_category", label: "Wrong category" },
+  { value: "customer_unreachable", label: "Customer unreachable" },
+  { value: "pricing_mismatch", label: "Pricing mismatch" },
+  { value: "unavailable_now", label: "Unavailable now" },
+  { value: "other", label: "Other" },
+];
+
 type Props = {
   /** Lead object — source of truth for assignment. */
   lead: Lead;
@@ -54,20 +74,33 @@ type Props = {
 export default function PartnerSuggestionsPanel({ lead, onUpdated }: Props) {
   const [assigning, setAssigning] = useState<string | null>(null);
   const [converting, setConverting] = useState(false);
+  const [rejectReason, setRejectReason] = useState<string>("too_busy");
   const { data: partners = [] } = useOnlinePartners(lead.category_code);
 
   const archetype = ARCHETYPE_MAP[lead.category_code] || "instant";
 
+  // Exclude partners that already failed for this lead
+  const excludedIds = getExcludedPartnerIds(lead.assignment_history);
+  const eligiblePartners = partners.filter((p) => !excludedIds.includes(p.id));
+
   // Use archetype-aware scoring with structured zone matching
   const ranked: ScoredPartner[] = scorePartnersForLead(
-    partners, archetype, lead.category_code, lead.zone_code
+    eligiblePartners, archetype as any, lead.category_code, lead.zone_code
   );
   const top5 = ranked.filter((r) => r.score > 0).slice(0, 5);
 
+  const isReassignment = lead.routing_status === "needs_reassignment" || (lead.assignment_attempt || 0) > 0;
+
   const handleAssign = async (partnerId: string, partnerName: string) => {
     setAssigning(partnerId);
-    // Assignment uses lead.id — NEVER demand_request_id
-    const result = await assignPartnerToLead(lead.id, partnerId, partnerName);
+    let result;
+    if (isReassignment && lead.assigned_partner_id) {
+      result = await reassignLead(lead.id, partnerId, partnerName, "operator_reassignment", archetype);
+    } else if (isReassignment) {
+      result = await reassignLead(lead.id, partnerId, partnerName, "operator_reassignment", archetype);
+    } else {
+      result = await assignPartnerToLead(lead.id, partnerId, partnerName, undefined, archetype);
+    }
     setAssigning(null);
     if (result.success) onUpdated();
   };
@@ -80,7 +113,13 @@ export default function PartnerSuggestionsPanel({ lead, onUpdated }: Props) {
 
   const handleReject = async () => {
     if (!lead.assigned_partner_id) return;
-    await partnerRejectLead(lead.id, lead.assigned_partner_id, "manual_rejection");
+    await partnerRejectLead(lead.id, lead.assigned_partner_id, rejectReason);
+    onUpdated();
+  };
+
+  const handleUnavailable = async () => {
+    if (!lead.assigned_partner_id) return;
+    await partnerMarkUnavailable(lead.id, lead.assigned_partner_id);
     onUpdated();
   };
 
@@ -125,7 +164,7 @@ export default function PartnerSuggestionsPanel({ lead, onUpdated }: Props) {
     );
   }
 
-  // If assigned and awaiting response → show accept/reject controls
+  // If assigned and awaiting response → show accept/reject/unavailable controls
   if (lead.status === "assigned" && lead.assigned_partner_id) {
     return (
       <Card className="border-warning/30 bg-warning/5">
@@ -134,32 +173,54 @@ export default function PartnerSuggestionsPanel({ lead, onUpdated }: Props) {
           {lead.accept_by && (
             <div className="text-[10px] text-muted-foreground">
               Deadline: {new Date(lead.accept_by).toLocaleTimeString()}
+              {lead.assignment_attempt > 1 && (
+                <span className="ml-1 text-warning">(attempt {lead.assignment_attempt})</span>
+              )}
             </div>
           )}
-          <div className="flex gap-2">
+
+          {/* Rejection reason selector */}
+          <div className="space-y-1">
+            <label className="text-[9px] text-muted-foreground">Rejection reason (if rejecting):</label>
+            <Select value={rejectReason} onValueChange={setRejectReason}>
+              <SelectTrigger className="h-7 text-[10px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REJECTION_REASONS.map((r) => (
+                  <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex gap-1.5">
             <Button size="sm" variant="default" className="h-7 text-xs flex-1" onClick={handleAccept}>
               <CheckCircle className="w-3 h-3 mr-1" /> Accept
             </Button>
             <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={handleReject}>
               <XCircle className="w-3 h-3 mr-1" /> Reject
             </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleUnavailable} title="Mark temporarily unavailable">
+              <Ban className="w-3 h-3" />
+            </Button>
           </div>
           <p className="text-[9px] text-muted-foreground italic">
-            Simulate partner response (Phase 1: operator-mediated)
+            Phase 1: operator-mediated partner response
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  // Default: show ranked partner suggestions
+  // Default or needs_reassignment: show ranked partner suggestions
 
   return (
     <Card>
       <CardHeader className="pb-2 pt-3 px-3">
         <CardTitle className="text-xs flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-primary" />
-          AI Suggested Partners
+          {isReassignment ? "Reassignment — AI Ranked" : "AI Suggested Partners"}
           <Badge variant="outline" className="text-[9px] ml-auto">
             {archetype.replace("_", " ")}
           </Badge>
@@ -167,6 +228,11 @@ export default function PartnerSuggestionsPanel({ lead, onUpdated }: Props) {
         {lead.zone_code && (
           <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
             <MapPin className="w-3 h-3" /> Zone: {getZoneDisplayName(lead.zone_code)}
+          </div>
+        )}
+        {excludedIds.length > 0 && (
+          <div className="text-[9px] text-warning">
+            ⚠ {excludedIds.length} partner(s) excluded from previous attempts
           </div>
         )}
       </CardHeader>
@@ -178,7 +244,7 @@ export default function PartnerSuggestionsPanel({ lead, onUpdated }: Props) {
           </div>
         ) : (
           top5.map((match) => {
-            const partner = partners.find((p) => p.id === match.partnerId);
+            const partner = eligiblePartners.find((p) => p.id === match.partnerId);
             if (!partner) return null;
 
             return (
@@ -250,7 +316,7 @@ export default function PartnerSuggestionsPanel({ lead, onUpdated }: Props) {
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
                     <>
-                      <UserPlus className="w-3 h-3 mr-1" /> Assign
+                      <UserPlus className="w-3 h-3 mr-1" /> {isReassignment ? "Reassign" : "Assign"}
                     </>
                   )}
                 </Button>
