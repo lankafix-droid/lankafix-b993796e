@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, Clock, ArrowRight, Stethoscope, Zap, Eye, Award, Lock, CheckCircle2, Timer } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import CategoryContentIntelligence from "@/components/content/CategoryContentIntelligence";
 import { useMemo } from "react";
 import { getArrivalEstimate } from "@/utils/arrivalEstimate";
 
