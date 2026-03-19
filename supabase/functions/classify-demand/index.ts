@@ -7,9 +7,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Category → archetype mapping
+// ── Category → archetype mapping ──
 const ARCHETYPE_MAP: Record<string, string> = {
-  AC: "instant",
+  AC: "inspection_first",
   MOBILE: "instant",
   IT: "instant",
   ELECTRICAL: "instant",
@@ -27,10 +27,76 @@ const ARCHETYPE_MAP: Record<string, string> = {
 };
 
 const URGENCY_BOOST: Record<string, number> = {
-  asap: 30,
-  today: 15,
-  tomorrow: 5,
-  scheduled: 0,
+  asap: 30, today: 15, tomorrow: 5, scheduled: 0,
+};
+
+// ── Zone normalization (server-side copy) ──
+const ZONE_ALIASES: Record<string, string[]> = {
+  col_01: ["colombo 1", "fort", "colombo 01"],
+  col_02: ["colombo 2", "slave island", "colombo 02"],
+  col_03: ["colombo 3", "kollupitiya", "colpetty", "colombo 03"],
+  col_04: ["colombo 4", "bambalapitiya", "colombo 04"],
+  col_05: ["colombo 5", "havelock town", "havelock", "kirulapone", "colombo 05"],
+  col_06: ["colombo 6", "wellawatte", "wellawatta", "colombo 06"],
+  col_07: ["colombo 7", "cinnamon gardens", "colombo 07"],
+  col_08: ["colombo 8", "borella", "maradana", "colombo 08"],
+  col_09: ["colombo 9", "dematagoda", "colombo 09"],
+  col_10: ["colombo 10", "maligawatte"],
+  col_11: ["colombo 11", "pettah"],
+  col_12: ["colombo 12", "hultsdorf"],
+  col_13: ["colombo 13", "kotahena"],
+  col_14: ["colombo 14", "grandpass"],
+  col_15: ["colombo 15", "mattakkuliya"],
+  nugegoda: ["nugegoda", "nawinna", "wijerama", "pagoda"],
+  maharagama: ["maharagama"],
+  dehiwala: ["dehiwala", "dehiwela"],
+  mt_lavinia: ["mount lavinia", "mt lavinia", "mt. lavinia"],
+  rajagiriya: ["rajagiriya"],
+  battaramulla: ["battaramulla"],
+  nawala: ["nawala", "narahenpita"],
+  wattala: ["wattala", "hendala"],
+  moratuwa: ["moratuwa", "rawathawatte"],
+  thalawathugoda: ["thalawathugoda", "talawatugoda"],
+  kottawa: ["kottawa", "pannipitiya"],
+  piliyandala: ["piliyandala"],
+  malabe: ["malabe", "kaduwela"],
+  kelaniya: ["kelaniya", "peliyagoda"],
+  kotte: ["kotte", "sri jayawardenepura", "ethul kotte", "pita kotte"],
+  boralesgamuwa: ["boralesgamuwa", "pepiliyana"],
+  negombo: ["negombo"],
+};
+
+function resolveZoneCode(location: string | null): { zone_code: string; confidence: string } {
+  if (!location) return { zone_code: "", confidence: "unknown" };
+  const normalized = location.toLowerCase().replace(/[^a-z0-9\s]/g, "").trim();
+
+  // Exact match
+  for (const [code, aliases] of Object.entries(ZONE_ALIASES)) {
+    for (const alias of aliases) {
+      if (normalized === alias || normalized === code) {
+        return { zone_code: code, confidence: "exact" };
+      }
+    }
+  }
+
+  // Partial match
+  for (const [code, aliases] of Object.entries(ZONE_ALIASES)) {
+    for (const alias of aliases) {
+      if (normalized.includes(alias) || alias.includes(normalized)) {
+        return { zone_code: code, confidence: "partial" };
+      }
+    }
+  }
+
+  return { zone_code: "", confidence: "unknown" };
+}
+
+// ── Archetype-aware scoring weights ──
+const WEIGHT_PROFILES: Record<string, Record<string, number>> = {
+  instant:          { availability: 0.25, response: 0.20, zone: 0.20, load: 0.10, rating: 0.10, reliability: 0.10, exp: 0.05 },
+  inspection_first: { reliability: 0.25, ontime: 0.20, rating: 0.15, zone: 0.15, response: 0.10, exp: 0.10, availability: 0.05 },
+  consultation:     { spec: 0.25, zone: 0.20, reliability: 0.15, exp: 0.15, rating: 0.15, response: 0.10 },
+  delivery:         { availability: 0.30, response: 0.25, zone: 0.25, rating: 0.10, reliability: 0.10 },
 };
 
 serve(async (req) => {
@@ -53,10 +119,10 @@ serve(async (req) => {
 
     if (fetchErr || !demand) throw new Error("Demand request not found");
 
+    // ── Classification ──
     const archetype = ARCHETYPE_MAP[demand.category_code] || "instant";
     const urgency = demand.preferred_time || "scheduled";
 
-    // Rule-based classification (no external AI call needed for this)
     let request_type: string;
     let estimated_complexity: string;
     let priority_score = demand.priority_score || 0;
@@ -83,71 +149,107 @@ serve(async (req) => {
         estimated_complexity = "standard";
     }
 
-    // Emergency categories get a boost
     if (["ELECTRICAL", "PLUMBING", "AC"].includes(demand.category_code) && urgency === "asap") {
       priority_score += 20;
       estimated_complexity = "urgent";
     }
 
-    // Cap at 100
     priority_score = Math.min(100, Math.round(priority_score));
 
-    // Fetch best matching partners
+    // ── Zone normalization ──
+    const { zone_code, confidence: zoneConfidence } = resolveZoneCode(demand.location);
+
+    // ── Partner matching with archetype-aware scoring ──
     const { data: partners } = await supabase
       .from("partners")
-      .select("id, full_name, rating_average, completed_jobs_count, availability_status, service_zones, categories_supported, average_response_time_minutes, on_time_rate, acceptance_rate")
+      .select("id, full_name, rating_average, completed_jobs_count, availability_status, service_zones, categories_supported, average_response_time_minutes, on_time_rate, acceptance_rate, cancellation_rate, current_job_count, updated_at, experience_years, specializations, performance_score")
       .eq("verification_status", "verified")
       .contains("categories_supported", [demand.category_code])
       .in("availability_status", ["online", "busy"])
       .order("rating_average", { ascending: false })
-      .limit(10);
+      .limit(20);
 
-    // Score partners
+    const weights = WEIGHT_PROFILES[archetype] || WEIGHT_PROFILES.instant;
+
     const scoredPartners = (partners || []).map((p: any) => {
       let score = 0;
 
-      // Rating (0-25)
-      score += Math.min(25, ((p.rating_average || 3) / 5) * 25);
+      // Availability
+      const availScore = p.availability_status === "online" ? 100 : 40;
+      score += availScore * (weights.availability || 0);
 
-      // Response speed (0-20)
+      // Response speed
       const respTime = p.average_response_time_minutes || 30;
-      score += Math.max(0, 20 - respTime * 0.5);
+      score += Math.max(0, 100 - respTime * 2) * (weights.response || 0);
 
-      // Availability (0-20)
-      score += p.availability_status === "online" ? 20 : 10;
+      // Zone match (structured)
+      let zoneScore = 50;
+      let zoneMatch = "none";
+      if (zone_code && p.service_zones?.length) {
+        if (p.service_zones.includes(zone_code)) {
+          zoneScore = 100; zoneMatch = "direct";
+        } else {
+          zoneScore = 0; zoneMatch = "none";
+        }
+      }
+      score += zoneScore * (weights.zone || 0);
 
-      // Experience (0-15)
-      score += Math.min(15, ((p.completed_jobs_count || 0) / 100) * 15);
+      // Rating
+      score += Math.min(100, ((p.rating_average || 3) / 5) * 100) * (weights.rating || 0);
 
-      // On-time rate (0-10)
-      score += ((p.on_time_rate || 50) / 100) * 10;
+      // Reliability
+      const reliability = ((p.acceptance_rate || 70) * 0.4 + (p.on_time_rate || 70) * 0.4 + (100 - (p.cancellation_rate || 10)) * 0.2);
+      score += Math.min(100, reliability) * (weights.reliability || 0);
 
-      // Zone match (0-10)
-      if (demand.location && p.service_zones?.length) {
-        const zoneMatch = p.service_zones.some((z: string) =>
-          demand.location?.toLowerCase().includes(z.toLowerCase())
-        );
-        score += zoneMatch ? 10 : 0;
+      // On-time (inspection_first)
+      if (weights.ontime) score += (p.on_time_rate || 70) * weights.ontime;
+
+      // Experience
+      const expScore = Math.min(100, ((p.experience_years || 1) / 10) * 50 + ((p.completed_jobs_count || 0) / 200) * 50);
+      score += expScore * (weights.exp || 0);
+
+      // Specialization
+      if (weights.spec) {
+        score += (p.specializations?.includes(demand.category_code) ? 100 : 30) * weights.spec;
+      }
+
+      // Load balance
+      if (weights.load) {
+        score += Math.max(0, 100 - (p.current_job_count || 0) * 25) * weights.load;
+      }
+
+      // Availability freshness penalty
+      if (p.updated_at) {
+        const hoursAgo = (Date.now() - new Date(p.updated_at).getTime()) / 3600000;
+        if (hoursAgo > 4) score -= 15;
+        if (hoursAgo > 12) score -= 25;
       }
 
       return {
         partner_id: p.id,
         partner_name: p.full_name,
-        score: Math.round(score),
+        score: Math.max(0, Math.min(100, Math.round(score))),
         rating: p.rating_average,
         response_time: p.average_response_time_minutes,
         availability: p.availability_status,
+        zone_match: zoneMatch,
       };
     }).sort((a: any, b: any) => b.score - a.score);
 
-    // Create lead from demand request
+    // ── Create lead ──
     const { data: lead, error: leadErr } = await supabase
       .from("leads")
       .insert({
         demand_request_id: demand.id,
         category_code: demand.category_code,
         request_type,
-        ai_classification: { archetype, request_type, estimated_complexity, classified_at: new Date().toISOString() },
+        ai_classification: {
+          archetype,
+          request_type,
+          estimated_complexity,
+          zone_confidence: zoneConfidence,
+          classified_at: new Date().toISOString(),
+        },
         ai_priority_score: priority_score,
         ai_suggested_partners: scoredPartners.slice(0, 5),
         estimated_complexity,
@@ -155,7 +257,10 @@ serve(async (req) => {
         customer_phone: demand.phone,
         customer_location: demand.location,
         description: demand.description,
+        zone_code: zone_code || null,
         status: "new",
+        routing_status: "pending",
+        partner_response_status: "pending",
       })
       .select()
       .single();
@@ -168,6 +273,8 @@ serve(async (req) => {
         request_type,
         priority_score,
         estimated_complexity,
+        zone_code,
+        zone_confidence: zoneConfidence,
         suggested_partners: scoredPartners.slice(0, 5),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
