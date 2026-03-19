@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 import { logCategoryInterest } from "@/lib/demandCapture";
 import { motion } from "framer-motion";
+import { useUserBehavior } from "@/hooks/useUserBehavior";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -73,7 +74,21 @@ const PRIMARY_CATS = ["AC", "MOBILE", "CONSUMER_ELEC", "IT"];
 const SECONDARY_CATS = ["CCTV", "SOLAR", "SMART_HOME_OFFICE"];
 const COMING_SOON_CATS = ["ELECTRICAL", "PLUMBING", "NETWORK", "HOME_SECURITY", "POWER_BACKUP", "COPIER", "PRINT_SUPPLIES", "APPLIANCE_INSTALL"];
 
-const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof categories[0]; featured?: boolean; index?: number }) => {
+/** Reorder categories by user behavior — recently used categories first */
+function reorderByBehavior(codes: string[], rankedCategories: string[]): string[] {
+  if (rankedCategories.length === 0) return codes;
+  
+  const ranked = new Map(rankedCategories.map((c, i) => [c, i]));
+  return [...codes].sort((a, b) => {
+    const aRank = ranked.get(a) ?? 999;
+    const bRank = ranked.get(b) ?? 999;
+    if (aRank !== bRank) return aRank - bRank;
+    // Preserve original order for unranked items
+    return codes.indexOf(a) - codes.indexOf(b);
+  });
+}
+
+const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false }: { cat: typeof categories[0]; featured?: boolean; index?: number; recentlyUsed?: boolean }) => {
   const thumb = categoryThumbs[cat.code];
   const flow = v2CategoryFlows[cat.code];
   const launchState = getCategoryLaunchState(cat.code);
@@ -115,6 +130,11 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
           <div className="absolute inset-0" style={{ background: "linear-gradient(to top, hsl(213 75% 8% / 0.8) 0%, hsl(213 75% 8% / 0.15) 55%, transparent 100%)" }} />
 
           <div className="absolute top-2.5 left-2.5 flex gap-1.5">
+            {recentlyUsed && !isComingSoon && (
+              <Badge variant="outline" className="text-[9px] bg-primary/90 text-primary-foreground border-none font-bold shadow-sm px-2 py-0.5">
+                Recently Used
+              </Badge>
+            )}
             {isComingSoon && (
               <Badge variant="outline" className="text-[9px] bg-muted text-muted-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 Coming Soon
@@ -125,18 +145,17 @@ const CategoryCard = ({ cat, featured = false, index = 0 }: { cat: typeof catego
                 Consultation
               </Badge>
             )}
-            {!isComingSoon && !isConsultation && hasEmergency && (
+            {!isComingSoon && !isConsultation && !recentlyUsed && hasEmergency && (
               <Badge variant="outline" className="text-[9px] bg-destructive text-destructive-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 ⚡ Emergency
               </Badge>
             )}
-            {!isComingSoon && !isConsultation && hasSameDay && !hasEmergency && (
+            {!isComingSoon && !isConsultation && !recentlyUsed && hasSameDay && !hasEmergency && (
               <Badge variant="outline" className="text-[9px] bg-success text-success-foreground border-none font-bold shadow-sm px-2 py-0.5">
                 Same Day
               </Badge>
             )}
           </div>
-          {/* Pricing archetype chip removed — pricing microcopy in card body is sufficient */}
 
           <div className="absolute bottom-2.5 left-3 right-3">
             <h3 className="font-heading font-bold text-white text-sm leading-tight drop-shadow-lg">{cat.name}</h3>
@@ -178,23 +197,40 @@ const SectionHeader = ({ title, subtitle }: { title: string; subtitle: string })
 );
 
 const V2CategoryGrid = () => {
+  const { rankedCategories, isReturningUser } = useUserBehavior();
+
   const primary = categories.filter((c) => PRIMARY_CATS.includes(c.code));
   const secondary = categories.filter((c) => SECONDARY_CATS.includes(c.code));
   const comingSoon = categories.filter((c) => COMING_SOON_CATS.includes(c.code));
 
-  // Sort to match priority order
+  // Dynamically reorder primary/secondary based on user behavior
+  const reorderedPrimary = reorderByBehavior(PRIMARY_CATS, rankedCategories);
+  const reorderedSecondary = reorderByBehavior(SECONDARY_CATS, rankedCategories);
+
   const sortByOrder = (cats: typeof categories, order: string[]) =>
     [...cats].sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
+
+  // Track which categories user has booked before
+  const usedCategorySet = new Set(rankedCategories);
 
   return (
     <section id="categories" className="pb-12">
       <div className="container space-y-10">
         {/* Primary — Phase-1 launch categories */}
         <div>
-          <SectionHeader title="Launch Services" subtitle="Available now across Greater Colombo" />
+          <SectionHeader
+            title={isReturningUser ? "Your Services" : "Launch Services"}
+            subtitle={isReturningUser ? "Personalized based on your history" : "Available now across Greater Colombo"}
+          />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {sortByOrder(primary, PRIMARY_CATS).map((cat, i) => (
-              <CategoryCard key={cat.code} cat={cat} featured index={i} />
+            {sortByOrder(primary, reorderedPrimary).map((cat, i) => (
+              <CategoryCard
+                key={cat.code}
+                cat={cat}
+                featured
+                index={i}
+                recentlyUsed={isReturningUser && usedCategorySet.has(cat.code)}
+              />
             ))}
           </div>
         </div>
@@ -203,8 +239,13 @@ const V2CategoryGrid = () => {
         <div>
           <SectionHeader title="More Solutions" subtitle="Installations, energy & automation" />
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {sortByOrder(secondary, SECONDARY_CATS).map((cat, i) => (
-              <CategoryCard key={cat.code} cat={cat} index={i} />
+            {sortByOrder(secondary, reorderedSecondary).map((cat, i) => (
+              <CategoryCard
+                key={cat.code}
+                cat={cat}
+                index={i}
+                recentlyUsed={isReturningUser && usedCategorySet.has(cat.code)}
+              />
             ))}
           </div>
         </div>
