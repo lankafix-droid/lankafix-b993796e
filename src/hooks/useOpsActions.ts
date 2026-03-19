@@ -1,17 +1,18 @@
 /**
  * Phase 3+ — Audited Manual Override Actions for Ops
  * Every action writes to DB + job_timeline + automation_event_log via logOpsAction.
+ * Central action dispatcher binds action keys to executable functions.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { logOpsAction } from "@/engines/interventionEngine";
+import { logOpsAction, inferInterventionResult, logOpsEvent, logContactAttempt, type InterventionResult } from "@/engines/interventionEngine";
 
 async function getCurrentUserId(): Promise<string | undefined> {
   const { data } = await supabase.auth.getUser();
   return data?.user?.id;
 }
 
-export async function opsReassignPartner(bookingId: string, newPartnerId: string) {
+export async function opsReassignPartner(bookingId: string, newPartnerId: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
   const { data: prev } = await supabase.from("bookings").select("partner_id, dispatch_status").eq("id", bookingId).single();
 
@@ -34,11 +35,13 @@ export async function opsReassignPartner(bookingId: string, newPartnerId: string
     new_state: newPartnerId,
     reason: `Reassigned to partner ${newPartnerId.slice(0, 8)}`,
   });
+  logOpsEvent("recommended_action_executed", bookingId, { action: "reassign_partner", actor_id: actorId });
 
   toast({ title: "Partner reassigned" });
+  return "pending_followup";
 }
 
-export async function opsEscalateBooking(bookingId: string, reason: string) {
+export async function opsEscalateBooking(bookingId: string, reason: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
   const { data: prev } = await supabase.from("bookings").select("dispatch_status").eq("id", bookingId).single();
 
@@ -55,11 +58,13 @@ export async function opsEscalateBooking(bookingId: string, reason: string) {
     new_state: "escalated",
     reason,
   });
+  logOpsEvent("ops_escalate_booking", bookingId, { reason, actor_id: actorId });
 
   toast({ title: "Booking escalated" });
+  return "escalated";
 }
 
-export async function opsCancelBooking(bookingId: string, reason: string) {
+export async function opsCancelBooking(bookingId: string, reason: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
   const { data: prev } = await supabase.from("bookings").select("status").eq("id", bookingId).single();
 
@@ -77,11 +82,13 @@ export async function opsCancelBooking(bookingId: string, reason: string) {
     new_state: "cancelled",
     reason,
   });
+  logOpsEvent("ops_cancel_booking", bookingId, { reason, actor_id: actorId });
 
   toast({ title: "Booking cancelled" });
+  return "resolved";
 }
 
-export async function opsVerifyPayment(bookingId: string, method: string) {
+export async function opsVerifyPayment(bookingId: string, method: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
 
   await supabase.from("bookings").update({
@@ -95,11 +102,13 @@ export async function opsVerifyPayment(bookingId: string, method: string) {
     new_state: "paid",
     reason: `Payment manually verified: ${method}`,
   });
+  logOpsEvent("ops_verify_payment", bookingId, { method, actor_id: actorId });
 
   toast({ title: "Payment verified" });
+  return "resolved";
 }
 
-export async function opsResendAssignment(bookingId: string) {
+export async function opsResendAssignment(bookingId: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
 
   const { error } = await supabase.functions.invoke("dispatch-orchestrator", {
@@ -113,8 +122,10 @@ export async function opsResendAssignment(bookingId: string) {
     actor_id: actorId,
     reason: "Assignment notification resent by ops",
   });
+  logOpsEvent("ops_resend_assignment", bookingId, { actor_id: actorId });
 
   toast({ title: "Assignment resent" });
+  return "pending_followup";
 }
 
 export async function opsMarkPartnerUnavailable(partnerId: string) {
@@ -122,7 +133,7 @@ export async function opsMarkPartnerUnavailable(partnerId: string) {
   toast({ title: "Partner marked unavailable" });
 }
 
-export async function opsAddNote(bookingId: string, note: string) {
+export async function opsAddNote(bookingId: string, note: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
 
   await logOpsAction({
@@ -134,9 +145,10 @@ export async function opsAddNote(bookingId: string, note: string) {
   });
 
   toast({ title: "Note added" });
+  return "needs_review";
 }
 
-export async function opsOpenQualityRecovery(bookingId: string, rating: number) {
+export async function opsOpenQualityRecovery(bookingId: string, rating: number): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
 
   await supabase.from("bookings").update({ under_mediation: true }).eq("id", bookingId);
@@ -148,11 +160,13 @@ export async function opsOpenQualityRecovery(bookingId: string, rating: number) 
     reason: `Low rating (${rating}/5) — quality recovery initiated`,
     metadata: { rating },
   });
+  logOpsEvent("low_rating_recovery_opened", bookingId, { rating, actor_id: actorId });
 
   toast({ title: "Quality recovery case opened" });
+  return "needs_review";
 }
 
-export async function opsRemindCustomer(bookingId: string, context: string) {
+export async function opsRemindCustomer(bookingId: string, context: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
 
   await logOpsAction({
@@ -161,6 +175,68 @@ export async function opsRemindCustomer(bookingId: string, context: string) {
     actor_id: actorId,
     reason: `Customer reminder: ${context}`,
   });
+  logOpsEvent("ops_remind_customer", bookingId, { context, actor_id: actorId });
 
   toast({ title: "Customer reminder logged" });
+  return "pending_followup";
+}
+
+export async function opsCallContact(bookingId: string, targetType: "customer" | "partner"): Promise<InterventionResult> {
+  const actorId = await getCurrentUserId();
+  await logContactAttempt({ bookingId, actorId, targetType, contactMethod: "call" });
+  logOpsEvent("ops_contact_attempt", bookingId, { target: targetType, method: "call", actor_id: actorId });
+  toast({ title: `${targetType === "customer" ? "Customer" : "Partner"} call logged` });
+  return "pending_followup";
+}
+
+export async function opsPaymentFollowup(bookingId: string, note: string): Promise<InterventionResult> {
+  const actorId = await getCurrentUserId();
+  await logOpsAction({
+    booking_id: bookingId,
+    action_type: "payment_followup",
+    actor_id: actorId,
+    reason: `Payment follow-up: ${note || "standard follow-up"}`,
+  });
+  logOpsEvent("payment_followup_sent", bookingId, { actor_id: actorId });
+  toast({ title: "Payment follow-up logged" });
+  return "pending_followup";
+}
+
+// ── Central Action Dispatcher ──
+// Maps action keys to executable functions. UI calls executeAction(key, bookingId, params).
+export async function executeAction(
+  actionKey: string,
+  bookingId: string,
+  params: Record<string, string> = {}
+): Promise<InterventionResult> {
+  logOpsEvent("recommended_action_executed", bookingId, { action_key: actionKey });
+
+  switch (actionKey) {
+    case "assign":
+    case "reassign":
+      if (!params.partnerId) throw new Error("Partner ID required");
+      return opsReassignPartner(bookingId, params.partnerId);
+    case "resend":
+      return opsResendAssignment(bookingId);
+    case "escalate":
+      return opsEscalateBooking(bookingId, params.reason || "Ops escalation");
+    case "cancel":
+      return opsCancelBooking(bookingId, params.reason || "Ops cancellation");
+    case "verify_payment":
+      return opsVerifyPayment(bookingId, params.method || "cash_collected");
+    case "note":
+      return opsAddNote(bookingId, params.note || "");
+    case "remind_customer":
+      return opsRemindCustomer(bookingId, params.reason || "Follow-up reminder");
+    case "quality_recovery":
+      return opsOpenQualityRecovery(bookingId, Number(params.rating) || 0);
+    case "call_customer":
+      return opsCallContact(bookingId, "customer");
+    case "call_partner":
+      return opsCallContact(bookingId, "partner");
+    case "payment_followup":
+      return opsPaymentFollowup(bookingId, params.note || "");
+    default:
+      return opsAddNote(bookingId, `Action: ${actionKey} — ${params.note || "no details"}`);
+  }
 }

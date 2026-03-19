@@ -486,6 +486,8 @@ export async function logOpsAction(entry: OpsAuditEntry): Promise<void> {
 export const OPS_EVENT_TYPES = [
   "stuck_booking_detected",
   "recommended_action_generated",
+  "recommended_action_executed",
+  "kpi_queue_opened",
   "ops_reassign_partner",
   "ops_escalate_booking",
   "ops_verify_payment",
@@ -495,4 +497,101 @@ export const OPS_EVENT_TYPES = [
   "ops_add_note",
   "ops_resend_assignment",
   "ops_remind_customer",
+  "ops_contact_attempt",
+  "escalation_resolved",
+  "intervention_marked_resolved",
+  "payment_followup_sent",
+  "low_rating_recovery_opened",
 ] as const;
+
+// ── Intervention Result — tracks outcome of ops action ──
+export type InterventionResult = "resolved" | "pending_followup" | "escalated" | "needs_review";
+
+export function inferInterventionResult(actionKey: string): InterventionResult {
+  switch (actionKey) {
+    case "verify_payment": return "resolved";
+    case "cancel": return "resolved";
+    case "resend": case "remind_customer": case "payment_followup": return "pending_followup";
+    case "escalate": return "escalated";
+    case "quality_recovery": case "note": return "needs_review";
+    default: return "pending_followup";
+  }
+}
+
+// ── Contact Attempt Logger ──
+// Logs outreach attempts (calls, WhatsApp) for audit and accountability
+export async function logContactAttempt(params: {
+  bookingId: string;
+  actorId?: string;
+  targetType: "customer" | "partner";
+  targetId?: string;
+  contactMethod: "call" | "whatsapp";
+  result?: "attempted" | "reached" | "no_answer";
+}): Promise<void> {
+  try {
+    await supabase.from("booking_contact_events").insert({
+      booking_id: params.bookingId,
+      event_type: `${params.contactMethod}_${params.targetType}`,
+      user_role: "ops",
+    });
+    await supabase.from("automation_event_log").insert({
+      event_type: "ops_contact_attempt",
+      booking_id: params.bookingId,
+      trigger_reason: `Ops ${params.contactMethod} to ${params.targetType}`,
+      action_taken: `${params.contactMethod}_${params.targetType}`,
+      severity: "info",
+      metadata: {
+        actor_id: params.actorId,
+        target_type: params.targetType,
+        target_id: params.targetId,
+        contact_method: params.contactMethod,
+        result: params.result || "attempted",
+      },
+    });
+  } catch (e) {
+    console.warn("[ContactLog] Failed:", e);
+  }
+}
+
+// ── Role-Aware Action Permissions ──
+// Lightweight first version: maps action keys to allowed roles.
+// admin can do everything; operator has standard access; support handles recovery.
+export type OpsRole = "admin" | "operator" | "support";
+
+const ACTION_PERMISSIONS: Record<string, OpsRole[]> = {
+  assign: ["admin", "operator"],
+  reassign: ["admin", "operator"],
+  resend: ["admin", "operator"],
+  escalate: ["admin", "operator", "support"],
+  cancel: ["admin"],                     // Destructive — admin only
+  verify_payment: ["admin"],             // Finance-sensitive — admin only
+  note: ["admin", "operator", "support"],
+  remind_customer: ["admin", "operator", "support"],
+  quality_recovery: ["admin", "operator", "support"],
+  call_customer: ["admin", "operator", "support"],
+  call_partner: ["admin", "operator"],
+  payment_followup: ["admin", "operator"],
+};
+
+export function isActionAllowed(actionKey: string, userRole: OpsRole): boolean {
+  const allowed = ACTION_PERMISSIONS[actionKey];
+  if (!allowed) return true; // Unknown action — default allow (safe for notes, etc.)
+  return allowed.includes(userRole);
+}
+
+// ── Central Action Dispatcher ──
+// Maps action keys to their execution functions. Every action logs audit + event.
+// Used by the UI to bind buttons to real backend calls.
+export type ActionExecutor = (bookingId: string, params: Record<string, string>) => Promise<InterventionResult>;
+
+export function logOpsEvent(eventType: string, bookingId: string, metadata?: Record<string, unknown>): void {
+  // Non-blocking analytics event
+  supabase.from("automation_event_log").insert({
+    event_type: eventType,
+    booking_id: bookingId,
+    trigger_reason: "ops_ui_interaction",
+    action_taken: eventType,
+    severity: "info",
+    metadata: metadata || {},
+  }).then(() => {}).catch(() => {});
+}
