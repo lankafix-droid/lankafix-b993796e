@@ -35,39 +35,23 @@ import {
 import { executeAction } from "@/hooks/useOpsActions";
 import {
   getContextActions, RECOVERY_PLAYBOOKS, isActionAllowed, logOpsEvent,
-  type RecoveryPlaybook, type OpsRole, type InterventionResult,
+  resolveCurrentOpsRole, resolveOpsQueue, QUEUE_LABELS,
+  type RecoveryPlaybook, type OpsRole, type InterventionResult, type OpsQueue, type BookingActionContext,
 } from "@/engines/interventionEngine";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-// ── Queue State Model ──
-// Each queue maps to a filtered view. KPI cards set the active queue.
-type OpsQueue =
-  | "all"
-  | "unassigned"
-  | "pending_partner_response"
-  | "quote_pending"
-  | "in_progress"
-  | "payment_pending"
-  | "low_rated"
-  | "escalated"
-  | "stuck"
-  | "completed_today"
-  | "cancelled_today";
-
-const QUEUE_LABELS: Record<OpsQueue, string> = {
-  all: "All Bookings",
-  unassigned: "Unassigned",
-  pending_partner_response: "Pending Response",
-  quote_pending: "Quote Pending",
-  in_progress: "In Progress",
-  payment_pending: "Payment Pending",
-  low_rated: "Low Rated",
-  escalated: "Escalations",
-  stuck: "Stuck Bookings",
-  completed_today: "Completed",
-  cancelled_today: "Cancelled",
-};
+// ── Hook: resolve current user's ops role via verified helper ──
+function useOpsRole(): OpsRole {
+  const [role, setRole] = useState<OpsRole>("operator");
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data?.user?.id) return;
+      resolveCurrentOpsRole(data.user.id).then(setRole);
+    });
+  }, []);
+  return role;
+}
 
 const CATEGORIES = [
   { value: "", label: "All Categories" },
@@ -92,19 +76,6 @@ const ZONES = [
   { value: "NUG", label: "Nugegoda" },
 ];
 
-// ── Hook: resolve current user's ops role ──
-function useOpsRole(): OpsRole {
-  const [role, setRole] = useState<OpsRole>("operator");
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data?.user?.id) return;
-      supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" }).then(({ data: isAdmin }) => {
-        if (isAdmin) setRole("admin");
-      });
-    });
-  }, []);
-  return role;
-}
 
 /* ── Stat Card (clickable KPI-to-queue) ── */
 function StatCard({ label, value, icon: Icon, alert, active, onClick }: {
@@ -207,7 +178,12 @@ function SmartActionDialog({ bookingId, status, recommended, userRole, onDone }:
   const [note, setNote] = useState("");
   const [lastResult, setLastResult] = useState<InterventionResult | null>(null);
 
-  const contextActions = getContextActions(status, false);
+  // Build real booking context — never hardcode
+  const bookingCtx: import("@/engines/interventionEngine").BookingActionContext = {
+    hasPartner: !!recommended && ["reassign_partner", "resend_assignment", "contact_partner_progress"].includes(recommended.action),
+    lowRating: !!recommended && recommended.action === "open_quality_recovery",
+  };
+  const contextActions = getContextActions(status, bookingCtx);
 
   const needsPartnerId = (key: string) => key === "assign" || key === "reassign";
   const needsReason = (key: string) => ["escalate", "cancel", "remind_customer"].includes(key);
@@ -478,18 +454,8 @@ export default function PilotControlPanelPage() {
     logOpsEvent("kpi_queue_opened", "", { queue: q });
   }, []);
 
-  // Filter stuck bookings by active queue
-  const filteredStuck = summary?.stuckBookings.filter(b => {
-    if (activeQueue === "all" || activeQueue === "stuck") return true;
-    if (activeQueue === "unassigned") return !b.partner_id && !["completed", "cancelled"].includes(b.status);
-    if (activeQueue === "pending_partner_response") return b.status === "awaiting_partner_confirmation";
-    if (activeQueue === "quote_pending") return b.status === "quote_submitted";
-    if (activeQueue === "payment_pending") return b.status === "payment_pending";
-    if (activeQueue === "in_progress") return ["in_progress", "repair_started", "tech_en_route"].includes(b.status);
-    if (activeQueue === "low_rated") return b.recommended.action === "open_quality_recovery";
-    if (activeQueue === "escalated") return b.status === "escalated";
-    return true;
-  }) || [];
+  // Filter stuck bookings via central queue resolver
+  const filteredStuck = resolveOpsQueue(activeQueue, summary?.stuckBookings || []);
 
   // Determine which day summary counts to highlight based on queue
   const shouldShowStuck = activeQueue === "all" || activeQueue === "stuck" || filteredStuck.length > 0;

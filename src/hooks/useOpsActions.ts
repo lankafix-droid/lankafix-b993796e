@@ -1,17 +1,55 @@
 /**
  * Phase 3+ — Audited Manual Override Actions for Ops
- * Every action writes to DB + job_timeline + automation_event_log via logOpsAction.
- * Central action dispatcher binds action keys to executable functions.
+ *
+ * ASSIGN vs REASSIGN are distinct:
+ *   - opsAssignPartner: first-time partner assignment (no prior partner)
+ *   - opsReassignPartner: replaces an existing/failed partner
+ *
+ * Every action:
+ *   1. Performs the DB mutation
+ *   2. Logs to job_timeline + automation_event_log via logOpsAction
+ *   3. Returns a typed InterventionResult
+ *
+ * Critical actions (cancel, verify_payment) will THROW if audit logging fails.
+ * See interventionEngine.ts for criticality levels.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { logOpsAction, inferInterventionResult, logOpsEvent, logContactAttempt, type InterventionResult } from "@/engines/interventionEngine";
+import { logOpsAction, logOpsEvent, logContactAttempt, type InterventionResult } from "@/engines/interventionEngine";
 
 async function getCurrentUserId(): Promise<string | undefined> {
   const { data } = await supabase.auth.getUser();
   return data?.user?.id;
 }
 
+// ── ASSIGN PARTNER (first-time assignment, no prior partner) ──
+export async function opsAssignPartner(bookingId: string, partnerId: string): Promise<InterventionResult> {
+  const actorId = await getCurrentUserId();
+  const { data: prev } = await supabase.from("bookings").select("partner_id, dispatch_status").eq("id", bookingId).single();
+
+  const { error } = await supabase.from("bookings").update({
+    partner_id: partnerId,
+    assigned_at: new Date().toISOString(),
+    dispatch_status: "accepted",
+    assignment_mode: "ops_manual",
+  }).eq("id", bookingId);
+  if (error) throw error;
+
+  await logOpsAction({
+    booking_id: bookingId,
+    action_type: "assign_partner",
+    actor_id: actorId,
+    previous_state: prev?.partner_id || "none",
+    new_state: partnerId,
+    reason: `First-time assignment to partner ${partnerId.slice(0, 8)}`,
+  });
+  logOpsEvent("ops_assign_partner", bookingId, { partner_id: partnerId, actor_id: actorId });
+
+  toast({ title: "Partner assigned" });
+  return "pending_followup";
+}
+
+// ── REASSIGN PARTNER (replace existing/failed partner) ──
 export async function opsReassignPartner(bookingId: string, newPartnerId: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
   const { data: prev } = await supabase.from("bookings").select("partner_id, dispatch_status").eq("id", bookingId).single();
@@ -24,6 +62,7 @@ export async function opsReassignPartner(bookingId: string, newPartnerId: string
   }).eq("id", bookingId);
   if (error) throw error;
 
+  // Expire pending offers for the old partner
   await supabase.from("dispatch_offers").update({ status: "expired_by_accept", responded_at: new Date().toISOString() })
     .eq("booking_id", bookingId).eq("status", "pending");
 
@@ -33,9 +72,10 @@ export async function opsReassignPartner(bookingId: string, newPartnerId: string
     actor_id: actorId,
     previous_state: prev?.partner_id || "none",
     new_state: newPartnerId,
-    reason: `Reassigned to partner ${newPartnerId.slice(0, 8)}`,
+    reason: `Reassigned from ${(prev?.partner_id || "none").slice(0, 8)} to ${newPartnerId.slice(0, 8)}`,
+    metadata: { previous_partner_id: prev?.partner_id },
   });
-  logOpsEvent("recommended_action_executed", bookingId, { action: "reassign_partner", actor_id: actorId });
+  logOpsEvent("ops_reassign_partner", bookingId, { previous_partner: prev?.partner_id, new_partner: newPartnerId, actor_id: actorId });
 
   toast({ title: "Partner reassigned" });
   return "pending_followup";
@@ -64,16 +104,12 @@ export async function opsEscalateBooking(bookingId: string, reason: string): Pro
   return "escalated";
 }
 
+// CRITICAL action — audit logging MUST succeed or action throws
 export async function opsCancelBooking(bookingId: string, reason: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
   const { data: prev } = await supabase.from("bookings").select("status").eq("id", bookingId).single();
 
-  await supabase.from("bookings").update({
-    status: "cancelled", dispatch_status: "cancelled", cancelled_at: new Date().toISOString(), cancellation_reason: reason,
-  }).eq("id", bookingId);
-  await supabase.from("dispatch_offers").update({ status: "expired_by_accept", responded_at: new Date().toISOString() })
-    .eq("booking_id", bookingId).eq("status", "pending");
-
+  // Log FIRST — if this throws, the cancel is blocked
   await logOpsAction({
     booking_id: bookingId,
     action_type: "cancel_booking",
@@ -82,19 +118,24 @@ export async function opsCancelBooking(bookingId: string, reason: string): Promi
     new_state: "cancelled",
     reason,
   });
+
+  await supabase.from("bookings").update({
+    status: "cancelled", dispatch_status: "cancelled", cancelled_at: new Date().toISOString(), cancellation_reason: reason,
+  }).eq("id", bookingId);
+  await supabase.from("dispatch_offers").update({ status: "expired_by_accept", responded_at: new Date().toISOString() })
+    .eq("booking_id", bookingId).eq("status", "pending");
+
   logOpsEvent("ops_cancel_booking", bookingId, { reason, actor_id: actorId });
 
   toast({ title: "Booking cancelled" });
   return "resolved";
 }
 
+// CRITICAL action — audit logging MUST succeed or action throws
 export async function opsVerifyPayment(bookingId: string, method: string): Promise<InterventionResult> {
   const actorId = await getCurrentUserId();
 
-  await supabase.from("bookings").update({
-    payment_status: "paid" as any, payment_method: method, paid_at: new Date().toISOString(),
-  }).eq("id", bookingId);
-
+  // Log FIRST — if this throws, verify is blocked
   await logOpsAction({
     booking_id: bookingId,
     action_type: "verify_payment",
@@ -102,6 +143,11 @@ export async function opsVerifyPayment(bookingId: string, method: string): Promi
     new_state: "paid",
     reason: `Payment manually verified: ${method}`,
   });
+
+  await supabase.from("bookings").update({
+    payment_status: "paid" as any, payment_method: method, paid_at: new Date().toISOString(),
+  }).eq("id", bookingId);
+
   logOpsEvent("ops_verify_payment", bookingId, { method, actor_id: actorId });
 
   toast({ title: "Payment verified" });
@@ -202,8 +248,12 @@ export async function opsPaymentFollowup(bookingId: string, note: string): Promi
   return "pending_followup";
 }
 
-// ── Central Action Dispatcher ──
-// Maps action keys to executable functions. UI calls executeAction(key, bookingId, params).
+// ══════════════════════════════════════════════════════════════
+// CENTRAL ACTION DISPATCHER
+// ══════════════════════════════════════════════════════════════
+// Maps UI action keys to executable functions.
+// ASSIGN and REASSIGN are distinct paths.
+
 export async function executeAction(
   actionKey: string,
   bookingId: string,
@@ -213,15 +263,18 @@ export async function executeAction(
 
   switch (actionKey) {
     case "assign":
+      if (!params.partnerId) throw new Error("Partner ID required for assignment");
+      return opsAssignPartner(bookingId, params.partnerId);
     case "reassign":
-      if (!params.partnerId) throw new Error("Partner ID required");
+      if (!params.partnerId) throw new Error("Partner ID required for reassignment");
       return opsReassignPartner(bookingId, params.partnerId);
     case "resend":
       return opsResendAssignment(bookingId);
     case "escalate":
       return opsEscalateBooking(bookingId, params.reason || "Ops escalation");
     case "cancel":
-      return opsCancelBooking(bookingId, params.reason || "Ops cancellation");
+      if (!params.reason) throw new Error("Reason required for cancellation");
+      return opsCancelBooking(bookingId, params.reason);
     case "verify_payment":
       return opsVerifyPayment(bookingId, params.method || "cash_collected");
     case "note":
