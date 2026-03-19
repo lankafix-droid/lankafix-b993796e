@@ -10,14 +10,21 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   RefreshCw, CheckCircle, XCircle, Trash2, Pin, BarChart3,
-  Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star
+  Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star,
+  Clock, Shield, Database, Layers
 } from 'lucide-react';
 
-function EmptyState({ message }: { message: string }) {
-  return <p className="text-center py-8 text-sm text-muted-foreground">{message}</p>;
+function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
+  const I = Icon ?? Database;
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+      <I className="h-8 w-8 mb-2 opacity-40" />
+      <p className="text-sm">{message}</p>
+    </div>
+  );
 }
 
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: any; color: string }) {
+function StatCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: any; color: string }) {
   return (
     <Card className="p-3 text-center">
       <Icon className={`h-4 w-4 mx-auto mb-1 ${color}`} />
@@ -27,10 +34,22 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
   );
 }
 
+function formatTimeAgo(dateStr: string | null): string {
+  if (!dateStr) return 'Never';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
 export default function ContentIntelligenceOpsPage() {
   const qc = useQueryClient();
   const invalidateAll = () => qc.invalidateQueries({ queryKey: ['content-ops'] });
 
+  // ─── Queries ───
   const { data: queue, isLoading: queueLoading } = useQuery({
     queryKey: ['content-ops', 'queue'],
     queryFn: async () => {
@@ -44,7 +63,7 @@ export default function ContentIntelligenceOpsPage() {
     },
   });
 
-  const { data: published } = useQuery({
+  const { data: published, isLoading: pubLoading } = useQuery({
     queryKey: ['content-ops', 'published'],
     queryFn: async () => {
       const { data } = await supabase
@@ -57,11 +76,25 @@ export default function ContentIntelligenceOpsPage() {
     },
   });
 
-  const { data: sources } = useQuery({
+  const { data: sources, isLoading: srcLoading } = useQuery({
     queryKey: ['content-ops', 'sources'],
     queryFn: async () => {
-      const { data } = await supabase.from('content_sources').select('*').order('created_at', { ascending: false });
-      return data ?? [];
+      const { data: srcs } = await supabase.from('content_sources').select('*').order('created_at', { ascending: false });
+      if (!srcs?.length) return [];
+      // Enrich with counts
+      const ids = srcs.map((s: any) => s.id);
+      const { data: items } = await supabase
+        .from('content_items')
+        .select('source_id, status')
+        .in('source_id', ids);
+      const countMap: Record<string, { published: number; rejected: number; total: number }> = {};
+      (items ?? []).forEach((i: any) => {
+        const c = countMap[i.source_id] ??= { published: 0, rejected: 0, total: 0 };
+        c.total++;
+        if (i.status === 'published') c.published++;
+        if (i.status === 'rejected') c.rejected++;
+      });
+      return srcs.map((s: any) => ({ ...s, counts: countMap[s.id] ?? { published: 0, rejected: 0, total: 0 } }));
     },
   });
 
@@ -70,7 +103,7 @@ export default function ContentIntelligenceOpsPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from('content_surface_state')
-        .select('*, content_items(title, content_type, status)')
+        .select('*, content_items(title, content_type, status, freshness_score)')
         .eq('active', true)
         .order('surface_code')
         .order('rank_score', { ascending: false });
@@ -106,7 +139,7 @@ export default function ContentIntelligenceOpsPage() {
     },
   });
 
-  // Mutations
+  // ─── Mutations ───
   const ingestMutation = useMutation({
     mutationFn: async (mode: string) => {
       const { data, error } = await supabase.functions.invoke('content-ingest', { body: { mode } });
@@ -114,10 +147,10 @@ export default function ContentIntelligenceOpsPage() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Pipeline complete: ${JSON.stringify(data)}`);
+      toast.success(`Pipeline complete`, { description: `Processed: ${data?.processed ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}` });
       invalidateAll();
     },
-    onError: (e) => toast.error(`Failed: ${(e as Error).message}`),
+    onError: (e) => toast.error(`Pipeline failed: ${(e as Error).message}`),
   });
 
   const editorialAction = useMutation({
@@ -132,8 +165,7 @@ export default function ContentIntelligenceOpsPage() {
         await supabase.from('content_items').update({ status: newStatus }).eq('id', itemId);
       }
       if (action === 'pin_hero') {
-        // Deactivate current hero pins then insert
-        await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', 'homepage_hero').eq('active', true);
+        await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', 'homepage_hero').eq('active', true).lt('rank_score', 990);
         await supabase.from('content_surface_state').insert({
           surface_code: 'homepage_hero',
           content_item_id: itemId,
@@ -169,14 +201,13 @@ export default function ContentIntelligenceOpsPage() {
 
   const reBriefMutation = useMutation({
     mutationFn: async (itemId: string) => {
-      // Delete old brief, reset status, trigger brief pipeline
       await supabase.from('content_ai_briefs').delete().eq('content_item_id', itemId);
       await supabase.from('content_items').update({ status: 'new' }).eq('id', itemId);
       const { error } = await supabase.functions.invoke('content-ingest', { body: { mode: 'brief' } });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Re-briefed');
+      toast.success('Re-briefed successfully');
       invalidateAll();
     },
     onError: () => toast.error('Re-brief failed'),
@@ -188,15 +219,16 @@ export default function ContentIntelligenceOpsPage() {
     return map;
   }, [surfaces]);
 
-  const isPending = ingestMutation.isPending || editorialAction.isPending;
+  const isPending = ingestMutation.isPending || editorialAction.isPending || reBriefMutation.isPending;
 
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 container max-w-4xl py-4">
+      <main className="flex-1 container max-w-4xl py-4 px-4">
+        {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="font-heading text-xl font-bold">Content Intelligence Ops</h1>
-          <div className="flex gap-2">
+          <h1 className="font-heading text-xl font-bold">Content Intelligence</h1>
+          <div className="flex gap-1.5">
             <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate('ingest')} disabled={isPending}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${ingestMutation.isPending ? 'animate-spin' : ''}`} />
               Ingest
@@ -205,15 +237,17 @@ export default function ContentIntelligenceOpsPage() {
               <Star className="h-3.5 w-3.5 mr-1" /> Brief
             </Button>
             <Button size="sm" onClick={() => ingestMutation.mutate('full')} disabled={isPending}>
+              {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
               Full Pipeline
             </Button>
           </div>
         </div>
 
+        {/* Stats */}
         <div className="grid grid-cols-4 gap-2 mb-4">
           <StatCard label="Queue" value={queue?.length ?? 0} icon={AlertTriangle} color="text-warning" />
           <StatCard label="Published" value={published?.length ?? 0} icon={Eye} color="text-primary" />
-          <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
+          <StatCard label="Sources" value={sources?.length ?? 0} icon={Layers} color="text-accent-foreground" />
           <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" />
         </div>
 
@@ -229,106 +263,138 @@ export default function ContentIntelligenceOpsPage() {
 
           {/* ─── Queue Tab ─── */}
           <TabsContent value="queue" className="space-y-2 mt-3">
-            {queueLoading && <p className="text-center py-8 text-muted-foreground text-sm">Loading…</p>}
-            {!queueLoading && !queue?.length && <EmptyState message="No items in queue" />}
-            {(queue ?? []).map((item: any) => (
-              <Card key={item.id} className="p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <Badge variant="secondary" className="text-[10px] capitalize">{item.content_type.replace(/_/g, ' ')}</Badge>
-                      <Badge variant={item.status === 'needs_review' ? 'destructive' : 'outline'} className="text-[10px]">{item.status}</Badge>
-                      {item.content_category_tags?.map((t: any) => (
-                        <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
-                      ))}
+            {queueLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading queue…</p>}
+            {!queueLoading && !queue?.length && <EmptyState message="No items in queue — run pipeline to ingest content" icon={CheckCircle} />}
+            {(queue ?? []).map((item: any) => {
+              const brief = item.content_ai_briefs?.[0];
+              const quality = brief?.ai_quality_score;
+              return (
+                <Card key={item.id} className="p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <Badge variant="secondary" className="text-[10px] capitalize">{item.content_type.replace(/_/g, ' ')}</Badge>
+                        <Badge
+                          variant={item.status === 'needs_review' ? 'destructive' : 'outline'}
+                          className="text-[10px]"
+                        >
+                          {item.status}
+                        </Badge>
+                        {item.content_category_tags?.slice(0, 2).map((t: any) => (
+                          <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
+                        ))}
+                      </div>
+                      <p className="text-sm font-semibold line-clamp-1">{brief?.ai_headline ?? item.title}</p>
+                      {brief?.ai_summary_short && (
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{brief.ai_summary_short}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                        <span>Quality: <strong className={quality >= 0.6 ? 'text-primary' : quality >= 0.3 ? 'text-warning' : 'text-destructive'}>{quality?.toFixed(2) ?? 'N/A'}</strong></span>
+                        <span>Trust: {item.source_trust_score?.toFixed(2) ?? 'N/A'}</span>
+                        <span>Source: {item.source_name ?? '—'}</span>
+                        <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatTimeAgo(item.created_at)}</span>
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold line-clamp-1">{item.title}</p>
-                    {item.content_ai_briefs?.[0]?.ai_summary_short && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{item.content_ai_briefs[0].ai_summary_short}</p>
-                    )}
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Quality: {(item.content_ai_briefs?.[0]?.ai_quality_score?.toFixed(2) ?? 'N/A')} · Trust: {item.source_trust_score?.toFixed(2) ?? 'N/A'} · Source: {item.source_name ?? '—'}
-                    </p>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'approve' })} title="Approve & Publish">
+                        <CheckCircle className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'reject' })} title="Reject">
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending || reBriefMutation.isPending}
+                        onClick={() => reBriefMutation.mutate(item.id)} title="Re-run AI Brief">
+                        <RotateCw className={`h-3.5 w-3.5 text-muted-foreground ${reBriefMutation.isPending ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                      onClick={() => editorialAction.mutate({ itemId: item.id, action: 'approve' })} title="Approve">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                      onClick={() => editorialAction.mutate({ itemId: item.id, action: 'reject' })} title="Reject">
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                      onClick={() => reBriefMutation.mutate(item.id)} title="Re-brief">
-                      <RotateCw className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </TabsContent>
 
           {/* ─── Published Tab ─── */}
           <TabsContent value="published" className="space-y-2 mt-3">
-            {!published?.length && <EmptyState message="No published items" />}
-            {(published ?? []).map((item: any) => (
-              <Card key={item.id} className="p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <Badge variant="secondary" className="text-[10px] capitalize">{item.content_type.replace(/_/g, ' ')}</Badge>
-                      {item.content_category_tags?.map((t: any) => (
-                        <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
-                      ))}
+            {pubLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
+            {!pubLoading && !published?.length && <EmptyState message="No published items yet" icon={Eye} />}
+            {(published ?? []).map((item: any) => {
+              const brief = item.content_ai_briefs?.[0];
+              return (
+                <Card key={item.id} className="p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <Badge variant="secondary" className="text-[10px] capitalize">{item.content_type.replace(/_/g, ' ')}</Badge>
+                        {item.content_category_tags?.slice(0, 2).map((t: any) => (
+                          <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
+                        ))}
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                          <Clock className="h-2.5 w-2.5" /> {formatTimeAgo(item.published_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold line-clamp-1">{brief?.ai_headline ?? item.title}</p>
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                        <span>Freshness: {item.freshness_score ?? 0}</span>
+                        <span>Quality: {brief?.ai_quality_score?.toFixed(2) ?? '—'}</span>
+                        <span>{item.source_name ?? 'LankaFix'}</span>
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold line-clamp-1">{item.content_ai_briefs?.[0]?.ai_headline ?? item.title}</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Freshness: {item.freshness_score ?? 0} · Quality: {item.content_ai_briefs?.[0]?.ai_quality_score?.toFixed(2) ?? '—'}
-                    </p>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'pin_hero' })} title="Pin to Hero">
+                        <Pin className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'suppress' })} title="Suppress">
+                        <Shield className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'archive' })} title="Archive">
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                      onClick={() => editorialAction.mutate({ itemId: item.id, action: 'pin_hero' })} title="Pin to Hero">
-                      <Pin className="h-3.5 w-3.5 text-primary" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                      onClick={() => editorialAction.mutate({ itemId: item.id, action: 'suppress' })} title="Suppress">
-                      <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                      onClick={() => editorialAction.mutate({ itemId: item.id, action: 'archive' })} title="Archive">
-                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </TabsContent>
 
           {/* ─── Sources Tab ─── */}
           <TabsContent value="sources" className="space-y-2 mt-3">
-            {!sources?.length && <EmptyState message="No sources configured" />}
+            {srcLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
+            {!srcLoading && !sources?.length && <EmptyState message="No sources configured" icon={Database} />}
             {(sources ?? []).map((src: any) => (
               <Card key={src.id} className="p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{src.source_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {src.source_type} · Trust: {src.trust_score} · Refresh: {src.refresh_interval_minutes}min
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Last fetched: {src.last_fetched_at ? new Date(src.last_fetched_at).toLocaleString() : 'Never'}
-                    </p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold">{src.source_name}</p>
+                      <Badge variant={src.active ? 'default' : 'secondary'} className="text-[10px]">
+                        {src.active ? 'Active' : 'Disabled'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
+                      <span>Type: <strong>{src.source_type}</strong></span>
+                      <span>Trust: <strong>{src.trust_score}</strong></span>
+                      <span>Refresh: <strong>{src.refresh_interval_minutes}min</strong></span>
+                      <span>Last fetch: <strong>{formatTimeAgo(src.last_fetched_at)}</strong></span>
+                      <span>Total: <strong>{src.counts?.total ?? 0}</strong></span>
+                      <span>Published: <strong className="text-primary">{src.counts?.published ?? 0}</strong></span>
+                      <span>Rejected: <strong className="text-destructive">{src.counts?.rejected ?? 0}</strong></span>
+                      <span>Freshness priority: <strong>{src.freshness_priority}</strong></span>
+                    </div>
                   </div>
                   <Button
                     size="sm"
-                    variant={src.active ? 'default' : 'secondary'}
+                    variant={src.active ? 'destructive' : 'default'}
                     disabled={toggleSource.isPending}
                     onClick={() => toggleSource.mutate({ sourceId: src.id, active: !src.active })}
+                    className="shrink-0"
                   >
                     <Power className="h-3 w-3 mr-1" />
-                    {src.active ? 'Active' : 'Disabled'}
+                    {src.active ? 'Disable' : 'Enable'}
                   </Button>
                 </div>
               </Card>
@@ -337,23 +403,33 @@ export default function ContentIntelligenceOpsPage() {
 
           {/* ─── Surfaces Tab ─── */}
           <TabsContent value="surfaces" className="space-y-4 mt-3">
-            {!surfaces?.length && <EmptyState message="No active surfaces. Run pipeline to populate." />}
+            {!surfaces?.length && <EmptyState message="No active surfaces — run full pipeline to populate" icon={Layers} />}
             {Object.entries(surfacesByCode).map(([code, items]) => (
               <div key={code}>
-                <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5">
+                <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5 capitalize">
                   <Pin className="h-3.5 w-3.5 text-primary" />
                   {code.replace(/_/g, ' ')}
                   <Badge variant="outline" className="text-[10px] ml-1">{items.length}</Badge>
                 </h3>
                 <div className="space-y-1">
                   {items.map((s: any) => (
-                    <Card key={s.id} className="p-2">
+                    <Card key={s.id} className="p-2.5">
                       <div className="flex items-center justify-between">
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium line-clamp-1">{s.content_items?.title ?? 'Unknown'}</p>
-                          <p className="text-[10px] text-muted-foreground">{s.content_items?.content_type ?? ''}</p>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                            <span className="capitalize">{s.content_items?.content_type?.replace(/_/g, ' ') ?? ''}</span>
+                            {s.content_items?.freshness_score != null && (
+                              <span>Fresh: {s.content_items.freshness_score}</span>
+                            )}
+                            {s.rank_score >= 990 && (
+                              <Badge variant="default" className="text-[9px] px-1 py-0">PINNED</Badge>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-[10px] text-muted-foreground shrink-0 ml-2">Score: {s.rank_score?.toFixed(1)}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 ml-2">
+                          {s.rank_score?.toFixed(1)}
+                        </span>
                       </div>
                     </Card>
                   ))}
@@ -364,20 +440,23 @@ export default function ContentIntelligenceOpsPage() {
 
           {/* ─── Clusters Tab ─── */}
           <TabsContent value="clusters" className="space-y-2 mt-3">
-            {!clusters?.length && <EmptyState message="No trend clusters yet" />}
+            {!clusters?.length && <EmptyState message="No trend clusters detected yet" icon={TrendingUp} />}
             {(clusters ?? []).map((c: any) => (
               <Card key={c.id} className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold">{c.cluster_label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.category_code ?? 'General'} · {c.content_count} items · Momentum: {c.momentum_score}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      🇱🇰 {c.sri_lanka_relevance_score ?? 0} · 💼 {c.commercial_relevance_score ?? 0}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                      <Badge variant="outline" className="text-[10px]">{c.category_code ?? 'General'}</Badge>
+                      <span>{c.content_count} items</span>
+                      <span>Momentum: <strong>{c.momentum_score}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground">
+                      <span>🇱🇰 Relevance: {c.sri_lanka_relevance_score ?? 0}</span>
+                      <span>💼 Commercial: {c.commercial_relevance_score ?? 0}</span>
+                    </div>
                   </div>
-                  <Activity className="h-4 w-4 text-primary" />
+                  <Activity className="h-4 w-4 text-primary shrink-0" />
                 </div>
               </Card>
             ))}
@@ -387,22 +466,21 @@ export default function ContentIntelligenceOpsPage() {
           <TabsContent value="analytics" className="mt-3">
             <div className="grid grid-cols-3 gap-3 mb-4">
               {[
-                { label: 'Clicks', value: (analytics as any)?.click ?? 0 },
-                { label: 'Impressions', value: (analytics as any)?.impression ?? 0 },
-                { label: 'Opens', value: (analytics as any)?.open ?? 0 },
+                { label: 'Impressions', value: (analytics as any)?.impression ?? 0, icon: Eye, color: 'text-primary' },
+                { label: 'Clicks', value: (analytics as any)?.click ?? 0, icon: TrendingUp, color: 'text-accent-foreground' },
+                { label: 'Opens', value: (analytics as any)?.open ?? 0, icon: Activity, color: 'text-muted-foreground' },
               ].map(m => (
-                <Card key={m.label} className="p-4 text-center">
-                  <p className="text-2xl font-bold">{m.value}</p>
-                  <p className="text-xs text-muted-foreground">{m.label}</p>
-                </Card>
+                <StatCard key={m.label} label={m.label} value={m.value} icon={m.icon} color={m.color} />
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {[
                 { label: 'Saves', value: (analytics as any)?.save ?? 0 },
                 { label: 'Shares', value: (analytics as any)?.share ?? 0 },
                 { label: 'Booking CTR', value: (analytics as any)?.booking_clickthrough ?? 0 },
                 { label: 'Category CTR', value: (analytics as any)?.category_clickthrough ?? 0 },
+                { label: 'Source Links', value: (analytics as any)?.source_link ?? 0 },
+                { label: 'Related Clicks', value: (analytics as any)?.related_insight ?? 0 },
               ].map(m => (
                 <Card key={m.label} className="p-3 text-center">
                   <p className="text-lg font-bold">{m.value}</p>
