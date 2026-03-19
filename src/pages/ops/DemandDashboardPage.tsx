@@ -11,7 +11,13 @@ import DemandStatsStrip from "@/components/ops/demand/DemandStatsStrip";
 import DemandFilters from "@/components/ops/demand/DemandFilters";
 import DemandRequestCard from "@/components/ops/demand/DemandRequestCard";
 import DemandInsightsPanel from "@/components/ops/demand/DemandInsightsPanel";
+import LeadsPipelinePanel from "@/components/ops/demand/LeadsPipelinePanel";
+import PartnerSuggestionsPanel from "@/components/ops/demand/PartnerSuggestionsPanel";
+import { useClassifyDemand } from "@/hooks/useLeads";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 
 export type DemandRequest = {
   id: string;
@@ -43,6 +49,10 @@ const DemandDashboardPage = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterAssigned, setFilterAssigned] = useState("all");
+  const [selectedRequest, setSelectedRequest] = useState<DemandRequest | null>(null);
+  const [activeTab, setActiveTab] = useState("demand");
+
+  const classifyMutation = useClassifyDemand();
 
   const { data: requests = [], refetch, isLoading } = useQuery({
     queryKey: ["demand-requests", filterCategory, filterStatus, filterAssigned],
@@ -76,6 +86,10 @@ const DemandDashboardPage = () => {
     } as any);
   };
 
+  const handleClassify = (req: DemandRequest) => {
+    classifyMutation.mutate(req.id);
+  };
+
   const uniqueCategories = [...new Set(requests.map((r) => r.category_code))];
 
   return (
@@ -86,35 +100,90 @@ const DemandDashboardPage = () => {
         <p className="text-sm text-muted-foreground mb-6">Live demand feed — own, track, convert every lead.</p>
 
         <DemandStatsStrip requests={requests} />
-        <DemandInsightsPanel requests={requests} catNameMap={catNameMap} />
-        <DemandFilters
-          filterCategory={filterCategory}
-          setFilterCategory={setFilterCategory}
-          filterStatus={filterStatus}
-          setFilterStatus={setFilterStatus}
-          filterAssigned={filterAssigned}
-          setFilterAssigned={setFilterAssigned}
-          uniqueCategories={uniqueCategories}
-          catNameMap={catNameMap}
-        />
 
-        {isLoading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading requests...</div>
-        ) : requests.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">No demand requests yet.</div>
-        ) : (
-          <div className="space-y-3">
-            {requests.map((req) => (
-              <DemandRequestCard
-                key={req.id}
-                req={req}
-                catNameMap={catNameMap}
-                onUpdate={updateRequest}
-                onLogContact={logContact}
-              />
-            ))}
-          </div>
-        )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <TabsList>
+            <TabsTrigger value="demand">Demand Feed</TabsTrigger>
+            <TabsTrigger value="leads">Leads Pipeline</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="demand">
+            <DemandInsightsPanel requests={requests} catNameMap={catNameMap} />
+            <DemandFilters
+              filterCategory={filterCategory}
+              setFilterCategory={setFilterCategory}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              filterAssigned={filterAssigned}
+              setFilterAssigned={setFilterAssigned}
+              uniqueCategories={uniqueCategories}
+              catNameMap={catNameMap}
+            />
+
+            {isLoading ? (
+              <div className="text-center py-12 text-muted-foreground">Loading requests...</div>
+            ) : requests.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">No demand requests yet.</div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Demand cards */}
+                <div className="lg:col-span-2 space-y-3">
+                  {requests.map((req) => (
+                    <div key={req.id}>
+                      <DemandRequestCard
+                        req={req}
+                        catNameMap={catNameMap}
+                        onUpdate={updateRequest}
+                        onLogContact={logContact}
+                      />
+                      <div className="flex gap-2 mt-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[10px] text-primary"
+                          onClick={() => handleClassify(req)}
+                          disabled={classifyMutation.isPending}
+                        >
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          AI Classify & Match
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 text-[10px]"
+                          onClick={() => setSelectedRequest(selectedRequest?.id === req.id ? null : req)}
+                        >
+                          {selectedRequest?.id === req.id ? "Hide Partners" : "Show Partners"}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Right sidebar: AI partner suggestions */}
+                <div className="space-y-3">
+                  {selectedRequest ? (
+                    <PartnerSuggestionsPanel
+                      req={selectedRequest}
+                      onAssigned={() => {
+                        refetch();
+                        setSelectedRequest(null);
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-xs text-muted-foreground border border-dashed rounded-lg">
+                      Select a request to view AI partner suggestions
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="leads">
+            <LeadsPipelinePanel />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
