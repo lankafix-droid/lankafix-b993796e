@@ -204,6 +204,8 @@ const App = () => (
             <Route path="/track/:jobId" element={<RedirectTracker />} />
             <Route path="/track" element={<TrackJob />} />
             <Route path="/waitlist" element={<WaitlistPage />} />
+            <Route path="/request/:category" element={<DemandRequestPage />} />
+            <Route path="/submit/:category" element={<SubmitRequirementPage />} />
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
             <Route path="/account/delete" element={<ProtectedRoute><AccountDeletionPage /></ProtectedRoute>} />
             <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
