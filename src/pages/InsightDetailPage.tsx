@@ -7,11 +7,15 @@ import Footer from '@/components/landing/Footer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ExternalLink, Clock, Shield, BookOpen, Wrench, TrendingUp } from 'lucide-react';
-import { trackContentEvent, useContentIntelligence } from '@/hooks/useContentIntelligence';
+import { trackContentEvent } from '@/hooks/useContentIntelligence';
+import { useTrackContentOpen } from '@/hooks/useTrackContentOpen';
 import ContentCard from '@/components/content/ContentCard';
 import type { EnrichedContentItem } from '@/types/contentIntelligence';
 
 async function fetchContentDetail(id: string): Promise<EnrichedContentItem | null> {
+  // Support evergreen items
+  if (id.startsWith('evergreen-')) return null;
+
   const { data: item } = await supabase
     .from('content_items')
     .select('*')
@@ -31,6 +35,54 @@ async function fetchContentDetail(id: string): Promise<EnrichedContentItem | nul
     ai_brief: briefs?.[0] ?? null,
     category_tags: tags ?? [],
   };
+}
+
+async function fetchRelatedContent(itemId: string, categoryCode: string | null, contentType: string): Promise<EnrichedContentItem[]> {
+  // Fetch items from the same category first, then same type, excluding current
+  let query = supabase
+    .from('content_items')
+    .select('*')
+    .eq('status', 'published')
+    .neq('id', itemId)
+    .order('freshness_score', { ascending: false })
+    .limit(12);
+
+  const { data: items } = await query;
+  if (!items?.length) return [];
+
+  const ids = items.map((i: any) => i.id);
+  const [{ data: briefs }, { data: tags }] = await Promise.all([
+    supabase.from('content_ai_briefs').select('*').in('content_item_id', ids),
+    supabase.from('content_category_tags').select('*').in('content_item_id', ids),
+  ]);
+
+  const briefMap = new Map((briefs ?? []).map((b: any) => [b.content_item_id, b]));
+  const tagMap = new Map<string, any[]>();
+  (tags ?? []).forEach((t: any) => {
+    const arr = tagMap.get(t.content_item_id) ?? [];
+    arr.push(t);
+    tagMap.set(t.content_item_id, arr);
+  });
+
+  const enriched: EnrichedContentItem[] = items.map((i: any) => ({
+    ...i,
+    ai_brief: briefMap.get(i.id) ?? null,
+    category_tags: tagMap.get(i.id) ?? [],
+  }));
+
+  // Score by relevance: same category > same type > other
+  const scored = enriched.map(item => {
+    let score = item.freshness_score ?? 0;
+    const itemCats = (item.category_tags ?? []).map((t: any) => t.category_code);
+    if (categoryCode && itemCats.includes(categoryCode)) score += 50;
+    if (item.content_type === contentType) score += 20;
+    return { item, score };
+  });
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3)
+    .map(s => s.item);
 }
 
 function formatDate(dateStr: string | null) {
@@ -59,15 +111,15 @@ function InsightMeta({ item }: { item: EnrichedContentItem }) {
   );
 }
 
-function RelatedInsights({ categoryCode, currentId }: { categoryCode: string; currentId: string }) {
+function RelatedInsights({ itemId, categoryCode, contentType }: { itemId: string; categoryCode: string | null; contentType: string }) {
   const navigate = useNavigate();
-  const { data: related } = useContentIntelligence({
-    surface: 'homepage_popular',
-    limit: 4,
+  const { data: related } = useQuery({
+    queryKey: ['content-related', itemId],
+    queryFn: () => fetchRelatedContent(itemId, categoryCode, contentType),
+    enabled: !!itemId,
   });
 
-  const filtered = (related ?? []).filter(i => i.id !== currentId).slice(0, 3);
-  if (!filtered.length) return null;
+  if (!related?.length) return null;
 
   return (
     <div className="pt-4 border-t border-border/50">
@@ -76,13 +128,16 @@ function RelatedInsights({ categoryCode, currentId }: { categoryCode: string; cu
         Related Insights
       </h3>
       <div className="space-y-2">
-        {filtered.map(item => (
+        {related.map(item => (
           <ContentCard
             key={item.id}
             item={item}
             variant="compact"
             className="w-full"
-            onOpen={() => navigate(`/insights/${item.id}`)}
+            onOpen={() => {
+              trackContentEvent(item.id, 'click', { action: 'related_insight' });
+              navigate(`/insights/${item.id}`);
+            }}
           />
         ))}
       </div>
@@ -100,9 +155,8 @@ export default function InsightDetailPage() {
     enabled: !!id,
   });
 
-  // Track open (only once via query side-effect)
-  const tracked = item?.id;
-  if (tracked) trackContentEvent(tracked, 'open');
+  // Safe open tracking via useEffect hook
+  useTrackContentOpen(item?.id);
 
   if (isLoading) {
     return (
@@ -138,7 +192,7 @@ export default function InsightDetailPage() {
 
   const brief = item.ai_brief;
   const headline = brief?.ai_headline ?? item.title;
-  const primaryCategory = item.category_tags[0]?.category_code;
+  const primaryCategory = item.category_tags[0]?.category_code ?? null;
 
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
@@ -224,22 +278,29 @@ export default function InsightDetailPage() {
           <div className="grid grid-cols-2 gap-2 pt-2">
             {primaryCategory && (
               <Button asChild variant="default" size="sm" className="w-full">
-                <Link to={`/book/${primaryCategory.toLowerCase()}`}>
+                <Link
+                  to={`/book/${primaryCategory.toLowerCase()}`}
+                  onClick={() => trackContentEvent(item.id, 'booking_clickthrough', { category: primaryCategory })}
+                >
                   Book Related Service
                 </Link>
               </Button>
             )}
             <Button asChild variant="outline" size="sm" className="w-full">
-              <Link to="/services">
+              <Link
+                to="/services"
+                onClick={() => trackContentEvent(item.id, 'category_clickthrough')}
+              >
                 Explore Services
               </Link>
             </Button>
           </div>
 
-          {/* Related Insights */}
+          {/* Related Insights — category-aware */}
           <RelatedInsights
-            categoryCode={primaryCategory ?? ''}
-            currentId={item.id}
+            itemId={item.id}
+            categoryCode={primaryCategory}
+            contentType={item.content_type}
           />
         </article>
       </main>

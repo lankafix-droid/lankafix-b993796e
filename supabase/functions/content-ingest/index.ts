@@ -171,7 +171,24 @@ const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQual
 };
 
 async function publishToSurfaces() {
+  // Get editorially suppressed items (rejected with reason 'ops_suppressed')
+  const { data: suppressed } = await supabase
+    .from('content_items')
+    .select('id')
+    .eq('rejection_reason', 'ops_suppressed')
+    .limit(200);
+  const suppressedIds = new Set((suppressed ?? []).map((s: any) => s.id));
+
   for (const [surfaceCode, rules] of Object.entries(SURFACE_RULES)) {
+    // Check for manually pinned items (rank_score = 999 means editorial pin)
+    const { data: pinnedSurfaces } = await supabase
+      .from('content_surface_state')
+      .select('content_item_id')
+      .eq('surface_code', surfaceCode)
+      .eq('active', true)
+      .gte('rank_score', 990);
+    const pinnedIds = new Set((pinnedSurfaces ?? []).map((p: any) => p.content_item_id));
+
     const { data: items } = await supabase
       .from('content_items')
       .select('id, content_type, freshness_score, source_trust_score, published_at')
@@ -180,18 +197,19 @@ async function publishToSurfaces() {
       .order('freshness_score', { ascending: false })
       .limit(rules.maxItems * 3);
 
-    if (!items?.length) continue;
+    if (!items?.length && pinnedIds.size === 0) continue;
 
     // Get AI quality scores
-    const ids = items.map((i: any) => i.id);
-    const { data: briefs } = await supabase
-      .from('content_ai_briefs')
-      .select('content_item_id, ai_quality_score')
-      .in('content_item_id', ids);
+    const allItems = items ?? [];
+    const ids = allItems.map((i: any) => i.id);
+    const { data: briefs } = ids.length > 0
+      ? await supabase.from('content_ai_briefs').select('content_item_id, ai_quality_score').in('content_item_id', ids)
+      : { data: [] };
 
     const qualityMap = new Map((briefs ?? []).map((b: any) => [b.content_item_id, b.ai_quality_score ?? 0.5]));
 
-    const ranked = items
+    const ranked = allItems
+      .filter((item: any) => !suppressedIds.has(item.id) && !pinnedIds.has(item.id))
       .filter((item: any) => (qualityMap.get(item.id) ?? 0.5) >= rules.minQuality)
       .map((item: any) => ({
         ...item,
@@ -201,12 +219,26 @@ async function publishToSurfaces() {
               (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15,
       }))
       .sort((a: any, b: any) => b.rank - a.rank)
-      .slice(0, rules.maxItems);
+      .slice(0, rules.maxItems - pinnedIds.size);
 
-    // Deactivate old
-    await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', surfaceCode).eq('active', true);
+    // Deactivate old (except pinned)
+    if (pinnedIds.size > 0) {
+      // Only deactivate non-pinned
+      const { data: toDeactivate } = await supabase
+        .from('content_surface_state')
+        .select('id, content_item_id')
+        .eq('surface_code', surfaceCode)
+        .eq('active', true)
+        .lt('rank_score', 990);
+      if (toDeactivate?.length) {
+        const deactivateIds = toDeactivate.map((d: any) => d.id);
+        await supabase.from('content_surface_state').update({ active: false }).in('id', deactivateIds);
+      }
+    } else {
+      await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', surfaceCode).eq('active', true);
+    }
 
-    // Insert new
+    // Insert new ranked items
     if (ranked.length > 0) {
       await supabase.from('content_surface_state').insert(
         ranked.map((item: any) => ({
