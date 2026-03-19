@@ -10,6 +10,7 @@ import { BOOKING_STATUS_LABELS, CATEGORY_LABELS, SERVICE_MODE_LABELS } from "@/t
 import QuoteForm from "@/components/quotes/QuoteForm";
 import ServiceEvidencePanel from "@/components/proof/ServiceEvidencePanel";
 import ReportIssueModal from "@/components/support/ReportIssueModal";
+import TechnicianNotesSection from "@/components/technician/TechnicianNotesSection";
 import { track } from "@/lib/analytics";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
