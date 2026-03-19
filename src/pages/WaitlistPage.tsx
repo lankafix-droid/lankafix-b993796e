@@ -20,10 +20,32 @@ const WaitlistPage = () => {
     );
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (name && phone && area) {
       // Log interest for each selected category
       selectedCats.forEach((cat) => logCategoryInterest(cat, "waitlist_submit"));
+      
+      // Save to demand_requests table
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        const inserts = (selectedCats.length > 0 ? selectedCats : ["GENERAL"]).map((catCode) => ({
+          user_id: user?.id || null,
+          category_code: catCode,
+          request_type: "waitlist",
+          name: name.trim(),
+          phone: phone.trim(),
+          location: area.trim(),
+          description: `Waitlist signup — interested in: ${selectedCats.map(c => categories.find(x => x.code === c)?.name || c).join(", ")}`,
+          preferred_time: "schedule",
+          status: "pending",
+          priority: "low",
+          priority_score: 20,
+        }));
+        await supabase.from("demand_requests" as any).insert(inserts as any);
+      } catch (e) {
+        console.warn("[Waitlist] DB save failed:", e);
+      }
+      
       setSubmitted(true);
     }
   };
