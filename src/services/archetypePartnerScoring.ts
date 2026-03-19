@@ -44,6 +44,7 @@ interface PartnerForScoring {
   availability_status?: string;
   current_job_count?: number | null;
   updated_at?: string;
+  availability_last_updated?: string;
   experience_years?: number;
   specializations?: string[];
   performance_score?: number | null;

@@ -497,10 +497,10 @@ export async function convertLeadToBooking(
 // ── Analytics / Event Logging ──
 
 async function logRoutingEvent(eventType: string, metadata: Record<string, unknown>) {
-  await supabase.from("notification_events").insert({
+  await supabase.from("notification_events").insert([{
     event_type: eventType,
     metadata,
-  });
+  }]);
 }
 
 // ── WhatsApp Message Payloads ──
