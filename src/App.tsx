@@ -80,6 +80,7 @@ const ReferralPage = lazy(() => import("./pages/ReferralPage"));
 const CorporateServicesPage = lazy(() => import("./pages/CorporateServicesPage"));
 const ExpansionRoadmapPage = lazy(() => import("./pages/ops/ExpansionRoadmapPage"));
 const PartnerPremiumPage = lazy(() => import("./pages/partner/PartnerPremiumPage"));
+const PartnerRespondPage = lazy(() => import("./pages/partner/PartnerRespondPage"));
 const ConsumablesPage = lazy(() => import("./pages/ConsumablesPage"));
 const RevenueEnginePage = lazy(() => import("./pages/ops/RevenueEnginePage"));
 const MarketplaceIntelligencePage = lazy(() => import("./pages/ops/MarketplaceIntelligencePage"));
