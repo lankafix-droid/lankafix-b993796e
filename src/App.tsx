@@ -248,6 +248,8 @@ const App = () => (
             <Route path="/partner/quotes" element={<PartnerRoute><PartnerQuoteHistoryPage /></PartnerRoute>} />
             <Route path="/partner/performance" element={<PartnerRoute><PartnerPerformancePage /></PartnerRoute>} />
             <Route path="/partner/premium" element={<PartnerRoute><PartnerPremiumPage /></PartnerRoute>} />
+            {/* Partner response portal — token-based, no auth required */}
+            <Route path="/partner/respond/:token" element={<PartnerRespondPage />} />
 
             {/* ─── Technician routes (requires partner record) ─── */}
             <Route path="/technician" element={<PartnerRoute><TechnicianDashboardPage /></PartnerRoute>} />
