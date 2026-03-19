@@ -93,14 +93,14 @@ export async function convertLeadToBooking(
   // Create booking
   const { data: booking, error: bookingErr } = await supabase
     .from("bookings")
-    .insert({
+    .insert([{
       category_code: categoryCode,
       partner_id: partnerId,
-      status: "pending",
+      status: "pending" as const,
       assignment_mode: "ops_manual",
       dispatch_mode: "manual",
       booking_source: "demand_conversion",
-    })
+    }])
     .select("id")
     .single();
 
