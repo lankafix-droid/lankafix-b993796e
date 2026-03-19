@@ -76,19 +76,6 @@ const ZONES = [
   { value: "NUG", label: "Nugegoda" },
 ];
 
-// ── Hook: resolve current user's ops role ──
-function useOpsRole(): OpsRole {
-  const [role, setRole] = useState<OpsRole>("operator");
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data?.user?.id) return;
-      supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" }).then(({ data: isAdmin }) => {
-        if (isAdmin) setRole("admin");
-      });
-    });
-  }, []);
-  return role;
-}
 
 /* ── Stat Card (clickable KPI-to-queue) ── */
 function StatCard({ label, value, icon: Icon, alert, active, onClick }: {
