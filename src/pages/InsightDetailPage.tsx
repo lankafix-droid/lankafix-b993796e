@@ -246,7 +246,7 @@ export default function InsightDetailPage() {
             </div>
           )}
 
-          {brief?.ai_risk_flags && brief.ai_risk_flags.length > 0 && (
+          {Array.isArray(brief?.ai_risk_flags) && brief.ai_risk_flags.length > 0 && (
             <div className="flex items-start gap-2 rounded-xl bg-destructive/5 border border-destructive/10 p-3">
               <Shield className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
               <div className="text-sm text-foreground/80">
