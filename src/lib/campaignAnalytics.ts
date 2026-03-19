@@ -74,19 +74,22 @@ export function trackCampaignEvent(
     ...metadata,
   });
 
-  // Best-effort DB insert (non-blocking)
-  supabase.auth.getUser().then(({ data }) => {
-    supabase.from('campaign_events').insert([{
-      campaign_id: campaignId,
-      user_id: data?.user?.id ?? null,
-      event_type: eventType,
-      metadata: {
-        ...(metadata || {}),
-        first_touch: sessionState.firstTouchCampaignId,
-        last_touch: sessionState.lastTouchCampaignId,
-      },
-    }] as any).then(() => {});
-  });
+  // Best-effort DB insert (non-blocking) — skip for fallback campaigns with non-UUID IDs
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (UUID_RE.test(campaignId)) {
+    supabase.auth.getUser().then(({ data }) => {
+      supabase.from('campaign_events').insert([{
+        campaign_id: campaignId,
+        user_id: data?.user?.id ?? null,
+        event_type: eventType,
+        metadata: {
+          ...(metadata || {}),
+          first_touch: sessionState.firstTouchCampaignId,
+          last_touch: sessionState.lastTouchCampaignId,
+        },
+      }] as any).then(() => {});
+    });
+  }
 }
 
 // ─── Dismiss / Snooze (backend-synced) ───────────────────────────
