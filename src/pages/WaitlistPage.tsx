@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { logCategoryInterest } from "@/lib/demandCapture";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
