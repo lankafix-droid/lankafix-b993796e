@@ -79,8 +79,10 @@ export default function GoogleAddressAutocomplete({
     onChange?.(address);
   }, [onPlaceSelect, onChange]);
 
+  const mapsLoaded = useGoogleMapsLoaded();
+
   // Fallback to plain input if no API key
-  if (!GOOGLE_MAPS_API_KEY) {
+  if (!mapsLoaded) {
     return (
       <div className={`relative ${className}`}>
         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

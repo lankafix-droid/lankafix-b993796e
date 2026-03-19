@@ -6,7 +6,7 @@
 import { useMemo, useCallback, useRef, useEffect } from "react";
 import { GoogleMap, Marker, DirectionsRenderer } from "@react-google-maps/api";
 import { Circle, MapPin, Navigation } from "lucide-react";
-import { GOOGLE_MAPS_API_KEY } from "./GoogleMapsProvider";
+import { useGoogleMapsLoaded } from "./GoogleMapsProvider";
 
 interface Props {
   technicianLat: number | null;
