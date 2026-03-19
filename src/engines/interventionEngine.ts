@@ -585,13 +585,13 @@ export function isActionAllowed(actionKey: string, userRole: OpsRole): boolean {
 export type ActionExecutor = (bookingId: string, params: Record<string, string>) => Promise<InterventionResult>;
 
 export function logOpsEvent(eventType: string, bookingId: string, metadata?: Record<string, unknown>): void {
-  // Non-blocking analytics event
-  supabase.from("automation_event_log").insert({
+  // Non-blocking analytics event — fire and forget
+  supabase.from("automation_event_log").insert([{
     event_type: eventType,
     booking_id: bookingId,
     trigger_reason: "ops_ui_interaction",
     action_taken: eventType,
     severity: "info",
     metadata: metadata || {},
-  }).then(() => {}).catch(() => {});
+  }]).then(() => {});
 }
