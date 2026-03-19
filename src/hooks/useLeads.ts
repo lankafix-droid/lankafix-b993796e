@@ -27,6 +27,15 @@ export interface Lead {
   customer_location: string | null;
   description: string | null;
   zone_code: string | null;
+  // Partner response tracking
+  partner_response_status: string | null;
+  partner_response_at: string | null;
+  rejection_reason: string | null;
+  accepted_by_partner_id: string | null;
+  assignment_history: any[] | null;
+  routing_status: string | null;
+  operator_notes: string | null;
+  operator_hold_reason: string | null;
   created_at: string;
   updated_at: string;
 }
