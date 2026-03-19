@@ -8,7 +8,7 @@ import { track } from "@/lib/analytics";
 import { logCategoryInterest } from "@/lib/demandCapture";
 import { motion } from "framer-motion";
 import { useUserBehavior } from "@/hooks/useUserBehavior";
-import { useSupplyIntelligence, type AvailabilityLevel } from "@/hooks/useSupplyIntelligence";
+import { useSupplyIntelligence, type CategorySupplyDetail } from "@/hooks/useSupplyIntelligence";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -89,14 +89,7 @@ function reorderByBehavior(codes: string[], rankedCategories: string[]): string[
   });
 }
 
-const AVAILABILITY_BADGES: Record<AvailabilityLevel, { label: string; className: string } | null> = {
-  high: { label: "Available Today", className: "bg-success/90 text-success-foreground" },
-  medium: { label: "Limited Slots", className: "bg-warning/90 text-warning-foreground" },
-  low: { label: "Next Day", className: "bg-muted text-muted-foreground" },
-  none: null,
-};
-
-const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, availabilityLevel }: { cat: typeof categories[0]; featured?: boolean; index?: number; recentlyUsed?: boolean; availabilityLevel?: AvailabilityLevel }) => {
+const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, supplyDetail }: { cat: typeof categories[0]; featured?: boolean; index?: number; recentlyUsed?: boolean; supplyDetail?: CategorySupplyDetail }) => {
   const thumb = categoryThumbs[cat.code];
   const flow = v2CategoryFlows[cat.code];
   const launchState = getCategoryLaunchState(cat.code);
@@ -170,11 +163,11 @@ const CategoryCard = ({ cat, featured = false, index = 0, recentlyUsed = false, 
             )}
           </div>
 
-          {/* Availability badge — bottom-right */}
-          {!isComingSoon && availabilityLevel && AVAILABILITY_BADGES[availabilityLevel] && (
+          {/* Archetype-aware availability badge */}
+          {!isComingSoon && supplyDetail && (
             <div className="absolute top-2.5 right-2.5">
-              <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${AVAILABILITY_BADGES[availabilityLevel]!.className}`}>
-                {AVAILABILITY_BADGES[availabilityLevel]!.label}
+              <Badge variant="outline" className={`text-[9px] border-none font-bold shadow-sm px-2 py-0.5 ${supplyDetail.badgeClass}`}>
+                {supplyDetail.availabilityLabel}
               </Badge>
             </div>
           )}
@@ -253,7 +246,7 @@ const V2CategoryGrid = () => {
                 featured
                 index={i}
                 recentlyUsed={isReturningUser && usedCategorySet.has(cat.code)}
-                availabilityLevel={categorySupply[cat.code]?.availabilityLevel}
+                supplyDetail={categorySupply[cat.code]}
               />
             ))}
           </div>
@@ -269,7 +262,7 @@ const V2CategoryGrid = () => {
                 cat={cat}
                 index={i}
                 recentlyUsed={isReturningUser && usedCategorySet.has(cat.code)}
-                availabilityLevel={categorySupply[cat.code]?.availabilityLevel}
+                supplyDetail={categorySupply[cat.code]}
               />
             ))}
           </div>
