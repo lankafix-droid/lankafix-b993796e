@@ -36,6 +36,7 @@ export interface Lead {
   routing_status: string | null;
   operator_notes: string | null;
   response_notes: string | null;
+  response_token: string | null;
   operator_hold_reason: string | null;
   created_at: string;
   updated_at: string;
