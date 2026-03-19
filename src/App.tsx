@@ -143,6 +143,7 @@ const PartnerProvisioningPage = lazy(() => import("./pages/ops/PartnerProvisioni
 const PilotProofDashboardPage = lazy(() => import("./pages/ops/PilotProofDashboardPage"));
 const OperatorExecutionBoardPage = lazy(() => import("./pages/ops/OperatorExecutionBoardPage"));
 const TrainingCompletionPage = lazy(() => import("./pages/ops/TrainingCompletionPage"));
+const PilotControlPanelPage = lazy(() => import("./pages/ops/PilotControlPanelPage"));
 const DemandDashboardPage = lazy(() => import("./pages/ops/DemandDashboardPage"));
 const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"));
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
@@ -341,6 +342,7 @@ const App = () => (
             <Route path="/ops/pilot-proof" element={<OpsRoute><PilotProofDashboardPage /></OpsRoute>} />
             <Route path="/ops/execution-board" element={<OpsRoute><OperatorExecutionBoardPage /></OpsRoute>} />
             <Route path="/ops/training-completion" element={<OpsRoute><TrainingCompletionPage /></OpsRoute>} />
+            <Route path="/ops/pilot-control" element={<OpsRoute><PilotControlPanelPage /></OpsRoute>} />
             <Route path="/ops/demand-dashboard" element={<OpsRoute><DemandDashboardPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
