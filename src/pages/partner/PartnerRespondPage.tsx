@@ -47,6 +47,7 @@ type ResponseState = "loading" | "ready" | "submitting" | "success" | "error" | 
 export default function PartnerRespondPage() {
   const { token } = useParams<{ token: string }>();
   const [state, setState] = useState<ResponseState>("loading");
+  const [submitting, setSubmitting] = useState(false);
   const [lead, setLead] = useState<LeadInfo | null>(null);
   const [resultMessage, setResultMessage] = useState("");
   const [rejectReason, setRejectReason] = useState("too_busy");
