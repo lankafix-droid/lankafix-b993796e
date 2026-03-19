@@ -152,8 +152,6 @@ export default function AdminSetupPage() {
                     {bootstrapAdmin.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Shield className="w-4 h-4 mr-1.5" />}
                     Make Me Admin (One-Time Bootstrap)
                   </Button>
-                    Make Me Admin
-                  </Button>
                 </div>
               </div>
             </CardContent>
