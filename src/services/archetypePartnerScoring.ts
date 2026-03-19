@@ -115,12 +115,21 @@ const FRESHNESS_THRESHOLDS_HOURS = {
   // >12h → treat as offline
 };
 
-function getAvailabilityFreshnessPenalty(updatedAt?: string): { penalty: number; label: string } {
-  if (!updatedAt) return { penalty: 30, label: "no_freshness_data" };
-  const hoursAgo = (Date.now() - new Date(updatedAt).getTime()) / 3600000;
-  if (hoursAgo <= FRESHNESS_THRESHOLDS_HOURS.fresh) return { penalty: 0, label: "fresh" };
-  if (hoursAgo <= FRESHNESS_THRESHOLDS_HOURS.stale) return { penalty: 15, label: "stale" };
-  if (hoursAgo <= FRESHNESS_THRESHOLDS_HOURS.expired) return { penalty: 35, label: "expired" };
+/**
+ * Availability freshness penalty.
+ * Uses availability_last_updated (dedicated field) rather than generic updated_at.
+ * Generic updated_at changes on ANY column edit and gives false freshness signals.
+ */
+function getAvailabilityFreshnessPenalty(availabilityLastUpdated?: string, updatedAt?: string): { penalty: number; label: string } {
+  // Prefer dedicated field; fallback to updated_at with extra penalty
+  const timestamp = availabilityLastUpdated || updatedAt;
+  if (!timestamp) return { penalty: 30, label: "no_freshness_data" };
+  const hoursAgo = (Date.now() - new Date(timestamp).getTime()) / 3600000;
+  // If using fallback updated_at, add a small extra penalty for low confidence
+  const fallbackPenalty = availabilityLastUpdated ? 0 : 5;
+  if (hoursAgo <= FRESHNESS_THRESHOLDS_HOURS.fresh) return { penalty: 0 + fallbackPenalty, label: availabilityLastUpdated ? "fresh" : "fresh_fallback" };
+  if (hoursAgo <= FRESHNESS_THRESHOLDS_HOURS.stale) return { penalty: 15 + fallbackPenalty, label: "stale" };
+  if (hoursAgo <= FRESHNESS_THRESHOLDS_HOURS.expired) return { penalty: 35 + fallbackPenalty, label: "expired" };
   return { penalty: 60, label: "very_stale" };
 }
 
