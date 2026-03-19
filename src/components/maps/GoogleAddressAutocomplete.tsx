@@ -8,7 +8,7 @@ import { Autocomplete } from "@react-google-maps/api";
 import { MapPin, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { validateServiceZone } from "@/store/locationStore";
-import { GOOGLE_MAPS_API_KEY } from "./GoogleMapsProvider";
+import { useGoogleMapsLoaded } from "./GoogleMapsProvider";
 
 export interface PlaceResult {
   lat: number;
