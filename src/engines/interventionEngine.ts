@@ -10,13 +10,63 @@
  * 3. RECOVERY_PLAYBOOKS — step-by-step operator guidance
  * 4. logOpsAction() — audit trail for every manual intervention
  * 5. getContextActions() — status-aware action availability
+ * 6. InterventionResult — typed action outcome contract
+ * 7. resolveOpsQueue() — central queue filtering helper
+ * 8. useOpsRole() — verified role resolution
  */
 
 import type { ServiceArchetype } from "./archetypeTimeoutHelper";
 import { supabase } from "@/integrations/supabase/client";
 
-// ── Category → Archetype mapping ──
-// Controls which timeout profile each category uses
+// ══════════════════════════════════════════════════════════════
+// 1. TYPED INTERVENTION RESULT CONTRACT
+// ══════════════════════════════════════════════════════════════
+// Every ops action MUST return this shape. No loose strings.
+//
+// resolved           — issue is done, no further action needed
+// pending_followup   — action taken, but needs monitoring
+// escalated          — pushed to higher authority / team
+// needs_review       — flagged for inspection, not yet acted on
+// failed             — action could not complete (future-safe)
+// blocked            — action blocked by permission or prerequisite
+
+export type InterventionResult =
+  | "resolved"
+  | "pending_followup"
+  | "escalated"
+  | "needs_review"
+  | "failed"
+  | "blocked";
+
+/** Maps action keys to their expected default outcome */
+export function inferInterventionResult(actionKey: string): InterventionResult {
+  switch (actionKey) {
+    case "verify_payment":
+    case "cancel":
+      return "resolved";
+    case "assign":
+    case "resend":
+    case "remind_customer":
+    case "payment_followup":
+    case "call_customer":
+    case "call_partner":
+      return "pending_followup";
+    case "escalate":
+      return "escalated";
+    case "reassign":
+      return "pending_followup";
+    case "quality_recovery":
+    case "note":
+      return "needs_review";
+    default:
+      return "pending_followup";
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 2. CATEGORY → ARCHETYPE MAPPING
+// ══════════════════════════════════════════════════════════════
+
 const CATEGORY_ARCHETYPE: Record<string, ServiceArchetype> = {
   MOBILE: "instant",
   IT: "instant",
@@ -39,15 +89,9 @@ export function getCategoryArchetype(categoryCode: string): ServiceArchetype {
   return CATEGORY_ARCHETYPE[categoryCode] || "instant";
 }
 
-// ── Category-Aware Stuck Thresholds (minutes) ──
-// Each status has a base threshold, then multiplied by archetype factor.
-//
-// Why different categories need different tolerances:
-// - INSTANT (Mobile/IT): Customer is waiting. Every extra minute erodes trust.
-// - INSPECTION_FIRST (AC/Electronics): Partner may need to plan a site visit. Slightly more time is reasonable.
-// - CONSULTATION (Solar/CCTV): Scope review required. Quotes take longer. More patience justified.
-// - PROJECT_BASED: Multi-day work. Longer windows before "stuck" makes sense.
-// - DELIVERY: Time-sensitive like instant, but payment may differ.
+// ══════════════════════════════════════════════════════════════
+// 3. CATEGORY-AWARE STUCK THRESHOLDS (minutes)
+// ══════════════════════════════════════════════════════════════
 
 const BASE_THRESHOLDS: Record<string, number> = {
   requested: 30,
@@ -61,23 +105,21 @@ const BASE_THRESHOLDS: Record<string, number> = {
   repair_started: 360,
 };
 
-// Archetype multiplier: higher = more tolerant
 const ARCHETYPE_MULTIPLIER: Record<ServiceArchetype, number> = {
-  instant: 1.0,       // Baseline — no extra tolerance
-  delivery: 1.0,      // Same urgency as instant
-  inspection_first: 1.5, // 50% more time — site visit planning
-  consultation: 2.0,  // 2x — scope review and multi-party coordination
-  project_based: 3.0, // 3x — multi-day work, complex quotes
-  waitlist: 4.0,      // 4x — no urgency, background processing
+  instant: 1.0,
+  delivery: 1.0,
+  inspection_first: 1.5,
+  consultation: 2.0,
+  project_based: 3.0,
+  waitlist: 4.0,
 };
 
-// Payment-mode aware overrides for payment_pending status
 const PAYMENT_PENDING_THRESHOLDS: Record<string, number> = {
-  cash: 60,           // Cash should be collected on-site — 1hr max
+  cash: 60,
   cash_on_delivery: 60,
-  bank_transfer: 2880, // Bank transfers can take 1-2 business days
-  online: 720,        // Online gateway — 12hr timeout
-  credit_account: 4320, // Business accounts — 3 days
+  bank_transfer: 2880,
+  online: 720,
+  credit_account: 4320,
 };
 
 export function getStuckThreshold(
@@ -85,23 +127,20 @@ export function getStuckThreshold(
   categoryCode?: string,
   paymentMethod?: string | null
 ): number {
-  // Special handling for payment_pending with payment mode awareness
   if (status === "payment_pending" && paymentMethod) {
     const pmThreshold = PAYMENT_PENDING_THRESHOLDS[paymentMethod];
     if (pmThreshold) return pmThreshold;
   }
-
   const base = BASE_THRESHOLDS[status];
-  if (!base) return 0; // Status not tracked for stuck detection
-
+  if (!base) return 0;
   const archetype = categoryCode ? getCategoryArchetype(categoryCode) : "instant";
   const multiplier = ARCHETYPE_MULTIPLIER[archetype] ?? 1.0;
-
   return Math.round(base * multiplier);
 }
 
-// ── Recommended Action Resolver ──
-// Deterministic: given booking state, returns the single best next action.
+// ══════════════════════════════════════════════════════════════
+// 4. RECOMMENDED ACTION RESOLVER
+// ══════════════════════════════════════════════════════════════
 
 export type RecommendedActionType =
   | "assign_partner"
@@ -133,7 +172,6 @@ export function resolveRecommendedAction(
   paymentMethod?: string | null,
   rating?: number | null
 ): RecommendedAction {
-  // Low rating always triggers quality recovery
   if (rating != null && rating < 3) {
     return {
       action: "open_quality_recovery",
@@ -147,10 +185,11 @@ export function resolveRecommendedAction(
   switch (status) {
     case "requested":
     case "matching":
+      // ASSIGN vs REASSIGN: assign if no partner, reassign if partner exists but stale
       return {
-        action: hasPartner ? "resend_assignment" : "assign_partner",
-        label: hasPartner ? "Resend Assignment" : "Assign Partner",
-        explanation: `Booking unmatched for ${minutesStuck}min. ${hasPartner ? "Resend to current partner or reassign." : "Find and assign an available partner."}`,
+        action: hasPartner ? "reassign_partner" : "assign_partner",
+        label: hasPartner ? "Reassign Partner" : "Assign Partner",
+        explanation: `Booking unmatched for ${minutesStuck}min. ${hasPartner ? "Current partner not responding — reassign." : "Find and assign an available partner."}`,
         urgency: severity === "critical" ? "critical" : "high",
         playbookKey: "assign_or_reassign",
       };
@@ -230,8 +269,9 @@ export function resolveRecommendedAction(
   }
 }
 
-// ── Guided Recovery Playbooks ──
-// Step-by-step operator instructions for each intervention type
+// ══════════════════════════════════════════════════════════════
+// 5. GUIDED RECOVERY PLAYBOOKS
+// ══════════════════════════════════════════════════════════════
 
 export interface PlaybookStep {
   step: number;
@@ -345,26 +385,44 @@ export const RECOVERY_PLAYBOOKS: Record<string, RecoveryPlaybook> = {
   },
 };
 
-// ── Status-Aware Context Actions ──
-// Controls which actions are available in the action dialog based on booking state.
-// Prevents operator confusion by hiding irrelevant actions.
+// ══════════════════════════════════════════════════════════════
+// 6. STATUS-AWARE CONTEXT ACTIONS
+// ══════════════════════════════════════════════════════════════
+// Controls which actions appear in the action dialog.
+// Accepts real booking context — never hardcode.
 
 export interface ContextAction {
   key: string;
   label: string;
-  icon: string; // lucide icon name
+  icon: string;
   variant: "default" | "destructive" | "warning" | "success";
-  isPrimary?: boolean; // highlighted as recommended
+  isPrimary?: boolean;
 }
 
-export function getContextActions(status: string, hasPartner: boolean): ContextAction[] {
+export interface BookingActionContext {
+  hasPartner: boolean;
+  hasQuote?: boolean;
+  paymentStatus?: string | null;
+  paymentMethod?: string | null;
+  lowRating?: boolean;
+  escalationExists?: boolean;
+  underMediation?: boolean;
+}
+
+export function getContextActions(status: string, ctx: BookingActionContext): ContextAction[] {
   const actions: ContextAction[] = [];
 
   switch (status) {
     case "requested":
     case "matching":
-      actions.push({ key: "assign", label: "Assign Partner", icon: "UserPlus", variant: "default", isPrimary: true });
-      actions.push({ key: "resend", label: "Retry Dispatch", icon: "Send", variant: "default" });
+      // ASSIGN (first-time) vs REASSIGN (replace existing)
+      if (ctx.hasPartner) {
+        actions.push({ key: "reassign", label: "Reassign Partner", icon: "UserPlus", variant: "default", isPrimary: true });
+        actions.push({ key: "resend", label: "Retry Dispatch", icon: "Send", variant: "default" });
+      } else {
+        actions.push({ key: "assign", label: "Assign Partner", icon: "UserPlus", variant: "default", isPrimary: true });
+        actions.push({ key: "resend", label: "Retry Dispatch", icon: "Send", variant: "default" });
+      }
       actions.push({ key: "escalate", label: "Escalate", icon: "AlertTriangle", variant: "warning" });
       actions.push({ key: "cancel", label: "Cancel Booking", icon: "XCircle", variant: "destructive" });
       break;
@@ -400,13 +458,15 @@ export function getContextActions(status: string, hasPartner: boolean): ContextA
 
     case "payment_pending":
       actions.push({ key: "verify_payment", label: "Verify Payment", icon: "DollarSign", variant: "success", isPrimary: true });
-      actions.push({ key: "remind_customer", label: "Payment Reminder", icon: "Send", variant: "default" });
+      actions.push({ key: "payment_followup", label: "Payment Follow-up", icon: "Send", variant: "default" });
       actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
       actions.push({ key: "escalate", label: "Escalate to Finance", icon: "AlertTriangle", variant: "warning" });
       break;
 
     case "completed":
-      actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning" });
+      if (ctx.lowRating) {
+        actions.push({ key: "quality_recovery", label: "Quality Recovery", icon: "Star", variant: "warning", isPrimary: true });
+      }
       actions.push({ key: "note", label: "Add Note", icon: "MessageSquare", variant: "default" });
       break;
 
@@ -419,8 +479,13 @@ export function getContextActions(status: string, hasPartner: boolean): ContextA
   return actions;
 }
 
-// ── Ops Audit Logger ──
-// Every manual intervention must be logged for accountability and dispute review.
+// ══════════════════════════════════════════════════════════════
+// 7. OPS AUDIT LOGGER (Critical — enforced for destructive actions)
+// ══════════════════════════════════════════════════════════════
+// Action criticality:
+//   critical   — cancel, verify_payment: MUST succeed or action is blocked
+//   important  — reassign, escalate, assign: logged, warn on failure
+//   informational — note, remind: logged, continue on failure
 
 export interface OpsAuditEntry {
   booking_id: string;
@@ -433,93 +498,100 @@ export interface OpsAuditEntry {
   metadata?: Record<string, unknown>;
 }
 
+type AuditCriticality = "critical" | "important" | "informational";
+
+const ACTION_CRITICALITY: Record<string, AuditCriticality> = {
+  cancel_booking: "critical",
+  verify_payment: "critical",
+  reassign_partner: "important",
+  assign_partner: "important",
+  escalate_booking: "important",
+  resend_assignment: "informational",
+  add_note: "informational",
+  remind_customer: "informational",
+  open_low_rating_recovery: "important",
+  payment_followup: "informational",
+  call_customer: "informational",
+  call_partner: "informational",
+};
+
+/**
+ * Central audit logger. For CRITICAL actions, throws if logging fails
+ * (preventing silent destructive ops). For others, logs warning and continues.
+ */
 export async function logOpsAction(entry: OpsAuditEntry): Promise<void> {
   const timestamp = new Date().toISOString();
+  const criticality = ACTION_CRITICALITY[entry.action_type] || "informational";
 
-  // Write to job_timeline for unified audit trail
-  try {
-    await supabase.from("job_timeline").insert({
-      booking_id: entry.booking_id,
-      status: `ops_${entry.action_type}`,
-      actor: "ops",
-      note: [
-        entry.reason || entry.action_type,
-        entry.notes ? `| Note: ${entry.notes}` : "",
-        entry.previous_state ? `| From: ${entry.previous_state}` : "",
-        entry.new_state ? `| To: ${entry.new_state}` : "",
-      ].filter(Boolean).join(" "),
-      metadata: {
-        action_type: entry.action_type,
-        actor_id: entry.actor_id,
-        previous_state: entry.previous_state,
-        new_state: entry.new_state,
-        reason: entry.reason,
-        logged_at: timestamp,
-        ...entry.metadata,
-      },
-    });
-  } catch (e) {
-    console.warn("[OpsAudit] Failed to log action:", e);
+  // Write to job_timeline
+  const { error: tlError } = await supabase.from("job_timeline").insert({
+    booking_id: entry.booking_id,
+    status: `ops_${entry.action_type}`,
+    actor: entry.actor_id || "ops",
+    note: [
+      entry.reason || entry.action_type,
+      entry.notes ? `| Note: ${entry.notes}` : "",
+      entry.previous_state ? `| From: ${entry.previous_state}` : "",
+      entry.new_state ? `| To: ${entry.new_state}` : "",
+    ].filter(Boolean).join(" "),
+    metadata: {
+      action_type: entry.action_type,
+      actor_id: entry.actor_id,
+      previous_state: entry.previous_state,
+      new_state: entry.new_state,
+      reason: entry.reason,
+      logged_at: timestamp,
+      ...entry.metadata,
+    },
+  });
+
+  // Write to automation_event_log
+  const { error: aeError } = await supabase.from("automation_event_log").insert({
+    event_type: `ops_${entry.action_type}`,
+    booking_id: entry.booking_id,
+    trigger_reason: entry.reason || "manual_ops_intervention",
+    action_taken: entry.action_type,
+    severity: "info",
+    metadata: {
+      actor_id: entry.actor_id,
+      previous_state: entry.previous_state,
+      new_state: entry.new_state,
+      notes: entry.notes,
+    },
+  });
+
+  const auditFailed = !!tlError || !!aeError;
+
+  if (auditFailed && criticality === "critical") {
+    // BLOCK destructive actions if audit logging fails
+    console.error("[OpsAudit] CRITICAL: Audit logging failed for critical action", entry.action_type, tlError, aeError);
+    throw new Error(`Audit logging failed for ${entry.action_type}. Action blocked for safety.`);
   }
 
-  // Also write to automation_event_log for analytics
-  try {
-    await supabase.from("automation_event_log").insert({
-      event_type: `ops_${entry.action_type}`,
-      booking_id: entry.booking_id,
-      trigger_reason: entry.reason || "manual_ops_intervention",
-      action_taken: entry.action_type,
-      severity: "info",
-      metadata: {
-        actor_id: entry.actor_id,
-        previous_state: entry.previous_state,
-        new_state: entry.new_state,
-        notes: entry.notes,
-      },
-    });
-  } catch (e) {
-    console.warn("[OpsAudit] Failed to log to automation_event_log:", e);
-  }
-}
-
-// ── Intervention Event Types for Analytics ──
-export const OPS_EVENT_TYPES = [
-  "stuck_booking_detected",
-  "recommended_action_generated",
-  "recommended_action_executed",
-  "kpi_queue_opened",
-  "ops_reassign_partner",
-  "ops_escalate_booking",
-  "ops_verify_payment",
-  "ops_cancel_booking",
-  "ops_open_low_rating_recovery",
-  "ops_complete_recovery_action",
-  "ops_add_note",
-  "ops_resend_assignment",
-  "ops_remind_customer",
-  "ops_contact_attempt",
-  "escalation_resolved",
-  "intervention_marked_resolved",
-  "payment_followup_sent",
-  "low_rating_recovery_opened",
-] as const;
-
-// ── Intervention Result — tracks outcome of ops action ──
-export type InterventionResult = "resolved" | "pending_followup" | "escalated" | "needs_review";
-
-export function inferInterventionResult(actionKey: string): InterventionResult {
-  switch (actionKey) {
-    case "verify_payment": return "resolved";
-    case "cancel": return "resolved";
-    case "resend": case "remind_customer": case "payment_followup": return "pending_followup";
-    case "escalate": return "escalated";
-    case "quality_recovery": case "note": return "needs_review";
-    default: return "pending_followup";
+  if (auditFailed) {
+    console.warn("[OpsAudit] Audit logging partially failed:", { tlError, aeError, action: entry.action_type });
   }
 }
 
-// ── Contact Attempt Logger ──
-// Logs outreach attempts (calls, WhatsApp) for audit and accountability
+// ══════════════════════════════════════════════════════════════
+// 8. ANALYTICS EVENT LOGGER (non-blocking, fire-and-forget)
+// ══════════════════════════════════════════════════════════════
+
+export function logOpsEvent(eventType: string, bookingId: string, metadata?: Record<string, unknown>): void {
+  supabase.from("automation_event_log").insert({
+    event_type: eventType,
+    booking_id: bookingId || null,
+    trigger_reason: "ops_ui_interaction",
+    action_taken: eventType,
+    severity: "info",
+    metadata: (metadata || {}) as any,
+  }).then(() => {});
+}
+
+// ══════════════════════════════════════════════════════════════
+// 9. CONTACT ATTEMPT LOGGER
+// ══════════════════════════════════════════════════════════════
+
 export async function logContactAttempt(params: {
   bookingId: string;
   actorId?: string;
@@ -553,9 +625,12 @@ export async function logContactAttempt(params: {
   }
 }
 
-// ── Role-Aware Action Permissions ──
-// Lightweight first version: maps action keys to allowed roles.
-// admin can do everything; operator has standard access; support handles recovery.
+// ══════════════════════════════════════════════════════════════
+// 10. ROLE-AWARE PERMISSIONS
+// ══════════════════════════════════════════════════════════════
+// Uses the has_role() security definer function from user_roles table.
+// Fallback: query user_roles directly if RPC unavailable.
+
 export type OpsRole = "admin" | "operator" | "support";
 
 const ACTION_PERMISSIONS: Record<string, OpsRole[]> = {
@@ -575,23 +650,121 @@ const ACTION_PERMISSIONS: Record<string, OpsRole[]> = {
 
 export function isActionAllowed(actionKey: string, userRole: OpsRole): boolean {
   const allowed = ACTION_PERMISSIONS[actionKey];
-  if (!allowed) return true; // Unknown action — default allow (safe for notes, etc.)
+  if (!allowed) return true;
   return allowed.includes(userRole);
 }
 
-// ── Central Action Dispatcher ──
-// Maps action keys to their execution functions. Every action logs audit + event.
-// Used by the UI to bind buttons to real backend calls.
-export type ActionExecutor = (bookingId: string, params: Record<string, string>) => Promise<InterventionResult>;
+/**
+ * Resolves the current user's ops role by checking the user_roles table
+ * via the has_role() RPC. Falls back to direct query if RPC fails.
+ * Returns "operator" as safe default if role cannot be determined.
+ */
+export async function resolveCurrentOpsRole(userId: string): Promise<OpsRole> {
+  // Try has_role RPC for admin first (most privileged)
+  try {
+    const { data: isAdmin, error } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    if (!error && isAdmin === true) return "admin";
+  } catch {
+    // RPC may not exist — fall through to direct query
+  }
 
-export function logOpsEvent(eventType: string, bookingId: string, metadata?: Record<string, unknown>): void {
-  // Non-blocking analytics event — fire and forget
-  supabase.from("automation_event_log").insert([{
-    event_type: eventType,
-    booking_id: bookingId || null,
-    trigger_reason: "ops_ui_interaction",
-    action_taken: eventType,
-    severity: "info",
-    metadata: (metadata || {}) as any,
-  }]).then(() => {});
+  // Try has_role for support
+  try {
+    const { data: isSupport, error } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "support",
+    });
+    if (!error && isSupport === true) return "support";
+  } catch {
+    // Fall through
+  }
+
+  // Fallback: query user_roles directly
+  try {
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId);
+    if (roles?.some(r => (r.role as string) === "admin")) return "admin";
+    if (roles?.some(r => (r.role as string) === "support")) return "support";
+  } catch {
+    // Safe default
+  }
+
+  return "operator";
+}
+
+// ══════════════════════════════════════════════════════════════
+// 11. QUEUE FILTER RESOLVER
+// ══════════════════════════════════════════════════════════════
+// Central filtering helper for ops queues.
+// Takes the queue key + filters and returns the matching subset.
+// Used by the panel to avoid scattering filter logic across components.
+
+import type { StuckBooking, OpsFilters } from "@/hooks/usePilotOps";
+
+export type OpsQueue =
+  | "all"
+  | "unassigned"
+  | "pending_partner_response"
+  | "quote_pending"
+  | "in_progress"
+  | "payment_pending"
+  | "low_rated"
+  | "escalated"
+  | "stuck"
+  | "completed_today"
+  | "cancelled_today";
+
+export const QUEUE_LABELS: Record<OpsQueue, string> = {
+  all: "All Bookings",
+  unassigned: "Unassigned",
+  pending_partner_response: "Pending Response",
+  quote_pending: "Quote Pending",
+  in_progress: "In Progress",
+  payment_pending: "Payment Pending",
+  low_rated: "Low Rated",
+  escalated: "Escalations",
+  stuck: "Stuck Bookings",
+  completed_today: "Completed",
+  cancelled_today: "Cancelled",
+};
+
+/**
+ * Filters stuck bookings by the active queue.
+ * Composes cleanly with category/zone/severity filters already applied upstream.
+ */
+export function resolveOpsQueue(
+  queue: OpsQueue,
+  stuckBookings: StuckBooking[]
+): StuckBooking[] {
+  if (queue === "all" || queue === "stuck") return stuckBookings;
+
+  return stuckBookings.filter(b => {
+    switch (queue) {
+      case "unassigned":
+        return !b.partner_id && !["completed", "cancelled"].includes(b.status);
+      case "pending_partner_response":
+        return b.status === "awaiting_partner_confirmation";
+      case "quote_pending":
+        return b.status === "quote_submitted";
+      case "payment_pending":
+        return b.status === "payment_pending";
+      case "in_progress":
+        return ["in_progress", "repair_started", "tech_en_route"].includes(b.status);
+      case "low_rated":
+        return b.recommended.action === "open_quality_recovery";
+      case "escalated":
+        return b.status === "escalated";
+      case "completed_today":
+        return b.status === "completed";
+      case "cancelled_today":
+        return b.status === "cancelled";
+      default:
+        return true;
+    }
+  });
 }
