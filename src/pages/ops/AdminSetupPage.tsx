@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Shield, UserPlus, Users, AlertTriangle, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Shield, UserPlus, Users, AlertTriangle, CheckCircle2, ArrowLeft, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -74,23 +74,21 @@ export default function AdminSetupPage() {
     },
   });
 
-  // Assign role to self (bootstrap)
-  const assignSelf = useMutation({
-    mutationFn: async (role: AppRole) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase.from("user_roles").insert({
-        user_id: user.id,
-        role,
-      } as any);
+  // Bootstrap using the secure RPC (only works when zero admins exist)
+  const bootstrapAdmin = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.rpc("bootstrap_admin_if_none");
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-roles"] });
-      toast.success("Admin role assigned to your account");
+      queryClient.invalidateQueries({ queryKey: ["user-role"] });
+      toast.success("🎉 You are now an admin! Ops dashboards are accessible.");
     },
     onError: (e: any) => {
-      toast.error(e.message?.includes("duplicate") ? "You already have this role" : e.message);
+      toast.error(e.message?.includes("Admin already exists")
+        ? "An admin already exists. Use the form below to assign roles."
+        : e.message);
     },
   });
 
@@ -143,15 +141,16 @@ export default function AdminSetupPage() {
                 <div className="space-y-2">
                   <p className="text-sm font-medium">No admin users configured</p>
                   <p className="text-xs text-muted-foreground">
-                    Bootstrap your account as admin to access all ops dashboards.
+                    No admin users exist yet. Click below to make yourself the first admin.
+                    This uses a secure one-time function that only works when zero admins exist.
                   </p>
                   <Button
                     size="sm"
-                    onClick={() => assignSelf.mutate("admin")}
-                    disabled={assignSelf.isPending}
+                    onClick={() => bootstrapAdmin.mutate()}
+                    disabled={bootstrapAdmin.isPending}
                   >
-                    <Shield className="w-4 h-4 mr-1.5" />
-                    Make Me Admin
+                    {bootstrapAdmin.isPending ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Shield className="w-4 h-4 mr-1.5" />}
+                    Make Me Admin (One-Time Bootstrap)
                   </Button>
                 </div>
               </div>
