@@ -615,6 +615,7 @@ export default function PilotControlPanelPage() {
               status={actionBooking.status}
               recommended={actionBooking.recommended}
               userRole={userRole}
+              bookingCtx={actionBooking.ctx}
               onDone={(result) => {
                 setActionBooking(null);
                 refetch();
