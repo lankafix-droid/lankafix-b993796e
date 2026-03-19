@@ -117,7 +117,7 @@ export default function PartnerRespondPage() {
 
   const handleAction = async (action: "accept" | "reject" | "unavailable") => {
     if (!token) return;
-    setState("submitting");
+    setSubmitting(true);
 
     try {
       const { data, error } = await supabase.functions.invoke("partner-respond", {
@@ -269,9 +269,9 @@ export default function PartnerRespondPage() {
             <Button
               className="w-full h-12 text-base font-semibold"
               onClick={() => handleAction("accept")}
-              disabled={state === "submitting"}
+              disabled={submitting}
             >
-              {state === "submitting" ? (
+              {submitting ? (
                 <Loader2 className="w-5 h-5 animate-spin mr-2" />
               ) : (
                 <CheckCircle className="w-5 h-5 mr-2" />
@@ -304,7 +304,7 @@ export default function PartnerRespondPage() {
                     variant="outline"
                     className="flex-1 h-9 text-xs"
                     onClick={() => handleAction("reject")}
-                    disabled={state === "submitting"}
+                    disabled={submitting}
                   >
                     <XCircle className="w-3.5 h-3.5 mr-1" /> Decline
                   </Button>
@@ -312,7 +312,7 @@ export default function PartnerRespondPage() {
                     variant="ghost"
                     className="h-9 text-xs"
                     onClick={() => handleAction("unavailable")}
-                    disabled={state === "submitting"}
+                    disabled={submitting}
                   >
                     <Ban className="w-3.5 h-3.5 mr-1" /> Unavailable
                   </Button>
