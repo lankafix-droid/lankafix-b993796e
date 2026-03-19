@@ -1095,12 +1095,53 @@ export type Database = {
         }
         Relationships: []
       }
+      demand_contact_logs: {
+        Row: {
+          contact_type: string
+          contacted_by: string | null
+          created_at: string
+          demand_request_id: string
+          id: string
+          notes: string | null
+        }
+        Insert: {
+          contact_type?: string
+          contacted_by?: string | null
+          created_at?: string
+          demand_request_id: string
+          id?: string
+          notes?: string | null
+        }
+        Update: {
+          contact_type?: string
+          contacted_by?: string | null
+          created_at?: string
+          demand_request_id?: string
+          id?: string
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_contact_logs_demand_request_id_fkey"
+            columns: ["demand_request_id"]
+            isOneToOne: false
+            referencedRelation: "demand_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demand_requests: {
         Row: {
+          assigned_at: string | null
+          assigned_to: string | null
           budget_range: string | null
           category_code: string
+          contacted_at: string | null
+          conversion_value: number | null
           created_at: string
           description: string | null
+          follow_up_due_at: string | null
+          honeypot: string | null
           id: string
           images: Json | null
           latitude: number | null
@@ -1108,6 +1149,8 @@ export type Database = {
           longitude: number | null
           metadata: Json | null
           name: string
+          notes: string | null
+          outcome: string | null
           phone: string
           preferred_time: string | null
           priority: string
@@ -1118,10 +1161,16 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          assigned_at?: string | null
+          assigned_to?: string | null
           budget_range?: string | null
           category_code: string
+          contacted_at?: string | null
+          conversion_value?: number | null
           created_at?: string
           description?: string | null
+          follow_up_due_at?: string | null
+          honeypot?: string | null
           id?: string
           images?: Json | null
           latitude?: number | null
@@ -1129,6 +1178,8 @@ export type Database = {
           longitude?: number | null
           metadata?: Json | null
           name: string
+          notes?: string | null
+          outcome?: string | null
           phone: string
           preferred_time?: string | null
           priority?: string
@@ -1139,10 +1190,16 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          assigned_at?: string | null
+          assigned_to?: string | null
           budget_range?: string | null
           category_code?: string
+          contacted_at?: string | null
+          conversion_value?: number | null
           created_at?: string
           description?: string | null
+          follow_up_due_at?: string | null
+          honeypot?: string | null
           id?: string
           images?: Json | null
           latitude?: number | null
@@ -1150,6 +1207,8 @@ export type Database = {
           longitude?: number | null
           metadata?: Json | null
           name?: string
+          notes?: string | null
+          outcome?: string | null
           phone?: string
           preferred_time?: string | null
           priority?: string

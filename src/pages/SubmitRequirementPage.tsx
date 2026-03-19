@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { categories } from "@/data/categories";
 import { logFallbackDemand } from "@/lib/demandCapture";
 import { whatsappLink, SUPPORT_WHATSAPP } from "@/config/contact";
+import { isValidSLPhone, normalizeSLPhone, canSubmitRequest, recordSubmission, isDuplicateRequest, recordRequest } from "@/lib/phoneValidation";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
@@ -64,15 +65,28 @@ const SubmitRequirementPage = () => {
       toast.error("Please fill in your name and phone number");
       return;
     }
+    if (!isValidSLPhone(phone)) {
+      toast.error("Please enter a valid Sri Lankan phone number (07X XXX XXXX)");
+      return;
+    }
+    if (!canSubmitRequest()) {
+      toast.error("Too many requests. Please try again later.");
+      return;
+    }
+    if (isDuplicateRequest(phone, category || "")) {
+      toast.error("You've already submitted this request.");
+      return;
+    }
 
     setSubmitting(true);
     try {
+      const normalizedPhone = normalizeSLPhone(phone);
       const { error } = await supabase.from("demand_requests" as any).insert({
         user_id: userId,
         category_code: category || "UNKNOWN",
         request_type: "submit",
         name: name.trim(),
-        phone: phone.trim(),
+        phone: normalizedPhone,
         location: location.trim() || null,
         description: [requirementType, notes.trim()].filter(Boolean).join(" — ") || null,
         budget_range: budget || null,
@@ -84,6 +98,8 @@ const SubmitRequirementPage = () => {
 
       if (error) throw error;
 
+      recordSubmission();
+      recordRequest(normalizedPhone, category || "");
       logFallbackDemand(category || "UNKNOWN", "request", "submit_page");
       setSubmitted(true);
     } catch (e) {
