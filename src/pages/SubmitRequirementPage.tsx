@@ -65,15 +65,28 @@ const SubmitRequirementPage = () => {
       toast.error("Please fill in your name and phone number");
       return;
     }
+    if (!isValidSLPhone(phone)) {
+      toast.error("Please enter a valid Sri Lankan phone number (07X XXX XXXX)");
+      return;
+    }
+    if (!canSubmitRequest()) {
+      toast.error("Too many requests. Please try again later.");
+      return;
+    }
+    if (isDuplicateRequest(phone, category || "")) {
+      toast.error("You've already submitted this request.");
+      return;
+    }
 
     setSubmitting(true);
     try {
+      const normalizedPhone = normalizeSLPhone(phone);
       const { error } = await supabase.from("demand_requests" as any).insert({
         user_id: userId,
         category_code: category || "UNKNOWN",
         request_type: "submit",
         name: name.trim(),
-        phone: phone.trim(),
+        phone: normalizedPhone,
         location: location.trim() || null,
         description: [requirementType, notes.trim()].filter(Boolean).join(" — ") || null,
         budget_range: budget || null,
