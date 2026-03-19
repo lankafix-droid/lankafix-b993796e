@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
-import { v2CategoryFlows, type V2PricingArchetype } from "@/data/v2CategoryFlows";
 import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
 import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging, PhoneCall, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
