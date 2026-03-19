@@ -52,19 +52,33 @@ const DemandRequestPage = () => {
   }, []);
 
   const handleSubmit = async () => {
+    if (honeypot) return; // bot trap
     if (!name.trim() || !phone.trim()) {
       toast.error("Please fill in your name and phone number");
+      return;
+    }
+    if (!isValidSLPhone(phone)) {
+      toast.error("Please enter a valid Sri Lankan phone number (07X XXX XXXX)");
+      return;
+    }
+    if (!canSubmitRequest()) {
+      toast.error("Too many requests. Please try again later.");
+      return;
+    }
+    if (isDuplicateRequest(phone, category || "")) {
+      toast.error("You've already submitted this request. We'll contact you soon.");
       return;
     }
 
     setSubmitting(true);
     try {
+      const normalizedPhone = normalizeSLPhone(phone);
       const { error } = await supabase.from("demand_requests" as any).insert({
         user_id: userId,
         category_code: category || "UNKNOWN",
         request_type: "callback",
         name: name.trim(),
-        phone: phone.trim(),
+        phone: normalizedPhone,
         location: location.trim() || null,
         description: description.trim() || null,
         preferred_time: preferredTime,
