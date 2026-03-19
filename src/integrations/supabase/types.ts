@@ -1954,12 +1954,14 @@ export type Database = {
       leads: {
         Row: {
           accept_by: string | null
+          accepted_by_partner_id: string | null
           ai_classification: Json | null
           ai_priority_score: number | null
           ai_suggested_partners: Json | null
           assigned_operator_id: string | null
           assigned_partner_id: string | null
           assignment_attempt: number | null
+          assignment_history: Json | null
           assignment_sent_at: string | null
           booking_id: string | null
           category_code: string
@@ -1971,20 +1973,28 @@ export type Database = {
           description: string | null
           estimated_complexity: string | null
           id: string
+          operator_hold_reason: string | null
+          operator_notes: string | null
+          partner_response_at: string | null
+          partner_response_status: string | null
           reassigned_from_partner_id: string | null
+          rejection_reason: string | null
           request_type: string
+          routing_status: string | null
           status: string
           updated_at: string
           zone_code: string | null
         }
         Insert: {
           accept_by?: string | null
+          accepted_by_partner_id?: string | null
           ai_classification?: Json | null
           ai_priority_score?: number | null
           ai_suggested_partners?: Json | null
           assigned_operator_id?: string | null
           assigned_partner_id?: string | null
           assignment_attempt?: number | null
+          assignment_history?: Json | null
           assignment_sent_at?: string | null
           booking_id?: string | null
           category_code: string
@@ -1996,20 +2006,28 @@ export type Database = {
           description?: string | null
           estimated_complexity?: string | null
           id?: string
+          operator_hold_reason?: string | null
+          operator_notes?: string | null
+          partner_response_at?: string | null
+          partner_response_status?: string | null
           reassigned_from_partner_id?: string | null
+          rejection_reason?: string | null
           request_type?: string
+          routing_status?: string | null
           status?: string
           updated_at?: string
           zone_code?: string | null
         }
         Update: {
           accept_by?: string | null
+          accepted_by_partner_id?: string | null
           ai_classification?: Json | null
           ai_priority_score?: number | null
           ai_suggested_partners?: Json | null
           assigned_operator_id?: string | null
           assigned_partner_id?: string | null
           assignment_attempt?: number | null
+          assignment_history?: Json | null
           assignment_sent_at?: string | null
           booking_id?: string | null
           category_code?: string
@@ -2021,13 +2039,26 @@ export type Database = {
           description?: string | null
           estimated_complexity?: string | null
           id?: string
+          operator_hold_reason?: string | null
+          operator_notes?: string | null
+          partner_response_at?: string | null
+          partner_response_status?: string | null
           reassigned_from_partner_id?: string | null
+          rejection_reason?: string | null
           request_type?: string
+          routing_status?: string | null
           status?: string
           updated_at?: string
           zone_code?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "leads_accepted_by_partner_id_fkey"
+            columns: ["accepted_by_partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leads_assigned_partner_id_fkey"
             columns: ["assigned_partner_id"]
