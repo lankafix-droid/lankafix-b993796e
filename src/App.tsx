@@ -336,6 +336,7 @@ const App = () => (
             <Route path="/ops/pilot-proof" element={<OpsRoute><PilotProofDashboardPage /></OpsRoute>} />
             <Route path="/ops/execution-board" element={<OpsRoute><OperatorExecutionBoardPage /></OpsRoute>} />
             <Route path="/ops/training-completion" element={<OpsRoute><TrainingCompletionPage /></OpsRoute>} />
+            <Route path="/ops/demand-dashboard" element={<OpsRoute><DemandDashboardPage /></OpsRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
