@@ -150,6 +150,8 @@ const AIPreferencesPage = lazy(() => import("./pages/settings/AIPreferencesPage"
 const PropertyDashboardPage = lazy(() => import("./pages/property/PropertyDashboardPage"));
 const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
+const InsightDetailPage = lazy(() => import("./pages/InsightDetailPage"));
+const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelligenceOpsPage"));
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
 const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
