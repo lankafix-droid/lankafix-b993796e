@@ -10,11 +10,14 @@ import { ArrowLeft, ExternalLink, Clock, Shield, BookOpen, Wrench, TrendingUp } 
 import { trackContentEvent } from '@/hooks/useContentIntelligence';
 import { useTrackContentOpen } from '@/hooks/useTrackContentOpen';
 import ContentCard from '@/components/content/ContentCard';
+import { getEvergreenFallbackById, getRelatedEvergreenItems } from '@/engines/evergreenResolver';
 import type { EnrichedContentItem } from '@/types/contentIntelligence';
 
 async function fetchContentDetail(id: string): Promise<EnrichedContentItem | null> {
-  // Support evergreen items
-  if (id.startsWith('evergreen-')) return null;
+  // Resolve evergreen items from shared resolver
+  if (id.startsWith('evergreen-')) {
+    return getEvergreenFallbackById(id);
+  }
 
   const { data: item } = await supabase
     .from('content_items')
@@ -38,8 +41,12 @@ async function fetchContentDetail(id: string): Promise<EnrichedContentItem | nul
 }
 
 async function fetchRelatedContent(itemId: string, categoryCode: string | null, contentType: string): Promise<EnrichedContentItem[]> {
-  // Fetch items from the same category first, then same type, excluding current
-  let query = supabase
+  // For evergreen items, use the evergreen pool for related content
+  if (itemId.startsWith('evergreen-')) {
+    return getRelatedEvergreenItems(itemId, categoryCode, contentType);
+  }
+
+  const { data: items } = await supabase
     .from('content_items')
     .select('*')
     .eq('status', 'published')
@@ -47,8 +54,10 @@ async function fetchRelatedContent(itemId: string, categoryCode: string | null, 
     .order('freshness_score', { ascending: false })
     .limit(12);
 
-  const { data: items } = await query;
-  if (!items?.length) return [];
+  // If DB is empty, fall back to evergreen related items
+  if (!items?.length) {
+    return getRelatedEvergreenItems(itemId, categoryCode, contentType);
+  }
 
   const ids = items.map((i: any) => i.id);
   const [{ data: briefs }, { data: tags }] = await Promise.all([
@@ -70,7 +79,6 @@ async function fetchRelatedContent(itemId: string, categoryCode: string | null, 
     category_tags: tagMap.get(i.id) ?? [],
   }));
 
-  // Score by relevance: same category > same type > other
   const scored = enriched.map(item => {
     let score = item.freshness_score ?? 0;
     const itemCats = (item.category_tags ?? []).map((t: any) => t.category_code);
@@ -93,6 +101,7 @@ function formatDate(dateStr: string | null) {
 }
 
 function InsightMeta({ item }: { item: EnrichedContentItem }) {
+  const isEvergreen = item.id.startsWith('evergreen-');
   return (
     <div className="flex flex-wrap items-center gap-2">
       <Badge variant="secondary" className="text-xs font-semibold capitalize">
@@ -105,7 +114,7 @@ function InsightMeta({ item }: { item: EnrichedContentItem }) {
       ))}
       <span className="flex items-center gap-1 text-xs text-muted-foreground">
         <Clock className="h-3 w-3" />
-        {formatDate(item.published_at)}
+        {isEvergreen ? 'LankaFix Evergreen Insight' : formatDate(item.published_at)}
       </span>
     </div>
   );
@@ -193,6 +202,7 @@ export default function InsightDetailPage() {
   const brief = item.ai_brief;
   const headline = brief?.ai_headline ?? item.title;
   const primaryCategory = (item.category_tags ?? [])[0]?.category_code ?? null;
+  const isEvergreen = item.id.startsWith('evergreen-');
 
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background">
@@ -208,10 +218,12 @@ export default function InsightDetailPage() {
           </button>
         </div>
 
-        {item.image_url && (
+        {item.image_url ? (
           <div className="w-full max-w-2xl mx-auto">
             <img src={item.image_url} alt="" className="w-full h-56 object-cover rounded-b-2xl" />
           </div>
+        ) : (
+          <div className="w-full max-w-2xl mx-auto h-32 rounded-b-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-transparent" />
         )}
 
         <article className="container max-w-2xl py-4 space-y-4">
@@ -260,7 +272,7 @@ export default function InsightDetailPage() {
             <div className="text-xs text-muted-foreground">
               Source: {item.source_name ?? 'LankaFix Intelligence'}
             </div>
-            {item.canonical_url && (
+            {item.canonical_url && !isEvergreen && (
               <a
                 href={item.canonical_url}
                 target="_blank"

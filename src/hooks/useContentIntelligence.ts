@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { EnrichedContentItem, SurfaceCode } from '@/types/contentIntelligence';
-import { EVERGREEN_FALLBACKS } from '@/engines/contentSurfaceFallbacks';
+import { getEvergreenFallbacksForSurface } from '@/engines/evergreenResolver';
 
 interface UseContentIntelligenceOptions {
   surface: SurfaceCode;
