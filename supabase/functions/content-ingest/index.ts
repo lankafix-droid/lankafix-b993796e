@@ -1164,7 +1164,17 @@ serve(async (req) => {
         );
       }
 
-      // Publish only
+      // Rescue review items
+      if (mode === 'rescue_review') {
+        await rescueReviewItems(results);
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       if (mode === 'publish') {
         await publishToSurfaces(false);
         results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
