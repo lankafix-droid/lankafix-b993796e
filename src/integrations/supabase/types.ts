@@ -1052,6 +1052,72 @@ export type Database = {
           },
         ]
       }
+      content_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          category_code: string | null
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json | null
+          pipeline_run_id: string | null
+          resolved_at: string | null
+          severity: string
+          source_id: string | null
+          surface_code: string | null
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          category_code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          pipeline_run_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          source_id?: string | null
+          surface_code?: string | null
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          category_code?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          pipeline_run_id?: string | null
+          resolved_at?: string | null
+          severity?: string
+          source_id?: string | null
+          surface_code?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_alerts_pipeline_run_id_fkey"
+            columns: ["pipeline_run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_alerts_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "content_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_category_tags: {
         Row: {
           category_code: string
@@ -1298,6 +1364,7 @@ export type Database = {
           last_fetched_at: string | null
           legal_notes: string | null
           refresh_interval_minutes: number
+          rollout_state: string
           source_name: string
           source_type: string
           source_vendor: string | null
@@ -1317,6 +1384,7 @@ export type Database = {
           last_fetched_at?: string | null
           legal_notes?: string | null
           refresh_interval_minutes?: number
+          rollout_state?: string
           source_name: string
           source_type?: string
           source_vendor?: string | null
@@ -1336,11 +1404,42 @@ export type Database = {
           last_fetched_at?: string | null
           legal_notes?: string | null
           refresh_interval_minutes?: number
+          rollout_state?: string
           source_name?: string
           source_type?: string
           source_vendor?: string | null
           sri_lanka_bias?: number | null
           trust_score?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      content_surface_config: {
+        Row: {
+          frozen: boolean
+          frozen_at: string | null
+          frozen_by: string | null
+          id: string
+          rollout_mode: string
+          surface_code: string
+          updated_at: string
+        }
+        Insert: {
+          frozen?: boolean
+          frozen_at?: string | null
+          frozen_by?: string | null
+          id?: string
+          rollout_mode?: string
+          surface_code: string
+          updated_at?: string
+        }
+        Update: {
+          frozen?: boolean
+          frozen_at?: string | null
+          frozen_by?: string | null
+          id?: string
+          rollout_mode?: string
+          surface_code?: string
           updated_at?: string
         }
         Relationships: []
@@ -3437,6 +3536,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pipeline_runs: {
+        Row: {
+          archived: number | null
+          briefed: number | null
+          clusters_created: number | null
+          created_at: string
+          decayed: number | null
+          deduped: number | null
+          duration_ms: number | null
+          error_details: string[] | null
+          errors_count: number | null
+          fetched: number | null
+          finished_at: string | null
+          id: string
+          low_quality_rejected: number | null
+          low_relevance_rejected: number | null
+          mode: string
+          needs_review: number | null
+          normalized: number | null
+          published: number | null
+          rejected: number | null
+          source_breakdown: Json | null
+          started_at: string
+          status: string
+          surfaces_refreshed: number | null
+          title_rejected: number | null
+          triggered_by: string
+          warnings_count: number | null
+        }
+        Insert: {
+          archived?: number | null
+          briefed?: number | null
+          clusters_created?: number | null
+          created_at?: string
+          decayed?: number | null
+          deduped?: number | null
+          duration_ms?: number | null
+          error_details?: string[] | null
+          errors_count?: number | null
+          fetched?: number | null
+          finished_at?: string | null
+          id?: string
+          low_quality_rejected?: number | null
+          low_relevance_rejected?: number | null
+          mode: string
+          needs_review?: number | null
+          normalized?: number | null
+          published?: number | null
+          rejected?: number | null
+          source_breakdown?: Json | null
+          started_at?: string
+          status?: string
+          surfaces_refreshed?: number | null
+          title_rejected?: number | null
+          triggered_by?: string
+          warnings_count?: number | null
+        }
+        Update: {
+          archived?: number | null
+          briefed?: number | null
+          clusters_created?: number | null
+          created_at?: string
+          decayed?: number | null
+          deduped?: number | null
+          duration_ms?: number | null
+          error_details?: string[] | null
+          errors_count?: number | null
+          fetched?: number | null
+          finished_at?: string | null
+          id?: string
+          low_quality_rejected?: number | null
+          low_relevance_rejected?: number | null
+          mode?: string
+          needs_review?: number | null
+          normalized?: number | null
+          published?: number | null
+          rejected?: number | null
+          source_breakdown?: Json | null
+          started_at?: string
+          status?: string
+          surfaces_refreshed?: number | null
+          title_rejected?: number | null
+          triggered_by?: string
+          warnings_count?: number | null
+        }
+        Relationships: []
       }
       platform_settings: {
         Row: {
