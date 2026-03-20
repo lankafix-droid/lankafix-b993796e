@@ -15,19 +15,19 @@ interface ContentCardProps {
 
 const TYPE_CONFIG: Record<ContentType, { icon: typeof Clock; label: string; accent: string }> = {
   breaking_news: { icon: Zap, label: 'Breaking', accent: 'bg-destructive/10 text-destructive border-destructive/20' },
-  hot_topic: { icon: TrendingUp, label: 'Hot Now', accent: 'bg-warning/10 text-warning border-warning/20' },
+  hot_topic: { icon: TrendingUp, label: 'Hot Now', accent: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400' },
   innovation: { icon: Lightbulb, label: 'Innovation', accent: 'bg-primary/10 text-primary border-primary/20' },
   trend_signal: { icon: TrendingUp, label: 'Trending', accent: 'bg-accent/10 text-accent-foreground border-accent/20' },
   safety_alert: { icon: Shield, label: 'Safety Alert', accent: 'bg-destructive/10 text-destructive border-destructive/20' },
-  scam_alert: { icon: AlertTriangle, label: 'Scam Alert', accent: 'bg-destructive/15 text-destructive border-destructive/30 font-bold' },
+  scam_alert: { icon: AlertTriangle, label: 'Scam Alert', accent: 'bg-destructive/12 text-destructive border-destructive/25' },
   knowledge_fact: { icon: BookOpen, label: 'Did You Know', accent: 'bg-primary/10 text-primary border-primary/20' },
   history: { icon: Clock, label: 'History', accent: 'bg-muted text-muted-foreground border-border' },
   on_this_day: { icon: Clock, label: 'On This Day', accent: 'bg-muted text-muted-foreground border-border' },
-  numbers_insight: { icon: Hash, label: 'Numbers', accent: 'bg-accent/10 text-accent-foreground border-accent/20' },
-  seasonal_tip: { icon: Lightbulb, label: 'Seasonal', accent: 'bg-warning/10 text-warning border-warning/20' },
-  how_to: { icon: BookOpen, label: 'How To', accent: 'bg-primary/10 text-primary border-primary/20' },
+  numbers_insight: { icon: Hash, label: 'Numbers', accent: 'bg-violet-500/10 text-violet-600 border-violet-500/20 dark:text-violet-400' },
+  seasonal_tip: { icon: Lightbulb, label: 'Seasonal', accent: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400' },
+  how_to: { icon: BookOpen, label: 'How To', accent: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400' },
   most_read: { icon: TrendingUp, label: 'Popular', accent: 'bg-accent/10 text-accent-foreground border-accent/20' },
-  market_shift: { icon: BarChart3, label: 'Market Shift', accent: 'bg-primary/10 text-primary border-primary/20' },
+  market_shift: { icon: BarChart3, label: 'Market Shift', accent: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400' },
 };
 
 function formatTimeAgo(dateStr: string | null): string {
@@ -79,7 +79,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           </div>
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{headline}</p>
-            <div className="mt-1 flex items-center gap-1.5">
+            <div className="mt-1.5 flex items-center gap-1.5">
               {isLive && item.source_name && (
                 <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{item.source_name}</span>
               )}
@@ -103,20 +103,20 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
         <button
           onClick={handleClick}
           className={cn(
-            'relative w-full overflow-hidden rounded-2xl bg-card text-left',
-            'transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]',
+            'relative w-full overflow-hidden rounded-2xl bg-card text-left group',
+            'transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]',
             className
           )}
         >
           {item.image_url ? (
-            <div className="relative h-44 w-full">
-              <img src={item.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+            <div className="relative h-44 w-full overflow-hidden">
+              <img src={item.image_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
             </div>
           ) : (
-            <div className="h-32 w-full bg-gradient-to-br from-primary/10 via-accent/6 to-primary/3 flex items-center justify-center relative overflow-hidden">
+            <div className="h-32 w-full bg-gradient-to-br from-primary/8 via-accent/4 to-primary/3 flex items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-              <div className="rounded-full bg-card/80 p-3 backdrop-blur-sm shadow-sm">
+              <div className="rounded-full bg-card/80 p-3 backdrop-blur-sm shadow-sm border border-border/20">
                 <Icon className="h-6 w-6 text-primary" />
               </div>
             </div>
@@ -128,7 +128,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
                 {config.label}
               </Badge>
               {categoryTags.map(t => (
-                <Badge key={t.id} variant="outline" className="text-[10px] bg-card/60">{t.category_code}</Badge>
+                <Badge key={t.id} variant="outline" className="text-[10px] bg-card/60 backdrop-blur-sm">{t.category_code}</Badge>
               ))}
               {bannerText && (
                 <Badge variant="secondary" className="text-[10px] font-bold bg-primary/10 text-primary border border-primary/15">
@@ -137,11 +137,11 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               )}
             </div>
             <h3 className="text-base font-bold leading-tight text-foreground line-clamp-2">{headline}</h3>
-            {summary && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{summary}</p>}
+            {summary && <p className="mt-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
             {whyMatters && (
-              <p className="mt-2 text-xs font-medium text-primary/90 line-clamp-1">💡 {whyMatters}</p>
+              <p className="mt-2 text-xs font-medium text-primary/80 line-clamp-1 italic">💡 {whyMatters}</p>
             )}
-            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="mt-2.5 flex items-center gap-2 text-[10px] text-muted-foreground">
               {item.source_name && <span className="font-medium">{item.source_name}</span>}
               <span className="text-border">·</span>
               <span>{isEvergreen ? 'LankaFix Intelligence' : formatTimeAgo(item.published_at)}</span>
@@ -161,17 +161,19 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
       <button
         onClick={handleClick}
         className={cn(
-          'flex gap-3 rounded-xl border border-border/40 bg-card p-3.5 text-left w-full',
+          'flex gap-3 rounded-xl border border-border/40 bg-card p-3.5 text-left w-full group',
           'transition-all duration-200 hover:shadow-md hover:border-border/60 hover:-translate-y-0.5 active:scale-[0.98]',
           className
         )}
       >
         {item.image_url ? (
-          <img src={item.image_url} alt="" className="h-20 w-20 shrink-0 rounded-lg object-cover" loading="lazy" />
+          <div className="h-20 w-20 shrink-0 rounded-lg overflow-hidden">
+            <img src={item.image_url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+          </div>
         ) : (
           <div className={cn(
             'h-20 w-20 shrink-0 rounded-lg flex items-center justify-center relative overflow-hidden',
-            'bg-gradient-to-br from-primary/8 via-accent/5 to-primary/3'
+            'bg-gradient-to-br from-primary/8 via-accent/4 to-primary/3 border border-border/20'
           )}>
             <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
             <Icon className="h-6 w-6 text-primary/40" />
@@ -186,10 +188,10 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
             {isSriLankan && <span className="text-[9px]">🇱🇰</span>}
           </div>
           <h4 className="text-sm font-bold leading-tight text-foreground line-clamp-2">{headline}</h4>
-          {summary && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{summary}</p>}
+          {summary && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
             {categoryTags.map(t => (
-              <span key={t.id} className="text-[10px] text-primary/80 font-medium">#{t.category_code}</span>
+              <span key={t.id} className="text-[10px] text-primary/70 font-medium">#{t.category_code}</span>
             ))}
             {bannerText && (
               <span className="text-[10px] font-bold text-primary bg-primary/5 rounded px-1 border border-primary/10">{bannerText}</span>

@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   RefreshCw, CheckCircle, XCircle, Trash2, Pin, BarChart3,
   Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star,
-  Clock, Shield, Database, Layers, Radio, Zap, ChevronUp
+  Clock, Shield, Database, Layers, Radio, Zap, ChevronUp, Filter
 } from 'lucide-react';
 
 function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
@@ -46,20 +46,27 @@ function formatTimeAgo(dateStr: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function SourceHealthBadge({ lastFetched, active }: { lastFetched: string | null; active: boolean }) {
+function SourceHealthBadge({ lastFetched, active, rejectRate }: { lastFetched: string | null; active: boolean; rejectRate?: number }) {
   if (!active) return <Badge variant="secondary" className="text-[9px]">Disabled</Badge>;
-  if (!lastFetched) return <Badge variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>;
-  const hours = (Date.now() - new Date(lastFetched).getTime()) / 3600000;
-  if (hours > 24) return <Badge variant="destructive" className="text-[9px]">Stale ({Math.floor(hours)}h)</Badge>;
-  if (hours > 6) return <Badge variant="outline" className="text-[9px] text-warning border-warning/30">{formatTimeAgo(lastFetched)}</Badge>;
-  return <Badge variant="outline" className="text-[9px] text-primary border-primary/30">{formatTimeAgo(lastFetched)}</Badge>;
+  const badges: React.ReactNode[] = [];
+  if (!lastFetched) {
+    badges.push(<Badge key="nf" variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>);
+  } else {
+    const hours = (Date.now() - new Date(lastFetched).getTime()) / 3600000;
+    if (hours > 24) badges.push(<Badge key="stale" variant="destructive" className="text-[9px]">Stale ({Math.floor(hours)}h)</Badge>);
+    else if (hours > 6) badges.push(<Badge key="age" variant="outline" className="text-[9px] text-warning border-warning/30">{formatTimeAgo(lastFetched)}</Badge>);
+    else badges.push(<Badge key="ok" variant="outline" className="text-[9px] text-primary border-primary/30">{formatTimeAgo(lastFetched)}</Badge>);
+  }
+  if (rejectRate !== undefined && rejectRate > 0.5) {
+    badges.push(<Badge key="rr" variant="destructive" className="text-[9px]">High reject</Badge>);
+  }
+  return <>{badges}</>;
 }
 
 export default function ContentIntelligenceOpsPage() {
   const qc = useQueryClient();
   const invalidateAll = () => qc.invalidateQueries({ queryKey: ['content-ops'] });
 
-  // ─── Queries ───
   const { data: queue, isLoading: queueLoading } = useQuery({
     queryKey: ['content-ops', 'queue'],
     queryFn: async () => {
@@ -96,15 +103,16 @@ export default function ContentIntelligenceOpsPage() {
         .from('content_items')
         .select('source_id, status')
         .in('source_id', ids);
-      const countMap: Record<string, { published: number; rejected: number; archived: number; total: number }> = {};
+      const countMap: Record<string, { published: number; rejected: number; archived: number; total: number; needs_review: number }> = {};
       (items ?? []).forEach((i: any) => {
-        const c = countMap[i.source_id] ??= { published: 0, rejected: 0, archived: 0, total: 0 };
+        const c = countMap[i.source_id] ??= { published: 0, rejected: 0, archived: 0, total: 0, needs_review: 0 };
         c.total++;
         if (i.status === 'published') c.published++;
         if (i.status === 'rejected') c.rejected++;
         if (i.status === 'archived') c.archived++;
+        if (i.status === 'needs_review') c.needs_review++;
       });
-      return srcs.map((s: any) => ({ ...s, counts: countMap[s.id] ?? { published: 0, rejected: 0, archived: 0, total: 0 } }));
+      return srcs.map((s: any) => ({ ...s, counts: countMap[s.id] ?? { published: 0, rejected: 0, archived: 0, total: 0, needs_review: 0 } }));
     },
   });
 
@@ -149,7 +157,7 @@ export default function ContentIntelligenceOpsPage() {
     },
   });
 
-  // Pipeline stats
+  // Aggregate pipeline stats
   const totalPublished = published?.length ?? 0;
   const totalSources = sources?.length ?? 0;
   const activeSources = sources?.filter((s: any) => s.active).length ?? 0;
@@ -158,6 +166,9 @@ export default function ContentIntelligenceOpsPage() {
     return (Date.now() - new Date(s.last_fetched_at).getTime()) > 24 * 3600000;
   }).length ?? 0;
   const surfaceCount = surfaces?.length ?? 0;
+  const needsReview = queue?.filter((q: any) => q.status === 'needs_review').length ?? 0;
+  const totalRejected = sources?.reduce((s: number, src: any) => s + (src.counts?.rejected ?? 0), 0) ?? 0;
+  const totalArchived = sources?.reduce((s: number, src: any) => s + (src.counts?.archived ?? 0), 0) ?? 0;
 
   // ─── Mutations ───
   const ingestMutation = useMutation({
@@ -167,7 +178,7 @@ export default function ContentIntelligenceOpsPage() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Pipeline complete`, { description: `Fetched: ${data?.fetched ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}, Surfaces: ${data?.surfaces_refreshed ?? 0}` });
+      toast.success(`Pipeline complete`, { description: `Fetched: ${data?.fetched ?? 0}, Deduped: ${data?.deduped ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}` });
       invalidateAll();
     },
     onError: (e) => toast.error(`Pipeline failed: ${(e as Error).message}`),
@@ -189,7 +200,6 @@ export default function ContentIntelligenceOpsPage() {
         await supabase.from('content_surface_state').update({ active: false }).eq('content_item_id', itemId);
       }
       if (action === 'boost') {
-        // Boost item rank on current surfaces by adding a quality bump
         await supabase.from('content_surface_state').update({ rank_score: 85 }).eq('content_item_id', itemId).eq('active', true);
       }
       await supabase.from('content_editorial_actions').insert({ content_item_id: itemId, action_type: action });
@@ -212,7 +222,7 @@ export default function ContentIntelligenceOpsPage() {
       const { error } = await supabase.functions.invoke('content-ingest', { body: { mode: 'brief' } });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('Re-briefed successfully'); invalidateAll(); },
+    onSuccess: () => { toast.success('Re-briefed'); invalidateAll(); },
     onError: () => toast.error('Re-brief failed'),
   });
 
@@ -255,18 +265,23 @@ export default function ContentIntelligenceOpsPage() {
             </Button>
             <Button size="sm" onClick={() => ingestMutation.mutate('full')} disabled={isPending}>
               {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
-              Full Pipeline
+              Full Run
             </Button>
           </div>
         </div>
 
-        {/* Stats — expanded */}
-        <div className="grid grid-cols-5 gap-2 mb-4">
-          <StatCard label="Queue" value={queue?.length ?? 0} icon={AlertTriangle} color="text-warning" />
+        {/* Stats — expanded pipeline health */}
+        <div className="grid grid-cols-4 gap-2 mb-2">
           <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" />
-          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={staleSources > 0 ? `${staleSources} stale` : undefined} />
-          <StatCard label="Surfaces" value={surfaceCount} icon={Pin} color="text-primary" />
-          <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" />
+          <StatCard label="Review" value={needsReview} icon={AlertTriangle} color="text-warning" />
+          <StatCard label="Rejected" value={totalRejected} icon={XCircle} color="text-destructive" />
+          <StatCard label="Archived" value={totalArchived} icon={Trash2} color="text-muted-foreground" />
+        </div>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
+          <StatCard label="Surfaces" value={surfaceCount} icon={Pin} color="text-primary" subtitle={`${Object.keys(surfacesByCode).length} slots`} />
+          <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
+          <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${analytics?.click ?? 0} clicks`} />
         </div>
 
         <Tabs defaultValue="queue">
@@ -384,105 +399,94 @@ export default function ContentIntelligenceOpsPage() {
           <TabsContent value="sources" className="space-y-2 mt-3">
             {srcLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
             {!srcLoading && !sources?.length && <EmptyState message="No sources configured" icon={Database} />}
-            {(sources ?? []).map((src: any) => (
-              <Card key={src.id} className="p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <p className="text-sm font-semibold">{src.source_name}</p>
-                      <SourceHealthBadge lastFetched={src.last_fetched_at} active={src.active} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
-                      <span>Type: <strong>{src.source_type}</strong></span>
-                      <span>Trust: <strong className={src.trust_score >= 0.8 ? 'text-primary' : src.trust_score >= 0.6 ? '' : 'text-warning'}>{src.trust_score}</strong></span>
-                      <span>Refresh: <strong>{src.refresh_interval_minutes}min</strong></span>
-                      <span>Freshness: <strong>{src.freshness_priority}</strong></span>
-                      <span>Total: <strong>{src.counts?.total ?? 0}</strong></span>
-                      <span>Published: <strong className="text-primary">{src.counts?.published ?? 0}</strong></span>
-                      <span>Rejected: <strong className="text-destructive">{src.counts?.rejected ?? 0}</strong></span>
-                      <span>Archived: <strong>{src.counts?.archived ?? 0}</strong></span>
+            {(sources ?? []).map((src: any) => {
+              const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
+              const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
+              const isLowYield = src.counts.total >= 5 && publishRate < 0.2;
+              return (
+                <Card key={src.id} className={`p-3 ${isLowYield ? 'border-warning/40' : ''}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <p className="text-sm font-semibold">{src.source_name}</p>
+                        <SourceHealthBadge lastFetched={src.last_fetched_at} active={src.active} rejectRate={rejectRate} />
+                        {isLowYield && <Badge variant="outline" className="text-[9px] text-warning border-warning/30">Low yield</Badge>}
+                      </div>
+                      <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
+                        <span>Type: <strong>{src.source_type}</strong></span>
+                        <span>Trust: <strong className={src.trust_score >= 0.8 ? 'text-primary' : src.trust_score >= 0.6 ? '' : 'text-warning'}>{src.trust_score}</strong></span>
+                        <span>Refresh: <strong>{src.refresh_interval_minutes}min</strong></span>
+                        <span>Total: <strong>{src.counts.total}</strong></span>
+                        <span>Published: <strong className="text-primary">{src.counts.published}</strong> ({src.counts.total > 0 ? Math.round(publishRate * 100) : 0}%)</span>
+                        <span>Rejected: <strong className="text-destructive">{src.counts.rejected}</strong> ({src.counts.total > 0 ? Math.round(rejectRate * 100) : 0}%)</span>
+                        <span>Archived: <strong>{src.counts.archived}</strong></span>
+                        <span>Review: <strong className="text-warning">{src.counts.needs_review}</strong></span>
+                        {src.sri_lanka_bias > 0.5 && <span>🇱🇰 SL bias: <strong>{src.sri_lanka_bias}</strong></span>}
+                      </div>
                       {src.category_allowlist?.length > 0 && (
-                        <span className="col-span-2">Categories: <strong>{src.category_allowlist.join(', ')}</strong></span>
-                      )}
-                      {(src.sri_lanka_bias ?? 0) > 0.5 && (
-                        <span>🇱🇰 SL bias: <strong className="text-primary">{src.sri_lanka_bias}</strong></span>
+                        <div className="flex gap-1 mt-1 flex-wrap">
+                          {src.category_allowlist.slice(0, 4).map((c: string) => (
+                            <Badge key={c} variant="outline" className="text-[9px] py-0">{c}</Badge>
+                          ))}
+                          {src.category_allowlist.length > 4 && <span className="text-[9px] text-muted-foreground">+{src.category_allowlist.length - 4}</span>}
+                        </div>
                       )}
                     </div>
+                    <Button size="icon" variant={src.active ? 'ghost' : 'outline'} className="h-8 w-8 shrink-0"
+                      onClick={() => toggleSource.mutate({ sourceId: src.id, active: !src.active })}>
+                      <Power className={`h-4 w-4 ${src.active ? 'text-primary' : 'text-destructive'}`} />
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={src.active ? 'destructive' : 'default'}
-                    disabled={toggleSource.isPending}
-                    onClick={() => toggleSource.mutate({ sourceId: src.id, active: !src.active })}
-                    className="shrink-0"
-                  >
-                    <Power className="h-3 w-3 mr-1" />
-                    {src.active ? 'Disable' : 'Enable'}
-                  </Button>
+                </Card>
+              );
+            })}
+          </TabsContent>
+
+          {/* ─── Surfaces Tab ─── */}
+          <TabsContent value="surfaces" className="space-y-3 mt-3">
+            {!surfaces?.length && <EmptyState message="No active surface assignments" icon={Layers} />}
+            {Object.entries(surfacesByCode).map(([code, items]) => (
+              <Card key={code} className="p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="secondary" className="text-[10px] font-bold">{code.replace(/_/g, ' ')}</Badge>
+                  <span className="text-[10px] text-muted-foreground">{items.length} items</span>
+                </div>
+                <div className="space-y-1.5">
+                  {items.map((s: any, i: number) => (
+                    <div key={s.id} className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground w-4 text-right shrink-0">{i + 1}.</span>
+                      <span className={`font-medium flex-1 truncate ${s.rank_score >= 990 ? 'text-primary' : ''}`}>
+                        {s.rank_score >= 990 && <Pin className="h-3 w-3 inline mr-1" />}
+                        {(s as any).content_items?.title ?? s.content_item_id.slice(0, 12)}
+                      </span>
+                      <Badge variant="outline" className="text-[9px] shrink-0">{(s as any).content_items?.content_type?.replace(/_/g, ' ') ?? '—'}</Badge>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{Math.round(s.rank_score)}</span>
+                    </div>
+                  ))}
                 </div>
               </Card>
             ))}
           </TabsContent>
 
-          {/* ─── Surfaces Tab ─── */}
-          <TabsContent value="surfaces" className="space-y-4 mt-3">
-            {!surfaces?.length && <EmptyState message="No active surfaces — run full pipeline to populate" icon={Layers} />}
-            {Object.entries(surfacesByCode).map(([code, items]) => (
-              <div key={code}>
-                <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5 capitalize">
-                  <Pin className="h-3.5 w-3.5 text-primary" />
-                  {code.replace(/_/g, ' ')}
-                  <Badge variant="outline" className="text-[10px] ml-1">{items.length} items</Badge>
-                </h3>
-                <div className="space-y-1">
-                  {items.map((s: any) => (
-                    <Card key={s.id} className="p-2.5">
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium line-clamp-1">{s.content_items?.title ?? 'Unknown'}</p>
-                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
-                            <span className="capitalize">{s.content_items?.content_type?.replace(/_/g, ' ') ?? ''}</span>
-                            {s.content_items?.freshness_score != null && (
-                              <span>Fresh: {s.content_items.freshness_score}</span>
-                            )}
-                            {s.content_items?.source_name && (
-                              <span className="truncate max-w-[100px]">{s.content_items.source_name}</span>
-                            )}
-                            {s.rank_score >= 990 && (
-                              <Badge variant="default" className="text-[9px] px-1 py-0">PINNED</Badge>
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0 ml-2">
-                          {s.rank_score?.toFixed(1)}
-                        </span>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </TabsContent>
-
-          {/* ─── Clusters Tab ─── */}
+          {/* ─── Trends Tab ─── */}
           <TabsContent value="clusters" className="space-y-2 mt-3">
-            {!clusters?.length && <EmptyState message="No trend clusters detected yet" icon={TrendingUp} />}
+            {!clusters?.length && <EmptyState message="No active trend clusters" icon={TrendingUp} />}
             {(clusters ?? []).map((c: any) => (
               <Card key={c.id} className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold">{c.cluster_label}</p>
-                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
-                      <Badge variant="outline" className="text-[10px]">{c.category_code ?? 'General'}</Badge>
-                      <span>{c.content_count} items</span>
-                      <span>Momentum: <strong>{c.momentum_score}</strong></span>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold capitalize">{c.cluster_label}</p>
+                      {c.category_code && <Badge variant="outline" className="text-[9px]">{c.category_code}</Badge>}
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5 text-[10px] text-muted-foreground">
-                      <span>🇱🇰 Relevance: {c.sri_lanka_relevance_score ?? 0}</span>
-                      <span>💼 Commercial: {c.commercial_relevance_score ?? 0}</span>
+                    <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
+                      <span>Articles: {c.content_count}</span>
+                      <span>Momentum: {c.momentum_score}</span>
+                      {c.sri_lanka_relevance_score > 50 && <span>🇱🇰 {c.sri_lanka_relevance_score}%</span>}
+                      {c.commercial_relevance_score > 50 && <span>💼 {c.commercial_relevance_score}%</span>}
                     </div>
                   </div>
-                  <Activity className="h-4 w-4 text-primary shrink-0" />
+                  <Activity className="h-4 w-4 text-primary/40" />
                 </div>
               </Card>
             ))}
@@ -490,30 +494,20 @@ export default function ContentIntelligenceOpsPage() {
 
           {/* ─── Analytics Tab ─── */}
           <TabsContent value="analytics" className="mt-3">
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {[
-                { label: 'Impressions', value: (analytics as any)?.impression ?? 0, icon: Eye, color: 'text-primary' },
-                { label: 'Clicks', value: (analytics as any)?.click ?? 0, icon: TrendingUp, color: 'text-accent-foreground' },
-                { label: 'Opens', value: (analytics as any)?.open ?? 0, icon: Activity, color: 'text-muted-foreground' },
-              ].map(m => (
-                <StatCard key={m.label} label={m.label} value={m.value} icon={m.icon} color={m.color} />
-              ))}
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Saves', value: (analytics as any)?.save ?? 0 },
-                { label: 'Shares', value: (analytics as any)?.share ?? 0 },
-                { label: 'Booking CTR', value: (analytics as any)?.booking_clickthrough ?? 0 },
-                { label: 'Category CTR', value: (analytics as any)?.category_clickthrough ?? 0 },
-                { label: 'Source Links', value: (analytics as any)?.source_link ?? 0 },
-                { label: 'Related Clicks', value: (analytics as any)?.related_insight ?? 0 },
-              ].map(m => (
-                <Card key={m.label} className="p-3 text-center">
-                  <p className="text-lg font-bold">{m.value}</p>
-                  <p className="text-[10px] text-muted-foreground">{m.label}</p>
-                </Card>
-              ))}
-            </div>
+            <Card className="p-4">
+              <h3 className="text-sm font-bold mb-3">Event Summary (Last 500)</h3>
+              {analytics && (
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(analytics).filter(([k]) => k !== 'total').map(([type, count]) => (
+                    <div key={type} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground capitalize">{type}</span>
+                      <strong>{count as number}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!analytics?.total && <EmptyState message="No analytics events yet" icon={BarChart3} />}
+            </Card>
           </TabsContent>
         </Tabs>
       </main>
