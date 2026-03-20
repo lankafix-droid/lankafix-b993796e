@@ -803,18 +803,33 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
     }
 
     try {
-      const resp = await fetch(source.base_url, {
-        headers: { 'Accept': 'application/json' },
+      const resolvedUrl = resolveSourceUrl(source.base_url);
+      const isRSS = source.source_type === 'rss' || resolvedUrl.includes('/feed') || resolvedUrl.includes('/rss') || resolvedUrl.endsWith('.xml');
+
+      const resp = await fetch(resolvedUrl, {
+        headers: { 'Accept': isRSS ? 'application/xml, text/xml, application/rss+xml' : 'application/json' },
         signal: AbortSignal.timeout(10000),
       });
       if (!resp.ok) {
         console.warn(`Source ${source.source_name} returned ${resp.status}`);
         results.source_errors.push(`${source.source_name}: HTTP ${resp.status}`);
+        // Track auth failures for alerting
+        if (resp.status === 401 || resp.status === 403) {
+          await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
+        }
         continue;
       }
       fetchedSourceIds.push(source.id);
-      const data = await resp.json();
-      const articles = data.articles ?? data.results ?? data.data ?? [];
+
+      let articles: any[];
+      if (isRSS) {
+        const xmlText = await resp.text();
+        articles = parseRSSItems(xmlText);
+      } else {
+        const data = await resp.json();
+        articles = data.articles ?? data.results ?? data.data ?? [];
+      }
+      results.fetched += articles.length;
       results.fetched += articles.length;
 
       for (const article of articles.slice(0, 15)) {
