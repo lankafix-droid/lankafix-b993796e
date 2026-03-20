@@ -1336,7 +1336,7 @@ serve(async (req) => {
           JSON.stringify({ success: true, ...results, duration_ms: results.duration_ms }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
-
+      }
 
 
       if (mode === 'publish') {
