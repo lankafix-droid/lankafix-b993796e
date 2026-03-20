@@ -722,10 +722,10 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* ─── Categories Tab (with quality metrics) ─── */}
+          {/* ─── Categories Tab (with quality + SL metrics) ─── */}
           <TabsContent value="categories" className="space-y-2 mt-3">
             {LANKAFIX_CATEGORIES.map(cat => {
-              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0 };
+              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0 };
               const readiness = getCategoryReadiness(data);
               const rs = READINESS_STYLES[readiness];
               return (
@@ -739,6 +739,8 @@ export default function ContentIntelligenceOpsPage() {
                       <span>Featured: <strong className={data.featured ? 'text-primary' : 'text-muted-foreground'}>{data.featured}</strong></span>
                       <span>Feed: <strong className={data.feed ? 'text-primary' : 'text-muted-foreground'}>{data.feed}</strong></span>
                       <span>Live: <strong>{data.live}</strong></span>
+                      <span>🇱🇰 <strong>{data.sl}</strong></span>
+                      {data.avgQ > 0 && <span>Q: <strong className={data.avgQ >= 0.5 ? 'text-primary' : data.avgQ >= 0.4 ? '' : 'text-warning'}>{data.avgQ.toFixed(2)}</strong></span>}
                     </div>
                   </div>
                 </Card>
