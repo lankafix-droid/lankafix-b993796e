@@ -97,7 +97,7 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
               <>
                 <span className="relative mr-1.5 flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
                 Live
               </>
