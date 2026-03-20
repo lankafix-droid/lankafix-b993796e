@@ -80,6 +80,16 @@ export function getCategoryCTA(
   effectiveLevel: AvailabilityLevel,
   isComingSoon: boolean,
 ): CategoryCTA {
+  // PRINT_SUPPLIES routes to the Consumables Ecosystem module
+  if (categoryCode === 'PRINT_SUPPLIES') {
+    return {
+      label: 'Browse Supplies',
+      action: 'navigate',
+      isFallback: false,
+      route: '/consumables',
+    };
+  }
+
   if (isComingSoon) {
     return {
       label: 'Join Waitlist',
