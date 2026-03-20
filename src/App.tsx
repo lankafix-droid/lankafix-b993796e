@@ -152,6 +152,18 @@ const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPag
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
 const InsightDetailPage = lazy(() => import("./pages/InsightDetailPage"));
 const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelligenceOpsPage"));
+
+// SPS — Smart Print Subscription
+const SPSLandingPage = lazy(() => import("./pages/sps/SPSLandingPage"));
+const FindMyPlanPage = lazy(() => import("./pages/sps/FindMyPlanPage"));
+const SPSPlansPage = lazy(() => import("./pages/sps/SPSPlansPage"));
+const SPSPlanDetailPage = lazy(() => import("./pages/sps/SPSPlanDetailPage"));
+const SPSFleetPage = lazy(() => import("./pages/sps/SPSFleetPage"));
+const SPSRequestPage = lazy(() => import("./pages/sps/SPSRequestPage"));
+const SPSDashboardPage = lazy(() => import("./pages/sps/SPSDashboardPage"));
+const SPSMeterPage = lazy(() => import("./pages/sps/SPSMeterPage"));
+const SPSSupportPage = lazy(() => import("./pages/sps/SPSSupportPage"));
+const SPSBillingPage = lazy(() => import("./pages/sps/SPSBillingPage"));
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
 const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
@@ -352,6 +364,18 @@ const App = () => (
 
             {/* ─── Content Intelligence ─── */}
             <Route path="/insights/:id" element={<InsightDetailPage />} />
+
+            {/* ─── SPS — Smart Print Subscription ─── */}
+            <Route path="/sps" element={<SPSLandingPage />} />
+            <Route path="/sps/find-plan" element={<FindMyPlanPage />} />
+            <Route path="/sps/plans" element={<SPSPlansPage />} />
+            <Route path="/sps/plans/:planId" element={<SPSPlanDetailPage />} />
+            <Route path="/sps/fleet" element={<SPSFleetPage />} />
+            <Route path="/sps/request" element={<ProtectedRoute><SPSRequestPage /></ProtectedRoute>} />
+            <Route path="/sps/dashboard" element={<ProtectedRoute><SPSDashboardPage /></ProtectedRoute>} />
+            <Route path="/sps/meter" element={<ProtectedRoute><SPSMeterPage /></ProtectedRoute>} />
+            <Route path="/sps/support" element={<ProtectedRoute><SPSSupportPage /></ProtectedRoute>} />
+            <Route path="/sps/billing" element={<ProtectedRoute><SPSBillingPage /></ProtectedRoute>} />
 
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />

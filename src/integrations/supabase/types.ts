@@ -4670,6 +4670,727 @@ export type Database = {
         }
         Relationships: []
       }
+      sps_asset_assignments: {
+        Row: {
+          asset_id: string
+          assigned_at: string
+          assignment_status: string
+          contract_id: string | null
+          current_meter: number | null
+          customer_id: string
+          id: string
+          initial_meter: number | null
+          installed_at: string | null
+          location_id: string | null
+          notes: string | null
+          plan_id: string | null
+        }
+        Insert: {
+          asset_id: string
+          assigned_at?: string
+          assignment_status?: string
+          contract_id?: string | null
+          current_meter?: number | null
+          customer_id: string
+          id?: string
+          initial_meter?: number | null
+          installed_at?: string | null
+          location_id?: string | null
+          notes?: string | null
+          plan_id?: string | null
+        }
+        Update: {
+          asset_id?: string
+          assigned_at?: string
+          assignment_status?: string
+          contract_id?: string | null
+          current_meter?: number | null
+          customer_id?: string
+          id?: string
+          initial_meter?: number | null
+          installed_at?: string | null
+          location_id?: string | null
+          notes?: string | null
+          plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_asset_assignments_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "sps_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sps_asset_assignments_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sps_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sps_asset_assignments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "sps_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sps_assets: {
+        Row: {
+          acquisition_cost: number | null
+          asset_category: string
+          asset_code: string
+          backup_class: string | null
+          brand: string
+          compatible_plan_ids: string[] | null
+          consumable_family: string | null
+          copier_class: string | null
+          cosmetic_grade: string | null
+          created_at: string
+          duplex: boolean
+          functions: string[] | null
+          grade: string | null
+          id: string
+          max_paper_size: string
+          model: string
+          mono_or_colour: string
+          monthly_duty_class: string | null
+          network_capable: boolean
+          notes: string | null
+          page_cost_confidence: string | null
+          printer_type: string
+          profitability_status: string | null
+          recommended_segment: string | null
+          recovery_target_months: number | null
+          refurbishment_cost: number | null
+          refurbishment_status: string
+          review_required: boolean
+          serial_number: string | null
+          service_risk_grade: string | null
+          serviceability_class: string
+          smartfix_certified: boolean
+          spare_part_confidence: string | null
+          sps_eligible: boolean
+          status: string
+          total_ready_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          acquisition_cost?: number | null
+          asset_category?: string
+          asset_code: string
+          backup_class?: string | null
+          brand: string
+          compatible_plan_ids?: string[] | null
+          consumable_family?: string | null
+          copier_class?: string | null
+          cosmetic_grade?: string | null
+          created_at?: string
+          duplex?: boolean
+          functions?: string[] | null
+          grade?: string | null
+          id?: string
+          max_paper_size?: string
+          model: string
+          mono_or_colour?: string
+          monthly_duty_class?: string | null
+          network_capable?: boolean
+          notes?: string | null
+          page_cost_confidence?: string | null
+          printer_type?: string
+          profitability_status?: string | null
+          recommended_segment?: string | null
+          recovery_target_months?: number | null
+          refurbishment_cost?: number | null
+          refurbishment_status?: string
+          review_required?: boolean
+          serial_number?: string | null
+          service_risk_grade?: string | null
+          serviceability_class?: string
+          smartfix_certified?: boolean
+          spare_part_confidence?: string | null
+          sps_eligible?: boolean
+          status?: string
+          total_ready_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          acquisition_cost?: number | null
+          asset_category?: string
+          asset_code?: string
+          backup_class?: string | null
+          brand?: string
+          compatible_plan_ids?: string[] | null
+          consumable_family?: string | null
+          copier_class?: string | null
+          cosmetic_grade?: string | null
+          created_at?: string
+          duplex?: boolean
+          functions?: string[] | null
+          grade?: string | null
+          id?: string
+          max_paper_size?: string
+          model?: string
+          mono_or_colour?: string
+          monthly_duty_class?: string | null
+          network_capable?: boolean
+          notes?: string | null
+          page_cost_confidence?: string | null
+          printer_type?: string
+          profitability_status?: string | null
+          recommended_segment?: string | null
+          recovery_target_months?: number | null
+          refurbishment_cost?: number | null
+          refurbishment_status?: string
+          review_required?: boolean
+          serial_number?: string | null
+          service_risk_grade?: string | null
+          serviceability_class?: string
+          smartfix_certified?: boolean
+          spare_part_confidence?: string | null
+          sps_eligible?: boolean
+          status?: string
+          total_ready_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sps_billing_cycles: {
+        Row: {
+          actual_pages: number
+          base_fee: number
+          billing_month: string
+          billing_status: string
+          contract_id: string
+          deposit_component: number
+          due_date: string | null
+          id: string
+          included_pages: number
+          invoice_reference: string | null
+          overage_amount: number
+          overage_pages: number
+          paid_at: string | null
+          setup_fee_component: number
+          total_due: number
+        }
+        Insert: {
+          actual_pages?: number
+          base_fee?: number
+          billing_month: string
+          billing_status?: string
+          contract_id: string
+          deposit_component?: number
+          due_date?: string | null
+          id?: string
+          included_pages?: number
+          invoice_reference?: string | null
+          overage_amount?: number
+          overage_pages?: number
+          paid_at?: string | null
+          setup_fee_component?: number
+          total_due?: number
+        }
+        Update: {
+          actual_pages?: number
+          base_fee?: number
+          billing_month?: string
+          billing_status?: string
+          contract_id?: string
+          deposit_component?: number
+          due_date?: string | null
+          id?: string
+          included_pages?: number
+          invoice_reference?: string | null
+          overage_amount?: number
+          overage_pages?: number
+          paid_at?: string | null
+          setup_fee_component?: number
+          total_due?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_billing_cycles_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sps_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sps_contracts: {
+        Row: {
+          agreement_accepted: boolean
+          agreement_version: string | null
+          asset_id: string | null
+          billing_cycle_day: number | null
+          contract_risk_status: string | null
+          contract_status: string
+          created_at: string
+          customer_id: string
+          deposit_amount: number
+          end_date: string | null
+          id: string
+          min_term_months: number
+          misuse_policy_acknowledged: boolean
+          pause_status: string | null
+          plan_id: string | null
+          refund_terms_acknowledged: boolean
+          setup_fee: number
+          start_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          agreement_accepted?: boolean
+          agreement_version?: string | null
+          asset_id?: string | null
+          billing_cycle_day?: number | null
+          contract_risk_status?: string | null
+          contract_status?: string
+          created_at?: string
+          customer_id: string
+          deposit_amount?: number
+          end_date?: string | null
+          id?: string
+          min_term_months?: number
+          misuse_policy_acknowledged?: boolean
+          pause_status?: string | null
+          plan_id?: string | null
+          refund_terms_acknowledged?: boolean
+          setup_fee?: number
+          start_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agreement_accepted?: boolean
+          agreement_version?: string | null
+          asset_id?: string | null
+          billing_cycle_day?: number | null
+          contract_risk_status?: string | null
+          contract_status?: string
+          created_at?: string
+          customer_id?: string
+          deposit_amount?: number
+          end_date?: string | null
+          id?: string
+          min_term_months?: number
+          misuse_policy_acknowledged?: boolean
+          pause_status?: string | null
+          plan_id?: string | null
+          refund_terms_acknowledged?: boolean
+          setup_fee?: number
+          start_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_contracts_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "sps_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sps_contracts_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "sps_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sps_meter_readings: {
+        Row: {
+          anomaly_flag: boolean
+          asset_id: string
+          contract_id: string
+          customer_id: string
+          id: string
+          notes: string | null
+          photo_url: string | null
+          reading_value: number
+          submitted_at: string
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          anomaly_flag?: boolean
+          asset_id: string
+          contract_id: string
+          customer_id: string
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          reading_value: number
+          submitted_at?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          anomaly_flag?: boolean
+          asset_id?: string
+          contract_id?: string
+          customer_id?: string
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          reading_value?: number
+          submitted_at?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_meter_readings_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "sps_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sps_meter_readings_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sps_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sps_plan_recommendations: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          fit_confidence: string | null
+          id: string
+          recommendation_inputs: Json | null
+          recommendation_reason: string | null
+          recommended_plan_id: string | null
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          fit_confidence?: string | null
+          id?: string
+          recommendation_inputs?: Json | null
+          recommendation_reason?: string | null
+          recommended_plan_id?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          fit_confidence?: string | null
+          id?: string
+          recommendation_inputs?: Json | null
+          recommendation_reason?: string | null
+          recommended_plan_id?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_plan_recommendations_recommended_plan_id_fkey"
+            columns: ["recommended_plan_id"]
+            isOneToOne: false
+            referencedRelation: "sps_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sps_plans: {
+        Row: {
+          best_for: string | null
+          created_at: string
+          deposit_amount: number
+          features: Json | null
+          id: string
+          included_pages: number
+          is_active: boolean
+          is_custom_quote: boolean
+          meter_submission_type: string
+          min_term_months: number
+          monthly_fee: number
+          overage_rate: number
+          pause_allowed: boolean
+          plan_code: string
+          plan_description: string | null
+          plan_name: string
+          printer_class: string
+          segment: string
+          setup_fee: number
+          sort_order: number
+          support_level: string
+          updated_at: string
+          uptime_priority: string
+        }
+        Insert: {
+          best_for?: string | null
+          created_at?: string
+          deposit_amount?: number
+          features?: Json | null
+          id?: string
+          included_pages?: number
+          is_active?: boolean
+          is_custom_quote?: boolean
+          meter_submission_type?: string
+          min_term_months?: number
+          monthly_fee?: number
+          overage_rate?: number
+          pause_allowed?: boolean
+          plan_code: string
+          plan_description?: string | null
+          plan_name: string
+          printer_class?: string
+          segment?: string
+          setup_fee?: number
+          sort_order?: number
+          support_level?: string
+          updated_at?: string
+          uptime_priority?: string
+        }
+        Update: {
+          best_for?: string | null
+          created_at?: string
+          deposit_amount?: number
+          features?: Json | null
+          id?: string
+          included_pages?: number
+          is_active?: boolean
+          is_custom_quote?: boolean
+          meter_submission_type?: string
+          min_term_months?: number
+          monthly_fee?: number
+          overage_rate?: number
+          pause_allowed?: boolean
+          plan_code?: string
+          plan_description?: string | null
+          plan_name?: string
+          printer_class?: string
+          segment?: string
+          setup_fee?: number
+          sort_order?: number
+          support_level?: string
+          updated_at?: string
+          uptime_priority?: string
+        }
+        Relationships: []
+      }
+      sps_profitability_snapshots: {
+        Row: {
+          asset_id: string
+          consumable_cost: number | null
+          contract_id: string | null
+          created_at: string
+          id: string
+          payback_progress: number | null
+          profit_estimate: number | null
+          repair_cost: number | null
+          revenue_collected: number | null
+          risk_flag: string | null
+          snapshot_month: string
+          support_cost: number | null
+        }
+        Insert: {
+          asset_id: string
+          consumable_cost?: number | null
+          contract_id?: string | null
+          created_at?: string
+          id?: string
+          payback_progress?: number | null
+          profit_estimate?: number | null
+          repair_cost?: number | null
+          revenue_collected?: number | null
+          risk_flag?: string | null
+          snapshot_month: string
+          support_cost?: number | null
+        }
+        Update: {
+          asset_id?: string
+          consumable_cost?: number | null
+          contract_id?: string | null
+          created_at?: string
+          id?: string
+          payback_progress?: number | null
+          profit_estimate?: number | null
+          repair_cost?: number | null
+          revenue_collected?: number | null
+          risk_flag?: string | null
+          snapshot_month?: string
+          support_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_profitability_snapshots_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "sps_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sps_profitability_snapshots_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sps_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sps_subscription_requests: {
+        Row: {
+          admin_notes: string | null
+          billing_preference: string | null
+          created_at: string
+          customer_id: string
+          email: string | null
+          fit_confidence: string | null
+          full_name: string
+          id: string
+          latitude: number | null
+          location: string | null
+          longitude: number | null
+          mobile: string
+          mono_or_colour: string | null
+          monthly_usage_band: string | null
+          multifunction_required: boolean | null
+          nic_or_company: string | null
+          notes: string | null
+          preferred_install_date: string | null
+          request_status: string
+          requested_segment: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          seasonal_usage: boolean | null
+          submitted_plan_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          billing_preference?: string | null
+          created_at?: string
+          customer_id: string
+          email?: string | null
+          fit_confidence?: string | null
+          full_name: string
+          id?: string
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          mobile: string
+          mono_or_colour?: string | null
+          monthly_usage_band?: string | null
+          multifunction_required?: boolean | null
+          nic_or_company?: string | null
+          notes?: string | null
+          preferred_install_date?: string | null
+          request_status?: string
+          requested_segment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seasonal_usage?: boolean | null
+          submitted_plan_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          billing_preference?: string | null
+          created_at?: string
+          customer_id?: string
+          email?: string | null
+          fit_confidence?: string | null
+          full_name?: string
+          id?: string
+          latitude?: number | null
+          location?: string | null
+          longitude?: number | null
+          mobile?: string
+          mono_or_colour?: string | null
+          monthly_usage_band?: string | null
+          multifunction_required?: boolean | null
+          nic_or_company?: string | null
+          notes?: string | null
+          preferred_install_date?: string | null
+          request_status?: string
+          requested_segment?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          seasonal_usage?: boolean | null
+          submitted_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_subscription_requests_submitted_plan_id_fkey"
+            columns: ["submitted_plan_id"]
+            isOneToOne: false
+            referencedRelation: "sps_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sps_support_tickets: {
+        Row: {
+          asset_id: string | null
+          assigned_to: string | null
+          category: string
+          contract_id: string | null
+          customer_id: string
+          id: string
+          issue_description: string
+          opened_at: string
+          priority: string
+          resolution_notes: string | null
+          resolved_at: string | null
+          sla_band: string | null
+          status: string
+        }
+        Insert: {
+          asset_id?: string | null
+          assigned_to?: string | null
+          category?: string
+          contract_id?: string | null
+          customer_id: string
+          id?: string
+          issue_description: string
+          opened_at?: string
+          priority?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          sla_band?: string | null
+          status?: string
+        }
+        Update: {
+          asset_id?: string | null
+          assigned_to?: string | null
+          category?: string
+          contract_id?: string | null
+          customer_id?: string
+          id?: string
+          issue_description?: string
+          opened_at?: string
+          priority?: string
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          sla_band?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sps_support_tickets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "sps_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sps_support_tickets_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "sps_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_cases: {
         Row: {
           assigned_to: string | null
