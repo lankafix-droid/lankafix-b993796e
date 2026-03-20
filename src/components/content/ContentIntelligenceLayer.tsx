@@ -9,12 +9,13 @@ const SafetyAlertsSection = lazy(() => import('./SafetyAlertsSection'));
 const NumbersInsightSection = lazy(() => import('./NumbersInsightSection'));
 const PopularThisWeekSection = lazy(() => import('./PopularThisWeekSection'));
 const ContentHeroBanner = lazy(() => import('./ContentHeroBanner'));
+const AIBannerForum = lazy(() => import('./AIBannerForum'));
 
-const Fallback = () => <div className="h-16" aria-hidden />;
+const Fallback = () => <div className="h-12" aria-hidden />;
 
 /**
- * ContentIntelligenceLayer — All homepage content sections wired together.
- * Drops into V2HomePage without touching other sections.
+ * ContentIntelligenceLayer — All homepage content sections.
+ * Premium ordering: Hero → Hot Now → Safety → Innovations → AI Banner → Numbers → Did You Know → Popular
  */
 export default function ContentIntelligenceLayer() {
   const navigate = useNavigate();
@@ -32,10 +33,13 @@ export default function ContentIntelligenceLayer() {
         <HotNowSection onOpenItem={handleOpenItem} />
       </Suspense>
       <Suspense fallback={<Fallback />}>
+        <SafetyAlertsSection onOpenItem={handleOpenItem} />
+      </Suspense>
+      <Suspense fallback={<Fallback />}>
         <InnovationsSection onOpenItem={handleOpenItem} />
       </Suspense>
       <Suspense fallback={<Fallback />}>
-        <SafetyAlertsSection onOpenItem={handleOpenItem} />
+        <AIBannerForum onOpenItem={handleOpenItem} />
       </Suspense>
       <Suspense fallback={<Fallback />}>
         <NumbersInsightSection onOpenItem={handleOpenItem} />

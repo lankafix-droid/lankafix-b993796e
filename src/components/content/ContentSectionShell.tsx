@@ -17,20 +17,20 @@ const ContentSectionShell = memo(function ContentSectionShell({
 }: ContentSectionShellProps) {
   return (
     <section className={cn('py-4', className)}>
-      <div className="px-4 flex items-center justify-between mb-2.5">
+      <div className="px-4 flex items-center justify-between mb-3">
         <div>
-          <h2 className="flex items-center gap-1.5 font-heading text-base font-bold text-foreground">
+          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-foreground tracking-tight">
             {icon}
             {title}
           </h2>
           {subtitle && (
-            <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5 tracking-wide">{subtitle}</p>
           )}
         </div>
         {actionLabel && onAction && (
           <button
             onClick={onAction}
-            className="flex items-center gap-0.5 text-xs font-semibold text-primary"
+            className="flex items-center gap-0.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
           >
             {actionLabel}
             <ChevronRight className="h-3.5 w-3.5" />
