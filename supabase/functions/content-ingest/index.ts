@@ -225,12 +225,18 @@ STRICT RULES:
 - For ai_why_it_matters: explain practical impact on homeowners/businesses. Source-grounded only.
 - For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services. Null if forced.
 
-QUALITY SCORING GUIDE (ai_quality_score 0.0 to 1.0):
-- 0.7-1.0: Excellent — rich detail, strong practical relevance, actionable for users.
-- 0.5-0.7: Good — clear topic, useful information, reasonable depth even if excerpt is brief.
-- 0.3-0.5: Marginal — topic is relevant but source lacks depth or detail.
-- 0.0-0.3: Poor — irrelevant, unverifiable, or no useful information.
-NOTE: A short excerpt from a reputable source on a relevant topic should still score 0.5+ if the topic itself is useful. Do NOT penalize brevity alone — penalize lack of relevance or substance.`
+QUALITY SCORING GUIDE (ai_quality_score 0.0 to 1.0) — CALIBRATED:
+- 0.80-1.0: Outstanding — deeply actionable, verified data, strong local relevance, comprehensive detail.
+- 0.60-0.80: Strong — clear practical value, good depth, useful for decision-making.
+- 0.45-0.60: Solid — relevant topic from credible source, useful even if brief. Most articles from reputable tech/news sources should land here.
+- 0.30-0.45: Marginal — topic tangentially relevant, thin detail, limited actionability.
+- 0.00-0.30: Poor — irrelevant to services/repair/tech, no useful information, spam-like.
+
+CRITICAL CALIBRATION NOTES:
+- An article from a reputable source (TechCrunch, Ars Technica, SecurityWeek, etc.) about technology, security, energy, or repair topics should score AT LEAST 0.50 even if the excerpt is brief.
+- Sri Lanka-specific content with practical utility should score AT LEAST 0.55.
+- Only score below 0.30 for genuinely irrelevant or spam content.
+- Brief excerpts from quality sources are NOT low quality — they just have less detail. Score the TOPIC RELEVANCE and SOURCE CREDIBILITY, not just excerpt length.`
           },
           {
             role: "user",
@@ -244,8 +250,7 @@ ${slContext}
 Title: ${item.title}
 Excerpt: ${item.raw_excerpt ?? 'No excerpt available'}
 
-Generate a structured brief. Be source-grounded only. Do not invent any facts or numbers.
-For ai_quality_score: rate 0.0-1.0 based on source depth, relevance, and usefulness. Thin sources must score below 0.4.`
+Generate a structured brief. Be source-grounded only. Do not invent any facts or numbers.`
           }
         ],
         tools: [{
@@ -265,7 +270,7 @@ For ai_quality_score: rate 0.0-1.0 based on source depth, relevance, and usefuln
                 ai_cta_label: { type: "string", description: "CTA text like 'Learn More', 'Check Your Device', 'Book Service'" },
                 ai_keywords: { type: "array", items: { type: "string" }, description: "3-5 keywords" },
                 ai_risk_flags: { type: "array", items: { type: "string" }, description: "Risk warnings only if genuinely present in source" },
-                ai_quality_score: { type: "number", description: "0.0-1.0. Thin/vague sources MUST score below 0.4." },
+                ai_quality_score: { type: "number", description: "0.0-1.0 per the calibration guide. Reputable source + relevant topic = 0.50 minimum." },
               },
               required: ["ai_headline", "ai_summary_short", "ai_summary_medium", "ai_quality_score"],
             }
