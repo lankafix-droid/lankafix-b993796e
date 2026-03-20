@@ -72,8 +72,8 @@ const HEALTH_STYLES: Record<SourceHealth, string> = {
 };
 
 type CategoryReadiness = 'ready' | 'weak' | 'fallback_only' | 'blocked';
-function getCategoryReadiness(data: { featured: number; feed: number; live: number }): CategoryReadiness {
-  if (data.live >= 3 && data.featured >= 1) return 'ready';
+function getCategoryReadiness(data: { featured: number; feed: number; live: number; sl?: number; avgQ?: number }): CategoryReadiness {
+  if (data.live >= 3 && data.featured >= 1 && (data.avgQ ?? 0) >= 0.4) return 'ready';
   if (data.live >= 1) return 'weak';
   return 'fallback_only';
 }
