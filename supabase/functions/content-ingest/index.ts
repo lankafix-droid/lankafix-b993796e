@@ -279,7 +279,7 @@ const MAX_SAME_CATEGORY_CONSECUTIVE = 2;
 const MAX_SAME_CONTENT_TYPE_PER_SURFACE = 3;
 
 // ─── Surface publishing with diversity governance ───
-const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; isHero?: boolean }> = {
+const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; isHero?: boolean; categoryBound?: boolean }> = {
   homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic', 'market_shift'], maxItems: 3, minQuality: 0.6, isHero: true },
   homepage_hot_now: { types: ['breaking_news', 'hot_topic', 'trend_signal', 'most_read'], maxItems: 8, minQuality: 0.5 },
   homepage_did_you_know: { types: ['knowledge_fact', 'on_this_day', 'history', 'how_to'], maxItems: 4, minQuality: 0.4 },
@@ -288,6 +288,8 @@ const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQual
   homepage_numbers: { types: ['numbers_insight', 'market_shift'], maxItems: 4, minQuality: 0.4 },
   homepage_popular: { types: ['most_read', 'hot_topic', 'how_to', 'innovation'], maxItems: 5, minQuality: 0.4 },
   ai_banner_forum: { types: ['breaking_news', 'innovation', 'safety_alert', 'trend_signal'], maxItems: 5, minQuality: 0.6 },
+  category_featured: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'trend_signal', 'how_to', 'market_shift'], maxItems: 1, minQuality: 0.5, categoryBound: true },
+  category_feed: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'scam_alert', 'trend_signal', 'how_to', 'knowledge_fact', 'numbers_insight', 'market_shift'], maxItems: 6, minQuality: 0.4, categoryBound: true },
 };
 
 async function publishToSurfaces() {
