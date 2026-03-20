@@ -4670,6 +4670,207 @@ export type Database = {
         }
         Relationships: []
       }
+      sps_ai_advisor_sessions: {
+        Row: {
+          ai_response: string
+          confidence: number | null
+          created_at: string
+          customer_id: string | null
+          escalated_to_human: boolean | null
+          id: string
+          page_context: string | null
+          session_channel: string | null
+          user_question: string
+        }
+        Insert: {
+          ai_response: string
+          confidence?: number | null
+          created_at?: string
+          customer_id?: string | null
+          escalated_to_human?: boolean | null
+          id?: string
+          page_context?: string | null
+          session_channel?: string | null
+          user_question: string
+        }
+        Update: {
+          ai_response?: string
+          confidence?: number | null
+          created_at?: string
+          customer_id?: string | null
+          escalated_to_human?: boolean | null
+          id?: string
+          page_context?: string | null
+          session_channel?: string | null
+          user_question?: string
+        }
+        Relationships: []
+      }
+      sps_ai_asset_health_scores: {
+        Row: {
+          asset_id: string
+          created_at: string
+          id: string
+          predicted_breakdown_risk: number | null
+          predicted_profitability_risk: number | null
+          predicted_service_need: string | null
+          score_date: string
+          suggested_action: string | null
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          id?: string
+          predicted_breakdown_risk?: number | null
+          predicted_profitability_risk?: number | null
+          predicted_service_need?: string | null
+          score_date?: string
+          suggested_action?: string | null
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          id?: string
+          predicted_breakdown_risk?: number | null
+          predicted_profitability_risk?: number | null
+          predicted_service_need?: string | null
+          score_date?: string
+          suggested_action?: string | null
+        }
+        Relationships: []
+      }
+      sps_ai_meter_reviews: {
+        Row: {
+          anomaly_score: number | null
+          anomaly_type: string | null
+          asset_id: string | null
+          contract_id: string | null
+          explanation: string | null
+          generated_at: string
+          id: string
+          meter_reading_id: string
+          review_status: string | null
+          suggested_action: string | null
+        }
+        Insert: {
+          anomaly_score?: number | null
+          anomaly_type?: string | null
+          asset_id?: string | null
+          contract_id?: string | null
+          explanation?: string | null
+          generated_at?: string
+          id?: string
+          meter_reading_id: string
+          review_status?: string | null
+          suggested_action?: string | null
+        }
+        Update: {
+          anomaly_score?: number | null
+          anomaly_type?: string | null
+          asset_id?: string | null
+          contract_id?: string | null
+          explanation?: string | null
+          generated_at?: string
+          id?: string
+          meter_reading_id?: string
+          review_status?: string | null
+          suggested_action?: string | null
+        }
+        Relationships: []
+      }
+      sps_ai_plan_insights: {
+        Row: {
+          confidence_score: number | null
+          customer_id: string | null
+          fit_strength: string | null
+          generated_at: string
+          id: string
+          insight_summary: string
+          plan_id: string
+          recommendation_id: string | null
+          review_required_reason: string | null
+          session_id: string | null
+          tradeoff_summary: string | null
+          upgrade_hint: string | null
+          watchouts: string | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          customer_id?: string | null
+          fit_strength?: string | null
+          generated_at?: string
+          id?: string
+          insight_summary: string
+          plan_id: string
+          recommendation_id?: string | null
+          review_required_reason?: string | null
+          session_id?: string | null
+          tradeoff_summary?: string | null
+          upgrade_hint?: string | null
+          watchouts?: string | null
+        }
+        Update: {
+          confidence_score?: number | null
+          customer_id?: string | null
+          fit_strength?: string | null
+          generated_at?: string
+          id?: string
+          insight_summary?: string
+          plan_id?: string
+          recommendation_id?: string | null
+          review_required_reason?: string | null
+          session_id?: string | null
+          tradeoff_summary?: string | null
+          upgrade_hint?: string | null
+          watchouts?: string | null
+        }
+        Relationships: []
+      }
+      sps_ai_ticket_triage: {
+        Row: {
+          asset_id: string | null
+          contract_id: string | null
+          generated_at: string
+          id: string
+          probable_issue_type: string | null
+          recommended_action: string | null
+          recommended_support_mode: string | null
+          repeat_issue_flag: boolean | null
+          replacement_risk_flag: boolean | null
+          ticket_id: string
+          triage_confidence: number | null
+          urgency_band: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          contract_id?: string | null
+          generated_at?: string
+          id?: string
+          probable_issue_type?: string | null
+          recommended_action?: string | null
+          recommended_support_mode?: string | null
+          repeat_issue_flag?: boolean | null
+          replacement_risk_flag?: boolean | null
+          ticket_id: string
+          triage_confidence?: number | null
+          urgency_band?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          contract_id?: string | null
+          generated_at?: string
+          id?: string
+          probable_issue_type?: string | null
+          recommended_action?: string | null
+          recommended_support_mode?: string | null
+          repeat_issue_flag?: boolean | null
+          replacement_risk_flag?: boolean | null
+          ticket_id?: string
+          triage_confidence?: number | null
+          urgency_band?: string | null
+        }
+        Relationships: []
+      }
       sps_asset_assignments: {
         Row: {
           asset_id: string
