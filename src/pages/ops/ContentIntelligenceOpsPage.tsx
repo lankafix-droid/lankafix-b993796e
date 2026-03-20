@@ -1,3 +1,4 @@
+/* Content Intelligence Ops v10.1 — SL-priority backlog burn, premium surface strategy */
 import { useState, useMemo } from 'react';
 import PageTransition from '@/components/motion/PageTransition';
 import Header from '@/components/layout/Header';
