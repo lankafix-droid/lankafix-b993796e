@@ -512,7 +512,16 @@ export default function ContentIntelligenceOpsPage() {
               <div>Published: <strong className="text-primary">{lastRunResult.published ?? 0}</strong></div>
               <div>Rejected: <strong className="text-destructive">{lastRunResult.rejected ?? 0}</strong></div>
             </div>
+            {/* Structured publish stats */}
+            {lastRunResult.completed_surfaces && (
+              <div className="mt-1.5 pt-1.5 border-t border-border/20 grid grid-cols-3 gap-2 text-[10px]">
+                <div>Surfaces: <strong className="text-primary">{lastRunResult.completed_surfaces?.length ?? 0}</strong>/{lastRunResult.attempted_surfaces?.length ?? 0}</div>
+                <div>Assignments: <strong>{lastRunResult.assignments_written ?? 0}</strong></div>
+                <div>Skipped: <strong className="text-muted-foreground">{lastRunResult.skipped_surfaces?.length ?? 0}</strong></div>
+              </div>
+            )}
             {lastRunResult.newsdata_key_present === false && <p className="text-[10px] text-warning mt-1">🔑 NEWSDATA_API_KEY missing — {blockedNewsdata} sources blocked</p>}
+            {lastRunResult.errors?.length > 0 && <p className="text-[10px] text-destructive mt-1">⚠ {lastRunResult.errors.length} error(s): {lastRunResult.errors[0]}</p>}
           </Card>
         )}
 
