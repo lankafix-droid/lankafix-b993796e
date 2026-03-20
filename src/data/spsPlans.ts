@@ -1,5 +1,5 @@
 /**
- * LankaFix SPS — Default Plan Definitions (seed data + recommendation engine)
+ * LankaFix SPS — Plan Definitions + Metadata-Driven Recommendation Engine
  */
 import type { SPSPlan, SPSSegment, FindMyPlanInputs, FitConfidence, PrinterClass } from "@/types/sps";
 
@@ -130,6 +130,8 @@ export const SPS_PLANS: SPSPlan[] = [
   },
 ];
 
+// ── Lookup helpers ──
+
 export function getPlanById(id: string): SPSPlan | undefined {
   return SPS_PLANS.find((p) => p.id === id);
 }
@@ -151,36 +153,128 @@ export function getGroupedPlans() {
   };
 }
 
-/** Recommendation engine */
+// ── Segment affinity map (which segments can cross-recommend) ──
+const SEGMENT_AFFINITY: Record<SPSSegment, SPSSegment[]> = {
+  home: ["home", "student"],
+  student: ["student", "home"],
+  tuition: ["tuition", "small_business"],
+  home_office: ["home_office", "small_business", "sme_office"],
+  small_business: ["small_business", "home_office", "tuition"],
+  sme_office: ["sme_office", "small_business", "business_institution"],
+  business_institution: ["business_institution", "sme_office"],
+  custom: ["custom", "business_institution", "sme_office"],
+};
+
+// ── MFP printer classes ──
+const MFP_CLASSES: PrinterClass[] = ["mono_mfp_laser", "colour_mfp", "business_mfp", "copier"];
+
+// ── Colour-capable printer classes ──
+const COLOUR_CLASSES: PrinterClass[] = ["ink_tank", "cartridge", "colour_laser", "colour_mfp"];
+
+/**
+ * Metadata-driven recommendation engine
+ * Scores plans across multiple dimensions using plan metadata only.
+ */
 export function recommendPlan(inputs: FindMyPlanInputs): { plan: SPSPlan; confidence: FitConfidence; reason: string } {
-  const candidates = SPS_PLANS.filter((p) => p.is_active && !p.is_custom_quote);
-
-  let scored = candidates.map((plan) => {
-    let score = 0;
-    let reasons: string[] = [];
-
-    // Segment match
-    if (plan.segment === inputs.userType) { score += 30; reasons.push("Matches your user type"); }
-
-    // Page volume fit
-    if (inputs.monthlyPages <= plan.included_pages) { score += 25; reasons.push(`Covers your ${inputs.monthlyPages} pages/month`); }
-    else if (inputs.monthlyPages <= plan.included_pages * 1.3) { score += 10; reasons.push("Close to your page needs with small overage"); }
-
-    // Multifunction
-    if (inputs.needsMultifunction && ["mono_mfp_laser", "colour_mfp", "business_mfp"].includes(plan.printer_class)) {
-      score += 15; reasons.push("Includes scan & copy");
+  // 1. Custom quote fast-path
+  if (inputs.monthlyPages > 3000 || inputs.userType === "business_institution" || inputs.userType === "custom") {
+    const customPlan = SPS_PLANS.find((p) => p.plan_code === "INSTITUTION") ||
+                       SPS_PLANS.find((p) => p.is_custom_quote);
+    if (customPlan) {
+      return {
+        plan: customPlan,
+        confidence: "review_required",
+        reason: "Your requirements suggest a custom enterprise solution. A LankaFix advisor will tailor the perfect plan.",
+      };
     }
-    if (!inputs.needsMultifunction && plan.printer_class === "mono_laser") { score += 5; }
+  }
 
-    // Budget
-    if (inputs.budgetPreference === "lowest" && plan.monthly_fee <= 2500) { score += 10; reasons.push("Budget-friendly"); }
-    if (inputs.budgetPreference === "premium" && plan.support_level === "priority") { score += 10; reasons.push("Premium reliability"); }
+  const candidates = SPS_PLANS.filter((p) => p.is_active && !p.is_custom_quote);
+  const affinitySegments = SEGMENT_AFFINITY[inputs.userType] || [inputs.userType];
 
-    // Pause for seasonal
-    if (inputs.seasonalUsage && plan.pause_allowed) { score += 10; reasons.push("Supports seasonal pause"); }
+  const scored = candidates.map((plan) => {
+    let score = 0;
+    const reasons: string[] = [];
 
-    // Colour preference
-    if (inputs.monoOrColour === "colour" && !["colour_laser", "colour_mfp", "ink_tank"].includes(plan.printer_class)) { score -= 10; }
+    // ── Segment fit (0–30) ──
+    if (plan.segment === inputs.userType) {
+      score += 30;
+      reasons.push("Matches your user type");
+    } else if (affinitySegments.includes(plan.segment)) {
+      score += 15;
+      reasons.push("Suitable for similar user profiles");
+    }
+
+    // ── Page band fit (0–25) ──
+    const pages = inputs.monthlyPages;
+    const included = plan.included_pages;
+    if (pages <= included) {
+      score += 25;
+      reasons.push(`Covers your ${pages} pages/month`);
+    } else if (pages <= included * 1.3) {
+      score += 12;
+      reasons.push("Close to your page needs with small overage");
+    } else if (pages <= included * 1.6) {
+      score += 5;
+    }
+    // Penalize massive over-provision (wasteful plan)
+    if (included > pages * 3 && pages > 0) {
+      score -= 8;
+    }
+
+    // ── Multifunction fit (0–15) ──
+    const isMFP = MFP_CLASSES.includes(plan.printer_class);
+    if (inputs.needsMultifunction && isMFP) {
+      score += 15;
+      reasons.push("Includes scan & copy");
+    } else if (inputs.needsMultifunction && !isMFP) {
+      score -= 10;
+    } else if (!inputs.needsMultifunction && !isMFP) {
+      score += 5;
+    }
+
+    // ── Mono/colour fit (0–10) ──
+    const isColour = COLOUR_CLASSES.includes(plan.printer_class);
+    if (inputs.monoOrColour === "colour" && isColour) {
+      score += 10;
+      reasons.push("Supports colour printing");
+    } else if (inputs.monoOrColour === "colour" && !isColour) {
+      score -= 10;
+    } else if (inputs.monoOrColour === "mono" && !isColour) {
+      score += 5;
+    }
+
+    // ── Budget preference fit (0–10) ──
+    if (inputs.budgetPreference === "lowest") {
+      if (plan.monthly_fee <= 2500) { score += 10; reasons.push("Budget-friendly"); }
+      else if (plan.monthly_fee <= 3500) { score += 4; }
+    } else if (inputs.budgetPreference === "premium") {
+      if (plan.support_level === "priority" || plan.support_level === "premium") {
+        score += 10;
+        reasons.push("Premium reliability");
+      }
+    } else {
+      // balanced: slight preference for mid-range
+      if (plan.monthly_fee >= 2000 && plan.monthly_fee <= 5000) { score += 5; }
+    }
+
+    // ── Seasonal / pause fit (0–10) ──
+    if (inputs.seasonalUsage && plan.pause_allowed) {
+      score += 10;
+      reasons.push("Supports seasonal pause");
+    } else if (inputs.seasonalUsage && !plan.pause_allowed) {
+      score -= 5;
+    }
+
+    // ── Downtime criticality fit (0–8) ──
+    if (inputs.downtimeCritical) {
+      if (plan.uptime_priority === "critical") { score += 8; reasons.push("Critical uptime SLA"); }
+      else if (plan.uptime_priority === "high") { score += 4; }
+    }
+
+    // ── Usage intensity fit (0–5) ──
+    if (inputs.usageIntensity === "heavy" && plan.included_pages >= 1500) { score += 5; }
+    if (inputs.usageIntensity === "light" && plan.included_pages <= 400) { score += 5; }
 
     return { plan, score, reasons };
   });
@@ -189,14 +283,8 @@ export function recommendPlan(inputs: FindMyPlanInputs): { plan: SPSPlan; confid
   const best = scored[0];
 
   let confidence: FitConfidence = "recommended";
-  if (best.score < 30) confidence = "review_required";
-  else if (best.score < 50) confidence = "good_fit";
-
-  // If custom quote territory
-  if (inputs.monthlyPages > 3000 || inputs.userType === "business_institution") {
-    const customPlan = SPS_PLANS.find((p) => p.plan_code === "INSTITUTION")!;
-    return { plan: customPlan, confidence: "review_required", reason: "Your requirements suggest a custom enterprise solution. A LankaFix advisor will tailor the perfect plan." };
-  }
+  if (best.score < 25) confidence = "review_required";
+  else if (best.score < 45) confidence = "good_fit";
 
   return {
     plan: best.plan,
