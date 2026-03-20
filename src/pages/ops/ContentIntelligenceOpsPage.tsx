@@ -268,16 +268,32 @@ export default function ContentIntelligenceOpsPage() {
   }, [surfaceConfigs]);
 
   const categoryCoverage = useMemo(() => {
-    const catData: Record<string, { featured: number; feed: number; live: number }> = {};
-    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0 }; });
+    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number }> = {};
+    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0 }; });
+    // Count surface assignments
     (surfaces ?? []).forEach((s: any) => {
       if (!s.category_code || !catData[s.category_code]) return;
       if (s.surface_code === 'category_featured') catData[s.category_code].featured++;
       if (s.surface_code === 'category_feed') catData[s.category_code].feed++;
       catData[s.category_code].live++;
+      if (s.content_items?.source_country === 'lk') catData[s.category_code].sl++;
     });
+    // Compute avg quality from published items by category tag
+    (published ?? []).forEach((p: any) => {
+      const q = p.content_ai_briefs?.[0]?.ai_quality_score ?? 0;
+      (p.content_category_tags ?? []).forEach((t: any) => {
+        if (catData[t.category_code]) {
+          catData[t.category_code].avgQ += q;
+        }
+      });
+    });
+    // Average quality
+    for (const cat of LANKAFIX_CATEGORIES) {
+      const d = catData[cat];
+      if (d.live > 0) d.avgQ = d.avgQ / d.live;
+    }
     return catData;
-  }, [surfaces]);
+  }, [surfaces, published]);
 
   // Premium surface analysis
   const premiumAnalysis = useMemo(() => {
