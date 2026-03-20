@@ -636,6 +636,17 @@ export default function ContentIntelligenceOpsPage() {
             {(lastRunResult.title_rejected ?? 0) > 0 && (
               <p className="text-[10px] text-warning mt-1">⚠ {lastRunResult.title_rejected} titles rejected</p>
             )}
+            {lastRunResult.publish_stats && (
+              <div className="grid grid-cols-4 gap-2 text-[10px] mt-1.5 border-t border-border/30 pt-1.5">
+                <div>Surfaces: <strong>{lastRunResult.publish_stats.completed ?? 0}</strong>/{lastRunResult.publish_stats.attempted ?? 0}</div>
+                <div>Assignments: <strong className="text-primary">{lastRunResult.publish_stats.assignments ?? 0}</strong></div>
+                <div>Skipped: <strong>{lastRunResult.publish_stats.skipped ?? 0}</strong></div>
+                <div>Duration: <strong>{lastRunResult.duration_ms}ms</strong></div>
+              </div>
+            )}
+            {lastRunResult.newsdata_key_present === false && (
+              <p className="text-[10px] text-warning mt-1">🔑 NEWSDATA_API_KEY not configured — 11 sources blocked</p>
+            )}
             {lastRunResult.source_errors?.length > 0 && (
               <div className="mt-1.5 text-[10px] text-destructive">
                 {lastRunResult.source_errors.slice(0, 3).map((e: string, i: number) => <p key={i}>⚠ {e}</p>)}
