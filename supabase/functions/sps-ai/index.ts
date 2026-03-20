@@ -117,16 +117,17 @@ serve(async (req) => {
     let wasFallback = false;
     let errorMsg: string | null = null;
 
-    try {
-      if (action === "plan_insight") result = await handlePlanInsight(payload, LOVABLE_API_KEY, serviceClient);
-      else if (action === "support_triage") result = await handleSupportTriage(payload, LOVABLE_API_KEY, serviceClient);
-      else if (action === "meter_anomaly") result = await handleMeterAnomaly(payload, LOVABLE_API_KEY, serviceClient);
-      else if (action === "advisor_chat") result = await handleAdvisorChat(payload, LOVABLE_API_KEY, serviceClient);
-      else return json({ error: "Unknown action" }, 400);
-    } catch (aiErr) {
-      errorMsg = aiErr instanceof Error ? aiErr.message : "AI processing error";
+    if (action === "plan_insight") result = await handlePlanInsight(payload, LOVABLE_API_KEY, serviceClient);
+    else if (action === "support_triage") result = await handleSupportTriage(payload, LOVABLE_API_KEY, serviceClient);
+    else if (action === "meter_anomaly") result = await handleMeterAnomaly(payload, LOVABLE_API_KEY, serviceClient);
+    else if (action === "advisor_chat") result = await handleAdvisorChat(payload, LOVABLE_API_KEY, serviceClient);
+    else return json({ error: "Unknown action" }, 400);
+
+    // Check if handler returned an error
+    if (result && typeof result === "object" && "error" in (result as Record<string, unknown>)) {
+      const r = result as Record<string, unknown>;
+      errorMsg = r.error as string;
       wasFallback = true;
-      result = { error: errorMsg, fallback: true };
     }
 
     // Log observability
@@ -141,7 +142,7 @@ serve(async (req) => {
       ai_model: "google/gemini-3-flash-preview",
     }).then(() => {});
 
-    if (wasFallback) return json(result, 500);
+    if (wasFallback) return json(result, (result as Record<string, unknown>).status as number || 500);
     return json(result);
   } catch (e) {
     const latency = Date.now() - start;
