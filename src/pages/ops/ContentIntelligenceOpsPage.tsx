@@ -150,11 +150,15 @@ function SourceHealthBadges({ src }: { src: any }) {
 
   if (!src.base_url) badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
 
-  // Source blocking badges
-  if (src.source_vendor === 'newsdata' && src.rollout_state === 'failing') {
+  // NewsData source detection - check base_url for newsdata.io
+  const isNewsdataSource = src.base_url?.includes('newsdata.io');
+  if (isNewsdataSource && src.rollout_state === 'failing') {
     badges.push(<Badge key="blocked" variant="destructive" className="text-[9px]">🔑 Blocked by key</Badge>);
   }
-  if (src.rollout_state === 'failing' && src.source_vendor !== 'newsdata') {
+  if (isNewsdataSource && src.rollout_state === 'validated') {
+    badges.push(<Badge key="nd-ok" variant="outline" className="text-[9px] text-primary border-primary/30">✅ NewsData Active</Badge>);
+  }
+  if (!isNewsdataSource && src.rollout_state === 'failing') {
     badges.push(<Badge key="authfail" variant="destructive" className="text-[9px]">Auth failed</Badge>);
   }
 
@@ -712,7 +716,7 @@ export default function ContentIntelligenceOpsPage() {
           <StatCard label="Runs" value={pipelineHistory?.length ?? 0} icon={History} color="text-muted-foreground" subtitle={pipelineHistory?.[0] ? formatTimeAgo(pipelineHistory[0].started_at) : 'None'} />
         </div>
         {/* Live vs Evergreen + SL Relevance + Premium metrics */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-4 gap-2 mb-2">
           <StatCard
             label="Live Fill"
             value={`${(surfaces ?? []).length}`}
@@ -732,7 +736,7 @@ export default function ContentIntelligenceOpsPage() {
             value={sources?.filter((s: any) => (s.sri_lanka_bias ?? 0) >= 0.7 && s.active).length ?? 0}
             icon={Shield}
             color="text-accent-foreground"
-            subtitle={`${sources?.filter((s: any) => s.source_vendor === 'newsdata' && s.rollout_state === 'failing').length ?? 0} blocked by key`}
+            subtitle={`${sources?.filter((s: any) => s.base_url?.includes('newsdata.io') && s.rollout_state === 'failing').length ?? 0} blocked`}
           />
           <StatCard
             label="Avg Quality"
@@ -742,6 +746,69 @@ export default function ContentIntelligenceOpsPage() {
             subtitle="published items"
           />
         </div>
+
+        {/* NewsData Activation Status */}
+        {(() => {
+          const newsdataSources = sources?.filter((s: any) => s.base_url?.includes('newsdata.io')) ?? [];
+          const ndActive = newsdataSources.filter((s: any) => s.rollout_state === 'validated' || s.rollout_state === 'pilot_live' || s.rollout_state === 'production_live');
+          const ndFailing = newsdataSources.filter((s: any) => s.rollout_state === 'failing');
+          const ndTotal = newsdataSources.length;
+          if (ndTotal === 0) return null;
+          return (
+            <Card className={`p-3 mb-2 ${ndFailing.length === ndTotal ? 'border-destructive/20 bg-destructive/[0.02]' : ndActive.length > 0 ? 'border-primary/20 bg-primary/[0.02]' : 'border-warning/20'}`}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Database className="h-3.5 w-3.5 text-primary" />
+                <span className="text-xs font-bold">NewsData Status</span>
+                <Badge variant={ndActive.length > 0 ? 'outline' : 'destructive'} className="text-[9px]">
+                  {ndActive.length}/{ndTotal} active
+                </Badge>
+                {lastRunResult?.newsdata_key_present === false && <Badge variant="destructive" className="text-[9px]">🔑 Key missing</Badge>}
+                {lastRunResult?.newsdata_key_present === true && <Badge variant="outline" className="text-[9px] text-primary border-primary/30">🔑 Key detected</Badge>}
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-[10px]">
+                <span>Activated: <strong className="text-primary">{ndActive.length}</strong></span>
+                <span>Failing: <strong className="text-destructive">{ndFailing.length}</strong></span>
+                <span>SL Sources: <strong>{newsdataSources.filter((s: any) => (s.sri_lanka_bias ?? 0) >= 0.7).length}</strong></span>
+                <span>Total: <strong>{ndTotal}</strong></span>
+              </div>
+              {ndFailing.length > 0 && (
+                <div className="mt-1 text-[9px] text-muted-foreground">
+                  Blocked: {ndFailing.map((s: any) => s.source_name).join(', ')}
+                </div>
+              )}
+            </Card>
+          );
+        })()}
+
+        {/* Premium Surface Board */}
+        {(() => {
+          const premiumSurfaces = ['homepage_hero', 'homepage_safety', 'ai_banner_forum', 'category_featured'];
+          const premiumData = premiumSurfaces.map(code => {
+            const items = surfacesByCode[code] ?? [];
+            const slItems = items.filter((s: any) => {
+              const ci = (s as any).content_items;
+              return ci?.source_country === 'lk' || ci?.source_name?.toLowerCase().includes('lanka');
+            });
+            return { code, total: items.length, sl: slItems.length, config: surfaceConfigMap[code] };
+          });
+          return (
+            <Card className="p-3 mb-4 border-accent/20">
+              <div className="flex items-center gap-2 mb-1.5">
+                <Star className="h-3.5 w-3.5 text-accent-foreground" />
+                <span className="text-xs font-bold">Premium Surfaces</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {premiumData.map(p => (
+                  <div key={p.code} className="text-[10px]">
+                    <p className="font-semibold truncate">{p.code.replace(/homepage_|_/g, (m) => m === '_' ? ' ' : '').trim()}</p>
+                    <p className={p.total > 0 ? 'text-primary' : 'text-muted-foreground'}>{p.total} live {p.sl > 0 && <span className="text-[9px]">(🇱🇰{p.sl})</span>}</p>
+                    <p className="text-[9px] text-muted-foreground">{p.config?.rollout_mode ?? 'evergreen_only'}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          );
+        })()}
 
         <Tabs defaultValue="queue">
           <TabsList className="w-full justify-start overflow-x-auto">

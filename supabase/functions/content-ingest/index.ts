@@ -21,11 +21,35 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 // ─── Dynamic API key injection ───
 function resolveSourceUrl(baseUrl: string): string {
   if (!baseUrl) return baseUrl;
-  // Replace demo key with real key if available
   if (baseUrl.includes('apikey=pub_demo') && NEWSDATA_API_KEY) {
     return baseUrl.replace('apikey=pub_demo', `apikey=${NEWSDATA_API_KEY}`);
   }
   return baseUrl;
+}
+
+function isNewsdataUrl(url: string): boolean {
+  return url.includes('newsdata.io');
+}
+
+/** Detect NewsData-specific error conditions from response */
+function classifyNewsdataError(status: number, body: any): 'auth_failed' | 'quota_exceeded' | 'malformed' | 'empty' | 'ok' {
+  // Log for debugging
+  console.log(`[NewsData] HTTP ${status}, body.status=${body?.status}, totalResults=${body?.totalResults}, results type=${typeof body?.results}, results length=${Array.isArray(body?.results) ? body.results.length : 'N/A'}`);
+  if (body?.results && typeof body.results === 'object' && !Array.isArray(body.results)) {
+    console.log(`[NewsData] Error message: ${JSON.stringify(body.results)}`);
+  }
+  
+  if (status === 401 || status === 403) return 'auth_failed';
+  if (status === 429) return 'quota_exceeded';
+  if (body?.status === 'error') {
+    const msg = (body.results?.message ?? body.message ?? '').toLowerCase();
+    console.log(`[NewsData] Error msg: ${msg}`);
+    if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('authentication') || msg.includes('invalid')) return 'auth_failed';
+    if (msg.includes('rate limit') || msg.includes('quota') || msg.includes('limit exceeded') || msg.includes('credit')) return 'quota_exceeded';
+    return 'malformed';
+  }
+  if (!body?.results || (Array.isArray(body.results) && body.results.length === 0)) return 'empty';
+  return 'ok';
 }
 
 // ─── RSS Feed parser (for free sources without API keys) ───
@@ -459,17 +483,44 @@ async function validateSources() {
     try {
       const resolvedUrl = resolveSourceUrl(source.base_url);
       const isRSS = source.source_type === 'rss' || resolvedUrl.includes('/feed') || resolvedUrl.includes('/rss');
+      const isNewsdata = isNewsdataUrl(source.base_url);
+      result.is_newsdata = isNewsdata;
+      result.has_real_key = !source.base_url.includes('pub_demo') || !!NEWSDATA_API_KEY;
+      
       const resp = await fetch(resolvedUrl, {
         headers: { 'Accept': isRSS ? 'application/xml, text/xml' : 'application/json' },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(10000),
       });
 
       result.reachable = true;
 
-      if (resp.status === 401 || resp.status === 403) {
+      if (isNewsdata) {
+        const body = await resp.json();
+        const classification = classifyNewsdataError(resp.status, body);
+        result.newsdata_status = classification;
+        
+        if (classification === 'auth_failed') {
+          result.auth_ok = false;
+          result.error = `NewsData auth failed (key ${NEWSDATA_API_KEY ? 'present but invalid' : 'missing'})`;
+          await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
+        } else if (classification === 'quota_exceeded') {
+          result.error = 'NewsData quota exceeded';
+          result.response_valid = false;
+        } else if (classification === 'malformed') {
+          result.error = `NewsData malformed: ${body?.results?.message ?? body?.message ?? 'unknown'}`;
+        } else {
+          const articles = body.results ?? [];
+          result.fetched_count = articles.length;
+          result.response_valid = articles.length > 0;
+          // Auto-promote from failing/inactive to validated on success
+          if (result.response_valid && ['failing', 'inactive'].includes(source.rollout_state ?? 'inactive')) {
+            await supabase.from('content_sources').update({ rollout_state: 'validated' }).eq('id', source.id);
+            result.promoted = true;
+          }
+        }
+      } else if (resp.status === 401 || resp.status === 403) {
         result.auth_ok = false;
         result.error = `Auth failure: HTTP ${resp.status}`;
-        // Auto-quarantine on auth failure
         await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
       } else if (!resp.ok) {
         result.error = `HTTP ${resp.status}`;
@@ -484,10 +535,10 @@ async function validateSources() {
         }
         result.fetched_count = articles.length;
         result.response_valid = Array.isArray(articles) && articles.length > 0;
-        result.has_real_key = !source.base_url.includes('pub_demo') || !!NEWSDATA_API_KEY;
 
-        if (result.response_valid && source.rollout_state === 'inactive') {
+        if (result.response_valid && ['failing', 'inactive'].includes(source.rollout_state ?? 'inactive')) {
           await supabase.from('content_sources').update({ rollout_state: 'validated' }).eq('id', source.id);
+          result.promoted = true;
         }
       }
     } catch (e) {
@@ -835,15 +886,81 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
     try {
       const resolvedUrl = resolveSourceUrl(source.base_url);
       const isRSS = source.source_type === 'rss' || resolvedUrl.includes('/feed') || resolvedUrl.includes('/rss') || resolvedUrl.endsWith('.xml');
+      const isNewsdata = isNewsdataUrl(source.base_url);
 
       const resp = await fetch(resolvedUrl, {
         headers: { 'Accept': isRSS ? 'application/xml, text/xml, application/rss+xml' : 'application/json' },
         signal: AbortSignal.timeout(10000),
       });
+      
+      // NewsData-specific error handling
+      if (isNewsdata) {
+        const body = await resp.json();
+        const classification = classifyNewsdataError(resp.status, body);
+        if (classification === 'auth_failed') {
+          results.source_errors.push(`${source.source_name}: NewsData auth failed`);
+          await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
+          continue;
+        }
+        if (classification === 'quota_exceeded') {
+          results.source_errors.push(`${source.source_name}: NewsData quota exceeded`);
+          continue;
+        }
+        if (classification === 'malformed' || classification === 'empty') {
+          results.source_errors.push(`${source.source_name}: NewsData ${classification}`);
+          continue;
+        }
+        // Success — extract articles from NewsData format
+        const articles = body.results ?? [];
+        results.fetched += articles.length;
+        fetchedSourceIds.push(source.id);
+
+        for (const article of articles.slice(0, 10)) {
+          const title = (article.title ?? '').trim();
+          if (!title || title.length < 10) continue;
+          const titleCheck = assessTitleQuality(title);
+          if (!titleCheck.pass) { results.title_rejected++; continue; }
+          const dedupeKey = generateDedupeKey(title, source.source_name);
+          const { data: existing } = await supabase.from('content_items').select('id').eq('dedupe_key', dedupeKey).limit(1);
+          if (existing?.length) { results.deduped++; continue; }
+          const { data: recentItems } = await supabase.from('content_items').select('title').order('created_at', { ascending: false }).limit(30);
+          if ((recentItems ?? []).some((r: any) => titleSimilarity(r.title, title) > SIMILAR_TITLE_THRESHOLD)) { results.deduped++; continue; }
+          
+          const text = `${title} ${article.description ?? ''} ${article.content ?? ''}`;
+          const categories = detectCategories(text);
+          const contentType = detectContentType(text);
+          const slRelevance = detectSriLankaRelevance(text);
+          const publishedAt = article.pubDate ?? article.pubdate ?? null;
+          const freshness = computeFreshness(contentType, publishedAt);
+          const effectiveSLRelevance = Math.max(slRelevance, source.sri_lanka_bias ?? 0.3);
+          const sourceCountry = effectiveSLRelevance > 0.7 ? 'lk' : (article.country?.[0] ?? 'global');
+          
+          const { data: inserted } = await supabase.from('content_items').insert({
+            source_id: source.id, source_item_id: article.article_id ?? article.link ?? dedupeKey,
+            content_type: contentType, title,
+            raw_excerpt: (article.description ?? '').slice(0, 1000) || null,
+            raw_body: (article.content ?? article.full_description ?? '').slice(0, 10000) || null,
+            canonical_url: article.link ?? null,
+            image_url: article.image_url ?? null,
+            source_name: source.source_name, source_country: sourceCountry,
+            language: article.language ?? 'en', published_at: publishedAt,
+            source_trust_score: source.trust_score, freshness_score: freshness,
+            status: 'new', dedupe_key: dedupeKey, raw_payload: article,
+          }).select('id').single();
+          if (inserted) {
+            results.normalized++;
+            for (const cat of categories) {
+              await supabase.from('content_category_tags').insert({ content_item_id: inserted.id, category_code: cat.code, confidence_score: cat.confidence });
+            }
+            results.accepted++;
+          }
+        }
+        continue; // Done with this NewsData source
+      }
+
       if (!resp.ok) {
         console.warn(`Source ${source.source_name} returned ${resp.status}`);
         results.source_errors.push(`${source.source_name}: HTTP ${resp.status}`);
-        // Track auth failures for alerting
         if (resp.status === 401 || resp.status === 403) {
           await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
         }
