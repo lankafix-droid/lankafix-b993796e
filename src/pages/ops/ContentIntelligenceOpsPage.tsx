@@ -532,10 +532,11 @@ export default function ContentIntelligenceOpsPage() {
             <div className="text-center"><p className="text-lg font-bold">{publishRate}%</p><p className="text-muted-foreground">Pub Rate</p></div>
             <div className="text-center"><p className="text-lg font-bold">{backlog}</p><p className="text-muted-foreground">Backlog</p></div>
           </div>
-          <div className="grid grid-cols-5 gap-2 text-[10px] mt-2 pt-2 border-t border-border/20">
+          <div className="grid grid-cols-6 gap-2 text-[10px] mt-2 pt-2 border-t border-border/20">
             <div className="text-center"><strong>{activeSources}</strong>/{totalSources}<br /><span className="text-muted-foreground">Sources</span></div>
             <div className="text-center"><strong className={criticalSources > 0 ? 'text-warning' : ''}>{criticalSources}</strong><br /><span className="text-muted-foreground">Critical</span></div>
             <div className="text-center"><strong className={blockedNewsdata > 0 ? 'text-destructive' : ''}>{blockedNewsdata}</strong><br /><span className="text-muted-foreground">🔑 Blocked</span></div>
+            <div className="text-center"><strong className={needsReview > 0 ? 'text-warning' : ''}>{needsReview}</strong><br /><span className="text-muted-foreground">Review</span></div>
             <div className="text-center"><strong>{coveredSurfaces}</strong>/10<br /><span className="text-muted-foreground">Surfaces</span></div>
             <div className="text-center"><strong>{catReadyCount}</strong>/15<br /><span className="text-muted-foreground">Cat Ready</span></div>
           </div>
