@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { categories } from "@/data/categories";
 import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
-import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging, PhoneCall, MessageCircle } from "lucide-react";
+import { Snowflake, Camera, Smartphone, Monitor, Sun, Tv, Home, Printer, ShoppingBag, ArrowRight, Package, Clock, Zap, Droplets, Wifi, Shield, BatteryCharging, PhoneCall, MessageCircle, BadgeCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { track } from "@/lib/analytics";
 import { logCategoryInterest, logFallbackDemand } from "@/lib/demandCapture";
