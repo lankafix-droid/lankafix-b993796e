@@ -529,7 +529,7 @@ export default function ContentIntelligenceOpsPage() {
               {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
               Full Run
             </Button>
-            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => rollbackPublish.mutate()} disabled={isPending || rollbackPublish.isPending}>
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => rollbackPublish.mutate(undefined)} disabled={isPending || rollbackPublish.isPending}>
               <RotateCw className="h-3.5 w-3.5 mr-1" /> Rollback
             </Button>
           </div>
