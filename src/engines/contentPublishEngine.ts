@@ -1,5 +1,5 @@
 /**
- * Content Publish Engine v4 — Launch-grade, SL-first, source-diverse premium ranking.
+ * Content Publish Engine v5 — Launch-grade, SL-first, source-diverse premium ranking.
  * Enforces source diversity, penalizes weak sources, rewards local utility.
  * Returns structured publish stats from all modes.
  */
@@ -48,8 +48,9 @@ const MAX_SAME_SOURCE_PER_SURFACE = 2;
 const WEAK_SOURCE_PENALTY: Record<string, number> = {
   'Ars Technica RSS': -10,
   'Electrek Energy': -7,
-  'Hacker News Best': -12,
+  'Hacker News Best': -14,
   'Techmeme': -3,
+  'How-To Geek': -4,
 };
 
 /** SL-relevant category codes that get extra local utility boost */
@@ -61,6 +62,11 @@ const SL_UTILITY_CATEGORIES = new Set([
 
 /** Safety-related content types that get urgency boost on premium surfaces */
 const SAFETY_TYPES = new Set(['safety_alert', 'scam_alert']);
+
+/** High-value content types for hero placement */
+const HERO_PREFERRED_TYPES = new Set([
+  'breaking_news', 'safety_alert', 'innovation', 'market_shift',
+]);
 
 export const DEFAULT_PUBLISH_RULES: PublishRule[] = [
   {
@@ -158,6 +164,8 @@ export function rankForSurface(
   rule: PublishRule
 ): Array<{ id: string; rank_score: number }> {
   const isPremium = rule.premium ?? false;
+  const isHero = rule.slot_code === 'homepage_hero';
+  const isSafetySurface = rule.slot_code === 'homepage_safety';
 
   const scored = candidates
     .filter(c => {
@@ -174,6 +182,7 @@ export function rankForSurface(
       const isSL = c.source_country === 'lk' || c.source_country === 'LK';
       const hasImage = !!c.image_url;
       const isSafety = SAFETY_TYPES.has(c.content_type);
+      const isHeroType = HERO_PREFERRED_TYPES.has(c.content_type);
 
       const recencyBonus = c.published_at
         ? Math.max(0, 100 - (Date.now() - new Date(c.published_at).getTime()) / 3600000)
@@ -188,18 +197,22 @@ export function rankForSurface(
       let rank: number;
 
       if (isPremium) {
-        // Premium: quality-first, SL-boosted, image-aware, trust-weighted
+        // Premium: SL-first, quality-second, trust-third, image-fourth
         rank = (
-          quality * 100 * 0.24 +
-          trust * 100 * 0.18 +
-          c.freshness_score * 0.14 +
-          recencyBonus * 0.06 +
-          (isSL ? 22 : 0) +             // Strong SL boost for premium
-          (hasLocalUtility ? 10 : 0) +   // Extra for SL items in relevant categories
-          (hasImage ? 9 : 0) +           // Image bonus
-          (isSafety ? 8 : 0) +           // Safety urgency
+          (isSL ? 24 : 0) +               // Strongest signal: Sri Lanka relevance
+          quality * 100 * 0.22 +           // Quality
+          trust * 100 * 0.16 +             // Trust
+          c.freshness_score * 0.12 +       // Freshness
+          recencyBonus * 0.05 +
+          (hasLocalUtility ? 12 : 0) +     // Extra for SL items in relevant categories
+          (hasImage ? 9 : 0) +             // Image bonus
+          (isSafety ? 8 : 0) +             // Safety urgency
+          (isHero && isHeroType ? 5 : 0) + // Hero type preference
           sourcePenalty
         );
+
+        // Safety surface: extra urgency weighting
+        if (isSafetySurface && isSafety) rank += 6;
       } else {
         // Standard ranking
         rank = (
