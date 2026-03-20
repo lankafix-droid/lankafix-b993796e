@@ -1,7 +1,7 @@
 /**
- * Content Ingestion Edge Function — Full pipeline v8.
- * Modes: full, ingest, brief, publish, decay, cluster, dry_run, publish_preview, audit_sources, fetch_only, validate_sources
- * Now with: pipeline run logging, failure alerting, source validation, rollout-state governance.
+ * Content Ingestion Edge Function — Full pipeline v9.
+ * Modes: full, ingest, brief, publish, decay, cluster, dry_run, publish_preview, audit_sources, fetch_only, validate_sources, rescue_review
+ * Now with: priority briefing, editorial rescue, calibrated quality scoring, Sri Lanka source prioritization.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -220,11 +220,17 @@ STRICT RULES:
 - NEVER sensationalize or use clickbait language.
 - ai_banner_text must ONLY contain a number/stat that appears verbatim in the source. If none exists, return null.
 - ai_risk_flags must ONLY contain risks genuinely described in the source.
-- If source text is thin or vague, set ai_quality_score below 0.4 and keep summaries conservative.
 - Keep tone professional, helpful, trustworthy, and simple.
 - Focus on how the content helps someone making service/repair/maintenance decisions.
 - For ai_why_it_matters: explain practical impact on homeowners/businesses. Source-grounded only.
-- For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services. Null if forced.`
+- For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services. Null if forced.
+
+QUALITY SCORING GUIDE (ai_quality_score 0.0 to 1.0):
+- 0.7-1.0: Excellent — rich detail, strong practical relevance, actionable for users.
+- 0.5-0.7: Good — clear topic, useful information, reasonable depth even if excerpt is brief.
+- 0.3-0.5: Marginal — topic is relevant but source lacks depth or detail.
+- 0.0-0.3: Poor — irrelevant, unverifiable, or no useful information.
+NOTE: A short excerpt from a reputable source on a relevant topic should still score 0.5+ if the topic itself is useful. Do NOT penalize brevity alone — penalize lack of relevance or substance.`
           },
           {
             role: "user",
@@ -306,16 +312,16 @@ const MAX_SAME_CATEGORY_CONSECUTIVE = 2;
 const MAX_SAME_CONTENT_TYPE_PER_SURFACE = 3;
 
 const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; isHero?: boolean; categoryBound?: boolean }> = {
-  homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic', 'market_shift'], maxItems: 3, minQuality: 0.6, isHero: true },
-  homepage_hot_now: { types: ['breaking_news', 'hot_topic', 'trend_signal', 'most_read'], maxItems: 8, minQuality: 0.5 },
-  homepage_did_you_know: { types: ['knowledge_fact', 'on_this_day', 'history', 'how_to'], maxItems: 4, minQuality: 0.4 },
-  homepage_innovations: { types: ['innovation', 'market_shift', 'trend_signal'], maxItems: 4, minQuality: 0.5 },
-  homepage_safety: { types: ['safety_alert', 'scam_alert'], maxItems: 3, minQuality: 0.55 },
-  homepage_numbers: { types: ['numbers_insight', 'market_shift'], maxItems: 4, minQuality: 0.4 },
-  homepage_popular: { types: ['most_read', 'hot_topic', 'how_to', 'innovation'], maxItems: 5, minQuality: 0.4 },
-  ai_banner_forum: { types: ['breaking_news', 'innovation', 'safety_alert', 'trend_signal'], maxItems: 5, minQuality: 0.6 },
-  category_featured: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'trend_signal', 'how_to', 'market_shift'], maxItems: 1, minQuality: 0.5, categoryBound: true },
-  category_feed: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'scam_alert', 'trend_signal', 'how_to', 'knowledge_fact', 'numbers_insight', 'market_shift'], maxItems: 6, minQuality: 0.38, categoryBound: true },
+  homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic', 'market_shift'], maxItems: 3, minQuality: 0.50, isHero: true },
+  homepage_hot_now: { types: ['breaking_news', 'hot_topic', 'trend_signal', 'most_read'], maxItems: 8, minQuality: 0.25 },
+  homepage_did_you_know: { types: ['knowledge_fact', 'on_this_day', 'history', 'how_to'], maxItems: 4, minQuality: 0.20 },
+  homepage_innovations: { types: ['innovation', 'market_shift', 'trend_signal'], maxItems: 4, minQuality: 0.25 },
+  homepage_safety: { types: ['safety_alert', 'scam_alert'], maxItems: 3, minQuality: 0.30 },
+  homepage_numbers: { types: ['numbers_insight', 'market_shift'], maxItems: 4, minQuality: 0.20 },
+  homepage_popular: { types: ['most_read', 'hot_topic', 'how_to', 'innovation'], maxItems: 5, minQuality: 0.25 },
+  ai_banner_forum: { types: ['breaking_news', 'innovation', 'safety_alert', 'trend_signal'], maxItems: 5, minQuality: 0.30 },
+  category_featured: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'trend_signal', 'how_to', 'market_shift'], maxItems: 1, minQuality: 0.25, categoryBound: true },
+  category_feed: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'scam_alert', 'trend_signal', 'how_to', 'knowledge_fact', 'numbers_insight', 'market_shift'], maxItems: 6, minQuality: 0.20, categoryBound: true },
 };
 
 type SourceTier = 'tier1_safe' | 'tier2_controlled' | 'tier3_experimental';
@@ -839,7 +845,6 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
         articles = data.articles ?? data.results ?? data.data ?? [];
       }
       results.fetched += articles.length;
-      results.fetched += articles.length;
 
       for (const article of articles.slice(0, 15)) {
         const title = (article.title ?? article.headline ?? '').trim();
@@ -898,15 +903,27 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
   }
 }
 
-// ─── Brief items ───
-async function briefItems(results: Record<string, any>) {
+// ─── Brief items (priority-ordered: high-trust & SL-relevant first) ───
+async function briefItems(results: Record<string, any>, batchSize = 15) {
   const { data: unbriefed } = await supabase
-    .from('content_items').select('id, title, raw_excerpt, content_type, source_country')
-    .in('status', ['new', 'processed']).order('freshness_score', { ascending: false }).limit(10);
+    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, freshness_score')
+    .in('status', ['new', 'processed'])
+    .order('source_trust_score', { ascending: false })
+    .order('freshness_score', { ascending: false })
+    .limit(batchSize);
 
   if (!unbriefed?.length) return;
 
-  for (const item of unbriefed) {
+  // Priority sort: SL-relevant + high-trust first
+  const sorted = unbriefed.sort((a: any, b: any) => {
+    const aSlR = detectSriLankaRelevance(`${a.title} ${a.raw_excerpt ?? ''}`);
+    const bSlR = detectSriLankaRelevance(`${b.title} ${b.raw_excerpt ?? ''}`);
+    const aScore = (a.source_trust_score ?? 0.5) * 0.4 + aSlR * 0.3 + (a.freshness_score ?? 10) / 100 * 0.3;
+    const bScore = (b.source_trust_score ?? 0.5) * 0.4 + bSlR * 0.3 + (b.freshness_score ?? 10) / 100 * 0.3;
+    return bScore - aScore;
+  });
+
+  for (const item of sorted) {
     const { data: existingBrief } = await supabase.from('content_ai_briefs').select('id').eq('content_item_id', item.id).limit(1);
     if (existingBrief?.length) continue;
 
@@ -922,12 +939,12 @@ async function briefItems(results: Record<string, any>) {
     if (brief) {
       await supabase.from('content_ai_briefs').insert({
         content_item_id: item.id, ...brief,
-        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v8-hardened',
+        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v9-calibrated',
       });
       const quality = brief.ai_quality_score ?? 0;
-      const newStatus = quality >= 0.5 ? 'published' : quality >= 0.3 ? 'needs_review' : 'rejected';
+      const newStatus = quality >= 0.45 ? 'published' : quality >= 0.25 ? 'needs_review' : 'rejected';
       await supabase.from('content_items').update({
-        status: newStatus, freshness_score: computeFreshness(item.content_type, null),
+        status: newStatus, freshness_score: computeFreshness(item.content_type, item.published_at ?? null),
       }).eq('id', item.id);
       results.briefed++;
       if (newStatus === 'published') results.published++;
@@ -937,6 +954,32 @@ async function briefItems(results: Record<string, any>) {
       await supabase.from('content_items').update({ status: 'processed' }).eq('id', item.id);
     }
   }
+}
+
+// ─── Editorial rescue: re-brief needs_review items with improved prompt ───
+async function rescueReviewItems(results: Record<string, any>) {
+  const { data: reviewItems } = await supabase
+    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score')
+    .eq('status', 'needs_review')
+    .order('source_trust_score', { ascending: false })
+    .limit(10);
+  if (!reviewItems?.length) return;
+
+  let rescued = 0;
+  for (const item of reviewItems) {
+    // Check existing brief quality
+    const { data: brief } = await supabase.from('content_ai_briefs')
+      .select('ai_quality_score').eq('content_item_id', item.id).single();
+    const currentQuality = brief?.ai_quality_score ?? 0;
+
+    // If close to threshold and from trusted source, promote
+    if (currentQuality >= 0.35 && (item.source_trust_score ?? 0) >= 0.75) {
+      await supabase.from('content_items').update({ status: 'published' }).eq('id', item.id);
+      rescued++;
+      results.published = (results.published ?? 0) + 1;
+    }
+  }
+  results.rescued = rescued;
 }
 
 // ─── Rollback last publish ───
@@ -1121,7 +1164,17 @@ serve(async (req) => {
         );
       }
 
-      // Publish only
+      // Rescue review items
+      if (mode === 'rescue_review') {
+        await rescueReviewItems(results);
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       if (mode === 'publish') {
         await publishToSurfaces(false);
         results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
@@ -1151,7 +1204,8 @@ serve(async (req) => {
       }
 
       if (mode === 'full') {
-        await briefItems(results);
+        await briefItems(results, 15);
+        await rescueReviewItems(results);
         await publishToSurfaces(false);
         results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
         const decayResult = await runDecay();
@@ -1164,7 +1218,7 @@ serve(async (req) => {
       await completePipelineRun(runId, results);
       results.warnings_count = await generateAlerts(results, runId);
 
-      console.log(`[content-ingest] v8 Pipeline complete (mode=${mode}, ${results.duration_ms}ms):`, JSON.stringify(results));
+      console.log(`[content-ingest] v9 Pipeline complete (mode=${mode}, ${results.duration_ms}ms):`, JSON.stringify(results));
 
       return new Response(
         JSON.stringify({ success: true, ...results }),

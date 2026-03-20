@@ -543,6 +543,9 @@ export default function ContentIntelligenceOpsPage() {
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'brief' })} disabled={isPending}>
             <FileText className="h-3 w-3 mr-1" /> Brief
           </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'rescue_review' })} disabled={isPending}>
+            <Star className="h-3 w-3 mr-1" /> Rescue
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
             <Layers className="h-3 w-3 mr-1" /> Publish
           </Button>
@@ -665,11 +668,35 @@ export default function ContentIntelligenceOpsPage() {
           <StatCard label="Rejected" value={totalRejected} icon={XCircle} color="text-destructive" subtitle={`${rejectRate}% rate`} />
           <StatCard label="Alerts" value={activeAlerts?.length ?? 0} icon={Bell} color="text-destructive" />
         </div>
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        <div className="grid grid-cols-4 gap-2 mb-2">
           <StatCard label="Sources" value={`${readySources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={`T1:${tier1Count} T2:${tier2Count} T3:${tier3Count}`} />
           <StatCard label="Coverage" value={`${surfaceCoverage}%`} icon={Radio} color="text-primary" subtitle={`${coveredSurfaces}/${REQUIRED_SURFACES.length}`} />
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
           <StatCard label="Runs" value={pipelineHistory?.length ?? 0} icon={History} color="text-muted-foreground" subtitle={pipelineHistory?.[0] ? formatTimeAgo(pipelineHistory[0].started_at) : 'None'} />
+        </div>
+        {/* Live vs Evergreen + SL Relevance metrics */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <StatCard
+            label="Live Fill"
+            value={`${(surfaces ?? []).length}`}
+            icon={Radio}
+            color="text-primary"
+            subtitle={`${coveredSurfaces} surfaces active`}
+          />
+          <StatCard
+            label="SL Sources"
+            value={sources?.filter((s: any) => (s.sri_lanka_bias ?? 0) >= 0.7 && s.active).length ?? 0}
+            icon={Shield}
+            color="text-primary"
+            subtitle={`of ${activeSources} active`}
+          />
+          <StatCard
+            label="Avg Quality"
+            value={((published ?? []).reduce((sum: number, p: any) => sum + (p.content_ai_briefs?.[0]?.ai_quality_score ?? 0), 0) / Math.max(1, totalPublished)).toFixed(2)}
+            icon={Star}
+            color="text-accent-foreground"
+            subtitle="published items"
+          />
         </div>
 
         <Tabs defaultValue="queue">
