@@ -521,7 +521,7 @@ export default function ContentIntelligenceOpsPage() {
           <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-4 w-4 text-primary" /><span className="text-xs font-bold">Executive Summary</span></div>
           <div className="grid grid-cols-4 gap-2 text-[10px]">
             <div className="text-center"><p className="text-lg font-bold text-primary">{totalPublished}</p><p className="text-muted-foreground">Published</p></div>
-            <div className="text-center"><p className="text-lg font-bold">{slPublished}</p><p className="text-muted-foreground">🇱🇰 SL Items</p><p className="text-[9px] text-muted-foreground/60">{totalPublished > 0 ? Math.round(slPublished / totalPublished * 100) : 0}%</p></div>
+            <div className="text-center"><p className="text-lg font-bold">{slPublished}</p><p className="text-muted-foreground">🇱🇰 SL Items</p><p className="text-[9px] text-muted-foreground/60">{slShare}%</p></div>
             <div className="text-center"><p className="text-lg font-bold">{avgQuality.toFixed(2)}</p><p className="text-muted-foreground">Avg Quality</p></div>
             <div className="text-center"><p className="text-lg font-bold">{backlog}</p><p className="text-muted-foreground">Backlog</p></div>
           </div>
