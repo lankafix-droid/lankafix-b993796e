@@ -11,6 +11,7 @@ import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
 import SmartCampaignSection from "@/components/campaigns/SmartCampaignSection";
 import ContentIntelligenceLayer from "@/components/content/ContentIntelligenceLayer";
+import AtmosphereGlow from "@/components/atmosphere/AtmosphereGlow";
 
 // Lazy-load below-fold sections for mobile performance
 const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
