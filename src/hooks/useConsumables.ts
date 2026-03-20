@@ -349,7 +349,7 @@ export function useCreateRefillOrder() {
 
       const { data, error } = await supabase
         .from("refill_orders")
-        .insert({
+        .insert([{
           user_id: user.id,
           brand: order.brand,
           printer_model_id: order.printer_model_id,
@@ -364,8 +364,8 @@ export function useCreateRefillOrder() {
           total: order.total,
           refill_status: "request_received",
           eligibility_status: "eligible",
-          condition_data: order.condition_data,
-        })
+          condition_data: order.condition_data as any,
+        }])
         .select()
         .single();
       if (error) throw error;
