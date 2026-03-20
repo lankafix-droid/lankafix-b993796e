@@ -152,6 +152,7 @@ const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPag
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
 const InsightDetailPage = lazy(() => import("./pages/InsightDetailPage"));
 const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelligenceOpsPage"));
+const SPSIntelligenceDashboardPage = lazy(() => import("./pages/ops/SPSIntelligenceDashboardPage"));
 
 // SPS — Smart Print Subscription
 const SPSLandingPage = lazy(() => import("./pages/sps/SPSLandingPage"));
