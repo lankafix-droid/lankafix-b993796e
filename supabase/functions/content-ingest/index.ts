@@ -17,31 +17,40 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// ─── Category keyword detection (expanded for SL relevance) ───
+// ─── Category keyword detection ───
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  MOBILE: ['phone', 'smartphone', 'mobile', 'battery', 'screen', 'repair', 'iphone', 'samsung', 'android', 'charger', 'tablet', 'galaxy', 'pixel', 'oneplus', 'display'],
-  AC: ['air conditioning', 'hvac', 'cooling', 'ac service', 'inverter ac', 'heat wave', 'refrigerant', 'compressor', 'aircon', 'split unit', 'central air', 'energy star', 'btu'],
-  IT: ['laptop', 'computer', 'cybersecurity', 'malware', 'data recovery', 'tech support', 'software', 'server', 'ransomware', 'phishing', 'firewall', 'cloud', 'windows', 'mac'],
-  CCTV: ['surveillance', 'security camera', 'cctv', 'monitoring', 'night vision', 'nvr', 'dvr', 'ip camera', 'motion detection', 'video analytics'],
-  SOLAR: ['solar panel', 'solar energy', 'inverter', 'renewable', 'battery storage', 'photovoltaic', 'net metering', 'solar installation', 'off-grid', 'on-grid', 'ceb tariff'],
-  ELECTRICAL: ['electrical', 'wiring', 'circuit', 'power outage', 'electrician', 'surge', 'mcb', 'circuit breaker', 'grounding', 'earthing', 'voltage', 'transformer'],
-  PLUMBING: ['plumbing', 'pipe', 'leak', 'water heater', 'drain', 'faucet', 'toilet', 'geyser', 'water pump', 'septic', 'water tank'],
-  NETWORK: ['wifi', 'router', 'internet', 'broadband', 'network', 'fiber', '5g', 'mesh', 'ethernet', 'switch', 'bandwidth', 'isp', 'modem'],
-  CONSUMER_ELEC: ['tv repair', 'electronics', 'appliance', 'smart tv', 'audio', 'speaker', 'washing machine', 'refrigerator', 'microwave', 'home theater'],
-  SMART_HOME_OFFICE: ['smart home', 'automation', 'iot', 'smart office', 'voice assistant', 'alexa', 'google home', 'smart plug', 'smart lighting'],
-  POWER_BACKUP: ['ups', 'generator', 'power backup', 'battery backup', 'inverter backup', 'power bank', 'uninterruptible', 'standby power'],
-  HOME_SECURITY: ['home security', 'alarm', 'smart lock', 'access control', 'doorbell', 'intruder', 'burglar', 'motion sensor', 'perimeter'],
-  APPLIANCE_INSTALL: ['appliance installation', 'washer', 'dishwasher', 'oven installation', 'dryer', 'cooktop', 'range hood'],
-  COPIER: ['copier', 'copier maintenance', 'printer repair', 'toner', 'multifunction', 'xerox', 'canon printer', 'hp printer'],
-  PRINT_SUPPLIES: ['printing supplies', 'cartridge', 'ink', 'toner cartridge', 'refill', 'drum unit'],
+  MOBILE: ['phone', 'smartphone', 'mobile', 'battery', 'screen', 'repair', 'iphone', 'samsung', 'android', 'charger', 'tablet', 'galaxy', 'pixel', 'oneplus', 'display', 'sim card', 'case'],
+  AC: ['air conditioning', 'hvac', 'cooling', 'ac service', 'inverter ac', 'heat wave', 'refrigerant', 'compressor', 'aircon', 'split unit', 'central air', 'energy star', 'btu', 'thermostat'],
+  IT: ['laptop', 'computer', 'cybersecurity', 'malware', 'data recovery', 'tech support', 'software', 'server', 'ransomware', 'phishing', 'firewall', 'cloud', 'windows', 'mac', 'ssd', 'ram'],
+  CCTV: ['surveillance', 'security camera', 'cctv', 'monitoring', 'night vision', 'nvr', 'dvr', 'ip camera', 'motion detection', 'video analytics', 'ptz'],
+  SOLAR: ['solar panel', 'solar energy', 'inverter', 'renewable', 'battery storage', 'photovoltaic', 'net metering', 'solar installation', 'off-grid', 'on-grid', 'ceb tariff', 'solar rooftop'],
+  ELECTRICAL: ['electrical', 'wiring', 'circuit', 'power outage', 'electrician', 'surge', 'mcb', 'circuit breaker', 'grounding', 'earthing', 'voltage', 'transformer', 'switchboard'],
+  PLUMBING: ['plumbing', 'pipe', 'leak', 'water heater', 'drain', 'faucet', 'toilet', 'geyser', 'water pump', 'septic', 'water tank', 'valve', 'sewage'],
+  NETWORK: ['wifi', 'router', 'internet', 'broadband', 'network', 'fiber', '5g', 'mesh', 'ethernet', 'switch', 'bandwidth', 'isp', 'modem', 'lan'],
+  CONSUMER_ELEC: ['tv repair', 'electronics', 'appliance', 'smart tv', 'audio', 'speaker', 'washing machine', 'refrigerator', 'microwave', 'home theater', 'led tv'],
+  SMART_HOME_OFFICE: ['smart home', 'automation', 'iot', 'smart office', 'voice assistant', 'alexa', 'google home', 'smart plug', 'smart lighting', 'zigbee'],
+  POWER_BACKUP: ['ups', 'generator', 'power backup', 'battery backup', 'inverter backup', 'power bank', 'uninterruptible', 'standby power', 'load shedding'],
+  HOME_SECURITY: ['home security', 'alarm', 'smart lock', 'access control', 'doorbell', 'intruder', 'burglar', 'motion sensor', 'perimeter', 'gate automation'],
+  APPLIANCE_INSTALL: ['appliance installation', 'washer', 'dishwasher', 'oven installation', 'dryer', 'cooktop', 'range hood', 'water purifier'],
+  COPIER: ['copier', 'copier maintenance', 'printer repair', 'toner', 'multifunction', 'xerox', 'canon printer', 'hp printer', 'laser printer'],
+  PRINT_SUPPLIES: ['printing supplies', 'cartridge', 'ink', 'toner cartridge', 'refill', 'drum unit', 'print head'],
 };
 
-// Sri Lanka relevance signals
+// Sri Lanka relevance signals — expanded
 const SRI_LANKA_SIGNALS = [
   'sri lanka', 'colombo', 'kandy', 'galle', 'lk', 'ceylon', 'sinhala', 'tamil',
   'ceb', 'leco', 'rupee', 'lkr', 'monsoon', 'south asia', 'tropical',
-  'dialog', 'mobitel', 'sri lankan', 'colombo', 'rajagiriya', 'nugegoda',
-  'electricity tariff', 'load shedding', 'power cut',
+  'dialog', 'mobitel', 'sri lankan', 'rajagiriya', 'nugegoda', 'dehiwala',
+  'electricity tariff', 'load shedding', 'power cut', 'matara', 'jaffna',
+  'kurunegala', 'negombo', 'puttalam', 'anuradhapura', 'ratnapura',
+  'ceb bill', 'water board', 'nwsdb', 'slt', 'hutch', 'airtel',
+];
+
+// Commercial relevance signals
+const COMMERCIAL_SIGNALS = [
+  'repair', 'replace', 'fix', 'install', 'maintain', 'service', 'technician',
+  'cost', 'price', 'save', 'warranty', 'genuine parts', 'certified', 'book',
+  'quote', 'estimate', 'annual maintenance', 'preventive', 'diagnostic',
 ];
 
 function detectCategories(text: string): { code: string; confidence: number }[] {
@@ -63,6 +72,12 @@ function detectSriLankaRelevance(text: string): number {
   if (matches >= 2) return 0.8;
   if (matches >= 1) return 0.6;
   return 0.2;
+}
+
+function detectCommercialRelevance(text: string): number {
+  const lower = text.toLowerCase();
+  const matches = COMMERCIAL_SIGNALS.filter(s => lower.includes(s)).length;
+  return Math.min(1, matches * 0.15);
 }
 
 function detectContentType(text: string): string {
@@ -88,7 +103,17 @@ function generateDedupeKey(title: string, source: string): string {
   return `dedupe_${Math.abs(hash).toString(36)}`;
 }
 
-// ─── AI Briefing (enhanced with Sri Lanka context) ───
+// ─── Similar title detection for duplicate suppression ───
+function titleSimilarity(a: string, b: string): number {
+  const wordsA = new Set(a.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2));
+  const wordsB = new Set(b.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2));
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let overlap = 0;
+  wordsA.forEach(w => { if (wordsB.has(w)) overlap++; });
+  return overlap / Math.max(wordsA.size, wordsB.size);
+}
+
+// ─── AI Briefing ───
 async function generateAIBrief(item: { title: string; raw_excerpt: string | null; content_type: string; categories: string[]; sri_lanka_relevance: number }) {
   if (!LOVABLE_API_KEY) return null;
   try {
@@ -200,8 +225,13 @@ function computeFreshness(contentType: string, publishedAt: string | null): numb
   return Math.max(5, Math.round(Math.min(100, 100 - ageHours * decay)));
 }
 
-// ─── Surface publishing (category-aware + SL relevance boosting) ───
-const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; categoryBias?: string[] }> = {
+// ─── Diversity constants ───
+const MAX_ITEMS_PER_SOURCE_PER_SURFACE = 2;
+const MAX_SURFACES_PER_ITEM = 3;
+const SIMILAR_TITLE_THRESHOLD = 0.55;
+
+// ─── Surface publishing with diversity governance ───
+const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number }> = {
   homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic'], maxItems: 3, minQuality: 0.6 },
   homepage_hot_now: { types: ['breaking_news', 'hot_topic', 'trend_signal', 'most_read'], maxItems: 8, minQuality: 0.5 },
   homepage_did_you_know: { types: ['knowledge_fact', 'on_this_day', 'history', 'how_to'], maxItems: 4, minQuality: 0.4 },
@@ -213,24 +243,18 @@ const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQual
 };
 
 async function publishToSurfaces() {
-  const { data: suppressed } = await supabase
-    .from('content_items')
-    .select('id')
-    .eq('rejection_reason', 'ops_suppressed')
-    .limit(200);
-  const suppressedIds = new Set((suppressed ?? []).map((s: any) => s.id));
+  // Track how many surfaces each item appears on (for diversity)
+  const itemSurfaceCount = new Map<string, number>();
 
-  // Get items that are rejected/archived to exclude
   const { data: excludedItems } = await supabase
     .from('content_items')
-    .select('id')
+    .select('id, rejection_reason')
     .in('status', ['rejected', 'archived'])
     .limit(500);
   const excludedIds = new Set((excludedItems ?? []).map((e: any) => e.id));
-  suppressedIds.forEach(id => excludedIds.add(id));
 
   for (const [surfaceCode, rules] of Object.entries(SURFACE_RULES)) {
-    // Check for manually pinned items (rank_score >= 990 means editorial pin)
+    // Check for manually pinned items (rank_score >= 990)
     const { data: pinnedSurfaces } = await supabase
       .from('content_surface_state')
       .select('content_item_id')
@@ -241,11 +265,11 @@ async function publishToSurfaces() {
 
     const { data: items } = await supabase
       .from('content_items')
-      .select('id, content_type, freshness_score, source_trust_score, published_at, source_country')
+      .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title')
       .eq('status', 'published')
       .in('content_type', rules.types)
       .order('freshness_score', { ascending: false })
-      .limit(rules.maxItems * 4);
+      .limit(rules.maxItems * 6);
 
     if (!items?.length && pinnedIds.size === 0) continue;
 
@@ -262,8 +286,6 @@ async function publishToSurfaces() {
     ]);
 
     const qualityMap = new Map((briefs ?? []).map((b: any) => [b.content_item_id, b.ai_quality_score ?? 0.5]));
-
-    // Build category relevance map
     const catMap = new Map<string, string[]>();
     (tags ?? []).forEach((t: any) => {
       const arr = catMap.get(t.content_item_id) ?? [];
@@ -278,41 +300,66 @@ async function publishToSurfaces() {
         const quality = qualityMap.get(item.id) ?? 0.5;
         const isSriLankan = item.source_country === 'lk' || item.source_country === 'LK';
         const slBoost = isSriLankan ? 15 : 0;
+        const safetyBoost = (item.content_type === 'safety_alert' || item.content_type === 'scam_alert') ? 10 : 0;
 
         return {
           ...item,
+          quality,
           rank: (item.freshness_score ?? 50) * 0.30 +
                 (item.source_trust_score ?? 0.7) * 100 * 0.20 +
                 quality * 100 * 0.25 +
                 (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15 +
-                slBoost +
-                // Safety content gets urgency boost
-                (item.content_type === 'safety_alert' || item.content_type === 'scam_alert' ? 10 : 0),
+                slBoost + safetyBoost,
         };
       })
-      .sort((a: any, b: any) => b.rank - a.rank)
-      .slice(0, rules.maxItems - pinnedIds.size);
+      .sort((a: any, b: any) => b.rank - a.rank);
+
+    // ─── Apply diversity filters ───
+    const selected: any[] = [];
+    const sourceCountInSurface = new Map<string, number>();
+    const selectedTitles: string[] = [];
+    const maxSlots = rules.maxItems - pinnedIds.size;
+
+    for (const item of ranked) {
+      if (selected.length >= maxSlots) break;
+
+      // Max surfaces per item (unless pinned)
+      const surfCount = itemSurfaceCount.get(item.id) ?? 0;
+      if (surfCount >= MAX_SURFACES_PER_ITEM) continue;
+
+      // Max items per source per surface
+      const srcCount = sourceCountInSurface.get(item.source_id ?? '') ?? 0;
+      if (srcCount >= MAX_ITEMS_PER_SOURCE_PER_SURFACE) continue;
+
+      // Similar title suppression
+      const isDuplicate = selectedTitles.some(t => titleSimilarity(t, item.title) > SIMILAR_TITLE_THRESHOLD);
+      if (isDuplicate) continue;
+
+      selected.push(item);
+      sourceCountInSurface.set(item.source_id ?? '', srcCount + 1);
+      selectedTitles.push(item.title);
+      itemSurfaceCount.set(item.id, surfCount + 1);
+    }
 
     // Deactivate old (except pinned)
     if (pinnedIds.size > 0) {
       const { data: toDeactivate } = await supabase
         .from('content_surface_state')
-        .select('id, content_item_id')
+        .select('id')
         .eq('surface_code', surfaceCode)
         .eq('active', true)
         .lt('rank_score', 990);
       if (toDeactivate?.length) {
-        const deactivateIds = toDeactivate.map((d: any) => d.id);
-        await supabase.from('content_surface_state').update({ active: false }).in('id', deactivateIds);
+        await supabase.from('content_surface_state').update({ active: false }).in('id', toDeactivate.map((d: any) => d.id));
       }
     } else {
       await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', surfaceCode).eq('active', true);
     }
 
     // Insert new ranked items
-    if (ranked.length > 0) {
+    if (selected.length > 0) {
       await supabase.from('content_surface_state').insert(
-        ranked.map((item: any) => ({
+        selected.map((item: any) => ({
           surface_code: surfaceCode,
           content_item_id: item.id,
           rank_score: Math.round(item.rank * 10) / 10,
@@ -410,6 +457,10 @@ async function runClustering() {
       const slCount = group.filter(g => g.source_country === 'lk' || g.source_country === 'LK').length;
       const slRelevance = Math.min(100, Math.round((slCount / group.length) * 100));
 
+      // Compute commercial relevance from categories
+      const commercialCats = new Set(['MOBILE', 'AC', 'IT', 'SOLAR', 'ELECTRICAL', 'PLUMBING']);
+      const commercialRelevance = allCats.some(c => commercialCats.has(c)) ? 70 : 40;
+
       await supabase.from('content_trend_clusters').upsert({
         cluster_key: key,
         cluster_label: label.charAt(0).toUpperCase() + label.slice(1),
@@ -417,7 +468,7 @@ async function runClustering() {
         momentum_score: Math.min(100, group.length * 25),
         content_count: group.length,
         sri_lanka_relevance_score: slRelevance,
-        commercial_relevance_score: 50,
+        commercial_relevance_score: commercialRelevance,
         active: true,
         last_seen_at: new Date().toISOString(),
       }, { onConflict: 'cluster_key' });
@@ -469,6 +520,15 @@ serve(async (req) => {
               const { data: existing } = await supabase.from('content_items').select('id').eq('dedupe_key', dedupeKey).limit(1);
               if (existing?.length) continue;
 
+              // Similar title check against recent items
+              const { data: recentItems } = await supabase
+                .from('content_items')
+                .select('title')
+                .order('created_at', { ascending: false })
+                .limit(30);
+              const isSimilar = (recentItems ?? []).some((r: any) => titleSimilarity(r.title, title) > SIMILAR_TITLE_THRESHOLD);
+              if (isSimilar) continue;
+
               const text = `${title} ${article.description ?? ''} ${article.content ?? ''}`;
               const categories = detectCategories(text);
               const contentType = detectContentType(text);
@@ -478,20 +538,15 @@ serve(async (req) => {
               if (source.category_allowlist?.length) {
                 const catCodes = categories.map(c => c.code);
                 const hasOverlap = catCodes.some((c: string) => source.category_allowlist.includes(c));
-                // If no category overlap and source has allowlist, reduce confidence
                 if (!hasOverlap && categories.length > 0) {
-                  // Still accept but with lower confidence
+                  // Still accept but reduce trust slightly
                 }
               }
 
-              // Compute initial freshness
               const publishedAt = article.publishedAt ?? article.published_at ?? article.pubDate ?? null;
               const freshness = computeFreshness(contentType, publishedAt);
-
-              // Apply Sri Lanka bias from source
               const sourceSLBias = source.sri_lanka_bias ?? 0.3;
               const effectiveSLRelevance = Math.max(slRelevance, sourceSLBias);
-
               const sourceCountry = effectiveSLRelevance > 0.7 ? 'lk' : (article.country ?? 'global');
 
               const { data: inserted } = await supabase.from('content_items').insert({
@@ -531,7 +586,6 @@ serve(async (req) => {
           }
         }
 
-        // Update last_fetched_at for all active sources
         await supabase.from('content_sources').update({ last_fetched_at: new Date().toISOString() }).eq('active', true);
       }
     }

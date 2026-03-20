@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useContentIntelligence, trackContentEvent } from '@/hooks/useContentIntelligence';
 import type { EnrichedContentItem } from '@/types/contentIntelligence';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap, Hash, BookOpen } from 'lucide-react';
+import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap, Hash, BookOpen, Radio } from 'lucide-react';
 
 interface Props {
   onOpenItem?: (item: EnrichedContentItem) => void;
@@ -74,30 +74,34 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
   const label = TYPE_LABELS[item.content_type] ?? 'Insight';
   const isEvergreen = item.id.startsWith('evergreen-');
   const isLive = !isEvergreen;
+  const isSriLankan = item.source_country === 'lk' || item.source_country === 'LK';
 
   return (
     <section className="px-4 py-3">
-      <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-primary/8 via-card to-accent/5 shadow-sm">
+      <div className="relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br from-primary/6 via-card to-accent/4 shadow-sm">
+        {/* Subtle pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.015] z-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+
         {/* Image overlay for items with images */}
         {item.image_url && (
           <div className="absolute inset-0 z-0">
-            <img src={item.image_url} alt="" className="h-full w-full object-cover opacity-15" loading="lazy" />
-            <div className="absolute inset-0 bg-gradient-to-r from-card/95 via-card/80 to-card/60" />
+            <img src={item.image_url} alt="" className="h-full w-full object-cover opacity-12" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-r from-card/95 via-card/85 to-card/65" />
           </div>
         )}
 
         {/* Top badges */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
-          <Badge variant="secondary" className="bg-card/90 backdrop-blur text-[10px] font-bold tracking-wide">
-            <Sparkles className="mr-1 h-3 w-3 text-primary" />
-            {isLive ? 'Live Intelligence' : 'AI Insights'}
+          <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm text-[10px] font-bold tracking-wide border border-border/30 shadow-sm">
+            {isLive ? <Radio className="mr-1 h-3 w-3 text-destructive animate-pulse" /> : <Sparkles className="mr-1 h-3 w-3 text-primary" />}
+            {isLive ? 'Live' : 'AI Insights'}
           </Badge>
-          <Badge variant="outline" className="text-[10px] bg-card/60 backdrop-blur">
+          <Badge variant="outline" className="text-[10px] bg-card/60 backdrop-blur-sm border-border/30">
             <Icon className="mr-0.5 h-3 w-3" />
             {label}
           </Badge>
-          {item.source_country === 'lk' && (
-            <Badge variant="outline" className="text-[9px] bg-card/60 backdrop-blur py-0">
+          {isSriLankan && (
+            <Badge variant="outline" className="text-[9px] bg-card/60 backdrop-blur-sm py-0 border-border/30">
               🇱🇰
             </Badge>
           )}
@@ -120,7 +124,7 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
           >
             {/* Banner stat if available */}
             {brief?.ai_banner_text && (
-              <div className="mb-1.5 inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+              <div className="mb-1.5 inline-flex items-center rounded-lg bg-primary/10 border border-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary shadow-sm">
                 {brief.ai_banner_text}
               </div>
             )}
@@ -134,7 +138,7 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
               </p>
             )}
             {brief?.ai_lankafix_angle && (
-              <p className="mt-2 text-xs font-semibold text-primary flex items-center gap-1">
+              <p className="mt-2 text-xs font-semibold text-primary/90 flex items-center gap-1">
                 <ChevronRight className="h-3 w-3 shrink-0" />
                 <span className="line-clamp-1">{brief.ai_lankafix_angle}</span>
               </p>
@@ -166,7 +170,7 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
                 onClick={() => { setActive(i); resetTimer(); }}
                 className={cn(
                   'h-1 rounded-full transition-all duration-300',
-                  i === active ? 'w-6 bg-primary' : 'w-1.5 bg-muted-foreground/25 hover:bg-muted-foreground/40'
+                  i === active ? 'w-6 bg-primary shadow-sm' : 'w-1.5 bg-muted-foreground/25 hover:bg-muted-foreground/40'
                 )}
                 aria-label={`Show slide ${i + 1}`}
               />
