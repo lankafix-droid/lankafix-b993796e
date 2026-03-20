@@ -119,10 +119,18 @@ function SourceHealthBadges({ src }: { src: any }) {
     return <>{badges}</>;
   }
 
+  // Tier badge
   const tier = classifySourceTier(src);
   const tierInfo = TIER_LABELS[tier];
   if (tierInfo) {
     badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
+  }
+
+  // Readiness badge
+  const readiness = classifySourceReadiness(src);
+  const readinessInfo = READINESS_BADGES[readiness];
+  if (readinessInfo && readiness !== 'ready') {
+    badges.push(<Badge key="rdy" variant="outline" className={`text-[9px] ${readinessInfo.className}`}>{readinessInfo.label}</Badge>);
   }
 
   if (!src.base_url) {
