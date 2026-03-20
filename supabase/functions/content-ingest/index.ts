@@ -1347,13 +1347,55 @@ serve(async (req) => {
       }
 
 
+      // Publish — full (legacy, may timeout with category surfaces)
       if (mode === 'publish') {
-        await publishToSurfaces(false);
-        results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
+        const publishResult = await publishSurfaceBatch(Object.keys(SURFACE_RULES), false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
         results.duration_ms = Date.now() - startTime;
         await completePipelineRun(runId, results);
         return new Response(
           JSON.stringify({ success: true, ...results, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Publish fast — homepage surfaces only, no category iteration (timeout-safe)
+      if (mode === 'publish_fast') {
+        const publishResult = await publishSurfaceBatch(HOMEPAGE_SURFACES, false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, preview: publishResult.preview, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Publish premium — only hero, safety, ai_banner, category_featured (timeout-safe)
+      if (mode === 'publish_premium') {
+        const publishResult = await publishSurfaceBatch(PREMIUM_SURFACES, false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, preview: publishResult.preview, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Publish category batch — only category surfaces for a subset of categories
+      if (mode === 'publish_category_batch') {
+        const catBatch = body.categories ?? ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR'];
+        const publishResult = await publishSurfaceBatch(['category_featured', 'category_feed'], false, catBatch);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, preview: publishResult.preview, duration_ms: results.duration_ms }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -1376,11 +1418,12 @@ serve(async (req) => {
       }
 
       if (mode === 'full') {
-        // Smaller batch to stay within timeout
         await briefItems(results, 6);
         await rescueReviewItems(results);
-        await publishToSurfaces(false);
-        results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
+        // Use publish_fast in full mode to avoid timeout
+        const publishResult = await publishSurfaceBatch(HOMEPAGE_SURFACES, false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
         const decayResult = await runDecay();
         results.decayed = decayResult.decayed;
         results.archived = decayResult.archived;
@@ -1388,10 +1431,11 @@ serve(async (req) => {
       }
 
       results.duration_ms = Date.now() - startTime;
+      results.newsdata_key_present = !!NEWSDATA_API_KEY;
       await completePipelineRun(runId, results);
       results.warnings_count = await generateAlerts(results, runId);
 
-      console.log(`[content-ingest] v9 Pipeline complete (mode=${mode}, ${results.duration_ms}ms):`, JSON.stringify(results));
+      console.log(`[content-ingest] v10.2 Pipeline complete (mode=${mode}, ${results.duration_ms}ms)`);
 
       return new Response(
         JSON.stringify({ success: true, ...results }),
