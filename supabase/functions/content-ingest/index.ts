@@ -1322,14 +1322,12 @@ serve(async (req) => {
         );
       }
 
-      // Backlog burn mode: process high-value unbriefed items in multiple micro-batches
+      // Backlog burn mode: brief only, no publish (run publish separately to avoid timeout)
       if (mode === 'backlog_burn') {
-        const maxBatches = body.max_batches ?? 3;
-        const batchSize = body.batch_size ?? 8;
+        const maxBatches = body.max_batches ?? 2;
+        const batchSize = body.batch_size ?? 4;
         await burnBacklog(results, maxBatches, batchSize);
         await rescueReviewItems(results);
-        await publishToSurfaces(false);
-        results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
         results.duration_ms = Date.now() - startTime;
         await completePipelineRun(runId, results);
         return new Response(
