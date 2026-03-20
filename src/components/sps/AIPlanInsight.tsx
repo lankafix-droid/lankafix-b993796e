@@ -117,7 +117,7 @@ export default function AIPlanInsight({ plan, inputs, confidence, reason }: Prop
           )}
 
           {insight.upgrade_hint && (
-            <InsightRow icon={<ArrowUpRight className="w-3.5 h-3.5 text-blue-500" />} label="Upgrade consideration">
+            <InsightRow icon={<ArrowUpRight className="w-3.5 h-3.5 text-primary" />} label="Upgrade consideration">
               {insight.upgrade_hint}
             </InsightRow>
           )}
