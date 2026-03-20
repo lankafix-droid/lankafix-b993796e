@@ -12,7 +12,8 @@ import {
   RefreshCw, CheckCircle, XCircle, Trash2, Pin, BarChart3,
   Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star,
   Clock, Shield, Database, Layers, Radio, Zap, ChevronUp,
-  Play, Pause, Search, Filter, Gauge, Timer, FileText
+  Play, Pause, Search, Filter, Gauge, Timer, FileText,
+  Bell, ShieldAlert, Lock, Unlock, History
 } from 'lucide-react';
 
 function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
@@ -51,6 +52,7 @@ type SourceHealth = 'healthy' | 'warning' | 'critical' | 'disabled';
 
 function getSourceHealth(src: any): SourceHealth {
   if (!src.active) return 'disabled';
+  if (src.rollout_state === 'quarantined') return 'critical';
   const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
   const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
   const isStale = src.last_fetched_at && (Date.now() - new Date(src.last_fetched_at).getTime()) > 24 * 3600000;
@@ -58,7 +60,6 @@ function getSourceHealth(src: any): SourceHealth {
   const isZeroPublish = src.counts.total >= 5 && src.counts.published === 0;
   const isHighReject = src.counts.total >= 5 && rejectRate > 0.5;
   const isLowYield = src.counts.total >= 5 && publishRate < 0.2;
-
   if (isZeroPublish || isHighReject || (isStale && src.counts.total > 0)) return 'critical';
   if (isLowYield || isStale || neverFetched) return 'warning';
   return 'healthy';
@@ -72,10 +73,7 @@ const HEALTH_STYLES: Record<SourceHealth, string> = {
 };
 
 const HEALTH_DOT: Record<SourceHealth, string> = {
-  healthy: 'bg-primary',
-  warning: 'bg-warning',
-  critical: 'bg-destructive',
-  disabled: 'bg-muted-foreground',
+  healthy: 'bg-primary', warning: 'bg-warning', critical: 'bg-destructive', disabled: 'bg-muted-foreground',
 };
 
 const TIER_LABELS: Record<string, { label: string; color: string }> = {
@@ -83,6 +81,17 @@ const TIER_LABELS: Record<string, { label: string; color: string }> = {
   tier2_controlled: { label: 'Tier 2', color: 'text-accent-foreground border-accent/20 bg-accent/5' },
   tier3_experimental: { label: 'Tier 3', color: 'text-warning border-warning/20 bg-warning/5' },
 };
+
+const ROLLOUT_STATE_LABELS: Record<string, { label: string; color: string }> = {
+  inactive: { label: 'Inactive', color: 'text-muted-foreground border-muted' },
+  validated: { label: 'Validated', color: 'text-primary border-primary/20' },
+  pilot_live: { label: 'Pilot', color: 'text-accent-foreground border-accent/20' },
+  production_live: { label: 'Production', color: 'text-primary border-primary/30 bg-primary/5' },
+  failing: { label: 'Failing', color: 'text-destructive border-destructive/30' },
+  quarantined: { label: 'Quarantined', color: 'text-destructive border-destructive/30 bg-destructive/5' },
+};
+
+const SURFACE_ROLLOUT_MODES = ['evergreen_only', 'hybrid_preview', 'hybrid_live', 'live_preferred', 'editorial_only'] as const;
 
 function classifySourceTier(src: any): string {
   if (src.trust_score >= 0.8 && src.base_url) return 'tier1_safe';
@@ -99,70 +108,38 @@ function classifySourceReadiness(src: any): string {
   return 'ready';
 }
 
-const READINESS_BADGES: Record<string, { label: string; className: string }> = {
-  ready: { label: 'Ready', className: 'text-primary border-primary/20' },
-  needs_url: { label: 'Needs URL', className: 'text-warning border-warning/30' },
-  low_trust: { label: 'Low Trust', className: 'text-warning border-warning/30' },
-  disabled: { label: 'Disabled', className: 'text-muted-foreground border-muted' },
-  sl_relevant: { label: '🇱🇰 SL Source', className: 'text-primary border-primary/15' },
-  global_only: { label: '🌍 Global', className: 'text-accent-foreground border-accent/20' },
-  failing: { label: 'Failing', className: 'text-destructive border-destructive/30' },
-};
-
 function SourceHealthBadges({ src }: { src: any }) {
   const badges: React.ReactNode[] = [];
-  const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
-  const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
-
   if (!src.active) {
     badges.push(<Badge key="dis" variant="secondary" className="text-[9px]">Disabled</Badge>);
     return <>{badges}</>;
   }
 
-  // Tier badge
   const tier = classifySourceTier(src);
   const tierInfo = TIER_LABELS[tier];
-  if (tierInfo) {
-    badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
-  }
+  if (tierInfo) badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
 
-  // Readiness badge
-  const readiness = classifySourceReadiness(src);
-  const readinessInfo = READINESS_BADGES[readiness];
-  if (readinessInfo && readiness !== 'ready') {
-    badges.push(<Badge key="rdy" variant="outline" className={`text-[9px] ${readinessInfo.className}`}>{readinessInfo.label}</Badge>);
-  }
+  // Rollout state badge
+  const rolloutInfo = ROLLOUT_STATE_LABELS[src.rollout_state ?? 'inactive'];
+  if (rolloutInfo) badges.push(<Badge key="rstate" variant="outline" className={`text-[9px] ${rolloutInfo.color}`}>{rolloutInfo.label}</Badge>);
 
-  if (!src.base_url) {
-    badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
-  }
+  if (!src.base_url) badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
 
   if (!src.last_fetched_at) {
     badges.push(<Badge key="nf" variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>);
   } else {
     const hours = (Date.now() - new Date(src.last_fetched_at).getTime()) / 3600000;
     if (hours > 24) badges.push(<Badge key="stale" variant="destructive" className="text-[9px]">Stale ({Math.floor(hours)}h)</Badge>);
-    else if (hours > 6) badges.push(<Badge key="age" variant="outline" className="text-[9px] text-warning border-warning/30">{formatTimeAgo(src.last_fetched_at)}</Badge>);
     else badges.push(<Badge key="ok" variant="outline" className="text-[9px] text-primary border-primary/30">{formatTimeAgo(src.last_fetched_at)}</Badge>);
   }
 
   if (src.counts.total >= 5 && src.counts.published === 0) {
     badges.push(<Badge key="zp" variant="destructive" className="text-[9px]">Zero publish</Badge>);
-  } else if (rejectRate > 0.5) {
-    badges.push(<Badge key="hr" variant="destructive" className="text-[9px]">High reject ({Math.round(rejectRate * 100)}%)</Badge>);
-  } else if (src.counts.total >= 5 && publishRate < 0.2) {
-    badges.push(<Badge key="ly" variant="outline" className="text-[9px] text-warning border-warning/30">Low yield</Badge>);
   }
 
-  if (src.trust_score >= 0.85) {
-    badges.push(<Badge key="tr" variant="outline" className="text-[9px] text-primary border-primary/20">★ High trust</Badge>);
-  } else if (src.trust_score < 0.5) {
-    badges.push(<Badge key="trl" variant="outline" className="text-[9px] text-warning border-warning/20">Low trust</Badge>);
-  }
+  if (src.trust_score >= 0.85) badges.push(<Badge key="tr" variant="outline" className="text-[9px] text-primary border-primary/20">★ High trust</Badge>);
 
-  if ((src.sri_lanka_bias ?? 0) >= 0.7) {
-    badges.push(<Badge key="sl" variant="outline" className="text-[9px] border-primary/15">🇱🇰 Local</Badge>);
-  }
+  if ((src.sri_lanka_bias ?? 0) >= 0.7) badges.push(<Badge key="sl" variant="outline" className="text-[9px] border-primary/15">🇱🇰 Local</Badge>);
 
   return <>{badges}</>;
 }
@@ -177,19 +154,14 @@ function getSurfaceCoverage(surfacesByCode: Record<string, any[]>, code: string)
     homepage_innovations: 4, homepage_safety: 3, homepage_numbers: 4,
     homepage_popular: 5, ai_banner_forum: 5, category_featured: 1, category_feed: 6,
   };
-  const max = maxExpected[code] ?? 4;
-  if (items.length >= max) return 'full';
+  if (items.length >= (maxExpected[code] ?? 4)) return 'full';
   return 'partial';
 }
 
 const COVERAGE_STYLES: Record<SurfaceCoverageStatus, string> = {
-  full: 'text-primary',
-  partial: 'text-warning',
-  fallback_only: 'text-muted-foreground',
-  empty: 'text-destructive',
+  full: 'text-primary', partial: 'text-warning', fallback_only: 'text-muted-foreground', empty: 'text-destructive',
 };
 
-// Category coverage helper
 const LANKAFIX_CATEGORIES = ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR', 'CONSUMER_ELEC', 'SMART_HOME_OFFICE', 'ELECTRICAL', 'PLUMBING', 'NETWORK', 'POWER_BACKUP', 'HOME_SECURITY', 'APPLIANCE_INSTALL', 'COPIER', 'PRINT_SUPPLIES'];
 
 export default function ContentIntelligenceOpsPage() {
@@ -198,15 +170,14 @@ export default function ContentIntelligenceOpsPage() {
   const [lastRunResult, setLastRunResult] = useState<any>(null);
   const [previewResult, setPreviewResult] = useState<any>(null);
 
+  // ─── Queries ───
   const { data: queue, isLoading: queueLoading } = useQuery({
     queryKey: ['content-ops', 'queue'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('content_items')
+      const { data } = await supabase.from('content_items')
         .select('*, content_ai_briefs(*), content_category_tags(*)')
         .in('status', ['new', 'needs_review', 'processed'])
-        .order('created_at', { ascending: false })
-        .limit(50);
+        .order('created_at', { ascending: false }).limit(50);
       return data ?? [];
     },
   });
@@ -214,12 +185,10 @@ export default function ContentIntelligenceOpsPage() {
   const { data: published, isLoading: pubLoading } = useQuery({
     queryKey: ['content-ops', 'published'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('content_items')
+      const { data } = await supabase.from('content_items')
         .select('*, content_ai_briefs(*), content_category_tags(*)')
         .eq('status', 'published')
-        .order('published_at', { ascending: false })
-        .limit(50);
+        .order('published_at', { ascending: false }).limit(50);
       return data ?? [];
     },
   });
@@ -230,10 +199,7 @@ export default function ContentIntelligenceOpsPage() {
       const { data: srcs } = await supabase.from('content_sources').select('*').order('trust_score', { ascending: false });
       if (!srcs?.length) return [];
       const ids = srcs.map((s: any) => s.id);
-      const { data: items } = await supabase
-        .from('content_items')
-        .select('source_id, status')
-        .in('source_id', ids);
+      const { data: items } = await supabase.from('content_items').select('source_id, status').in('source_id', ids);
       const countMap: Record<string, { published: number; rejected: number; archived: number; total: number; needs_review: number }> = {};
       (items ?? []).forEach((i: any) => {
         const c = countMap[i.source_id] ??= { published: 0, rejected: 0, archived: 0, total: 0, needs_review: 0 };
@@ -250,12 +216,9 @@ export default function ContentIntelligenceOpsPage() {
   const { data: surfaces } = useQuery({
     queryKey: ['content-ops', 'surfaces'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('content_surface_state')
+      const { data } = await supabase.from('content_surface_state')
         .select('*, content_items(title, content_type, status, freshness_score, source_name)')
-        .eq('active', true)
-        .order('surface_code')
-        .order('rank_score', { ascending: false });
+        .eq('active', true).order('surface_code').order('rank_score', { ascending: false });
       return data ?? [];
     },
   });
@@ -263,12 +226,8 @@ export default function ContentIntelligenceOpsPage() {
   const { data: clusters } = useQuery({
     queryKey: ['content-ops', 'clusters'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('content_trend_clusters')
-        .select('*')
-        .eq('active', true)
-        .order('momentum_score', { ascending: false })
-        .limit(20);
+      const { data } = await supabase.from('content_trend_clusters')
+        .select('*').eq('active', true).order('momentum_score', { ascending: false }).limit(20);
       return data ?? [];
     },
   });
@@ -276,11 +235,8 @@ export default function ContentIntelligenceOpsPage() {
   const { data: analytics } = useQuery({
     queryKey: ['content-ops', 'analytics'],
     queryFn: async () => {
-      const { data } = await supabase
-        .from('content_events')
-        .select('event_type, content_item_id')
-        .order('created_at', { ascending: false })
-        .limit(500);
+      const { data } = await supabase.from('content_events')
+        .select('event_type, content_item_id').order('created_at', { ascending: false }).limit(500);
       const events = data ?? [];
       const byType: Record<string, number> = {};
       events.forEach((e: any) => { byType[e.event_type] = (byType[e.event_type] ?? 0) + 1; });
@@ -288,7 +244,36 @@ export default function ContentIntelligenceOpsPage() {
     },
   });
 
-  // Aggregate pipeline stats
+  // Pipeline run history
+  const { data: pipelineHistory } = useQuery({
+    queryKey: ['content-ops', 'pipeline-history'],
+    queryFn: async () => {
+      const { data } = await supabase.from('pipeline_runs' as any)
+        .select('*').order('started_at', { ascending: false }).limit(20);
+      return (data ?? []) as any[];
+    },
+  });
+
+  // Active alerts
+  const { data: activeAlerts } = useQuery({
+    queryKey: ['content-ops', 'alerts'],
+    queryFn: async () => {
+      const { data } = await supabase.from('content_alerts' as any)
+        .select('*').is('resolved_at', null).order('created_at', { ascending: false }).limit(30);
+      return (data ?? []) as any[];
+    },
+  });
+
+  // Surface configs
+  const { data: surfaceConfigs } = useQuery({
+    queryKey: ['content-ops', 'surface-configs'],
+    queryFn: async () => {
+      const { data } = await supabase.from('content_surface_config' as any).select('*');
+      return (data ?? []) as any[];
+    },
+  });
+
+  // Aggregates
   const totalPublished = published?.length ?? 0;
   const totalSources = sources?.length ?? 0;
   const activeSources = sources?.filter((s: any) => s.active).length ?? 0;
@@ -305,15 +290,12 @@ export default function ContentIntelligenceOpsPage() {
   const backlog = queue?.length ?? 0;
   const publishRate = totalFetched > 0 ? Math.round((totalPublished / totalFetched) * 100) : 0;
   const rejectRate = totalFetched > 0 ? Math.round((totalRejected / totalFetched) * 100) : 0;
-
-  // Source tier counts
   const tier1Count = sources?.filter((s: any) => classifySourceTier(s) === 'tier1_safe').length ?? 0;
   const tier2Count = sources?.filter((s: any) => classifySourceTier(s) === 'tier2_controlled').length ?? 0;
   const tier3Count = sources?.filter((s: any) => classifySourceTier(s) === 'tier3_experimental').length ?? 0;
   const readySources = sources?.filter((s: any) => s.active && s.base_url).length ?? 0;
   const needsUrlSources = sources?.filter((s: any) => s.active && !s.base_url).length ?? 0;
 
-  // Surface coverage
   const surfacesByCode = useMemo(() => {
     const map: Record<string, any[]> = {};
     (surfaces ?? []).forEach((s: any) => { (map[s.surface_code] ??= []).push(s); });
@@ -324,7 +306,6 @@ export default function ContentIntelligenceOpsPage() {
   const coveredSurfaces = REQUIRED_SURFACES.filter(s => (surfacesByCode[s]?.length ?? 0) > 0).length;
   const surfaceCoverage = Math.round((coveredSurfaces / REQUIRED_SURFACES.length) * 100);
 
-  // Category coverage from surface state
   const categoryCoverage = useMemo(() => {
     const catData: Record<string, { featured: number; feed: number; live: number; evergreen: number }> = {};
     LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, evergreen: 0 }; });
@@ -337,7 +318,13 @@ export default function ContentIntelligenceOpsPage() {
     return catData;
   }, [surfaces]);
 
-  // Mutations
+  const surfaceConfigMap = useMemo(() => {
+    const m: Record<string, any> = {};
+    (surfaceConfigs ?? []).forEach((c: any) => { m[c.surface_code] = c; });
+    return m;
+  }, [surfaceConfigs]);
+
+  // ─── Mutations ───
   const ingestMutation = useMutation({
     mutationFn: async ({ mode, tierLimit }: { mode: string; tierLimit?: string }) => {
       const { data, error } = await supabase.functions.invoke('content-ingest', {
@@ -350,11 +337,11 @@ export default function ContentIntelligenceOpsPage() {
       setLastRunResult({ ...data, timestamp: new Date().toISOString() });
       if (data.mode === 'dry_run' || data.mode === 'publish_preview') {
         setPreviewResult(data.preview);
-        toast.success('Preview generated', { description: `${Object.keys(data.preview ?? {}).length} surfaces analyzed` });
+        toast.success('Preview generated');
+      } else if (data.mode === 'validate_sources') {
+        toast.success(`Validated ${data.sources?.length ?? 0} sources`);
       } else {
-        toast.success(`Pipeline complete (${data.mode})`, {
-          description: `Fetched: ${data?.fetched ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}`,
-        });
+        toast.success(`Pipeline complete (${data.mode})`);
       }
       invalidateAll();
     },
@@ -365,9 +352,7 @@ export default function ContentIntelligenceOpsPage() {
     mutationFn: async ({ itemId, action }: { itemId: string; action: string }) => {
       const statusMap: Record<string, string> = { approve: 'published', reject: 'rejected', archive: 'archived' };
       const newStatus = statusMap[action];
-      if (newStatus) {
-        await supabase.from('content_items').update({ status: newStatus }).eq('id', itemId);
-      }
+      if (newStatus) await supabase.from('content_items').update({ status: newStatus }).eq('id', itemId);
       if (action === 'pin_hero') {
         await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', 'homepage_hero').eq('active', true).lt('rank_score', 990);
         await supabase.from('content_surface_state').insert({ surface_code: 'homepage_hero', content_item_id: itemId, rank_score: 999, active: true });
@@ -377,12 +362,8 @@ export default function ContentIntelligenceOpsPage() {
         await supabase.from('content_surface_state').update({ active: false }).eq('content_item_id', itemId);
       }
       if (action === 'boost') {
-        const { data: currentSurfaces } = await supabase
-          .from('content_surface_state')
-          .select('id, rank_score')
-          .eq('content_item_id', itemId)
-          .eq('active', true)
-          .lt('rank_score', 990);
+        const { data: currentSurfaces } = await supabase.from('content_surface_state')
+          .select('id, rank_score').eq('content_item_id', itemId).eq('active', true).lt('rank_score', 990);
         for (const surf of currentSurfaces ?? []) {
           const newRank = Math.min(989, (surf.rank_score ?? 50) + 15);
           await supabase.from('content_surface_state').update({ rank_score: newRank }).eq('id', surf.id);
@@ -399,6 +380,53 @@ export default function ContentIntelligenceOpsPage() {
       await supabase.from('content_sources').update({ active }).eq('id', sourceId);
     },
     onSuccess: () => { toast.success('Source updated'); invalidateAll(); },
+  });
+
+  const quarantineSource = useMutation({
+    mutationFn: async ({ sourceId, quarantine }: { sourceId: string; quarantine: boolean }) => {
+      await supabase.from('content_sources').update({
+        rollout_state: quarantine ? 'quarantined' : 'validated',
+      }).eq('id', sourceId);
+    },
+    onSuccess: () => { toast.success('Source rollout state updated'); invalidateAll(); },
+  });
+
+  const updateSurfaceRollout = useMutation({
+    mutationFn: async ({ surfaceCode, mode }: { surfaceCode: string; mode: string }) => {
+      await supabase.from('content_surface_config' as any).update({
+        rollout_mode: mode, updated_at: new Date().toISOString(),
+      }).eq('surface_code', surfaceCode);
+    },
+    onSuccess: () => { toast.success('Surface rollout updated'); invalidateAll(); },
+  });
+
+  const freezeSurface = useMutation({
+    mutationFn: async ({ surfaceCode, freeze }: { surfaceCode: string; freeze: boolean }) => {
+      await supabase.from('content_surface_config' as any).update({
+        frozen: freeze,
+        frozen_at: freeze ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      }).eq('surface_code', surfaceCode);
+    },
+    onSuccess: () => { toast.success('Surface freeze updated'); invalidateAll(); },
+  });
+
+  const acknowledgeAlert = useMutation({
+    mutationFn: async (alertId: string) => {
+      await supabase.from('content_alerts' as any).update({
+        acknowledged_at: new Date().toISOString(),
+      }).eq('id', alertId);
+    },
+    onSuccess: () => { toast.success('Alert acknowledged'); invalidateAll(); },
+  });
+
+  const resolveAlert = useMutation({
+    mutationFn: async (alertId: string) => {
+      await supabase.from('content_alerts' as any).update({
+        resolved_at: new Date().toISOString(),
+      }).eq('id', alertId);
+    },
+    onSuccess: () => { toast.success('Alert resolved'); invalidateAll(); },
   });
 
   const reBriefMutation = useMutation({
@@ -428,32 +456,24 @@ export default function ContentIntelligenceOpsPage() {
                   <Radio className="h-2.5 w-2.5 mr-1 text-primary" /> Live
                 </Badge>
               )}
+              {(activeAlerts?.length ?? 0) > 0 && (
+                <Badge variant="destructive" className="text-[10px]">
+                  <Bell className="h-2.5 w-2.5 mr-1" /> {activeAlerts?.length} alerts
+                </Badge>
+              )}
             </h1>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              {staleSources > 0 && (
-                <span className="text-xs text-warning flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" /> {staleSources} stale
-                </span>
-              )}
-              {criticalSources > 0 && (
-                <span className="text-xs text-destructive flex items-center gap-1">
-                  <XCircle className="h-3 w-3" /> {criticalSources} critical
-                </span>
-              )}
-              {needsUrlSources > 0 && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  {needsUrlSources} need URL
-                </span>
-              )}
+              {staleSources > 0 && <span className="text-xs text-warning flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> {staleSources} stale</span>}
+              {criticalSources > 0 && <span className="text-xs text-destructive flex items-center gap-1"><XCircle className="h-3 w-3" /> {criticalSources} critical</span>}
+              {needsUrlSources > 0 && <span className="text-xs text-muted-foreground flex items-center gap-1">{needsUrlSources} need URL</span>}
             </div>
           </div>
           <div className="flex gap-1 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate({ mode: 'dry_run' })} disabled={isPending}>
               <Search className="h-3.5 w-3.5 mr-1" /> Preview
             </Button>
-            <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier1' })} disabled={isPending}>
-              <RefreshCw className={`h-3.5 w-3.5 mr-1 ${ingestMutation.isPending ? 'animate-spin' : ''}`} />
-              Tier 1
+            <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate({ mode: 'validate_sources' })} disabled={isPending}>
+              <Shield className="h-3.5 w-3.5 mr-1" /> Validate
             </Button>
             <Button size="sm" onClick={() => ingestMutation.mutate({ mode: 'full' })} disabled={isPending}>
               {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
@@ -462,16 +482,16 @@ export default function ContentIntelligenceOpsPage() {
           </div>
         </div>
 
-        {/* Pipeline mode buttons — granular controls */}
+        {/* Granular pipeline controls */}
         <div className="flex gap-1 mb-3 flex-wrap">
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'fetch_only' })} disabled={isPending}>
-            <Database className="h-3 w-3 mr-1" /> Fetch Only
+            <Database className="h-3 w-3 mr-1" /> Fetch
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'brief' })} disabled={isPending}>
-            <FileText className="h-3 w-3 mr-1" /> Brief Only
+            <FileText className="h-3 w-3 mr-1" /> Brief
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
-            <Layers className="h-3 w-3 mr-1" /> Publish Only
+            <Layers className="h-3 w-3 mr-1" /> Publish
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'decay' })} disabled={isPending}>
             <Timer className="h-3 w-3 mr-1" /> Decay
@@ -479,12 +499,42 @@ export default function ContentIntelligenceOpsPage() {
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'cluster' })} disabled={isPending}>
             <TrendingUp className="h-3 w-3 mr-1" /> Cluster
           </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier1' })} disabled={isPending}>
+            <Gauge className="h-3 w-3 mr-1" /> Tier 1
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier2' })} disabled={isPending}>
             <Gauge className="h-3 w-3 mr-1" /> Tier 1+2
           </Button>
         </div>
 
-        {/* Last Pipeline Run Card */}
+        {/* Active alerts banner */}
+        {(activeAlerts?.length ?? 0) > 0 && (
+          <Card className="p-3 mb-3 border-destructive/20 bg-destructive/[0.02]">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldAlert className="h-4 w-4 text-destructive" />
+              <span className="text-xs font-bold">Active Alerts ({activeAlerts?.length})</span>
+            </div>
+            <div className="space-y-1.5">
+              {(activeAlerts ?? []).slice(0, 5).map((alert: any) => (
+                <div key={alert.id} className="flex items-center justify-between text-[10px]">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Badge variant={alert.severity === 'critical' ? 'destructive' : 'outline'} className="text-[8px] shrink-0">{alert.severity}</Badge>
+                    <span className="truncate">{alert.title}</span>
+                    <span className="text-muted-foreground shrink-0">{formatTimeAgo(alert.created_at)}</span>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {!alert.acknowledged_at && (
+                      <Button size="sm" variant="ghost" className="h-5 text-[8px] px-1.5" onClick={() => acknowledgeAlert.mutate(alert.id)}>Ack</Button>
+                    )}
+                    <Button size="sm" variant="ghost" className="h-5 text-[8px] px-1.5" onClick={() => resolveAlert.mutate(alert.id)}>Resolve</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {/* Last Pipeline Run */}
         {lastRunResult && (
           <Card className="p-3 mb-3 border-primary/20 bg-primary/[0.02]">
             <div className="flex items-center justify-between mb-1.5">
@@ -501,38 +551,28 @@ export default function ContentIntelligenceOpsPage() {
               <div>Published: <strong className="text-primary">{lastRunResult.published ?? 0}</strong></div>
               <div>Rejected: <strong className="text-destructive">{lastRunResult.rejected ?? 0}</strong></div>
             </div>
-            <div className="grid grid-cols-5 gap-2 text-[10px] mt-1">
-              <div>Review: <strong className="text-warning">{lastRunResult.needs_review ?? 0}</strong></div>
-              <div>Decayed: <strong>{lastRunResult.decayed ?? 0}</strong></div>
-              <div>Archived: <strong>{lastRunResult.archived ?? 0}</strong></div>
-              <div>Clustered: <strong>{lastRunResult.clustered ?? 0}</strong></div>
-              <div>Surfaces: <strong>{lastRunResult.surfaces_refreshed ?? 0}</strong></div>
-            </div>
             {(lastRunResult.title_rejected ?? 0) > 0 && (
-              <p className="text-[10px] text-warning mt-1">⚠ {lastRunResult.title_rejected} titles rejected by quality gate</p>
+              <p className="text-[10px] text-warning mt-1">⚠ {lastRunResult.title_rejected} titles rejected</p>
             )}
             {lastRunResult.source_errors?.length > 0 && (
               <div className="mt-1.5 text-[10px] text-destructive">
-                {lastRunResult.source_errors.slice(0, 3).map((e: string, i: number) => (
-                  <p key={i}>⚠ {e}</p>
-                ))}
+                {lastRunResult.source_errors.slice(0, 3).map((e: string, i: number) => <p key={i}>⚠ {e}</p>)}
               </div>
             )}
           </Card>
         )}
 
-        {/* Preview Result — with richer explainability */}
+        {/* Preview Result */}
         {previewResult && (
           <Card className="p-3 mb-3 border-accent/20 bg-accent/[0.02]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold flex items-center gap-1.5">
-                <Eye className="h-3.5 w-3.5 text-accent-foreground" />
-                Publish Preview (Dry Run)
+                <Eye className="h-3.5 w-3.5 text-accent-foreground" /> Publish Preview
               </span>
               <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setPreviewResult(null)}>Dismiss</Button>
             </div>
             {Object.entries(previewResult).length === 0 ? (
-              <p className="text-[10px] text-muted-foreground">No published content available for any surface. Evergreen fallback will be used.</p>
+              <p className="text-[10px] text-muted-foreground">No published content. Evergreen fallback active.</p>
             ) : (
               <div className="space-y-2.5">
                 {Object.entries(previewResult).slice(0, 15).map(([surface, items]) => (
@@ -554,10 +594,6 @@ export default function ContentIntelligenceOpsPage() {
                             <span>F:{item.freshness}</span>
                             <span>LU:{item.local_utility}</span>
                             <span>{item.source_name}</span>
-                            {item.has_image && <span className="text-primary">📷</span>}
-                            {item.warnings?.map((w: string, wi: number) => (
-                              <Badge key={wi} variant="outline" className="text-[7px] text-warning border-warning/20 py-0">{w}</Badge>
-                            ))}
                           </div>
                         </div>
                       ))
@@ -569,34 +605,34 @@ export default function ContentIntelligenceOpsPage() {
           </Card>
         )}
 
-        {/* Executive Pipeline Metrics */}
+        {/* Executive Metrics */}
         <div className="grid grid-cols-4 gap-2 mb-2">
           <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" subtitle={`${publishRate}% rate`} />
           <StatCard label="Review" value={needsReview} icon={AlertTriangle} color="text-warning" subtitle={`${backlog} backlog`} />
           <StatCard label="Rejected" value={totalRejected} icon={XCircle} color="text-destructive" subtitle={`${rejectRate}% rate`} />
-          <StatCard label="Archived" value={totalArchived} icon={Trash2} color="text-muted-foreground" />
+          <StatCard label="Alerts" value={activeAlerts?.length ?? 0} icon={Bell} color="text-destructive" />
         </div>
         <div className="grid grid-cols-4 gap-2 mb-4">
           <StatCard label="Sources" value={`${readySources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={`T1:${tier1Count} T2:${tier2Count} T3:${tier3Count}`} />
-          <StatCard label="Coverage" value={`${surfaceCoverage}%`} icon={Radio} color="text-primary" subtitle={`${coveredSurfaces}/${REQUIRED_SURFACES.length} surfaces`} />
+          <StatCard label="Coverage" value={`${surfaceCoverage}%`} icon={Radio} color="text-primary" subtitle={`${coveredSurfaces}/${REQUIRED_SURFACES.length}`} />
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
-          <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${(analytics as any)?.click ?? 0} clicks`} />
+          <StatCard label="Runs" value={pipelineHistory?.length ?? 0} icon={History} color="text-muted-foreground" subtitle={pipelineHistory?.[0] ? formatTimeAgo(pipelineHistory[0].started_at) : 'None'} />
         </div>
 
         <Tabs defaultValue="queue">
           <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="queue">Queue ({queue?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="published">Published</TabsTrigger>
-            <TabsTrigger value="sources">Sources ({totalSources})</TabsTrigger>
+            <TabsTrigger value="sources">Sources</TabsTrigger>
             <TabsTrigger value="surfaces">Surfaces</TabsTrigger>
             <TabsTrigger value="categories">Categories</TabsTrigger>
+            <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="clusters">Trends</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           {/* Queue Tab */}
           <TabsContent value="queue" className="space-y-2 mt-3">
-            {queueLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading queue…</p>}
+            {queueLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
             {!queueLoading && !queue?.length && <EmptyState message="No items in queue — run pipeline to ingest content" icon={CheckCircle} />}
             {(queue ?? []).map((item: any) => {
               const brief = item.content_ai_briefs?.[0];
@@ -614,19 +650,15 @@ export default function ContentIntelligenceOpsPage() {
                         {item.source_country === 'lk' && <span className="text-[9px]">🇱🇰</span>}
                       </div>
                       <p className="text-sm font-semibold line-clamp-1">{brief?.ai_headline ?? item.title}</p>
-                      {brief?.ai_summary_short && (
-                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{brief.ai_summary_short}</p>
-                      )}
                       <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
-                        <span>Quality: <strong className={quality >= 0.6 ? 'text-primary' : quality >= 0.3 ? 'text-warning' : 'text-destructive'}>{quality?.toFixed(2) ?? 'N/A'}</strong></span>
-                        <span>Trust: {item.source_trust_score?.toFixed(2) ?? 'N/A'}</span>
+                        <span>Q: <strong className={quality >= 0.6 ? 'text-primary' : quality >= 0.3 ? 'text-warning' : 'text-destructive'}>{quality?.toFixed(2) ?? 'N/A'}</strong></span>
                         <span>{item.source_name ?? '—'}</span>
                         <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatTimeAgo(item.created_at)}</span>
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'approve' })} title="Approve & Publish">
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'approve' })} title="Approve">
                         <CheckCircle className="h-4 w-4 text-primary" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
@@ -634,7 +666,7 @@ export default function ContentIntelligenceOpsPage() {
                         <XCircle className="h-4 w-4 text-destructive" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending || reBriefMutation.isPending}
-                        onClick={() => reBriefMutation.mutate(item.id)} title="Re-run AI Brief">
+                        onClick={() => reBriefMutation.mutate(item.id)} title="Re-brief">
                         <RotateCw className={`h-3.5 w-3.5 text-muted-foreground ${reBriefMutation.isPending ? 'animate-spin' : ''}`} />
                       </Button>
                     </div>
@@ -660,33 +692,26 @@ export default function ContentIntelligenceOpsPage() {
                           <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
                         ))}
                         {item.source_country === 'lk' && <span className="text-[9px]">🇱🇰</span>}
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                          <Clock className="h-2.5 w-2.5" /> {formatTimeAgo(item.published_at)}
-                        </span>
                       </div>
                       <p className="text-sm font-semibold line-clamp-1">{brief?.ai_headline ?? item.title}</p>
                       <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                         <span>Fresh: {item.freshness_score ?? 0}</span>
-                        <span>Quality: {brief?.ai_quality_score?.toFixed(2) ?? '—'}</span>
+                        <span>Q: {brief?.ai_quality_score?.toFixed(2) ?? '—'}</span>
                         <span>{item.source_name ?? 'LankaFix'}</span>
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'pin_hero' })} title="Pin to Hero">
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'pin_hero' })} title="Pin Hero">
                         <Pin className="h-3.5 w-3.5 text-primary" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
                         onClick={() => editorialAction.mutate({ itemId: item.id, action: 'boost' })} title="Boost">
-                        <ChevronUp className="h-3.5 w-3.5 text-primary" />
+                        <ChevronUp className="h-3.5 w-3.5 text-accent-foreground" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
                         onClick={() => editorialAction.mutate({ itemId: item.id, action: 'suppress' })} title="Suppress">
-                        <Shield className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
-                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'archive' })} title="Archive">
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        <XCircle className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>
                   </div>
@@ -698,167 +723,178 @@ export default function ContentIntelligenceOpsPage() {
           {/* Sources Tab */}
           <TabsContent value="sources" className="space-y-2 mt-3">
             {srcLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
-            {!srcLoading && !sources?.length && <EmptyState message="No sources configured" icon={Database} />}
             {(sources ?? []).map((src: any) => {
               const health = getSourceHealth(src);
-              const rejectRt = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
-              const publishRt = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
               return (
                 <Card key={src.id} className={`p-3 ${HEALTH_STYLES[health]}`}>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className={`h-2 w-2 rounded-full shrink-0 ${HEALTH_DOT[health]}`} />
-                          <p className="text-sm font-semibold">{src.source_name}</p>
-                        </div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${HEALTH_DOT[health]}`} />
+                        <span className="text-sm font-semibold truncate">{src.source_name}</span>
+                        <span className="text-[10px] text-muted-foreground">{src.source_type}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mb-1.5">
                         <SourceHealthBadges src={src} />
                       </div>
-                      <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
-                        <span>Type: <strong>{src.source_type}</strong></span>
-                        <span>Trust: <strong className={src.trust_score >= 0.8 ? 'text-primary' : src.trust_score >= 0.6 ? '' : 'text-warning'}>{src.trust_score}</strong></span>
-                        <span>Refresh: <strong>{src.refresh_interval_minutes}min</strong></span>
-                        <span>Total: <strong>{src.counts.total}</strong></span>
-                        <span>Published: <strong className="text-primary">{src.counts.published}</strong> ({src.counts.total > 0 ? Math.round(publishRt * 100) : 0}%)</span>
-                        <span>Rejected: <strong className="text-destructive">{src.counts.rejected}</strong> ({src.counts.total > 0 ? Math.round(rejectRt * 100) : 0}%)</span>
+                      <div className="grid grid-cols-5 gap-2 text-[10px] text-muted-foreground">
+                        <span>Total: {src.counts.total}</span>
+                        <span className="text-primary">Pub: {src.counts.published}</span>
+                        <span className="text-destructive">Rej: {src.counts.rejected}</span>
+                        <span>Trust: {src.trust_score?.toFixed(2)}</span>
+                        <span>SL: {(src.sri_lanka_bias ?? 0).toFixed(1)}</span>
                       </div>
-                      {src.category_allowlist?.length > 0 && (
-                        <div className="flex gap-1 mt-1 flex-wrap">
-                          {src.category_allowlist.slice(0, 4).map((c: string) => (
-                            <Badge key={c} variant="outline" className="text-[9px] py-0">{c}</Badge>
-                          ))}
-                          {src.category_allowlist.length > 4 && <span className="text-[9px] text-muted-foreground">+{src.category_allowlist.length - 4}</span>}
-                        </div>
+                    </div>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" className="h-6 text-[9px]"
+                        onClick={() => toggleSource.mutate({ sourceId: src.id, active: !src.active })}>
+                        {src.active ? <Pause className="h-3 w-3 mr-1" /> : <Play className="h-3 w-3 mr-1" />}
+                        {src.active ? 'Disable' : 'Enable'}
+                      </Button>
+                      {src.active && (
+                        <Button size="sm" variant="ghost" className="h-6 text-[9px]"
+                          onClick={() => quarantineSource.mutate({
+                            sourceId: src.id,
+                            quarantine: src.rollout_state !== 'quarantined',
+                          })}>
+                          {src.rollout_state === 'quarantined' ? (
+                            <><Unlock className="h-3 w-3 mr-1" /> Unquarantine</>
+                          ) : (
+                            <><Lock className="h-3 w-3 mr-1 text-destructive" /> Quarantine</>
+                          )}
+                        </Button>
                       )}
                     </div>
-                    <Button size="icon" variant={src.active ? 'ghost' : 'outline'} className="h-8 w-8 shrink-0"
-                      onClick={() => toggleSource.mutate({ sourceId: src.id, active: !src.active })}>
-                      <Power className={`h-4 w-4 ${src.active ? 'text-primary' : 'text-destructive'}`} />
-                    </Button>
                   </div>
                 </Card>
               );
             })}
           </TabsContent>
 
-          {/* Surfaces Tab */}
-          <TabsContent value="surfaces" className="space-y-3 mt-3">
-            <Card className="p-3">
-              <h3 className="text-xs font-bold mb-2 flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-primary" /> Surface Coverage
-              </h3>
-              <div className="grid grid-cols-2 gap-1.5">
-                {REQUIRED_SURFACES.map(code => {
-                  const status = getSurfaceCoverage(surfacesByCode, code);
-                  const count = surfacesByCode[code]?.length ?? 0;
-                  return (
-                    <div key={code} className="flex items-center justify-between text-[10px]">
-                      <span className="truncate">{code.replace(/_/g, ' ')}</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-muted-foreground">{count}</span>
-                        <span className={`font-semibold capitalize ${COVERAGE_STYLES[status]}`}>
-                          {status === 'fallback_only' ? '🌿' : status === 'full' ? '✓' : status === 'partial' ? '◐' : '✗'}
-                        </span>
-                      </div>
+          {/* Surfaces Tab — with rollout controls */}
+          <TabsContent value="surfaces" className="space-y-2 mt-3">
+            {REQUIRED_SURFACES.map(code => {
+              const items = surfacesByCode[code] ?? [];
+              const status = getSurfaceCoverage(surfacesByCode, code);
+              const config = surfaceConfigMap[code];
+              return (
+                <Card key={code} className="p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${COVERAGE_STYLES[status]}`}>{code.replace(/_/g, ' ')}</span>
+                      <Badge variant="outline" className={`text-[9px] ${COVERAGE_STYLES[status]}`}>{status.replace(/_/g, ' ')}</Badge>
+                      {config?.frozen && <Badge variant="destructive" className="text-[8px]"><Lock className="h-2 w-2 mr-0.5" /> Frozen</Badge>}
                     </div>
-                  );
-                })}
-              </div>
-            </Card>
-
-            {!surfaces?.length && <EmptyState message="No active surface assignments — surfaces use evergreen fallback" icon={Layers} />}
-            {Object.entries(surfacesByCode).map(([code, items]) => (
-              <Card key={code} className="p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="secondary" className="text-[10px] font-bold">{code.replace(/_/g, ' ')}</Badge>
-                  <span className="text-[10px] text-muted-foreground">{items.length} items</span>
-                </div>
-                <div className="space-y-1.5">
-                  {items.map((s: any, i: number) => (
-                    <div key={s.id} className="flex items-center gap-2 text-xs">
-                      <span className="text-muted-foreground w-4 text-right shrink-0">{i + 1}.</span>
-                      <span className={`font-medium flex-1 truncate ${s.rank_score >= 990 ? 'text-primary' : ''}`}>
-                        {s.rank_score >= 990 && <Pin className="h-3 w-3 inline mr-1" />}
-                        {(s as any).content_items?.title ?? s.content_item_id.slice(0, 12)}
-                      </span>
-                      {s.category_code && <Badge variant="outline" className="text-[9px] shrink-0">{s.category_code}</Badge>}
-                      <Badge variant="outline" className="text-[9px] shrink-0">{(s as any).content_items?.content_type?.replace(/_/g, ' ') ?? '—'}</Badge>
-                      <span className="text-[10px] text-muted-foreground shrink-0">{Math.round(s.rank_score)}</span>
+                    <div className="flex items-center gap-1">
+                      <select
+                        className="text-[9px] bg-transparent border border-border rounded px-1 py-0.5"
+                        value={config?.rollout_mode ?? 'evergreen_only'}
+                        onChange={(e) => updateSurfaceRollout.mutate({ surfaceCode: code, mode: e.target.value })}
+                      >
+                        {SURFACE_ROLLOUT_MODES.map(m => (
+                          <option key={m} value={m}>{m.replace(/_/g, ' ')}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" variant="ghost" className="h-6 text-[9px]"
+                        onClick={() => freezeSurface.mutate({ surfaceCode: code, freeze: !config?.frozen })}>
+                        {config?.frozen ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                      </Button>
                     </div>
-                  ))}
-                </div>
-              </Card>
-            ))}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {items.length === 0 ? (
+                      <p>No live items. Evergreen fallback active.</p>
+                    ) : (
+                      items.slice(0, 3).map((s: any) => (
+                        <p key={s.id} className="truncate">
+                          #{Math.round(s.rank_score ?? 0)} · {(s as any).content_items?.title ?? '—'}
+                          {s.rank_score >= 990 && <span className="text-primary ml-1">📌 Pinned</span>}
+                        </p>
+                      ))
+                    )}
+                    {items.length > 3 && <p className="text-muted-foreground/50">+{items.length - 3} more</p>}
+                  </div>
+                </Card>
+              );
+            })}
           </TabsContent>
 
-          {/* Category Coverage Tab */}
+          {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-2 mt-3">
-            <Card className="p-3">
-              <h3 className="text-xs font-bold mb-2 flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-primary" /> Category Coverage
-              </h3>
-              <div className="space-y-1.5">
-                {LANKAFIX_CATEGORIES.map(cat => {
-                  const data = categoryCoverage[cat];
-                  const total = (data?.featured ?? 0) + (data?.feed ?? 0);
-                  const isWeak = total === 0;
-                  return (
-                    <div key={cat} className="flex items-center justify-between text-[10px]">
-                      <span className="font-medium">{cat}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Featured: <strong>{data?.featured ?? 0}</strong></span>
-                        <span className="text-muted-foreground">Feed: <strong>{data?.feed ?? 0}</strong></span>
-                        <span className={`font-semibold ${isWeak ? 'text-muted-foreground' : 'text-primary'}`}>
-                          {isWeak ? '🌿 Evergreen' : `${total} live`}
-                        </span>
-                      </div>
+            {LANKAFIX_CATEGORIES.map(cat => {
+              const data = categoryCoverage[cat];
+              const isWeak = (data?.featured ?? 0) === 0 && (data?.feed ?? 0) === 0;
+              return (
+                <Card key={cat} className={`p-2.5 ${isWeak ? 'border-warning/20' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">{cat}</span>
+                    <div className="flex items-center gap-2 text-[10px]">
+                      <span>Featured: <strong className={data?.featured ? 'text-primary' : 'text-muted-foreground'}>{data?.featured ?? 0}</strong></span>
+                      <span>Feed: <strong className={data?.feed ? 'text-primary' : 'text-muted-foreground'}>{data?.feed ?? 0}</strong></span>
+                      <span>Live: <strong>{data?.live ?? 0}</strong></span>
+                      {isWeak && <Badge variant="outline" className="text-[8px] text-warning border-warning/20">Weak</Badge>}
                     </div>
-                  );
-                })}
-              </div>
-            </Card>
+                  </div>
+                </Card>
+              );
+            })}
+          </TabsContent>
+
+          {/* Pipeline History Tab */}
+          <TabsContent value="history" className="space-y-2 mt-3">
+            {!pipelineHistory?.length && <EmptyState message="No pipeline runs yet" icon={History} />}
+            {(pipelineHistory ?? []).map((run: any) => (
+              <Card key={run.id} className={`p-3 ${run.status === 'failed' ? 'border-destructive/20' : ''}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant={run.status === 'failed' ? 'destructive' : run.status === 'running' ? 'secondary' : 'outline'} className="text-[9px]">
+                      {run.status}
+                    </Badge>
+                    <Badge variant="outline" className="text-[9px]">{run.mode}</Badge>
+                    <span className="text-[10px] text-muted-foreground">{run.triggered_by}</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {run.duration_ms ? `${run.duration_ms}ms` : '—'} · {formatTimeAgo(run.started_at)}
+                  </div>
+                </div>
+                <div className="grid grid-cols-6 gap-1.5 text-[10px]">
+                  <span>Fetch: {run.fetched ?? 0}</span>
+                  <span>Brief: {run.briefed ?? 0}</span>
+                  <span className="text-primary">Pub: {run.published ?? 0}</span>
+                  <span className="text-destructive">Rej: {run.rejected ?? 0}</span>
+                  <span>Decay: {run.decayed ?? 0}</span>
+                  <span>Err: {run.errors_count ?? 0}</span>
+                </div>
+                {run.error_details?.length > 0 && (
+                  <div className="mt-1 text-[9px] text-destructive">
+                    {run.error_details.slice(0, 2).map((e: string, i: number) => <p key={i}>⚠ {e}</p>)}
+                  </div>
+                )}
+              </Card>
+            ))}
           </TabsContent>
 
           {/* Trends Tab */}
           <TabsContent value="clusters" className="space-y-2 mt-3">
-            {!clusters?.length && <EmptyState message="No active trend clusters" icon={TrendingUp} />}
+            {!clusters?.length && <EmptyState message="No trend clusters detected yet" icon={TrendingUp} />}
             {(clusters ?? []).map((c: any) => (
               <Card key={c.id} className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold capitalize">{c.cluster_label}</p>
+                    <p className="text-sm font-semibold">{c.cluster_label}</p>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
                       {c.category_code && <Badge variant="outline" className="text-[9px]">{c.category_code}</Badge>}
-                    </div>
-                    <div className="flex gap-3 text-[10px] text-muted-foreground mt-0.5">
-                      <span>Articles: {c.content_count}</span>
-                      <span>Momentum: {c.momentum_score}</span>
-                      {c.sri_lanka_relevance_score > 50 && <span>🇱🇰 {c.sri_lanka_relevance_score}%</span>}
-                      {c.commercial_relevance_score > 50 && <span>💼 {c.commercial_relevance_score}%</span>}
+                      <span>{c.content_count} items</span>
+                      <span>SL: {c.sri_lanka_relevance_score}%</span>
                     </div>
                   </div>
-                  <Activity className="h-4 w-4 text-primary/40" />
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-primary">{c.momentum_score}</p>
+                    <p className="text-[10px] text-muted-foreground">momentum</p>
+                  </div>
                 </div>
               </Card>
             ))}
-          </TabsContent>
-
-          {/* Analytics Tab */}
-          <TabsContent value="analytics" className="mt-3">
-            <Card className="p-4">
-              <h3 className="text-sm font-bold mb-3">Event Summary (Last 500)</h3>
-              {analytics && (
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.entries(analytics).filter(([k]) => k !== 'total').map(([type, count]) => (
-                    <div key={type} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground capitalize">{type}</span>
-                      <strong>{count as number}</strong>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {!analytics?.total && <EmptyState message="No analytics events yet" icon={BarChart3} />}
-            </Card>
           </TabsContent>
         </Tabs>
       </main>
