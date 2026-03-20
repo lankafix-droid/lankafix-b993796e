@@ -214,6 +214,7 @@ export default function ContentIntelligenceOpsPage() {
   const totalPublished = published?.length ?? 0;
   const totalSources = sources?.length ?? 0;
   const activeSources = sources?.filter((s: any) => s.active).length ?? 0;
+  const disabledSources = sources?.filter((s: any) => !s.active).length ?? 0;
   const staleSources = sources?.filter((s: any) => {
     if (!s.active || !s.last_fetched_at) return s.active;
     return (Date.now() - new Date(s.last_fetched_at).getTime()) > 24 * 3600000;
@@ -223,6 +224,15 @@ export default function ContentIntelligenceOpsPage() {
   const needsReview = queue?.filter((q: any) => q.status === 'needs_review').length ?? 0;
   const totalRejected = sources?.reduce((s: number, src: any) => s + (src.counts?.rejected ?? 0), 0) ?? 0;
   const totalArchived = sources?.reduce((s: number, src: any) => s + (src.counts?.archived ?? 0), 0) ?? 0;
+  const totalFetched = sources?.reduce((s: number, src: any) => s + (src.counts?.total ?? 0), 0) ?? 0;
+  const backlog = queue?.length ?? 0;
+  const publishRate = totalFetched > 0 ? Math.round((totalPublished / totalFetched) * 100) : 0;
+  const rejectRate = totalFetched > 0 ? Math.round((totalRejected / totalFetched) * 100) : 0;
+
+  // Surface coverage: how many of the 10 required surfaces have at least 1 active item
+  const REQUIRED_SURFACES = ['homepage_hero', 'homepage_hot_now', 'homepage_did_you_know', 'homepage_innovations', 'homepage_safety', 'homepage_numbers', 'homepage_popular', 'ai_banner_forum', 'category_featured', 'category_feed'];
+  const coveredSurfaces = REQUIRED_SURFACES.filter(s => surfacesByCode[s]?.length > 0).length;
+  const surfaceCoverage = Math.round((coveredSurfaces / REQUIRED_SURFACES.length) * 100);
 
   // Mutations
   const ingestMutation = useMutation({
