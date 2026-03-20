@@ -546,7 +546,7 @@ export default function ContentIntelligenceOpsPage() {
         </div>
 
         {/* Granular pipeline controls */}
-        <div className="flex gap-1 mb-3 flex-wrap">
+        <div className="flex gap-1 mb-1.5 flex-wrap">
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'fetch_only' })} disabled={isPending}>
             <Database className="h-3 w-3 mr-1" /> Fetch
           </Button>
@@ -555,9 +555,6 @@ export default function ContentIntelligenceOpsPage() {
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'rescue_review' })} disabled={isPending}>
             <Star className="h-3 w-3 mr-1" /> Rescue
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
-            <Layers className="h-3 w-3 mr-1" /> Publish
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'decay' })} disabled={isPending}>
             <Timer className="h-3 w-3 mr-1" /> Decay
@@ -573,6 +570,22 @@ export default function ContentIntelligenceOpsPage() {
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier2' })} disabled={isPending}>
             <Gauge className="h-3 w-3 mr-1" /> Tier 1+2
+          </Button>
+        </div>
+        {/* Publish controls — chunked modes */}
+        <div className="flex gap-1 mb-3 flex-wrap">
+          <span className="text-[9px] text-muted-foreground self-center mr-1">Publish:</span>
+          <Button size="sm" variant="outline" className="h-7 text-[10px] border-primary/20 text-primary" onClick={() => ingestMutation.mutate({ mode: 'publish_fast' })} disabled={isPending}>
+            <Zap className="h-3 w-3 mr-1" /> Fast (Homepage)
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-[10px] border-primary/20" onClick={() => ingestMutation.mutate({ mode: 'publish_premium' })} disabled={isPending}>
+            <Star className="h-3 w-3 mr-1" /> Premium Only
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish_category_batch' })} disabled={isPending}>
+            <Layers className="h-3 w-3 mr-1" /> Category Batch
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
+            <Layers className="h-3 w-3 mr-1" /> Full (slow)
           </Button>
         </div>
 
