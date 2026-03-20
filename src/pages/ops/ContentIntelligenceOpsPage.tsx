@@ -351,16 +351,16 @@ export default function ContentIntelligenceOpsPage() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Executive Pipeline Metrics */}
         <div className="grid grid-cols-4 gap-2 mb-2">
-          <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" />
-          <StatCard label="Review" value={needsReview} icon={AlertTriangle} color="text-warning" />
-          <StatCard label="Rejected" value={totalRejected} icon={XCircle} color="text-destructive" />
+          <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" subtitle={`${publishRate}% rate`} />
+          <StatCard label="Review" value={needsReview} icon={AlertTriangle} color="text-warning" subtitle={`${backlog} backlog`} />
+          <StatCard label="Rejected" value={totalRejected} icon={XCircle} color="text-destructive" subtitle={`${rejectRate}% rate`} />
           <StatCard label="Archived" value={totalArchived} icon={Trash2} color="text-muted-foreground" />
         </div>
         <div className="grid grid-cols-4 gap-2 mb-4">
-          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={criticalSources > 0 ? `${criticalSources} critical` : staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
-          <StatCard label="Surfaces" value={surfaceCount} icon={Pin} color="text-primary" subtitle={`${Object.keys(surfacesByCode).length} slots`} />
+          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={criticalSources > 0 ? `${criticalSources} critical` : disabledSources > 0 ? `${disabledSources} disabled` : staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
+          <StatCard label="Coverage" value={`${surfaceCoverage}%`} icon={Radio} color="text-primary" subtitle={`${coveredSurfaces}/${REQUIRED_SURFACES.length} surfaces`} />
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
           <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${(analytics as any)?.click ?? 0} clicks`} />
         </div>
