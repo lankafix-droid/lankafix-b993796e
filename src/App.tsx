@@ -264,6 +264,7 @@ const App = () => (
             <Route path="/consumables/reorder" element={<ProtectedRoute><ConsumablesReorderPage /></ProtectedRoute>} />
             <Route path="/consumables/bulk" element={<ConsumablesBulkPage />} />
             <Route path="/consumables/qr-verify" element={<ConsumablesQRVerifyPage />} />
+            <Route path="/consumables/cart" element={<ProtectedRoute><ConsumablesCartPage /></ProtectedRoute>} />
 
             <Route path="/home-health" element={<ProtectedRoute><HomeHealthPage /></ProtectedRoute>} />
             <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
