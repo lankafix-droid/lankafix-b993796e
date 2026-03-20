@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 import {
   Search, Printer, ShieldCheck, RotateCcw, QrCode, Camera, ScanLine,
-  Package, ArrowRight, RefreshCw, FileText, HelpCircle, Truck
+  Package, ArrowRight, RefreshCw, FileText, HelpCircle, ShoppingCart
 } from "lucide-react";
 
 const ConsumablesLandingPage = () => {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const cart = useCart();
 
   const handleSearch = () => {
     if (query.trim()) navigate(`/consumables/results?q=${encodeURIComponent(query.trim())}`);
@@ -27,23 +29,29 @@ const ConsumablesLandingPage = () => {
   ];
 
   const quickActions = [
-    { label: "Reorder Last Purchase", icon: RefreshCw, link: "/consumables/reorder" },
-    { label: "Saved Devices", icon: Printer, link: "/consumables/reorder" },
-    { label: "Bulk Quote", icon: FileText, link: "/consumables/bulk" },
-    { label: "Need Help Matching?", icon: HelpCircle, link: "/consumables/finder" },
+    { label: "Reorder / Saved Devices", icon: RefreshCw, link: "/consumables/reorder" },
+    { label: "Bulk / SME Quote", icon: FileText, link: "/consumables/bulk" },
+    { label: "Verify SmartFix QR", icon: QrCode, link: "/consumables/qr-verify" },
+    { label: "Guided Finder", icon: HelpCircle, link: "/consumables/finder" },
   ];
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="max-w-2xl mx-auto px-4 py-6 pb-24">
-        {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <Printer className="w-6 h-6 text-primary" />
-            <h1 className="text-xl font-bold text-foreground">Printer & Copier Consumables</h1>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Printer className="w-6 h-6 text-primary" />
+              <h1 className="text-xl font-bold text-foreground">Printer & Copier Consumables</h1>
+            </div>
+            {cart.count > 0 && (
+              <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate("/consumables/cart")}>
+                <ShoppingCart className="w-3.5 h-3.5 mr-1" /> {cart.count}
+              </Button>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground mt-1">
             Verified Matching · OEM + SmartFix · Refill & Return · Warranty Backed
           </p>
         </motion.div>
@@ -53,13 +61,8 @@ const ConsumablesLandingPage = () => {
           className="bg-card rounded-xl border border-border p-4 mb-6 shadow-sm">
           <label className="text-sm font-medium text-foreground mb-2 block">Find your toner or cartridge</label>
           <div className="flex gap-2">
-            <Input
-              placeholder="Enter printer model or toner code..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="flex-1"
-            />
+            <Input placeholder="Enter printer model or toner code..." value={query}
+              onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSearch()} className="flex-1" />
             <Button onClick={handleSearch} size="icon"><Search className="w-4 h-4" /></Button>
           </div>
 
@@ -115,7 +118,7 @@ const ConsumablesLandingPage = () => {
 
         {/* Trust Strip */}
         <div className="mt-6 flex flex-wrap gap-2 justify-center">
-          {["Warranty Backed", "QR Verified", "Yield Declared", "Express Delivery"].map((b) => (
+          {["Warranty Backed", "QR Verified", "Yield Declared", "Weight Declared", "Express Delivery"].map((b) => (
             <Badge key={b} variant="secondary" className="text-[10px]">{b}</Badge>
           ))}
         </div>

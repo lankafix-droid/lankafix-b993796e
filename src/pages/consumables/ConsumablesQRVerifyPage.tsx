@@ -4,9 +4,9 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, QrCode, Search, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, QrCode, Search, CheckCircle, XCircle, RefreshCw, ShieldCheck, AlertTriangle } from "lucide-react";
 import { useQRVerification } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 
@@ -29,7 +29,7 @@ const ConsumablesQRVerifyPage = () => {
           <QrCode className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-bold text-foreground">Verify SmartFix QR</h1>
         </div>
-        <p className="text-xs text-muted-foreground mb-6">Scan or enter the SmartFix serial to verify authenticity</p>
+        <p className="text-xs text-muted-foreground mb-6">Verify your SmartFix product is authentic</p>
 
         <Card className="mb-6">
           <CardContent className="p-4 space-y-3">
@@ -45,14 +45,20 @@ const ConsumablesQRVerifyPage = () => {
           </CardContent>
         </Card>
 
-        {isLoading && <p className="text-center text-sm text-muted-foreground">Verifying...</p>}
+        {isLoading && <p className="text-center text-sm text-muted-foreground py-4">Verifying...</p>}
 
-        {searchSerial && !isLoading && error && (
+        {searchSerial && !isLoading && !data && (
           <Card>
             <CardContent className="p-6 text-center">
               <XCircle className="w-10 h-10 text-destructive mx-auto mb-2" />
-              <p className="text-sm font-medium text-foreground">Not Found</p>
-              <p className="text-xs text-muted-foreground mt-1">This serial could not be verified. Contact LankaFix support.</p>
+              <p className="text-sm font-medium text-foreground mb-1">Not Found</p>
+              <p className="text-xs text-muted-foreground mb-3">This serial could not be verified. It may be invalid, inactive, or not a SmartFix product.</p>
+              <div className="flex flex-col gap-2 items-center">
+                <Button variant="outline" size="sm" className="text-xs">
+                  <AlertTriangle className="w-3 h-3 mr-1" /> Report This Code
+                </Button>
+                <p className="text-[10px] text-muted-foreground">Contact LankaFix support for assistance</p>
+              </div>
             </CardContent>
           </Card>
         )}
@@ -61,23 +67,53 @@ const ConsumablesQRVerifyPage = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <Card>
               <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
+                <div className="flex items-center gap-2 mb-4">
                   <CheckCircle className="w-6 h-6 text-accent" />
-                  <span className="text-sm font-bold text-foreground">Verified Authentic</span>
+                  <div>
+                    <span className="text-sm font-bold text-foreground block">Verified Authentic</span>
+                    <span className="text-[10px] text-accent">SmartFix Verified Product</span>
+                  </div>
                 </div>
-                <div className="space-y-2 text-xs">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Product</span><span className="font-medium text-foreground">{data.consumable_products?.title}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Serial</span><span className="font-medium">{data.qr_serial}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Batch</span><span className="font-medium">{data.batch_no}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant="secondary" className="text-[10px] capitalize">{data.verification_status}</Badge></div>
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex justify-between border-b border-border/50 pb-1.5">
+                    <span className="text-muted-foreground">Product</span>
+                    <span className="font-medium text-foreground">{(data as any).consumable_products?.title}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/50 pb-1.5">
+                    <span className="text-muted-foreground">Serial</span>
+                    <span className="font-mono font-medium">{data.qr_serial}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/50 pb-1.5">
+                    <span className="text-muted-foreground">Batch</span>
+                    <span className="font-medium">{data.batch_no}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/50 pb-1.5">
+                    <span className="text-muted-foreground">Status</span>
+                    <Badge variant="secondary" className="text-[10px] capitalize">{data.verification_status}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Verified At</span>
+                    <span className="font-medium">{data.verified_at ? new Date(data.verified_at).toLocaleString() : "First scan"}</span>
+                  </div>
+                </div>
+
+                {/* Trust badges */}
+                <div className="flex flex-wrap gap-1 mt-4">
+                  <Badge className="bg-accent/10 text-accent text-[10px] border border-accent/20"><ShieldCheck className="w-2.5 h-2.5 mr-0.5" />Authentic</Badge>
+                  <Badge variant="secondary" className="text-[10px]">Warranty Backed</Badge>
                 </div>
 
                 <div className="mt-4 space-y-2">
-                  <Link to={`/consumables/product/${data.consumable_product_id}`}>
-                    <Button size="sm" className="w-full text-xs">View Product Details</Button>
-                  </Link>
+                  {(data as any).consumable_product_id && (
+                    <Link to={`/consumables/product/${(data as any).consumable_product_id}`}>
+                      <Button size="sm" className="w-full text-xs">View Product Details</Button>
+                    </Link>
+                  )}
                   <Button size="sm" variant="outline" className="w-full text-xs">
                     <RefreshCw className="w-3 h-3 mr-1" /> Reorder This Product
+                  </Button>
+                  <Button size="sm" variant="ghost" className="w-full text-xs">
+                    <AlertTriangle className="w-3 h-3 mr-1" /> Report an Issue
                   </Button>
                 </div>
               </CardContent>

@@ -167,6 +167,7 @@ const ConsumablesRangeListPage = lazy(() => import("./pages/consumables/Consumab
 const ConsumablesReorderPage = lazy(() => import("./pages/consumables/ConsumablesReorderPage"));
 const ConsumablesBulkPage = lazy(() => import("./pages/consumables/ConsumablesBulkPage"));
 const ConsumablesQRVerifyPage = lazy(() => import("./pages/consumables/ConsumablesQRVerifyPage"));
+const ConsumablesCartPage = lazy(() => import("./pages/consumables/ConsumablesCartPage"));
 
 // SPS — Smart Print Subscription
 const SPSLandingPage = lazy(() => import("./pages/sps/SPSLandingPage"));
@@ -263,6 +264,7 @@ const App = () => (
             <Route path="/consumables/reorder" element={<ProtectedRoute><ConsumablesReorderPage /></ProtectedRoute>} />
             <Route path="/consumables/bulk" element={<ConsumablesBulkPage />} />
             <Route path="/consumables/qr-verify" element={<ConsumablesQRVerifyPage />} />
+            <Route path="/consumables/cart" element={<ProtectedRoute><ConsumablesCartPage /></ProtectedRoute>} />
 
             <Route path="/home-health" element={<ProtectedRoute><HomeHealthPage /></ProtectedRoute>} />
             <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
