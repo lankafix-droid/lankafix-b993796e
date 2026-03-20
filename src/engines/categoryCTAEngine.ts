@@ -5,7 +5,7 @@
  */
 import type { ServiceArchetype, AvailabilityLevel } from '@/hooks/useSupplyIntelligence';
 
-export type CTAAction = 'book' | 'inspect' | 'consult' | 'submit' | 'order' | 'waitlist' | 'callback' | 'chat';
+export type CTAAction = 'book' | 'inspect' | 'consult' | 'submit' | 'order' | 'waitlist' | 'callback' | 'chat' | 'navigate';
 
 export interface CategoryCTA {
   /** Primary button label */
