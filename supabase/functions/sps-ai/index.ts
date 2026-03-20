@@ -455,7 +455,7 @@ async function handleMeterAnomaly(payload: unknown, apiKey: string, _sb: SC): Pr
       advisory_only: true, fallback: true,
     };
   }
-  return { anomaly: { ...anomaly, ...(res.result as Record<string, unknown>) }, advisory_only: true };
+  return { anomaly: { ...anomaly, ...(res.result as Record<string, unknown>) }, advisory_only: true, fallback: false };
 }
 
 function detectMeterAnomaly(current: number, previous: number, days: number, included: number, histAvgDaily: number | null, hasPhoto: boolean, ocrValue: number | null) {
