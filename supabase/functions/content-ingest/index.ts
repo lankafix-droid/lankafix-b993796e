@@ -225,12 +225,18 @@ STRICT RULES:
 - For ai_why_it_matters: explain practical impact on homeowners/businesses. Source-grounded only.
 - For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services. Null if forced.
 
-QUALITY SCORING GUIDE (ai_quality_score 0.0 to 1.0):
-- 0.7-1.0: Excellent — rich detail, strong practical relevance, actionable for users.
-- 0.5-0.7: Good — clear topic, useful information, reasonable depth even if excerpt is brief.
-- 0.3-0.5: Marginal — topic is relevant but source lacks depth or detail.
-- 0.0-0.3: Poor — irrelevant, unverifiable, or no useful information.
-NOTE: A short excerpt from a reputable source on a relevant topic should still score 0.5+ if the topic itself is useful. Do NOT penalize brevity alone — penalize lack of relevance or substance.`
+QUALITY SCORING GUIDE (ai_quality_score 0.0 to 1.0) — CALIBRATED:
+- 0.80-1.0: Outstanding — deeply actionable, verified data, strong local relevance, comprehensive detail.
+- 0.60-0.80: Strong — clear practical value, good depth, useful for decision-making.
+- 0.45-0.60: Solid — relevant topic from credible source, useful even if brief. Most articles from reputable tech/news sources should land here.
+- 0.30-0.45: Marginal — topic tangentially relevant, thin detail, limited actionability.
+- 0.00-0.30: Poor — irrelevant to services/repair/tech, no useful information, spam-like.
+
+CRITICAL CALIBRATION NOTES:
+- An article from a reputable source (TechCrunch, Ars Technica, SecurityWeek, etc.) about technology, security, energy, or repair topics should score AT LEAST 0.50 even if the excerpt is brief.
+- Sri Lanka-specific content with practical utility should score AT LEAST 0.55.
+- Only score below 0.30 for genuinely irrelevant or spam content.
+- Brief excerpts from quality sources are NOT low quality — they just have less detail. Score the TOPIC RELEVANCE and SOURCE CREDIBILITY, not just excerpt length.`
           },
           {
             role: "user",
@@ -244,8 +250,7 @@ ${slContext}
 Title: ${item.title}
 Excerpt: ${item.raw_excerpt ?? 'No excerpt available'}
 
-Generate a structured brief. Be source-grounded only. Do not invent any facts or numbers.
-For ai_quality_score: rate 0.0-1.0 based on source depth, relevance, and usefulness. Thin sources must score below 0.4.`
+Generate a structured brief. Be source-grounded only. Do not invent any facts or numbers.`
           }
         ],
         tools: [{
@@ -265,7 +270,7 @@ For ai_quality_score: rate 0.0-1.0 based on source depth, relevance, and usefuln
                 ai_cta_label: { type: "string", description: "CTA text like 'Learn More', 'Check Your Device', 'Book Service'" },
                 ai_keywords: { type: "array", items: { type: "string" }, description: "3-5 keywords" },
                 ai_risk_flags: { type: "array", items: { type: "string" }, description: "Risk warnings only if genuinely present in source" },
-                ai_quality_score: { type: "number", description: "0.0-1.0. Thin/vague sources MUST score below 0.4." },
+                ai_quality_score: { type: "number", description: "0.0-1.0 per the calibration guide. Reputable source + relevant topic = 0.50 minimum." },
               },
               required: ["ai_headline", "ai_summary_short", "ai_summary_medium", "ai_quality_score"],
             }
@@ -846,7 +851,7 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
       }
       results.fetched += articles.length;
 
-      for (const article of articles.slice(0, 15)) {
+      for (const article of articles.slice(0, 10)) {
         const title = (article.title ?? article.headline ?? '').trim();
         if (!title || title.length < 10) continue;
 
@@ -904,31 +909,46 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
 }
 
 // ─── Brief items (priority-ordered: high-trust & SL-relevant first) ───
-async function briefItems(results: Record<string, any>, batchSize = 15) {
+async function briefItems(results: Record<string, any>, batchSize = 8) {
+  // First get items that don't have briefs yet
   const { data: unbriefed } = await supabase
-    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, freshness_score')
+    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, freshness_score, published_at')
     .in('status', ['new', 'processed'])
     .order('source_trust_score', { ascending: false })
     .order('freshness_score', { ascending: false })
-    .limit(batchSize);
+    .limit(batchSize * 2);
 
   if (!unbriefed?.length) return;
 
+  // Filter out already-briefed items
+  const ids = unbriefed.map((u: any) => u.id);
+  const { data: existingBriefs } = await supabase.from('content_ai_briefs').select('content_item_id').in('content_item_id', ids);
+  const briefedIds = new Set((existingBriefs ?? []).map((b: any) => b.content_item_id));
+  const toBrief = unbriefed.filter((u: any) => !briefedIds.has(u.id));
+
+  if (!toBrief.length) return;
+
   // Priority sort: SL-relevant + high-trust first
-  const sorted = unbriefed.sort((a: any, b: any) => {
+  const sorted = toBrief.sort((a: any, b: any) => {
     const aSlR = detectSriLankaRelevance(`${a.title} ${a.raw_excerpt ?? ''}`);
     const bSlR = detectSriLankaRelevance(`${b.title} ${b.raw_excerpt ?? ''}`);
     const aScore = (a.source_trust_score ?? 0.5) * 0.4 + aSlR * 0.3 + (a.freshness_score ?? 10) / 100 * 0.3;
     const bScore = (b.source_trust_score ?? 0.5) * 0.4 + bSlR * 0.3 + (b.freshness_score ?? 10) / 100 * 0.3;
     return bScore - aScore;
+  }).slice(0, batchSize);
+
+  // Batch-fetch all category tags at once
+  const sortedIds = sorted.map((s: any) => s.id);
+  const { data: allTags } = await supabase.from('content_category_tags').select('content_item_id, category_code').in('content_item_id', sortedIds);
+  const tagMap = new Map<string, string[]>();
+  (allTags ?? []).forEach((t: any) => {
+    const arr = tagMap.get(t.content_item_id) ?? [];
+    arr.push(t.category_code);
+    tagMap.set(t.content_item_id, arr);
   });
 
   for (const item of sorted) {
-    const { data: existingBrief } = await supabase.from('content_ai_briefs').select('id').eq('content_item_id', item.id).limit(1);
-    if (existingBrief?.length) continue;
-
-    const { data: tags } = await supabase.from('content_category_tags').select('category_code').eq('content_item_id', item.id);
-    const categories = (tags ?? []).map((t: any) => t.category_code);
+    const categories = tagMap.get(item.id) ?? [];
     const slRelevance = detectSriLankaRelevance(`${item.title} ${item.raw_excerpt ?? ''}`);
 
     const brief = await generateAIBrief({
@@ -939,10 +959,10 @@ async function briefItems(results: Record<string, any>, batchSize = 15) {
     if (brief) {
       await supabase.from('content_ai_briefs').insert({
         content_item_id: item.id, ...brief,
-        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v9-calibrated',
+        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v10-calibrated',
       });
       const quality = brief.ai_quality_score ?? 0;
-      const newStatus = quality >= 0.45 ? 'published' : quality >= 0.25 ? 'needs_review' : 'rejected';
+      const newStatus = quality >= 0.40 ? 'published' : quality >= 0.20 ? 'needs_review' : 'rejected';
       await supabase.from('content_items').update({
         status: newStatus, freshness_score: computeFreshness(item.content_type, item.published_at ?? null),
       }).eq('id', item.id);
@@ -1204,7 +1224,8 @@ serve(async (req) => {
       }
 
       if (mode === 'full') {
-        await briefItems(results, 15);
+        // Smaller batch to stay within timeout
+        await briefItems(results, 6);
         await rescueReviewItems(results);
         await publishToSurfaces(false);
         results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
