@@ -1,8 +1,8 @@
 /**
  * Content Ingestion Edge Function — Full pipeline.
- * Modes: full, ingest, brief, publish, decay, cluster, dry_run, publish_preview
+ * Modes: full, ingest, brief, publish, decay, cluster, dry_run, publish_preview, audit_sources
  * Supports hybrid live + evergreen content intelligence.
- * v5 — Added dry_run, title quality gate, relevance_band, surface-specific quality.
+ * v6 — Expanded run modes, richer preview explainability, source readiness/tier governance.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -119,22 +119,23 @@ function assessTitleQuality(title: string): { pass: boolean; reason: string } {
   if (title.length < 15) return { pass: false, reason: 'too_short' };
   if (title.length > 200) return { pass: false, reason: 'too_long' };
 
-  // Clickbait patterns
   const clickbait = /^(you won'?t believe|shocking|this is|omg|watch out|click here|breaking:?\s*$)/i;
   if (clickbait.test(title)) return { pass: false, reason: 'clickbait' };
 
-  // All caps check
   const upperRatio = (title.match(/[A-Z]/g) ?? []).length / title.length;
   if (upperRatio > 0.6 && title.length > 20) return { pass: false, reason: 'excessive_caps' };
 
-  // Too generic
-  const generic = ['untitled', 'no title', 'test', 'lorem ipsum', 'sample'];
+  const generic = ['untitled', 'no title', 'test', 'lorem ipsum', 'sample', 'placeholder'];
   if (generic.some(g => title.toLowerCase().includes(g))) return { pass: false, reason: 'generic' };
+
+  // Low information: very short meaningful words
+  const words = title.split(/\s+/).filter(w => w.length > 2);
+  if (words.length < 3) return { pass: false, reason: 'low_information' };
 
   return { pass: true, reason: 'ok' };
 }
 
-// ─── Relevance Band — categorize content relevance tier ───
+// ─── Relevance Band ───
 type RelevanceBand = 'local_high' | 'local_medium' | 'regional' | 'global_high_utility' | 'global_low_utility';
 
 function computeRelevanceBand(slRelevance: number, commercialRelevance: number, categoryConfidence: number): RelevanceBand {
@@ -145,7 +146,7 @@ function computeRelevanceBand(slRelevance: number, commercialRelevance: number, 
   return 'global_low_utility';
 }
 
-// ─── Local Utility Score — combined multi-signal scoring ───
+// ─── Local Utility Score ───
 function computeLocalUtilityScore(item: {
   source_country?: string;
   source_trust_score?: number;
@@ -167,11 +168,11 @@ function computeLocalUtilityScore(item: {
     trustScore * 0.10 +
     freshnessNorm * 0.10 +
     safetyBonus +
-    0.05 // base
+    0.05
   );
 }
 
-// ─── Hero Score — specialized for hero surface ───
+// ─── Hero Score ───
 function computeHeroScore(item: any, quality: number, localUtility: number): number {
   const freshness = (item.freshness_score ?? 50) / 100;
   const hasImage = item.image_url ? 0.1 : 0;
@@ -311,7 +312,6 @@ const MAX_SAME_CATEGORY_CONSECUTIVE = 2;
 const MAX_SAME_CONTENT_TYPE_PER_SURFACE = 3;
 
 // ─── Surface-specific quality thresholds ───
-// Hero and safety demand higher quality; category_feed is more tolerant
 const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; isHero?: boolean; categoryBound?: boolean }> = {
   homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic', 'market_shift'], maxItems: 3, minQuality: 0.6, isHero: true },
   homepage_hot_now: { types: ['breaking_news', 'hot_topic', 'trend_signal', 'most_read'], maxItems: 8, minQuality: 0.5 },
@@ -340,7 +340,6 @@ function classifySourceReadiness(source: any): SourceReadiness {
   if (!source.active) return 'disabled';
   if (!source.base_url) return 'needs_url';
   if (source.trust_score < 0.5) return 'low_trust';
-  // We'd check actual fetch failures here in production
   return 'ready';
 }
 
@@ -356,15 +355,13 @@ async function publishToSurfaces(dryRun = false) {
     .limit(500);
   const excludedIds = new Set((excludedItems ?? []).map((e: any) => e.id));
 
-  // For category-bound surfaces, enumerate active categories
   const CATEGORY_CODES = ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR', 'CONSUMER_ELEC', 'SMART_HOME_OFFICE', 'ELECTRICAL', 'PLUMBING', 'NETWORK', 'POWER_BACKUP', 'HOME_SECURITY', 'APPLIANCE_INSTALL', 'COPIER', 'PRINT_SUPPLIES'];
 
   for (const [surfaceCode, rules] of Object.entries(SURFACE_RULES)) {
-    // Category-bound surfaces run once per category
     const categories = rules.categoryBound ? CATEGORY_CODES : [null];
 
     for (const catCode of categories) {
-      const effectiveSurface = catCode ? `${surfaceCode}` : surfaceCode;
+      const effectiveSurface = surfaceCode;
       const previewKey = catCode ? `${surfaceCode}:${catCode}` : surfaceCode;
 
       // Check for manually pinned items (rank_score >= 990)
@@ -379,9 +376,9 @@ async function publishToSurfaces(dryRun = false) {
       const pinnedIds = new Set((pinnedSurfaces ?? []).map((p: any) => p.content_item_id));
 
       // Fetch candidates
-      let itemQuery = supabase
+      const itemQuery = supabase
         .from('content_items')
-        .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title, image_url')
+        .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title, image_url, source_name')
         .eq('status', 'published')
         .in('content_type', rules.types)
         .order('freshness_score', { ascending: false })
@@ -410,7 +407,6 @@ async function publishToSurfaces(dryRun = false) {
         catMap.set(t.content_item_id, arr);
       });
 
-      // Confidence map for category gate
       const confidenceMap = new Map<string, number>();
       (tags ?? []).forEach((t: any) => {
         const key = `${t.content_item_id}::${t.category_code}`;
@@ -420,12 +416,10 @@ async function publishToSurfaces(dryRun = false) {
       const ranked = allItems
         .filter((item: any) => !excludedIds.has(item.id) && !pinnedIds.has(item.id))
         .filter((item: any) => (qualityMap.get(item.id) ?? 0.5) >= rules.minQuality)
-        // For category-bound surfaces, require items tagged with the target category with sufficient confidence
         .filter((item: any) => {
           if (!catCode) return true;
           const itemCats = catMap.get(item.id) ?? [];
           if (!itemCats.includes(catCode)) return false;
-          // Category confidence gate: require >= 0.35 for category surfaces
           const conf = confidenceMap.get(`${item.id}::${catCode}`) ?? 0;
           return conf >= 0.35;
         })
@@ -449,7 +443,7 @@ async function publishToSurfaces(dryRun = false) {
                    (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15;
           }
 
-          return { ...item, quality, rank, localUtility, relevanceBand, categories: catMap.get(item.id) ?? [] };
+          return { ...item, quality, rank, localUtility, relevanceBand, slRelevance, commercialRelevance, categories: catMap.get(item.id) ?? [] };
         })
         .sort((a: any, b: any) => b.rank - a.rank);
 
@@ -488,15 +482,25 @@ async function publishToSurfaces(dryRun = false) {
         itemSurfaceCount.set(item.id, surfCount + 1);
       }
 
-      // Collect preview data
+      // Collect rich preview data with explainability
       preview[previewKey] = selected.map(s => ({
         id: s.id,
         title: s.title,
         content_type: s.content_type,
+        source_name: s.source_name ?? '—',
         rank: Math.round(s.rank * 10) / 10,
-        quality: s.quality,
+        quality: Math.round((s.quality ?? 0) * 100) / 100,
+        freshness: s.freshness_score ?? 0,
+        local_utility: Math.round((s.localUtility ?? 0) * 100) / 100,
         relevance_band: s.relevanceBand,
         source_country: s.source_country,
+        has_image: !!s.image_url,
+        categories: s.categories ?? [],
+        warnings: [
+          ...(s.quality < rules.minQuality + 0.1 ? ['near_quality_threshold'] : []),
+          ...(s.relevanceBand === 'global_low_utility' ? ['low_local_utility'] : []),
+          ...(!s.image_url && rules.isHero ? ['no_hero_image'] : []),
+        ],
       }));
 
       // In dry_run mode, skip actual DB writes
@@ -548,9 +552,10 @@ async function runDecay() {
     .eq('status', 'published')
     .limit(200);
 
-  if (!items?.length) return 0;
+  if (!items?.length) return { decayed: 0, archived: 0 };
 
-  let updated = 0;
+  let decayed = 0;
+  let archived = 0;
   for (const item of items) {
     const newFreshness = computeFreshness(item.content_type, item.published_at);
     const shouldArchive = newFreshness === 0;
@@ -558,12 +563,13 @@ async function runDecay() {
     if (shouldArchive) {
       await supabase.from('content_items').update({ status: 'archived', freshness_score: 0 }).eq('id', item.id);
       await supabase.from('content_surface_state').update({ active: false }).eq('content_item_id', item.id);
+      archived++;
     } else if (Math.abs((item.freshness_score ?? 0) - newFreshness) > 3) {
       await supabase.from('content_items').update({ freshness_score: newFreshness }).eq('id', item.id);
     }
-    updated++;
+    decayed++;
   }
-  return updated;
+  return { decayed, archived };
 }
 
 // ─── Trend clustering ───
@@ -651,21 +657,37 @@ async function auditSources() {
   const { data: sources } = await supabase.from('content_sources').select('*');
   if (!sources?.length) return [];
 
-  return sources.map((s: any) => ({
-    id: s.id,
-    name: s.source_name,
-    type: s.source_type,
-    active: s.active,
-    has_url: !!s.base_url,
-    trust_score: s.trust_score,
-    tier: classifySourceTier(s),
-    readiness: classifySourceReadiness(s),
-    sri_lanka_bias: s.sri_lanka_bias ?? 0,
-    sl_relevant: (s.sri_lanka_bias ?? 0) >= 0.5,
-    category_allowlist: s.category_allowlist,
-    last_fetched_at: s.last_fetched_at,
-    freshness_priority: s.freshness_priority,
-  }));
+  // Get item counts per source
+  const ids = sources.map((s: any) => s.id);
+  const { data: items } = await supabase.from('content_items').select('source_id, status').in('source_id', ids);
+  const countMap: Record<string, { published: number; rejected: number; total: number; needs_review: number }> = {};
+  (items ?? []).forEach((i: any) => {
+    const c = countMap[i.source_id] ??= { published: 0, rejected: 0, total: 0, needs_review: 0 };
+    c.total++;
+    if (i.status === 'published') c.published++;
+    if (i.status === 'rejected') c.rejected++;
+    if (i.status === 'needs_review') c.needs_review++;
+  });
+
+  return sources.map((s: any) => {
+    const counts = countMap[s.id] ?? { published: 0, rejected: 0, total: 0, needs_review: 0 };
+    return {
+      id: s.id,
+      name: s.source_name,
+      type: s.source_type,
+      active: s.active,
+      has_url: !!s.base_url,
+      trust_score: s.trust_score,
+      tier: classifySourceTier(s),
+      readiness: classifySourceReadiness(s),
+      sri_lanka_bias: s.sri_lanka_bias ?? 0,
+      sl_relevant: (s.sri_lanka_bias ?? 0) >= 0.5,
+      category_allowlist: s.category_allowlist,
+      last_fetched_at: s.last_fetched_at,
+      freshness_priority: s.freshness_priority,
+      counts,
+    };
+  });
 }
 
 // ─── Main handler ───
@@ -679,11 +701,13 @@ serve(async (req) => {
     const mode = body.mode ?? 'full';
     const startTime = Date.now();
     const results: Record<string, any> = {
+      mode,
       fetched: 0, normalized: 0, deduped: 0, accepted: 0, rejected: 0,
       briefed: 0, published: 0, decayed: 0, archived: 0,
       clustered: 0, surfaces_refreshed: 0,
       title_rejected: 0,
       source_errors: [] as string[],
+      needs_review: 0,
     };
 
     // ─── Source audit mode ───
@@ -699,11 +723,95 @@ serve(async (req) => {
     if (mode === 'dry_run' || mode === 'publish_preview') {
       const preview = await publishToSurfaces(true);
       return new Response(
-        JSON.stringify({ success: true, mode, preview }),
+        JSON.stringify({ success: true, mode, preview, duration_ms: Date.now() - startTime }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // ─── Decay only ───
+    if (mode === 'decay') {
+      const decayResult = await runDecay();
+      return new Response(
+        JSON.stringify({ success: true, mode, ...decayResult, duration_ms: Date.now() - startTime }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── Cluster only ───
+    if (mode === 'cluster') {
+      const clustered = await runClustering();
+      return new Response(
+        JSON.stringify({ success: true, mode, clustered, duration_ms: Date.now() - startTime }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── Brief only ───
+    if (mode === 'brief') {
+      const { data: unbriefed } = await supabase
+        .from('content_items')
+        .select('id, title, raw_excerpt, content_type, source_country')
+        .in('status', ['new', 'processed'])
+        .order('freshness_score', { ascending: false })
+        .limit(10);
+
+      if (unbriefed?.length) {
+        for (const item of unbriefed) {
+          const { data: existingBrief } = await supabase.from('content_ai_briefs').select('id').eq('content_item_id', item.id).limit(1);
+          if (existingBrief?.length) continue;
+
+          const { data: tags } = await supabase.from('content_category_tags').select('category_code').eq('content_item_id', item.id);
+          const categories = (tags ?? []).map((t: any) => t.category_code);
+          const slRelevance = detectSriLankaRelevance(`${item.title} ${item.raw_excerpt ?? ''}`);
+
+          const brief = await generateAIBrief({
+            title: item.title,
+            raw_excerpt: item.raw_excerpt,
+            content_type: item.content_type,
+            categories,
+            sri_lanka_relevance: slRelevance,
+          });
+
+          if (brief) {
+            await supabase.from('content_ai_briefs').insert({
+              content_item_id: item.id,
+              ...brief,
+              ai_model: 'google/gemini-2.5-flash-lite',
+              prompt_version: 'v6-hardened',
+            });
+
+            const quality = brief.ai_quality_score ?? 0;
+            const newStatus = quality >= 0.5 ? 'published' : quality >= 0.3 ? 'needs_review' : 'rejected';
+            await supabase.from('content_items').update({
+              status: newStatus,
+              freshness_score: computeFreshness(item.content_type, null),
+            }).eq('id', item.id);
+
+            results.briefed++;
+            if (newStatus === 'published') results.published++;
+            if (newStatus === 'rejected') results.rejected++;
+            if (newStatus === 'needs_review') results.needs_review++;
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, ...results, duration_ms: Date.now() - startTime }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── Publish only ───
+    if (mode === 'publish') {
+      await publishToSurfaces(false);
+      results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
+      return new Response(
+        JSON.stringify({ success: true, ...results, duration_ms: Date.now() - startTime }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── Full or ingest mode ───
     // 1. Ingest from sources
     if (mode === 'full' || mode === 'ingest') {
       const { data: sources } = await supabase.from('content_sources').select('*').eq('active', true);
@@ -711,7 +819,7 @@ serve(async (req) => {
         for (const source of sources) {
           if (source.source_type === 'internal_editorial' || source.source_type === 'knowledge' || !source.base_url) continue;
 
-          // Staged rollout: in controlled mode, only tier1 sources
+          // Staged rollout: tier-based filtering
           if (body.tier_limit) {
             const tier = classifySourceTier(source);
             if (body.tier_limit === 'tier1' && tier !== 'tier1_safe') continue;
@@ -761,15 +869,6 @@ serve(async (req) => {
               const contentType = detectContentType(text);
               const slRelevance = detectSriLankaRelevance(text);
 
-              // Apply source category allowlist filtering
-              if (source.category_allowlist?.length) {
-                const catCodes = categories.map(c => c.code);
-                const hasOverlap = catCodes.some((c: string) => source.category_allowlist.includes(c));
-                if (!hasOverlap && categories.length > 0) {
-                  // Still accept but reduce trust slightly
-                }
-              }
-
               const publishedAt = article.publishedAt ?? article.published_at ?? article.pubDate ?? null;
               const freshness = computeFreshness(contentType, publishedAt);
               const sourceSLBias = source.sri_lanka_bias ?? 0.3;
@@ -818,8 +917,8 @@ serve(async (req) => {
       }
     }
 
-    // 2. AI Briefing
-    if (mode === 'full' || mode === 'brief') {
+    // 2. AI Briefing (full mode)
+    if (mode === 'full') {
       const { data: unbriefed } = await supabase
         .from('content_items')
         .select('id, title, raw_excerpt, content_type, source_country')
@@ -849,7 +948,7 @@ serve(async (req) => {
               content_item_id: item.id,
               ...brief,
               ai_model: 'google/gemini-2.5-flash-lite',
-              prompt_version: 'v5-hardened',
+              prompt_version: 'v6-hardened',
             });
 
             const quality = brief.ai_quality_score ?? 0;
@@ -862,6 +961,7 @@ serve(async (req) => {
             results.briefed++;
             if (newStatus === 'published') results.published++;
             if (newStatus === 'rejected') results.rejected++;
+            if (newStatus === 'needs_review') results.needs_review++;
           } else {
             await supabase.from('content_items').update({ status: 'processed' }).eq('id', item.id);
           }
@@ -869,19 +969,21 @@ serve(async (req) => {
       }
     }
 
-    // 3. Surface publishing
-    if (mode === 'full' || mode === 'publish') {
+    // 3. Surface publishing (full mode)
+    if (mode === 'full') {
       await publishToSurfaces(false);
       results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
     }
 
-    // 4. Decay
-    if (mode === 'full' || mode === 'decay') {
-      results.decayed = await runDecay();
+    // 4. Decay (full mode)
+    if (mode === 'full') {
+      const decayResult = await runDecay();
+      results.decayed = decayResult.decayed;
+      results.archived = decayResult.archived;
     }
 
-    // 5. Clustering
-    if (mode === 'full' || mode === 'cluster') {
+    // 5. Clustering (full mode)
+    if (mode === 'full') {
       results.clustered = await runClustering();
     }
 
@@ -889,7 +991,7 @@ serve(async (req) => {
     console.log(`[content-ingest] Pipeline complete (mode=${mode}, ${duration}ms):`, JSON.stringify(results));
 
     return new Response(
-      JSON.stringify({ success: true, mode, duration_ms: duration, ...results }),
+      JSON.stringify({ success: true, duration_ms: duration, ...results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

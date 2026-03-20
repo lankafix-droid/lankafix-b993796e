@@ -12,7 +12,7 @@ import {
   RefreshCw, CheckCircle, XCircle, Trash2, Pin, BarChart3,
   Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star,
   Clock, Shield, Database, Layers, Radio, Zap, ChevronUp,
-  Play, Pause, Search, Filter
+  Play, Pause, Search, Filter, Gauge, Timer, FileText
 } from 'lucide-react';
 
 function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
@@ -100,19 +100,16 @@ function SourceHealthBadges({ src }: { src: any }) {
     return <>{badges}</>;
   }
 
-  // Tier badge
   const tier = classifySourceTier(src);
   const tierInfo = TIER_LABELS[tier];
   if (tierInfo) {
     badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
   }
 
-  // URL status
   if (!src.base_url) {
     badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
   }
 
-  // Fetch timing
   if (!src.last_fetched_at) {
     badges.push(<Badge key="nf" variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>);
   } else {
@@ -122,7 +119,6 @@ function SourceHealthBadges({ src }: { src: any }) {
     else badges.push(<Badge key="ok" variant="outline" className="text-[9px] text-primary border-primary/30">{formatTimeAgo(src.last_fetched_at)}</Badge>);
   }
 
-  // Quality warnings
   if (src.counts.total >= 5 && src.counts.published === 0) {
     badges.push(<Badge key="zp" variant="destructive" className="text-[9px]">Zero publish</Badge>);
   } else if (rejectRate > 0.5) {
@@ -131,14 +127,12 @@ function SourceHealthBadges({ src }: { src: any }) {
     badges.push(<Badge key="ly" variant="outline" className="text-[9px] text-warning border-warning/30">Low yield</Badge>);
   }
 
-  // Trust badge
   if (src.trust_score >= 0.85) {
     badges.push(<Badge key="tr" variant="outline" className="text-[9px] text-primary border-primary/20">★ High trust</Badge>);
   } else if (src.trust_score < 0.5) {
     badges.push(<Badge key="trl" variant="outline" className="text-[9px] text-warning border-warning/20">Low trust</Badge>);
   }
 
-  // SL relevance
   if ((src.sri_lanka_bias ?? 0) >= 0.7) {
     badges.push(<Badge key="sl" variant="outline" className="text-[9px] border-primary/15">🇱🇰 Local</Badge>);
   }
@@ -146,12 +140,11 @@ function SourceHealthBadges({ src }: { src: any }) {
   return <>{badges}</>;
 }
 
-// Surface coverage status
 type SurfaceCoverageStatus = 'full' | 'partial' | 'fallback_only' | 'empty';
 
 function getSurfaceCoverage(surfacesByCode: Record<string, any[]>, code: string): SurfaceCoverageStatus {
   const items = surfacesByCode[code];
-  if (!items || items.length === 0) return 'fallback_only'; // evergreen will fill
+  if (!items || items.length === 0) return 'fallback_only';
   const maxExpected: Record<string, number> = {
     homepage_hero: 3, homepage_hot_now: 8, homepage_did_you_know: 4,
     homepage_innovations: 4, homepage_safety: 3, homepage_numbers: 4,
@@ -159,7 +152,6 @@ function getSurfaceCoverage(surfacesByCode: Record<string, any[]>, code: string)
   };
   const max = maxExpected[code] ?? 4;
   if (items.length >= max) return 'full';
-  if (items.length >= max * 0.5) return 'partial';
   return 'partial';
 }
 
@@ -169,6 +161,9 @@ const COVERAGE_STYLES: Record<SurfaceCoverageStatus, string> = {
   fallback_only: 'text-muted-foreground',
   empty: 'text-destructive',
 };
+
+// Category coverage helper
+const LANKAFIX_CATEGORIES = ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR', 'CONSUMER_ELEC', 'SMART_HOME_OFFICE', 'ELECTRICAL', 'PLUMBING', 'NETWORK', 'POWER_BACKUP', 'HOME_SECURITY', 'APPLIANCE_INSTALL', 'COPIER', 'PRINT_SUPPLIES'];
 
 export default function ContentIntelligenceOpsPage() {
   const qc = useQueryClient();
@@ -302,6 +297,19 @@ export default function ContentIntelligenceOpsPage() {
   const coveredSurfaces = REQUIRED_SURFACES.filter(s => (surfacesByCode[s]?.length ?? 0) > 0).length;
   const surfaceCoverage = Math.round((coveredSurfaces / REQUIRED_SURFACES.length) * 100);
 
+  // Category coverage from surface state
+  const categoryCoverage = useMemo(() => {
+    const catData: Record<string, { featured: number; feed: number; live: number; evergreen: number }> = {};
+    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, evergreen: 0 }; });
+    (surfaces ?? []).forEach((s: any) => {
+      if (!s.category_code || !catData[s.category_code]) return;
+      if (s.surface_code === 'category_featured') catData[s.category_code].featured++;
+      if (s.surface_code === 'category_feed') catData[s.category_code].feed++;
+      catData[s.category_code].live++;
+    });
+    return catData;
+  }, [surfaces]);
+
   // Mutations
   const ingestMutation = useMutation({
     mutationFn: async ({ mode, tierLimit }: { mode: string; tierLimit?: string }) => {
@@ -317,7 +325,7 @@ export default function ContentIntelligenceOpsPage() {
         setPreviewResult(data.preview);
         toast.success('Preview generated', { description: `${Object.keys(data.preview ?? {}).length} surfaces analyzed` });
       } else {
-        toast.success(`Pipeline complete`, {
+        toast.success(`Pipeline complete (${data.mode})`, {
           description: `Fetched: ${data?.fetched ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}`,
         });
       }
@@ -427,9 +435,28 @@ export default function ContentIntelligenceOpsPage() {
           </div>
         </div>
 
+        {/* Pipeline mode buttons — granular controls */}
+        <div className="flex gap-1 mb-3 flex-wrap">
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'brief' })} disabled={isPending}>
+            <FileText className="h-3 w-3 mr-1" /> Brief Only
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
+            <Layers className="h-3 w-3 mr-1" /> Publish Only
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'decay' })} disabled={isPending}>
+            <Timer className="h-3 w-3 mr-1" /> Decay
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'cluster' })} disabled={isPending}>
+            <TrendingUp className="h-3 w-3 mr-1" /> Cluster
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier2' })} disabled={isPending}>
+            <Gauge className="h-3 w-3 mr-1" /> Tier 1+2
+          </Button>
+        </div>
+
         {/* Last Pipeline Run Card */}
         {lastRunResult && (
-          <Card className="p-3 mb-3 border-primary/20 bg-primary/2">
+          <Card className="p-3 mb-3 border-primary/20 bg-primary/[0.02]">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs font-bold flex items-center gap-1.5">
                 <Activity className="h-3.5 w-3.5 text-primary" />
@@ -444,7 +471,14 @@ export default function ContentIntelligenceOpsPage() {
               <div>Published: <strong className="text-primary">{lastRunResult.published ?? 0}</strong></div>
               <div>Rejected: <strong className="text-destructive">{lastRunResult.rejected ?? 0}</strong></div>
             </div>
-            {lastRunResult.title_rejected > 0 && (
+            <div className="grid grid-cols-5 gap-2 text-[10px] mt-1">
+              <div>Review: <strong className="text-warning">{lastRunResult.needs_review ?? 0}</strong></div>
+              <div>Decayed: <strong>{lastRunResult.decayed ?? 0}</strong></div>
+              <div>Archived: <strong>{lastRunResult.archived ?? 0}</strong></div>
+              <div>Clustered: <strong>{lastRunResult.clustered ?? 0}</strong></div>
+              <div>Surfaces: <strong>{lastRunResult.surfaces_refreshed ?? 0}</strong></div>
+            </div>
+            {(lastRunResult.title_rejected ?? 0) > 0 && (
               <p className="text-[10px] text-warning mt-1">⚠ {lastRunResult.title_rejected} titles rejected by quality gate</p>
             )}
             {lastRunResult.source_errors?.length > 0 && (
@@ -457,9 +491,9 @@ export default function ContentIntelligenceOpsPage() {
           </Card>
         )}
 
-        {/* Preview Result */}
+        {/* Preview Result — with richer explainability */}
         {previewResult && (
-          <Card className="p-3 mb-3 border-accent/20 bg-accent/2">
+          <Card className="p-3 mb-3 border-accent/20 bg-accent/[0.02]">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold flex items-center gap-1.5">
                 <Eye className="h-3.5 w-3.5 text-accent-foreground" />
@@ -470,19 +504,31 @@ export default function ContentIntelligenceOpsPage() {
             {Object.entries(previewResult).length === 0 ? (
               <p className="text-[10px] text-muted-foreground">No published content available for any surface. Evergreen fallback will be used.</p>
             ) : (
-              <div className="space-y-2">
-                {Object.entries(previewResult).slice(0, 12).map(([surface, items]) => (
+              <div className="space-y-2.5">
+                {Object.entries(previewResult).slice(0, 15).map(([surface, items]) => (
                   <div key={surface}>
                     <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">{surface.replace(/_/g, ' ')}</p>
                     {(items as any[]).length === 0 ? (
                       <p className="text-[9px] text-muted-foreground/60 italic">Fallback only</p>
                     ) : (
                       (items as any[]).map((item: any, i: number) => (
-                        <div key={i} className="flex items-center gap-2 text-[10px] ml-2">
-                          <span className="text-muted-foreground w-3 text-right">{i + 1}.</span>
-                          <span className="truncate flex-1">{item.title}</span>
-                          <Badge variant="outline" className="text-[8px] shrink-0">{item.relevance_band?.replace(/_/g, ' ') ?? '—'}</Badge>
-                          <span className="text-[9px] text-muted-foreground shrink-0">{item.rank}</span>
+                        <div key={i} className="ml-2 mb-1 text-[10px]">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground w-3 text-right shrink-0">{i + 1}.</span>
+                            <span className="truncate flex-1 font-medium">{item.title}</span>
+                            <Badge variant="outline" className="text-[8px] shrink-0">{item.relevance_band?.replace(/_/g, ' ') ?? '—'}</Badge>
+                            <span className="text-[9px] text-muted-foreground shrink-0 font-mono">{item.rank}</span>
+                          </div>
+                          <div className="ml-5 flex items-center gap-2 text-[9px] text-muted-foreground/70">
+                            <span>Q:{item.quality}</span>
+                            <span>F:{item.freshness}</span>
+                            <span>LU:{item.local_utility}</span>
+                            <span>{item.source_name}</span>
+                            {item.has_image && <span className="text-primary">📷</span>}
+                            {item.warnings?.map((w: string, wi: number) => (
+                              <Badge key={wi} variant="outline" className="text-[7px] text-warning border-warning/20 py-0">{w}</Badge>
+                            ))}
+                          </div>
                         </div>
                       ))
                     )}
@@ -513,6 +559,7 @@ export default function ContentIntelligenceOpsPage() {
             <TabsTrigger value="published">Published</TabsTrigger>
             <TabsTrigger value="sources">Sources ({totalSources})</TabsTrigger>
             <TabsTrigger value="surfaces">Surfaces</TabsTrigger>
+            <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="clusters">Trends</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
@@ -618,14 +665,14 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* Sources Tab — with tier labels and color-coded health */}
+          {/* Sources Tab */}
           <TabsContent value="sources" className="space-y-2 mt-3">
             {srcLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
             {!srcLoading && !sources?.length && <EmptyState message="No sources configured" icon={Database} />}
             {(sources ?? []).map((src: any) => {
               const health = getSourceHealth(src);
-              const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
-              const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
+              const rejectRt = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
+              const publishRt = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
               return (
                 <Card key={src.id} className={`p-3 ${HEALTH_STYLES[health]}`}>
                   <div className="flex items-center justify-between gap-3">
@@ -642,8 +689,8 @@ export default function ContentIntelligenceOpsPage() {
                         <span>Trust: <strong className={src.trust_score >= 0.8 ? 'text-primary' : src.trust_score >= 0.6 ? '' : 'text-warning'}>{src.trust_score}</strong></span>
                         <span>Refresh: <strong>{src.refresh_interval_minutes}min</strong></span>
                         <span>Total: <strong>{src.counts.total}</strong></span>
-                        <span>Published: <strong className="text-primary">{src.counts.published}</strong> ({src.counts.total > 0 ? Math.round(publishRate * 100) : 0}%)</span>
-                        <span>Rejected: <strong className="text-destructive">{src.counts.rejected}</strong> ({src.counts.total > 0 ? Math.round(rejectRate * 100) : 0}%)</span>
+                        <span>Published: <strong className="text-primary">{src.counts.published}</strong> ({src.counts.total > 0 ? Math.round(publishRt * 100) : 0}%)</span>
+                        <span>Rejected: <strong className="text-destructive">{src.counts.rejected}</strong> ({src.counts.total > 0 ? Math.round(rejectRt * 100) : 0}%)</span>
                       </div>
                       {src.category_allowlist?.length > 0 && (
                         <div className="flex gap-1 mt-1 flex-wrap">
@@ -664,9 +711,8 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* Surfaces Tab — with coverage indicators */}
+          {/* Surfaces Tab */}
           <TabsContent value="surfaces" className="space-y-3 mt-3">
-            {/* Surface Coverage Summary */}
             <Card className="p-3">
               <h3 className="text-xs font-bold mb-2 flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5 text-primary" /> Surface Coverage
@@ -713,6 +759,34 @@ export default function ContentIntelligenceOpsPage() {
                 </div>
               </Card>
             ))}
+          </TabsContent>
+
+          {/* Category Coverage Tab */}
+          <TabsContent value="categories" className="space-y-2 mt-3">
+            <Card className="p-3">
+              <h3 className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-primary" /> Category Coverage
+              </h3>
+              <div className="space-y-1.5">
+                {LANKAFIX_CATEGORIES.map(cat => {
+                  const data = categoryCoverage[cat];
+                  const total = (data?.featured ?? 0) + (data?.feed ?? 0);
+                  const isWeak = total === 0;
+                  return (
+                    <div key={cat} className="flex items-center justify-between text-[10px]">
+                      <span className="font-medium">{cat}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-muted-foreground">Featured: <strong>{data?.featured ?? 0}</strong></span>
+                        <span className="text-muted-foreground">Feed: <strong>{data?.feed ?? 0}</strong></span>
+                        <span className={`font-semibold ${isWeak ? 'text-muted-foreground' : 'text-primary'}`}>
+                          {isWeak ? '🌿 Evergreen' : `${total} live`}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
           </TabsContent>
 
           {/* Trends Tab */}
