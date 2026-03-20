@@ -1,6 +1,7 @@
 /**
  * ContentHeroBanner — Premium rotating intelligence banner for homepage hero.
  * Shows AI-ranked top stories with autoplay and category-colored accents.
+ * Supports both live content and evergreen fallback seamlessly.
  */
 import { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useContentIntelligence, trackContentEvent } from '@/hooks/useContentIntelligence';
 import type { EnrichedContentItem } from '@/types/contentIntelligence';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap } from 'lucide-react';
+import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap, Hash, BookOpen } from 'lucide-react';
 
 interface Props {
   onOpenItem?: (item: EnrichedContentItem) => void;
@@ -18,8 +19,24 @@ const TYPE_ICONS: Record<string, typeof Zap> = {
   breaking_news: Zap,
   innovation: Lightbulb,
   safety_alert: Shield,
+  scam_alert: Shield,
   trend_signal: TrendingUp,
   hot_topic: TrendingUp,
+  numbers_insight: Hash,
+  knowledge_fact: BookOpen,
+  market_shift: TrendingUp,
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  breaking_news: 'Breaking',
+  innovation: 'Innovation',
+  safety_alert: 'Safety Alert',
+  scam_alert: 'Scam Alert',
+  trend_signal: 'Trending',
+  hot_topic: 'Hot Now',
+  numbers_insight: 'Numbers',
+  knowledge_fact: 'Insight',
+  market_shift: 'Market',
 };
 
 const AUTOPLAY_MS = 7000;
@@ -54,6 +71,9 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
   if (!item) return null;
   const brief = item.ai_brief;
   const Icon = TYPE_ICONS[item.content_type] ?? TrendingUp;
+  const label = TYPE_LABELS[item.content_type] ?? 'Insight';
+  const isEvergreen = item.id.startsWith('evergreen-');
+  const isLive = !isEvergreen;
 
   return (
     <section className="px-4 py-3">
@@ -66,16 +86,21 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
           </div>
         )}
 
-        {/* Badge */}
+        {/* Top badges */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
           <Badge variant="secondary" className="bg-card/90 backdrop-blur text-[10px] font-bold tracking-wide">
             <Sparkles className="mr-1 h-3 w-3 text-primary" />
-            AI Insights
+            {isLive ? 'Live Intelligence' : 'AI Insights'}
           </Badge>
           <Badge variant="outline" className="text-[10px] bg-card/60 backdrop-blur">
             <Icon className="mr-0.5 h-3 w-3" />
-            {item.content_type.replace(/_/g, ' ')}
+            {label}
           </Badge>
+          {item.source_country === 'lk' && (
+            <Badge variant="outline" className="text-[9px] bg-card/60 backdrop-blur py-0">
+              🇱🇰
+            </Badge>
+          )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -87,12 +112,19 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="relative z-10 w-full text-left p-4 pt-11"
             onClick={() => {
-              if (!item.id.startsWith('evergreen-')) {
+              if (isLive) {
                 trackContentEvent(item.id, 'click', { surface: 'ai_banner_forum' });
               }
               onOpenItem?.(item);
             }}
           >
+            {/* Banner stat if available */}
+            {brief?.ai_banner_text && (
+              <div className="mb-1.5 inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+                {brief.ai_banner_text}
+              </div>
+            )}
+            
             <h3 className="font-heading text-base font-bold text-foreground leading-snug line-clamp-2 pr-2">
               {brief?.ai_headline ?? item.title}
             </h3>
@@ -113,6 +145,12 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
                 <>
                   <span className="text-border">·</span>
                   <span className="text-primary/80 font-semibold">#{item.category_tags[0].category_code}</span>
+                </>
+              )}
+              {brief?.ai_cta_label && (
+                <>
+                  <span className="text-border">·</span>
+                  <span className="text-primary font-semibold">{brief.ai_cta_label} →</span>
                 </>
               )}
             </div>
