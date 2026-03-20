@@ -851,7 +851,7 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
       }
       results.fetched += articles.length;
 
-      for (const article of articles.slice(0, 15)) {
+      for (const article of articles.slice(0, 10)) {
         const title = (article.title ?? article.headline ?? '').trim();
         if (!title || title.length < 10) continue;
 
