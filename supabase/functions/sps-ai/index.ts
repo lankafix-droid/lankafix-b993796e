@@ -225,7 +225,16 @@ async function handlePlanInsight(payload: unknown, apiKey: string, sb: SC): Prom
   const numUsers = validateInt(inputs.numUsers, "numUsers", 1, 500);
 
   const planCode = validateString((p.plan as Record<string, unknown>)?.plan_code, "plan.plan_code", 50);
-  const confidence = validateInt(p.confidence, "confidence", 0, 100);
+  // Accept both numeric confidence (0-100) and semantic labels from frontend
+  const CONFIDENCE_MAP: Record<string, number> = { recommended: 85, good_fit: 60, review_required: 30 };
+  let confidence: number;
+  if (typeof p.confidence === "number") {
+    confidence = validateInt(p.confidence, "confidence", 0, 100);
+  } else if (typeof p.confidence === "string" && p.confidence in CONFIDENCE_MAP) {
+    confidence = CONFIDENCE_MAP[p.confidence];
+  } else {
+    throw new ValidationError("confidence must be a number (0-100) or one of: recommended, good_fit, review_required");
+  }
   const reason = validateOptionalString(p.reason, 500);
 
   const plans = await fetchPlansMetadata(sb);
@@ -277,7 +286,7 @@ Fit confidence: ${confidence}${reason ? `\nReason: ${reason}` : ""}`;
       advisory_only: true, fallback: true,
     };
   }
-  return { insight: res.result, advisory_only: true };
+  return { insight: res.result, advisory_only: true, fallback: false };
 }
 
 // ── SUPPORT TRIAGE (enriched context) ──
@@ -387,7 +396,7 @@ Triage this.`;
     };
   }
   return {
-    triage: res.result, advisory_only: true,
+    triage: res.result, advisory_only: true, fallback: false,
     context: { prior_tickets: priorTicketCount, same_category: priorSameCategoryCount, asset_tickets: assetTotalTickets },
   };
 }
@@ -446,7 +455,7 @@ async function handleMeterAnomaly(payload: unknown, apiKey: string, _sb: SC): Pr
       advisory_only: true, fallback: true,
     };
   }
-  return { anomaly: { ...anomaly, ...(res.result as Record<string, unknown>) }, advisory_only: true };
+  return { anomaly: { ...anomaly, ...(res.result as Record<string, unknown>) }, advisory_only: true, fallback: false };
 }
 
 function detectMeterAnomaly(current: number, previous: number, days: number, included: number, histAvgDaily: number | null, hasPhoto: boolean, ocrValue: number | null) {
@@ -524,5 +533,5 @@ RULES:
   const answer = res.result as string;
   const lowConfidence = answer.includes("advisor should confirm") || answer.includes("not sure") || answer.includes("cannot confirm");
 
-  return { answer, confidence: lowConfidence ? 40 : 80, escalate: lowConfidence, advisory_only: true };
+  return { answer, confidence: lowConfidence ? 40 : 80, escalate: lowConfidence, advisory_only: true, fallback: false };
 }

@@ -62,7 +62,7 @@ export default function AISupportTriage({ category, description, assetType, plan
       const { data, error } = await supabase.functions.invoke("sps-ai", {
         body: {
           action: "support_triage",
-          payload: { category, description, assetType, planSupportLevel, previousTickets: previousTicketsCount },
+          payload: { category, description, assetType, planSupportLevel },
         },
       });
       if (!error && data?.triage) setTriage(data.triage as TriageResult);

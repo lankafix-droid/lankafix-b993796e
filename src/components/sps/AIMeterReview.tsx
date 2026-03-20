@@ -36,7 +36,7 @@ export default function AIMeterReview({ currentReading, previousReading, daysSin
       const { data, error } = await supabase.functions.invoke("sps-ai", {
         body: {
           action: "meter_anomaly",
-          payload: { currentReading, previousReading, daysSinceLast, includedPages, historicalAvgDaily, hasPhoto },
+          payload: { currentReading, previousReading, daysSinceLast, includedPages, historicalAvgDaily: historicalAvgDaily ?? 0, hasPhoto },
         },
       });
       if (!error && data?.anomaly) setResult(data.anomaly as AnomalyResult);
