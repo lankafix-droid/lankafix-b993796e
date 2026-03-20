@@ -93,6 +93,31 @@ const ROLLOUT_STATE_LABELS: Record<string, { label: string; color: string }> = {
 
 const SURFACE_ROLLOUT_MODES = ['evergreen_only', 'hybrid_preview', 'hybrid_live', 'live_preferred', 'editorial_only'] as const;
 
+const SOURCE_ROLLOUT_TRANSITIONS: Record<string, string[]> = {
+  inactive: ['validated'],
+  validated: ['pilot_live', 'inactive'],
+  pilot_live: ['production_live', 'validated', 'quarantined'],
+  production_live: ['quarantined', 'pilot_live'],
+  failing: ['quarantined', 'validated', 'inactive'],
+  quarantined: ['validated', 'inactive'],
+};
+
+type CategoryReadiness = 'ready' | 'weak' | 'fallback_only' | 'blocked';
+
+function getCategoryReadiness(data: { featured: number; feed: number; live: number; evergreen: number }): CategoryReadiness {
+  if (data.live >= 3 && data.featured >= 1) return 'ready';
+  if (data.live >= 1) return 'weak';
+  if (data.evergreen > 0) return 'fallback_only';
+  return 'blocked';
+}
+
+const READINESS_STYLES: Record<CategoryReadiness, { label: string; color: string }> = {
+  ready: { label: 'Ready', color: 'text-primary border-primary/20 bg-primary/5' },
+  weak: { label: 'Weak', color: 'text-warning border-warning/20 bg-warning/5' },
+  fallback_only: { label: 'Fallback', color: 'text-muted-foreground border-muted' },
+  blocked: { label: 'Blocked', color: 'text-destructive border-destructive/20 bg-destructive/5' },
+};
+
 function classifySourceTier(src: any): string {
   if (src.trust_score >= 0.8 && src.base_url) return 'tier1_safe';
   if (src.trust_score >= 0.7 && src.base_url) return 'tier2_controlled';
