@@ -285,6 +285,9 @@ export default function FindMyPlanPage() {
               </CardContent>
             </Card>
 
+            {/* AI Plan Insight */}
+            <AIPlanInsight plan={result.plan} inputs={inputs} confidence={result.confidence} reason={result.reason} />
+
             <div className="space-y-3">
               <Button className="w-full" size="lg" onClick={() => navigate(`/sps/request?plan=${result.plan.id}`)}>
                 Proceed to Subscription Request <ArrowRight className="w-4 h-4 ml-1" />
@@ -301,6 +304,8 @@ export default function FindMyPlanPage() {
                 </Button>
               </div>
             </div>
+
+            <SPSChatAdvisor pageContext="plan_recommendation" />
           </div>
         )}
       </div>
