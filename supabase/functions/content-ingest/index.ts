@@ -21,11 +21,28 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 // ─── Dynamic API key injection ───
 function resolveSourceUrl(baseUrl: string): string {
   if (!baseUrl) return baseUrl;
-  // Replace demo key with real key if available
   if (baseUrl.includes('apikey=pub_demo') && NEWSDATA_API_KEY) {
     return baseUrl.replace('apikey=pub_demo', `apikey=${NEWSDATA_API_KEY}`);
   }
   return baseUrl;
+}
+
+function isNewsdataUrl(url: string): boolean {
+  return url.includes('newsdata.io');
+}
+
+/** Detect NewsData-specific error conditions from response */
+function classifyNewsdataError(status: number, body: any): 'auth_failed' | 'quota_exceeded' | 'malformed' | 'empty' | 'ok' {
+  if (status === 401 || status === 403) return 'auth_failed';
+  if (status === 429) return 'quota_exceeded';
+  if (body?.status === 'error') {
+    const msg = (body.results?.message ?? body.message ?? '').toLowerCase();
+    if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('authentication')) return 'auth_failed';
+    if (msg.includes('rate limit') || msg.includes('quota') || msg.includes('limit exceeded') || msg.includes('credit')) return 'quota_exceeded';
+    return 'malformed';
+  }
+  if (!body?.results || (Array.isArray(body.results) && body.results.length === 0)) return 'empty';
+  return 'ok';
 }
 
 // ─── RSS Feed parser (for free sources without API keys) ───
