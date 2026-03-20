@@ -2,6 +2,7 @@
  * useContentIntelligence — Fetches surfaced content for a given surface slot.
  * Returns enriched content items with AI briefs and category tags.
  * Includes evergreen fallback support for empty surfaces.
+ * Implements quality-gated hybrid blending: weak live items never displace stronger evergreen.
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +14,9 @@ interface UseContentIntelligenceOptions {
   categoryCode?: string;
   limit?: number;
 }
+
+/** Minimum AI quality for a live item to be considered "strong" enough to keep over evergreen */
+const MIN_LIVE_QUALITY = 0.45;
 
 async function fetchSurfaceContent(
   surface: SurfaceCode,
@@ -77,20 +81,26 @@ export function useContentIntelligence({
     queryFn: async () => {
       const liveContent = await fetchSurfaceContent(surface, categoryCode, limit);
 
-      // If live content fully satisfies the limit, return it
-      if (liveContent.length >= limit) return liveContent;
+      // Quality-gate live content: only keep items with acceptable AI quality
+      const strongLive = liveContent.filter(item => {
+        const quality = item.ai_brief?.ai_quality_score ?? 0.5;
+        return quality >= MIN_LIVE_QUALITY;
+      });
+
+      // If strong live content fully satisfies the limit, return it
+      if (strongLive.length >= limit) return strongLive.slice(0, limit);
 
       // Hybrid blend: fill remaining slots with evergreen fallbacks
-      if (liveContent.length > 0) {
-        const remaining = limit - liveContent.length;
-        const liveTitles = new Set(liveContent.map(i => i.title.toLowerCase()));
+      if (strongLive.length > 0) {
+        const remaining = limit - strongLive.length;
+        const liveTitles = new Set(strongLive.map(i => i.title.toLowerCase()));
         const evergreen = getEvergreenFallbacksForSurface(surface, categoryCode, remaining + 4)
           .filter(eg => !liveTitles.has(eg.title.toLowerCase()))
           .slice(0, remaining);
-        return [...liveContent, ...evergreen];
+        return [...strongLive, ...evergreen];
       }
 
-      // No live content at all — full evergreen fallback
+      // No strong live content — full evergreen fallback
       return getEvergreenFallbacksForSurface(surface, categoryCode, limit);
     },
     staleTime: 5 * 60 * 1000,

@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   RefreshCw, CheckCircle, XCircle, Trash2, Pin, BarChart3,
   Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star,
-  Clock, Shield, Database, Layers, Radio, Zap, ChevronUp, Filter
+  Clock, Shield, Database, Layers, Radio, Zap, ChevronUp
 } from 'lucide-react';
 
 function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
@@ -46,20 +46,71 @@ function formatTimeAgo(dateStr: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function SourceHealthBadge({ lastFetched, active, rejectRate }: { lastFetched: string | null; active: boolean; rejectRate?: number }) {
-  if (!active) return <Badge variant="secondary" className="text-[9px]">Disabled</Badge>;
+type SourceHealth = 'healthy' | 'warning' | 'critical';
+
+function getSourceHealth(src: any): SourceHealth {
+  if (!src.active) return 'critical';
+  const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
+  const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
+  const isStale = src.last_fetched_at && (Date.now() - new Date(src.last_fetched_at).getTime()) > 24 * 3600000;
+  const neverFetched = src.active && !src.last_fetched_at;
+  const isZeroPublish = src.counts.total >= 5 && src.counts.published === 0;
+  const isHighReject = src.counts.total >= 5 && rejectRate > 0.5;
+  const isLowYield = src.counts.total >= 5 && publishRate < 0.2;
+
+  if (isZeroPublish || isHighReject || (isStale && src.counts.total > 0)) return 'critical';
+  if (isLowYield || isStale || neverFetched) return 'warning';
+  return 'healthy';
+}
+
+const HEALTH_STYLES: Record<SourceHealth, string> = {
+  healthy: 'border-primary/30',
+  warning: 'border-warning/40 bg-warning/3',
+  critical: 'border-destructive/30 bg-destructive/3',
+};
+
+const HEALTH_DOT: Record<SourceHealth, string> = {
+  healthy: 'bg-primary',
+  warning: 'bg-warning',
+  critical: 'bg-destructive',
+};
+
+function SourceHealthBadges({ src }: { src: any }) {
   const badges: React.ReactNode[] = [];
-  if (!lastFetched) {
+  const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
+  const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
+
+  if (!src.active) {
+    badges.push(<Badge key="dis" variant="secondary" className="text-[9px]">Disabled</Badge>);
+    return <>{badges}</>;
+  }
+
+  // Fetch timing
+  if (!src.last_fetched_at) {
     badges.push(<Badge key="nf" variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>);
   } else {
-    const hours = (Date.now() - new Date(lastFetched).getTime()) / 3600000;
+    const hours = (Date.now() - new Date(src.last_fetched_at).getTime()) / 3600000;
     if (hours > 24) badges.push(<Badge key="stale" variant="destructive" className="text-[9px]">Stale ({Math.floor(hours)}h)</Badge>);
-    else if (hours > 6) badges.push(<Badge key="age" variant="outline" className="text-[9px] text-warning border-warning/30">{formatTimeAgo(lastFetched)}</Badge>);
-    else badges.push(<Badge key="ok" variant="outline" className="text-[9px] text-primary border-primary/30">{formatTimeAgo(lastFetched)}</Badge>);
+    else if (hours > 6) badges.push(<Badge key="age" variant="outline" className="text-[9px] text-warning border-warning/30">{formatTimeAgo(src.last_fetched_at)}</Badge>);
+    else badges.push(<Badge key="ok" variant="outline" className="text-[9px] text-primary border-primary/30">{formatTimeAgo(src.last_fetched_at)}</Badge>);
   }
-  if (rejectRate !== undefined && rejectRate > 0.5) {
-    badges.push(<Badge key="rr" variant="destructive" className="text-[9px]">High reject</Badge>);
+
+  // Quality warnings
+  if (src.counts.total >= 5 && src.counts.published === 0) {
+    badges.push(<Badge key="zp" variant="destructive" className="text-[9px]">Zero publish</Badge>);
+  } else if (rejectRate > 0.5) {
+    badges.push(<Badge key="hr" variant="destructive" className="text-[9px]">High reject ({Math.round(rejectRate * 100)}%)</Badge>);
+  } else if (src.counts.total >= 5 && publishRate < 0.2) {
+    badges.push(<Badge key="ly" variant="outline" className="text-[9px] text-warning border-warning/30">Low yield</Badge>);
   }
+
+  // Trust badge
+  if (src.trust_score >= 0.85) {
+    badges.push(<Badge key="tr" variant="outline" className="text-[9px] text-primary border-primary/20">★ High trust</Badge>);
+  } else if (src.trust_score < 0.5) {
+    badges.push(<Badge key="trl" variant="outline" className="text-[9px] text-warning border-warning/20">Low trust</Badge>);
+  }
+
   return <>{badges}</>;
 }
 
@@ -165,12 +216,13 @@ export default function ContentIntelligenceOpsPage() {
     if (!s.active || !s.last_fetched_at) return s.active;
     return (Date.now() - new Date(s.last_fetched_at).getTime()) > 24 * 3600000;
   }).length ?? 0;
+  const criticalSources = sources?.filter((s: any) => getSourceHealth(s) === 'critical').length ?? 0;
   const surfaceCount = surfaces?.length ?? 0;
   const needsReview = queue?.filter((q: any) => q.status === 'needs_review').length ?? 0;
   const totalRejected = sources?.reduce((s: number, src: any) => s + (src.counts?.rejected ?? 0), 0) ?? 0;
   const totalArchived = sources?.reduce((s: number, src: any) => s + (src.counts?.archived ?? 0), 0) ?? 0;
 
-  // ─── Mutations ───
+  // Mutations
   const ingestMutation = useMutation({
     mutationFn: async (mode: string) => {
       const { data, error } = await supabase.functions.invoke('content-ingest', { body: { mode } });
@@ -249,11 +301,18 @@ export default function ContentIntelligenceOpsPage() {
                 </Badge>
               )}
             </h1>
-            {staleSources > 0 && (
-              <p className="text-xs text-warning flex items-center gap-1 mt-0.5">
-                <AlertTriangle className="h-3 w-3" /> {staleSources} stale source{staleSources > 1 ? 's' : ''}
-              </p>
-            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              {staleSources > 0 && (
+                <span className="text-xs text-warning flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> {staleSources} stale
+                </span>
+              )}
+              {criticalSources > 0 && (
+                <span className="text-xs text-destructive flex items-center gap-1">
+                  <XCircle className="h-3 w-3" /> {criticalSources} critical
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex gap-1.5">
             <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate('ingest')} disabled={isPending}>
@@ -270,7 +329,7 @@ export default function ContentIntelligenceOpsPage() {
           </div>
         </div>
 
-        {/* Stats — expanded pipeline health */}
+        {/* Stats */}
         <div className="grid grid-cols-4 gap-2 mb-2">
           <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" />
           <StatCard label="Review" value={needsReview} icon={AlertTriangle} color="text-warning" />
@@ -278,7 +337,7 @@ export default function ContentIntelligenceOpsPage() {
           <StatCard label="Archived" value={totalArchived} icon={Trash2} color="text-muted-foreground" />
         </div>
         <div className="grid grid-cols-4 gap-2 mb-4">
-          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
+          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={criticalSources > 0 ? `${criticalSources} critical` : staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
           <StatCard label="Surfaces" value={surfaceCount} icon={Pin} color="text-primary" subtitle={`${Object.keys(surfacesByCode).length} slots`} />
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
           <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${(analytics as any)?.click ?? 0} clicks`} />
@@ -294,7 +353,7 @@ export default function ContentIntelligenceOpsPage() {
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
-          {/* ─── Queue Tab ─── */}
+          {/* Queue Tab */}
           <TabsContent value="queue" className="space-y-2 mt-3">
             {queueLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading queue…</p>}
             {!queueLoading && !queue?.length && <EmptyState message="No items in queue — run pipeline to ingest content" icon={CheckCircle} />}
@@ -344,7 +403,7 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* ─── Published Tab ─── */}
+          {/* Published Tab */}
           <TabsContent value="published" className="space-y-2 mt-3">
             {pubLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
             {!pubLoading && !published?.length && <EmptyState message="No published items yet" icon={Eye} />}
@@ -395,22 +454,24 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* ─── Sources Tab ─── */}
+          {/* Sources Tab — with color-coded health */}
           <TabsContent value="sources" className="space-y-2 mt-3">
             {srcLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
             {!srcLoading && !sources?.length && <EmptyState message="No sources configured" icon={Database} />}
             {(sources ?? []).map((src: any) => {
+              const health = getSourceHealth(src);
               const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
               const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
-              const isLowYield = src.counts.total >= 5 && publishRate < 0.2;
               return (
-                <Card key={src.id} className={`p-3 ${isLowYield ? 'border-warning/40' : ''}`}>
+                <Card key={src.id} className={`p-3 ${HEALTH_STYLES[health]}`}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <p className="text-sm font-semibold">{src.source_name}</p>
-                        <SourceHealthBadge lastFetched={src.last_fetched_at} active={src.active} rejectRate={rejectRate} />
-                        {isLowYield && <Badge variant="outline" className="text-[9px] text-warning border-warning/30">Low yield</Badge>}
+                        <div className="flex items-center gap-1.5">
+                          <span className={`h-2 w-2 rounded-full shrink-0 ${HEALTH_DOT[health]}`} />
+                          <p className="text-sm font-semibold">{src.source_name}</p>
+                        </div>
+                        <SourceHealthBadges src={src} />
                       </div>
                       <div className="grid grid-cols-3 gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
                         <span>Type: <strong>{src.source_type}</strong></span>
@@ -442,9 +503,9 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* ─── Surfaces Tab ─── */}
+          {/* Surfaces Tab */}
           <TabsContent value="surfaces" className="space-y-3 mt-3">
-            {!surfaces?.length && <EmptyState message="No active surface assignments" icon={Layers} />}
+            {!surfaces?.length && <EmptyState message="No active surface assignments — surfaces use evergreen fallback" icon={Layers} />}
             {Object.entries(surfacesByCode).map(([code, items]) => (
               <Card key={code} className="p-3">
                 <div className="flex items-center gap-2 mb-2">
@@ -459,6 +520,7 @@ export default function ContentIntelligenceOpsPage() {
                         {s.rank_score >= 990 && <Pin className="h-3 w-3 inline mr-1" />}
                         {(s as any).content_items?.title ?? s.content_item_id.slice(0, 12)}
                       </span>
+                      {s.category_code && <Badge variant="outline" className="text-[9px] shrink-0">{s.category_code}</Badge>}
                       <Badge variant="outline" className="text-[9px] shrink-0">{(s as any).content_items?.content_type?.replace(/_/g, ' ') ?? '—'}</Badge>
                       <span className="text-[10px] text-muted-foreground shrink-0">{Math.round(s.rank_score)}</span>
                     </div>
@@ -468,7 +530,7 @@ export default function ContentIntelligenceOpsPage() {
             ))}
           </TabsContent>
 
-          {/* ─── Trends Tab ─── */}
+          {/* Trends Tab */}
           <TabsContent value="clusters" className="space-y-2 mt-3">
             {!clusters?.length && <EmptyState message="No active trend clusters" icon={TrendingUp} />}
             {(clusters ?? []).map((c: any) => (
@@ -492,7 +554,7 @@ export default function ContentIntelligenceOpsPage() {
             ))}
           </TabsContent>
 
-          {/* ─── Analytics Tab ─── */}
+          {/* Analytics Tab */}
           <TabsContent value="analytics" className="mt-3">
             <Card className="p-4">
               <h3 className="text-sm font-bold mb-3">Event Summary (Last 500)</h3>
