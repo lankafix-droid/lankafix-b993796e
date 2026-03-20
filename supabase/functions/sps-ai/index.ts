@@ -286,7 +286,7 @@ Fit confidence: ${confidence}${reason ? `\nReason: ${reason}` : ""}`;
       advisory_only: true, fallback: true,
     };
   }
-  return { insight: res.result, advisory_only: true };
+  return { insight: res.result, advisory_only: true, fallback: false };
 }
 
 // ── SUPPORT TRIAGE (enriched context) ──
