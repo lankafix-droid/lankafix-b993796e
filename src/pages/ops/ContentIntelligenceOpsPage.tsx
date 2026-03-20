@@ -532,6 +532,7 @@ export default function ContentIntelligenceOpsPage() {
             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => rollbackPublish.mutate()} disabled={isPending || rollbackPublish.isPending}>
               <RotateCw className="h-3.5 w-3.5 mr-1" /> Rollback
             </Button>
+          </div>
         </div>
 
         {/* Granular pipeline controls */}
