@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SPS_SEGMENTS, type FindMyPlanInputs, type SPSSegment } from "@/types/sps";
 import { recommendPlan } from "@/data/spsPlans";
 import { PRINTER_CLASS_LABELS } from "@/types/sps";
+import AIPlanInsight from "@/components/sps/AIPlanInsight";
+import SPSChatAdvisor from "@/components/sps/SPSChatAdvisor";
 
 const defaultInputs: FindMyPlanInputs = {
   userType: "home",
