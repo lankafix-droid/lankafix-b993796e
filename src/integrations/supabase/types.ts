@@ -1183,6 +1183,7 @@ export type Database = {
         Row: {
           brand: string
           color: string | null
+          compare_group: string | null
           created_at: string | null
           description: string | null
           express_delivery_eligible: boolean | null
@@ -1205,6 +1206,7 @@ export type Database = {
         Insert: {
           brand: string
           color?: string | null
+          compare_group?: string | null
           created_at?: string | null
           description?: string | null
           express_delivery_eligible?: boolean | null
@@ -1227,6 +1229,7 @@ export type Database = {
         Update: {
           brand?: string
           color?: string | null
+          compare_group?: string | null
           created_at?: string | null
           description?: string | null
           express_delivery_eligible?: boolean | null
@@ -4548,33 +4551,48 @@ export type Database = {
       refill_inspection_logs: {
         Row: {
           accepted_status: string | null
+          admin_remarks: string | null
           caution_flag: boolean | null
           completed_at: string | null
           condition_notes: string | null
+          created_at: string | null
           id: string
           intake_photos: string[] | null
+          leakage_flag: boolean | null
+          physical_damage_flag: boolean | null
+          prior_refill_history: string | null
           recommended_action: string | null
           refill_order_id: string
           test_result: string | null
         }
         Insert: {
           accepted_status?: string | null
+          admin_remarks?: string | null
           caution_flag?: boolean | null
           completed_at?: string | null
           condition_notes?: string | null
+          created_at?: string | null
           id?: string
           intake_photos?: string[] | null
+          leakage_flag?: boolean | null
+          physical_damage_flag?: boolean | null
+          prior_refill_history?: string | null
           recommended_action?: string | null
           refill_order_id: string
           test_result?: string | null
         }
         Update: {
           accepted_status?: string | null
+          admin_remarks?: string | null
           caution_flag?: boolean | null
           completed_at?: string | null
           condition_notes?: string | null
+          created_at?: string | null
           id?: string
           intake_photos?: string[] | null
+          leakage_flag?: boolean | null
+          physical_damage_flag?: boolean | null
+          prior_refill_history?: string | null
           recommended_action?: string | null
           refill_order_id?: string
           test_result?: string | null
@@ -4594,6 +4612,7 @@ export type Database = {
           address_text: string | null
           brand: string | null
           cartridge_code: string | null
+          condition_data: Json | null
           created_at: string | null
           eligibility_status: string | null
           id: string
@@ -4616,6 +4635,7 @@ export type Database = {
           address_text?: string | null
           brand?: string | null
           cartridge_code?: string | null
+          condition_data?: Json | null
           created_at?: string | null
           eligibility_status?: string | null
           id?: string
@@ -4638,6 +4658,7 @@ export type Database = {
           address_text?: string | null
           brand?: string | null
           cartridge_code?: string | null
+          condition_data?: Json | null
           created_at?: string | null
           eligibility_status?: string | null
           id?: string
