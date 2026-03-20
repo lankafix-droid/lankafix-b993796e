@@ -4,6 +4,8 @@ import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2PopularServices from "@/components/v2/V2PopularServices";
 import V2CategoryGrid from "@/components/v2/V2CategoryGrid";
+import SuperAppShortcuts from "@/components/v2/SuperAppShortcuts";
+import SPSPromoBanner from "@/components/v2/SPSPromoBanner";
 import Footer from "@/components/landing/Footer";
 import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
