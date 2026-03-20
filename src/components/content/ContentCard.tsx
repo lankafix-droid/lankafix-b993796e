@@ -1,5 +1,5 @@
 /**
- * ContentCard v4 — Launch-grade content card with premium variants.
+ * ContentCard v5 — Launch-grade content card with premium variants.
  * Clean hierarchy, SL-aware badges, live/evergreen distinction, safe tracking.
  */
 import { memo } from 'react';
@@ -52,7 +52,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
   const headline = brief?.ai_headline ?? item.title;
   const summary = brief?.ai_summary_short ?? item.raw_excerpt ?? '';
   const whyMatters = brief?.ai_why_it_matters;
-  const categoryTags = item.category_tags.slice(0, 2);
+  const categoryTags = item.category_tags?.slice(0, 2) ?? [];
   const isEvergreen = item.id.startsWith('evergreen-');
   const isLive = !isEvergreen;
   const isSriLankan = item.source_country === 'lk' || item.source_country === 'LK';

@@ -1,5 +1,5 @@
 /**
- * ContentHeroBanner v4 — Launch-grade premium rotating intelligence banner.
+ * ContentHeroBanner v5 — Launch-grade premium rotating intelligence marquee.
  * Rich visual hierarchy, glassmorphism accents, live/evergreen signals, SL-first.
  */
 import { useEffect, useRef, useState, memo, useCallback } from 'react';
@@ -155,10 +155,12 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
                 <span className="line-clamp-1">{brief.ai_lankafix_angle}</span>
               </p>
             )}
+
+            {/* Footer metadata */}
             <div className="mt-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 {item.source_name && <span className="font-medium">{item.source_name}</span>}
-                {item.category_tags[0] && (
+                {item.category_tags?.[0] && (
                   <>
                     <span className="text-border">·</span>
                     <span className="text-primary/70 font-semibold">#{item.category_tags[0].category_code}</span>

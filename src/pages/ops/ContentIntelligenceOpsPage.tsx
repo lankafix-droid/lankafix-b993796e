@@ -1,4 +1,4 @@
-/* Content Intelligence Ops v12 — Launch-grade dashboard with structured publish stats, premium readiness, SL metrics */
+/* Content Intelligence Ops v13 — Launch-grade command center with structured publish stats, premium readiness, SL metrics */
 import { useState, useMemo } from 'react';
 import PageTransition from '@/components/motion/PageTransition';
 import Header from '@/components/layout/Header';
@@ -268,9 +268,8 @@ export default function ContentIntelligenceOpsPage() {
   }, [surfaceConfigs]);
 
   const categoryCoverage = useMemo(() => {
-    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number }> = {};
-    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0 }; });
-    // Count surface assignments
+    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number; strong: number }> = {};
+    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0, strong: 0 }; });
     (surfaces ?? []).forEach((s: any) => {
       if (!s.category_code || !catData[s.category_code]) return;
       if (s.surface_code === 'category_featured') catData[s.category_code].featured++;
@@ -278,16 +277,15 @@ export default function ContentIntelligenceOpsPage() {
       catData[s.category_code].live++;
       if (s.content_items?.source_country === 'lk') catData[s.category_code].sl++;
     });
-    // Compute avg quality from published items by category tag
     (published ?? []).forEach((p: any) => {
       const q = p.content_ai_briefs?.[0]?.ai_quality_score ?? 0;
       (p.content_category_tags ?? []).forEach((t: any) => {
         if (catData[t.category_code]) {
           catData[t.category_code].avgQ += q;
+          if (q >= 0.5) catData[t.category_code].strong++;
         }
       });
     });
-    // Average quality
     for (const cat of LANKAFIX_CATEGORIES) {
       const d = catData[cat];
       if (d.live > 0) d.avgQ = d.avgQ / d.live;
@@ -295,7 +293,6 @@ export default function ContentIntelligenceOpsPage() {
     return catData;
   }, [surfaces, published]);
 
-  // Premium surface analysis
   const premiumAnalysis = useMemo(() => {
     const premSurfaces = ['homepage_hero', 'homepage_safety', 'ai_banner_forum', 'category_featured'];
     return premSurfaces.map(code => {
@@ -308,7 +305,6 @@ export default function ContentIntelligenceOpsPage() {
     });
   }, [surfacesByCode, surfaceConfigMap]);
 
-  // Source performance ranking
   const sourcePerf = useMemo(() => {
     return (sources ?? []).filter((s: any) => s.active).map((s: any) => {
       const pubRate = s.counts.total > 0 ? s.counts.published / s.counts.total : 0;
@@ -512,7 +508,6 @@ export default function ContentIntelligenceOpsPage() {
               <div>Published: <strong className="text-primary">{lastRunResult.published ?? 0}</strong></div>
               <div>Rejected: <strong className="text-destructive">{lastRunResult.rejected ?? 0}</strong></div>
             </div>
-            {/* Structured publish stats */}
             {lastRunResult.completed_surfaces && (
               <div className="mt-1.5 pt-1.5 border-t border-border/20 grid grid-cols-3 gap-2 text-[10px]">
                 <div>Surfaces: <strong className="text-primary">{lastRunResult.completed_surfaces?.length ?? 0}</strong>/{lastRunResult.attempted_surfaces?.length ?? 0}</div>
@@ -520,6 +515,7 @@ export default function ContentIntelligenceOpsPage() {
                 <div>Skipped: <strong className="text-muted-foreground">{lastRunResult.skipped_surfaces?.length ?? 0}</strong></div>
               </div>
             )}
+            {lastRunResult.rescued > 0 && <p className="text-[10px] text-primary mt-1">🩹 Rescued: {lastRunResult.rescued}</p>}
             {lastRunResult.newsdata_key_present === false && <p className="text-[10px] text-warning mt-1">🔑 NEWSDATA_API_KEY missing — {blockedNewsdata} sources blocked</p>}
             {lastRunResult.errors?.length > 0 && <p className="text-[10px] text-destructive mt-1">⚠ {lastRunResult.errors.length} error(s): {lastRunResult.errors[0]}</p>}
           </Card>
@@ -528,17 +524,19 @@ export default function ContentIntelligenceOpsPage() {
         {/* ═══ EXECUTIVE SUMMARY ═══ */}
         <Card className="p-3 mb-3 border-primary/15 bg-gradient-to-r from-primary/[0.02] to-transparent">
           <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-4 w-4 text-primary" /><span className="text-xs font-bold">Executive Summary</span></div>
-          <div className="grid grid-cols-4 gap-2 text-[10px]">
+          <div className="grid grid-cols-5 gap-2 text-[10px]">
             <div className="text-center"><p className="text-lg font-bold text-primary">{totalPublished}</p><p className="text-muted-foreground">Published</p></div>
-            <div className="text-center"><p className="text-lg font-bold">{slPublished}</p><p className="text-muted-foreground">🇱🇰 SL Items</p><p className="text-[9px] text-muted-foreground/60">{slShare}%</p></div>
-            <div className="text-center"><p className="text-lg font-bold">{avgQuality.toFixed(2)}</p><p className="text-muted-foreground">Avg Quality</p></div>
+            <div className="text-center"><p className="text-lg font-bold">{slPublished}</p><p className="text-muted-foreground">🇱🇰 SL</p><p className="text-[9px] text-primary/70 font-semibold">{slShare}%</p></div>
+            <div className="text-center"><p className="text-lg font-bold">{avgQuality.toFixed(2)}</p><p className="text-muted-foreground">Avg Q</p></div>
+            <div className="text-center"><p className="text-lg font-bold">{publishRate}%</p><p className="text-muted-foreground">Pub Rate</p></div>
             <div className="text-center"><p className="text-lg font-bold">{backlog}</p><p className="text-muted-foreground">Backlog</p></div>
           </div>
-          <div className="grid grid-cols-4 gap-2 text-[10px] mt-2 pt-2 border-t border-border/20">
+          <div className="grid grid-cols-5 gap-2 text-[10px] mt-2 pt-2 border-t border-border/20">
             <div className="text-center"><strong>{activeSources}</strong>/{totalSources}<br /><span className="text-muted-foreground">Sources</span></div>
-            <div className="text-center"><strong className={blockedNewsdata > 0 ? 'text-destructive' : ''}>{blockedNewsdata}</strong><br /><span className="text-muted-foreground">Blocked</span></div>
+            <div className="text-center"><strong className={criticalSources > 0 ? 'text-warning' : ''}>{criticalSources}</strong><br /><span className="text-muted-foreground">Critical</span></div>
+            <div className="text-center"><strong className={blockedNewsdata > 0 ? 'text-destructive' : ''}>{blockedNewsdata}</strong><br /><span className="text-muted-foreground">🔑 Blocked</span></div>
             <div className="text-center"><strong>{coveredSurfaces}</strong>/10<br /><span className="text-muted-foreground">Surfaces</span></div>
-            <div className="text-center"><strong>{catReadyCount}</strong>/15<br /><span className="text-muted-foreground">Categories</span></div>
+            <div className="text-center"><strong>{catReadyCount}</strong>/15<br /><span className="text-muted-foreground">Cat Ready</span></div>
           </div>
         </Card>
 
@@ -731,10 +729,10 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* ─── Categories Tab (with quality + SL metrics) ─── */}
+          {/* ─── Categories Tab ─── */}
           <TabsContent value="categories" className="space-y-2 mt-3">
             {LANKAFIX_CATEGORIES.map(cat => {
-              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0 };
+              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0, strong: 0 };
               const readiness = getCategoryReadiness(data);
               const rs = READINESS_STYLES[readiness];
               return (
@@ -745,10 +743,11 @@ export default function ContentIntelligenceOpsPage() {
                       <Badge variant="outline" className={`text-[8px] ${rs.color}`}>{rs.label}</Badge>
                     </div>
                     <div className="flex items-center gap-2 text-[10px]">
-                      <span>Featured: <strong className={data.featured ? 'text-primary' : 'text-muted-foreground'}>{data.featured}</strong></span>
+                      <span>Feat: <strong className={data.featured ? 'text-primary' : 'text-muted-foreground'}>{data.featured}</strong></span>
                       <span>Feed: <strong className={data.feed ? 'text-primary' : 'text-muted-foreground'}>{data.feed}</strong></span>
                       <span>Live: <strong>{data.live}</strong></span>
                       <span>🇱🇰 <strong>{data.sl}</strong></span>
+                      <span>Strong: <strong className="text-primary">{data.strong}</strong></span>
                       {data.avgQ > 0 && <span>Q: <strong className={data.avgQ >= 0.5 ? 'text-primary' : data.avgQ >= 0.4 ? '' : 'text-warning'}>{data.avgQ.toFixed(2)}</strong></span>}
                     </div>
                   </div>

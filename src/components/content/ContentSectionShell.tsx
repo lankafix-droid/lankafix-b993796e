@@ -18,7 +18,7 @@ const ContentSectionShell = memo(function ContentSectionShell({
   title, icon, subtitle, actionLabel, onAction, children, className, premium,
 }: ContentSectionShellProps) {
   return (
-    <section className={cn('py-4', className)}>
+    <section className={cn('py-4', premium && 'py-5', className)}>
       <div className="px-4 flex items-center justify-between mb-3">
         <div className="min-w-0">
           <h2 className={cn(
@@ -30,8 +30,8 @@ const ContentSectionShell = memo(function ContentSectionShell({
           </h2>
           {subtitle && (
             <p className={cn(
-              "text-[11px] text-muted-foreground mt-0.5",
-              premium ? "tracking-wide font-medium" : "tracking-wide"
+              "text-[11px] text-muted-foreground mt-0.5 tracking-wide",
+              premium && "font-medium"
             )}>
               {subtitle}
             </p>

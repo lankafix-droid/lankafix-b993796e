@@ -1,5 +1,6 @@
 /**
- * AIBannerForum v4 — Premium intelligence panel with autoplay, diverse type icons.
+ * AIBannerForum v5 — Premium intelligence panel with autoplay, diverse type icons.
+ * Feels like LankaFix Intelligence, not a generic news strip.
  */
 import { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -66,7 +67,7 @@ const AIBannerForum = memo(function AIBannerForum({ onOpenItem }: Props) {
         <div className="absolute -bottom-8 -right-8 w-28 h-28 rounded-full blur-3xl opacity-[0.04] bg-primary" />
 
         {/* Header badge */}
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
+        <div className="absolute top-3 left-3 right-3 z-10 flex items-center gap-1.5">
           <Badge variant="secondary" className="bg-card/90 backdrop-blur-md text-[10px] font-bold border border-border/30 shadow-sm">
             {isLive ? (
               <>
@@ -120,7 +121,7 @@ const AIBannerForum = memo(function AIBannerForum({ onOpenItem }: Props) {
                 <div className="mt-2.5 flex items-center justify-between">
                   <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                     {item.source_name && <span className="font-medium">{item.source_name}</span>}
-                    {item.category_tags[0] && (
+                    {item.category_tags?.[0] && (
                       <>
                         <span className="text-border">·</span>
                         <span className="text-primary/70 font-semibold">#{item.category_tags[0].category_code}</span>
