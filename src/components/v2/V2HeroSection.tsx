@@ -110,6 +110,11 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
         }} />
 
         <div className="container relative h-full flex flex-col justify-end pb-20 sm:pb-24 md:pb-28">
+          {/* Atmosphere Badge */}
+          <div className="mb-3">
+            <AtmosphereBadge />
+          </div>
+
           {/* Location + Emergency */}
           <div className="flex items-center justify-between mb-6">
             <LocationBar onSetupLocation={onSetupLocation} />
