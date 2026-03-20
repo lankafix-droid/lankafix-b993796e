@@ -1,3 +1,6 @@
+/**
+ * AIBannerForum v4 — Premium intelligence panel with autoplay, diverse type icons.
+ */
 import { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -54,15 +57,15 @@ const AIBannerForum = memo(function AIBannerForum({ onOpenItem }: Props) {
 
   return (
     <section className="px-4 py-3">
-      <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-primary/6 via-card to-accent/4 shadow-sm">
-        {/* Decorative pattern */}
-        <div className="absolute inset-0 opacity-[0.02]" style={{
+      <div className="relative overflow-hidden rounded-2xl border border-border/40 bg-gradient-to-br from-primary/5 via-card to-accent/3 shadow-sm">
+        {/* Subtle pattern */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{
           backgroundImage: `radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px)`,
           backgroundSize: '24px 24px'
         }} />
-        {/* Gradient orb */}
-        <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full blur-3xl opacity-[0.05] bg-primary" />
+        <div className="absolute -bottom-8 -right-8 w-28 h-28 rounded-full blur-3xl opacity-[0.04] bg-primary" />
 
+        {/* Header badge */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
           <Badge variant="secondary" className="bg-card/90 backdrop-blur-md text-[10px] font-bold border border-border/30 shadow-sm">
             {isLive ? (
@@ -85,10 +88,10 @@ const AIBannerForum = memo(function AIBannerForum({ onOpenItem }: Props) {
         <AnimatePresence mode="wait">
           <motion.button
             key={item.id}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.25 }}
             className="relative z-10 w-full text-left p-4 pt-11"
             onClick={() => {
               if (isLive) trackContentEvent(item.id, 'click', { surface: 'ai_banner_forum' });
@@ -96,15 +99,15 @@ const AIBannerForum = memo(function AIBannerForum({ onOpenItem }: Props) {
             }}
           >
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/8 border border-primary/15">
-                <Icon className="h-4.5 w-4.5 text-primary/70" />
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/8 border border-primary/12">
+                <Icon className="h-4 w-4 text-primary/70" />
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="font-heading text-[15px] font-bold text-foreground leading-snug line-clamp-2">
                   {brief?.ai_headline ?? item.title}
                 </h3>
                 {brief?.ai_summary_short && (
-                  <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                  <p className="mt-1.5 text-[13px] text-muted-foreground line-clamp-2 leading-relaxed">
                     {brief.ai_summary_short}
                   </p>
                 )}
