@@ -220,11 +220,17 @@ STRICT RULES:
 - NEVER sensationalize or use clickbait language.
 - ai_banner_text must ONLY contain a number/stat that appears verbatim in the source. If none exists, return null.
 - ai_risk_flags must ONLY contain risks genuinely described in the source.
-- If source text is thin or vague, set ai_quality_score below 0.4 and keep summaries conservative.
 - Keep tone professional, helpful, trustworthy, and simple.
 - Focus on how the content helps someone making service/repair/maintenance decisions.
 - For ai_why_it_matters: explain practical impact on homeowners/businesses. Source-grounded only.
-- For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services. Null if forced.`
+- For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services. Null if forced.
+
+QUALITY SCORING GUIDE (ai_quality_score 0.0 to 1.0):
+- 0.7-1.0: Excellent — rich detail, strong practical relevance, actionable for users.
+- 0.5-0.7: Good — clear topic, useful information, reasonable depth even if excerpt is brief.
+- 0.3-0.5: Marginal — topic is relevant but source lacks depth or detail.
+- 0.0-0.3: Poor — irrelevant, unverifiable, or no useful information.
+NOTE: A short excerpt from a reputable source on a relevant topic should still score 0.5+ if the topic itself is useful. Do NOT penalize brevity alone — penalize lack of relevance or substance.`
           },
           {
             role: "user",
