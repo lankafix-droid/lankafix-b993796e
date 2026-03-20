@@ -173,17 +173,20 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
         ) : (
           <div className={cn(
             'h-20 w-20 shrink-0 rounded-lg flex items-center justify-center relative overflow-hidden',
-            'bg-gradient-to-br from-primary/8 via-accent/4 to-primary/3 border border-border/20'
+            'bg-gradient-to-br from-primary/6 via-accent/3 to-muted/30 border border-border/15'
           )}>
-            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
-            <Icon className="h-6 w-6 text-primary/40" />
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
+            <Icon className="h-5 w-5 text-primary/30" />
           </div>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-            <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase border', config.accent)}>
+            <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase tracking-wide border', config.accent)}>
               {config.label}
             </Badge>
+            {isLive && item.source_name && (
+              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[90px]">{item.source_name}</span>
+            )}
             <span className="text-[10px] text-muted-foreground">{isEvergreen ? 'LankaFix' : formatTimeAgo(item.published_at)}</span>
             {isSriLankan && <span className="text-[9px]">🇱🇰</span>}
           </div>
@@ -191,10 +194,10 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           {summary && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
             {categoryTags.map(t => (
-              <span key={t.id} className="text-[10px] text-primary/70 font-medium">#{t.category_code}</span>
+              <span key={t.id} className="text-[10px] text-primary/60 font-medium">#{t.category_code}</span>
             ))}
             {bannerText && (
-              <span className="text-[10px] font-bold text-primary bg-primary/5 rounded px-1 border border-primary/10">{bannerText}</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/5 rounded-md px-1.5 py-px border border-primary/10">{bannerText}</span>
             )}
           </div>
         </div>
