@@ -1,3 +1,4 @@
+/* Content Intelligence Ops v10.1 — SL-priority backlog burn, premium surface strategy */
 import { useState, useMemo } from 'react';
 import PageTransition from '@/components/motion/PageTransition';
 import Header from '@/components/layout/Header';
@@ -554,6 +555,9 @@ export default function ContentIntelligenceOpsPage() {
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'cluster' })} disabled={isPending}>
             <TrendingUp className="h-3 w-3 mr-1" /> Cluster
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px] text-primary font-semibold" onClick={() => ingestMutation.mutate({ mode: 'backlog_burn' })} disabled={isPending}>
+            <Zap className="h-3 w-3 mr-1" /> Burn Backlog
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier1' })} disabled={isPending}>
             <Gauge className="h-3 w-3 mr-1" /> Tier 1
