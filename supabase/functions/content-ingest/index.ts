@@ -1,7 +1,7 @@
 /**
- * Content Ingestion Edge Function — Full pipeline v8.
- * Modes: full, ingest, brief, publish, decay, cluster, dry_run, publish_preview, audit_sources, fetch_only, validate_sources
- * Now with: pipeline run logging, failure alerting, source validation, rollout-state governance.
+ * Content Ingestion Edge Function — Full pipeline v9.
+ * Modes: full, ingest, brief, publish, decay, cluster, dry_run, publish_preview, audit_sources, fetch_only, validate_sources, rescue_review
+ * Now with: priority briefing, editorial rescue, calibrated quality scoring, Sri Lanka source prioritization.
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
