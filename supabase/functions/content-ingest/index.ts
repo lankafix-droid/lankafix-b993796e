@@ -971,6 +971,28 @@ serve(async (req) => {
     };
 
     try {
+      // Rollback mode
+      if (mode === 'rollback') {
+        const rollbackResult = await rollbackLastPublish(body.surface_code);
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, { ...results, mode: 'rollback' });
+        return new Response(
+          JSON.stringify({ success: true, mode, ...rollbackResult, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Source promotion mode
+      if (mode === 'promote_source') {
+        const promoResult = await promoteSource(body.source_id, body.target_state);
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, { ...results, mode: 'promote_source' });
+        return new Response(
+          JSON.stringify({ success: true, mode, ...promoResult, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Source validation mode
       if (mode === 'validate_sources') {
         const validation = await validateSources();
