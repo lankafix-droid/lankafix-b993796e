@@ -1,6 +1,5 @@
-/** ARCHIVED — removed during homepage optimization. Candidate for reuse on account dashboard. */
 import { Link } from "react-router-dom";
-import { Smartphone, Shield, Package, History, HeartPulse } from "lucide-react";
+import { Smartphone, Shield, Package, History, HeartPulse, Printer } from "lucide-react";
 import { useDevicePassportsDB } from "@/hooks/useDevicePassportsDB";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { motion } from "framer-motion";
@@ -36,10 +35,18 @@ const SuperAppShortcuts = () => {
       iconColor: "text-success",
     },
     {
+      icon: Printer,
+      label: "Smart Print",
+      sublabel: "Subscribe & print",
+      to: "/sps",
+      gradient: "from-chart-1/15 to-chart-1/5",
+      iconColor: "text-chart-1",
+    },
+    {
       icon: Package,
       label: "Supplies",
-      sublabel: "Parts & accessories",
-      to: "/supplies",
+      sublabel: "Toner & ink",
+      to: "/consumables",
       gradient: "from-warning/15 to-warning/5",
       iconColor: "text-warning",
     },
@@ -54,39 +61,39 @@ const SuperAppShortcuts = () => {
   ];
 
   return (
-    <section className="py-10">
+    <section className="py-6">
       <div className="container">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.4 }}
-          className="mb-6"
+          className="mb-4"
         >
-          <h2 className="font-heading text-lg md:text-xl font-bold text-foreground">Manage Your Home</h2>
-          <p className="text-xs text-muted-foreground mt-1">Your devices, care plans, and service history — all in one place</p>
+          <h2 className="font-heading text-lg font-bold text-foreground tracking-tight">Manage Your Home</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Devices, plans, supplies & service history</p>
         </motion.div>
 
-        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-5">
+        <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide md:mx-0 md:px-0 md:grid md:grid-cols-6">
           {shortcuts.map(({ icon: Icon, label, sublabel, to, gradient, iconColor }, i) => (
             <motion.div
               key={label}
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.06, duration: 0.35 }}
-              className="flex-shrink-0 w-[108px] md:w-auto"
+              transition={{ delay: i * 0.05, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="flex-shrink-0 w-[96px] md:w-auto"
             >
               <Link
                 to={to}
-                className="group flex flex-col items-center gap-3 p-4 rounded-2xl border border-border/40 bg-card hover:border-primary/25 hover:shadow-card-hover transition-all duration-300 text-center active:scale-[0.96]"
+                className="group flex flex-col items-center gap-2.5 p-3.5 rounded-2xl border border-border/40 bg-card hover:border-primary/25 hover:shadow-card-hover transition-all duration-300 text-center active:scale-[0.96]"
               >
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${gradient} ${iconColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} ${iconColor} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
                   <Icon className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-foreground font-heading leading-tight">{label}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{sublabel}</div>
+                  <div className="text-[11px] font-semibold text-foreground font-heading leading-tight">{label}</div>
+                  <div className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{sublabel}</div>
                 </div>
               </Link>
             </motion.div>
