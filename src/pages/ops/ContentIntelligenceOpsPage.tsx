@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
   RefreshCw, CheckCircle, XCircle, Trash2, Pin, BarChart3,
   Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star,
-  Clock, Shield, Database, Layers
+  Clock, Shield, Database, Layers, Radio, Zap, ChevronUp
 } from 'lucide-react';
 
 function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
@@ -24,12 +24,13 @@ function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
   );
 }
 
-function StatCard({ label, value, icon: Icon, color }: { label: string; value: number | string; icon: any; color: string }) {
+function StatCard({ label, value, icon: Icon, color, subtitle }: { label: string; value: number | string; icon: any; color: string; subtitle?: string }) {
   return (
     <Card className="p-3 text-center">
       <Icon className={`h-4 w-4 mx-auto mb-1 ${color}`} />
       <p className="text-lg font-bold">{value}</p>
       <p className="text-[10px] text-muted-foreground">{label}</p>
+      {subtitle && <p className="text-[9px] text-muted-foreground/70 mt-0.5">{subtitle}</p>}
     </Card>
   );
 }
@@ -43,6 +44,15 @@ function formatTimeAgo(dateStr: string | null): string {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+function SourceHealthBadge({ lastFetched, active }: { lastFetched: string | null; active: boolean }) {
+  if (!active) return <Badge variant="secondary" className="text-[9px]">Disabled</Badge>;
+  if (!lastFetched) return <Badge variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>;
+  const hours = (Date.now() - new Date(lastFetched).getTime()) / 3600000;
+  if (hours > 24) return <Badge variant="destructive" className="text-[9px]">Stale ({Math.floor(hours)}h)</Badge>;
+  if (hours > 6) return <Badge variant="outline" className="text-[9px] text-warning border-warning/30">{formatTimeAgo(lastFetched)}</Badge>;
+  return <Badge variant="outline" className="text-[9px] text-primary border-primary/30">{formatTimeAgo(lastFetched)}</Badge>;
 }
 
 export default function ContentIntelligenceOpsPage() {
@@ -79,22 +89,22 @@ export default function ContentIntelligenceOpsPage() {
   const { data: sources, isLoading: srcLoading } = useQuery({
     queryKey: ['content-ops', 'sources'],
     queryFn: async () => {
-      const { data: srcs } = await supabase.from('content_sources').select('*').order('created_at', { ascending: false });
+      const { data: srcs } = await supabase.from('content_sources').select('*').order('trust_score', { ascending: false });
       if (!srcs?.length) return [];
-      // Enrich with counts
       const ids = srcs.map((s: any) => s.id);
       const { data: items } = await supabase
         .from('content_items')
         .select('source_id, status')
         .in('source_id', ids);
-      const countMap: Record<string, { published: number; rejected: number; total: number }> = {};
+      const countMap: Record<string, { published: number; rejected: number; archived: number; total: number }> = {};
       (items ?? []).forEach((i: any) => {
-        const c = countMap[i.source_id] ??= { published: 0, rejected: 0, total: 0 };
+        const c = countMap[i.source_id] ??= { published: 0, rejected: 0, archived: 0, total: 0 };
         c.total++;
         if (i.status === 'published') c.published++;
         if (i.status === 'rejected') c.rejected++;
+        if (i.status === 'archived') c.archived++;
       });
-      return srcs.map((s: any) => ({ ...s, counts: countMap[s.id] ?? { published: 0, rejected: 0, total: 0 } }));
+      return srcs.map((s: any) => ({ ...s, counts: countMap[s.id] ?? { published: 0, rejected: 0, archived: 0, total: 0 } }));
     },
   });
 
@@ -103,7 +113,7 @@ export default function ContentIntelligenceOpsPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from('content_surface_state')
-        .select('*, content_items(title, content_type, status, freshness_score)')
+        .select('*, content_items(title, content_type, status, freshness_score, source_name)')
         .eq('active', true)
         .order('surface_code')
         .order('rank_score', { ascending: false });
@@ -139,6 +149,16 @@ export default function ContentIntelligenceOpsPage() {
     },
   });
 
+  // Pipeline stats
+  const totalPublished = published?.length ?? 0;
+  const totalSources = sources?.length ?? 0;
+  const activeSources = sources?.filter((s: any) => s.active).length ?? 0;
+  const staleSources = sources?.filter((s: any) => {
+    if (!s.active || !s.last_fetched_at) return s.active;
+    return (Date.now() - new Date(s.last_fetched_at).getTime()) > 24 * 3600000;
+  }).length ?? 0;
+  const surfaceCount = surfaces?.length ?? 0;
+
   // ─── Mutations ───
   const ingestMutation = useMutation({
     mutationFn: async (mode: string) => {
@@ -147,7 +167,7 @@ export default function ContentIntelligenceOpsPage() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Pipeline complete`, { description: `Processed: ${data?.processed ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}` });
+      toast.success(`Pipeline complete`, { description: `Fetched: ${data?.fetched ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}, Surfaces: ${data?.surfaces_refreshed ?? 0}` });
       invalidateAll();
     },
     onError: (e) => toast.error(`Pipeline failed: ${(e as Error).message}`),
@@ -155,37 +175,26 @@ export default function ContentIntelligenceOpsPage() {
 
   const editorialAction = useMutation({
     mutationFn: async ({ itemId, action }: { itemId: string; action: string }) => {
-      const statusMap: Record<string, string> = {
-        approve: 'published',
-        reject: 'rejected',
-        archive: 'archived',
-      };
+      const statusMap: Record<string, string> = { approve: 'published', reject: 'rejected', archive: 'archived' };
       const newStatus = statusMap[action];
       if (newStatus) {
         await supabase.from('content_items').update({ status: newStatus }).eq('id', itemId);
       }
       if (action === 'pin_hero') {
         await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', 'homepage_hero').eq('active', true).lt('rank_score', 990);
-        await supabase.from('content_surface_state').insert({
-          surface_code: 'homepage_hero',
-          content_item_id: itemId,
-          rank_score: 999,
-          active: true,
-        });
+        await supabase.from('content_surface_state').insert({ surface_code: 'homepage_hero', content_item_id: itemId, rank_score: 999, active: true });
       }
       if (action === 'suppress') {
         await supabase.from('content_items').update({ status: 'rejected', rejection_reason: 'ops_suppressed' }).eq('id', itemId);
         await supabase.from('content_surface_state').update({ active: false }).eq('content_item_id', itemId);
       }
-      await supabase.from('content_editorial_actions').insert({
-        content_item_id: itemId,
-        action_type: action,
-      });
+      if (action === 'boost') {
+        // Boost item rank on current surfaces by adding a quality bump
+        await supabase.from('content_surface_state').update({ rank_score: 85 }).eq('content_item_id', itemId).eq('active', true);
+      }
+      await supabase.from('content_editorial_actions').insert({ content_item_id: itemId, action_type: action });
     },
-    onSuccess: () => {
-      toast.success('Action applied');
-      invalidateAll();
-    },
+    onSuccess: () => { toast.success('Action applied'); invalidateAll(); },
     onError: () => toast.error('Action failed'),
   });
 
@@ -193,10 +202,7 @@ export default function ContentIntelligenceOpsPage() {
     mutationFn: async ({ sourceId, active }: { sourceId: string; active: boolean }) => {
       await supabase.from('content_sources').update({ active }).eq('id', sourceId);
     },
-    onSuccess: () => {
-      toast.success('Source updated');
-      invalidateAll();
-    },
+    onSuccess: () => { toast.success('Source updated'); invalidateAll(); },
   });
 
   const reBriefMutation = useMutation({
@@ -206,10 +212,7 @@ export default function ContentIntelligenceOpsPage() {
       const { error } = await supabase.functions.invoke('content-ingest', { body: { mode: 'brief' } });
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success('Re-briefed successfully');
-      invalidateAll();
-    },
+    onSuccess: () => { toast.success('Re-briefed successfully'); invalidateAll(); },
     onError: () => toast.error('Re-brief failed'),
   });
 
@@ -227,7 +230,21 @@ export default function ContentIntelligenceOpsPage() {
       <main className="flex-1 container max-w-4xl py-4 px-4">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <h1 className="font-heading text-xl font-bold">Content Intelligence</h1>
+          <div>
+            <h1 className="font-heading text-xl font-bold flex items-center gap-2">
+              Content Intelligence
+              {totalPublished > 0 && (
+                <Badge variant="outline" className="text-[10px] font-normal">
+                  <Radio className="h-2.5 w-2.5 mr-1 text-primary" /> Live
+                </Badge>
+              )}
+            </h1>
+            {staleSources > 0 && (
+              <p className="text-xs text-warning flex items-center gap-1 mt-0.5">
+                <AlertTriangle className="h-3 w-3" /> {staleSources} stale source{staleSources > 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
           <div className="flex gap-1.5">
             <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate('ingest')} disabled={isPending}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${ingestMutation.isPending ? 'animate-spin' : ''}`} />
@@ -237,17 +254,18 @@ export default function ContentIntelligenceOpsPage() {
               <Star className="h-3.5 w-3.5 mr-1" /> Brief
             </Button>
             <Button size="sm" onClick={() => ingestMutation.mutate('full')} disabled={isPending}>
-              {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : null}
+              {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
               Full Pipeline
             </Button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2 mb-4">
+        {/* Stats — expanded */}
+        <div className="grid grid-cols-5 gap-2 mb-4">
           <StatCard label="Queue" value={queue?.length ?? 0} icon={AlertTriangle} color="text-warning" />
-          <StatCard label="Published" value={published?.length ?? 0} icon={Eye} color="text-primary" />
-          <StatCard label="Sources" value={sources?.length ?? 0} icon={Layers} color="text-accent-foreground" />
+          <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" />
+          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={staleSources > 0 ? `${staleSources} stale` : undefined} />
+          <StatCard label="Surfaces" value={surfaceCount} icon={Pin} color="text-primary" />
           <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" />
         </div>
 
@@ -255,7 +273,7 @@ export default function ContentIntelligenceOpsPage() {
           <TabsList className="w-full justify-start overflow-x-auto">
             <TabsTrigger value="queue">Queue ({queue?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="published">Published</TabsTrigger>
-            <TabsTrigger value="sources">Sources</TabsTrigger>
+            <TabsTrigger value="sources">Sources ({totalSources})</TabsTrigger>
             <TabsTrigger value="surfaces">Surfaces</TabsTrigger>
             <TabsTrigger value="clusters">Trends</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -274,15 +292,11 @@ export default function ContentIntelligenceOpsPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                         <Badge variant="secondary" className="text-[10px] capitalize">{item.content_type.replace(/_/g, ' ')}</Badge>
-                        <Badge
-                          variant={item.status === 'needs_review' ? 'destructive' : 'outline'}
-                          className="text-[10px]"
-                        >
-                          {item.status}
-                        </Badge>
+                        <Badge variant={item.status === 'needs_review' ? 'destructive' : 'outline'} className="text-[10px]">{item.status}</Badge>
                         {item.content_category_tags?.slice(0, 2).map((t: any) => (
                           <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
                         ))}
+                        {item.source_country === 'lk' && <span className="text-[9px]">🇱🇰</span>}
                       </div>
                       <p className="text-sm font-semibold line-clamp-1">{brief?.ai_headline ?? item.title}</p>
                       {brief?.ai_summary_short && (
@@ -291,7 +305,7 @@ export default function ContentIntelligenceOpsPage() {
                       <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
                         <span>Quality: <strong className={quality >= 0.6 ? 'text-primary' : quality >= 0.3 ? 'text-warning' : 'text-destructive'}>{quality?.toFixed(2) ?? 'N/A'}</strong></span>
                         <span>Trust: {item.source_trust_score?.toFixed(2) ?? 'N/A'}</span>
-                        <span>Source: {item.source_name ?? '—'}</span>
+                        <span>{item.source_name ?? '—'}</span>
                         <span className="flex items-center gap-0.5"><Clock className="h-2.5 w-2.5" /> {formatTimeAgo(item.created_at)}</span>
                       </div>
                     </div>
@@ -330,13 +344,14 @@ export default function ContentIntelligenceOpsPage() {
                         {item.content_category_tags?.slice(0, 2).map((t: any) => (
                           <Badge key={t.id} variant="outline" className="text-[10px]">{t.category_code}</Badge>
                         ))}
+                        {item.source_country === 'lk' && <span className="text-[9px]">🇱🇰</span>}
                         <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                           <Clock className="h-2.5 w-2.5" /> {formatTimeAgo(item.published_at)}
                         </span>
                       </div>
                       <p className="text-sm font-semibold line-clamp-1">{brief?.ai_headline ?? item.title}</p>
                       <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
-                        <span>Freshness: {item.freshness_score ?? 0}</span>
+                        <span>Fresh: {item.freshness_score ?? 0}</span>
                         <span>Quality: {brief?.ai_quality_score?.toFixed(2) ?? '—'}</span>
                         <span>{item.source_name ?? 'LankaFix'}</span>
                       </div>
@@ -345,6 +360,10 @@ export default function ContentIntelligenceOpsPage() {
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
                         onClick={() => editorialAction.mutate({ itemId: item.id, action: 'pin_hero' })} title="Pin to Hero">
                         <Pin className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
+                        onClick={() => editorialAction.mutate({ itemId: item.id, action: 'boost' })} title="Boost">
+                        <ChevronUp className="h-3.5 w-3.5 text-primary" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-7 w-7" disabled={isPending}
                         onClick={() => editorialAction.mutate({ itemId: item.id, action: 'suppress' })} title="Suppress">
@@ -369,21 +388,25 @@ export default function ContentIntelligenceOpsPage() {
               <Card key={src.id} className="p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className="text-sm font-semibold">{src.source_name}</p>
-                      <Badge variant={src.active ? 'default' : 'secondary'} className="text-[10px]">
-                        {src.active ? 'Active' : 'Disabled'}
-                      </Badge>
+                      <SourceHealthBadge lastFetched={src.last_fetched_at} active={src.active} />
                     </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground mt-1">
                       <span>Type: <strong>{src.source_type}</strong></span>
-                      <span>Trust: <strong>{src.trust_score}</strong></span>
+                      <span>Trust: <strong className={src.trust_score >= 0.8 ? 'text-primary' : src.trust_score >= 0.6 ? '' : 'text-warning'}>{src.trust_score}</strong></span>
                       <span>Refresh: <strong>{src.refresh_interval_minutes}min</strong></span>
-                      <span>Last fetch: <strong>{formatTimeAgo(src.last_fetched_at)}</strong></span>
+                      <span>Freshness: <strong>{src.freshness_priority}</strong></span>
                       <span>Total: <strong>{src.counts?.total ?? 0}</strong></span>
                       <span>Published: <strong className="text-primary">{src.counts?.published ?? 0}</strong></span>
                       <span>Rejected: <strong className="text-destructive">{src.counts?.rejected ?? 0}</strong></span>
-                      <span>Freshness priority: <strong>{src.freshness_priority}</strong></span>
+                      <span>Archived: <strong>{src.counts?.archived ?? 0}</strong></span>
+                      {src.category_allowlist?.length > 0 && (
+                        <span className="col-span-2">Categories: <strong>{src.category_allowlist.join(', ')}</strong></span>
+                      )}
+                      {(src.sri_lanka_bias ?? 0) > 0.5 && (
+                        <span>🇱🇰 SL bias: <strong className="text-primary">{src.sri_lanka_bias}</strong></span>
+                      )}
                     </div>
                   </div>
                   <Button
@@ -409,7 +432,7 @@ export default function ContentIntelligenceOpsPage() {
                 <h3 className="text-sm font-bold text-foreground mb-2 flex items-center gap-1.5 capitalize">
                   <Pin className="h-3.5 w-3.5 text-primary" />
                   {code.replace(/_/g, ' ')}
-                  <Badge variant="outline" className="text-[10px] ml-1">{items.length}</Badge>
+                  <Badge variant="outline" className="text-[10px] ml-1">{items.length} items</Badge>
                 </h3>
                 <div className="space-y-1">
                   {items.map((s: any) => (
@@ -421,6 +444,9 @@ export default function ContentIntelligenceOpsPage() {
                             <span className="capitalize">{s.content_items?.content_type?.replace(/_/g, ' ') ?? ''}</span>
                             {s.content_items?.freshness_score != null && (
                               <span>Fresh: {s.content_items.freshness_score}</span>
+                            )}
+                            {s.content_items?.source_name && (
+                              <span className="truncate max-w-[100px]">{s.content_items.source_name}</span>
                             )}
                             {s.rank_score >= 990 && (
                               <Badge variant="default" className="text-[9px] px-1 py-0">PINNED</Badge>
