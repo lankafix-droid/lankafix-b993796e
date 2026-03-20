@@ -41,10 +41,16 @@ const ConsumablesCartPage = () => {
     if (cart.hasOutOfStock) { toast.error("Remove out-of-stock items before checkout"); return; }
 
     createOrder.mutate({
-      ...form,
+      delivery_method: form.delivery_method,
+      address_text: form.address_text,
+      phone: form.phone,
+      invoice_requested: form.invoice_requested,
+      vat_number: form.vat_number || undefined,
+      match_confirmation: form.match_confirmation,
       items: cart.items,
     }, {
       onSuccess: (order) => {
+        cart.clearCart();
         setOrderId(order.order_no);
         setOrderPlaced(true);
       },
@@ -105,6 +111,7 @@ const ConsumablesCartPage = () => {
                         <div className="flex gap-1 mt-1">
                           <Badge variant="secondary" className="text-[9px]">{item.range_type === "smartfix_compatible" ? "SmartFix" : "OEM"}</Badge>
                           {item.confidence !== "exact" && <Badge variant="outline" className="text-[9px] text-orange-600 border-orange-300">{item.confidence}</Badge>}
+                          {item.stock_qty <= 0 && <Badge variant="destructive" className="text-[9px]">Out of Stock</Badge>}
                         </div>
                       </div>
                       <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => cart.removeItem(item.productId)}>
@@ -141,12 +148,12 @@ const ConsumablesCartPage = () => {
                 </div>
                 <div>
                   <Label className="text-xs">Phone *</Label>
-                  <Input placeholder="07X XXX XXXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                  <Input placeholder="07X XXX XXXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} maxLength={20} />
                 </div>
                 {form.delivery_method !== "pickup" && (
                   <div>
                     <Label className="text-xs">Delivery Address *</Label>
-                    <Input placeholder="Full delivery address" value={form.address_text} onChange={(e) => setForm({ ...form, address_text: e.target.value })} />
+                    <Input placeholder="Full delivery address" value={form.address_text} onChange={(e) => setForm({ ...form, address_text: e.target.value })} maxLength={500} />
                   </div>
                 )}
                 <div className="flex items-center gap-2">
@@ -156,7 +163,7 @@ const ConsumablesCartPage = () => {
                 {form.invoice_requested && (
                   <div>
                     <Label className="text-xs">VAT Number</Label>
-                    <Input placeholder="VAT/TIN" value={form.vat_number} onChange={(e) => setForm({ ...form, vat_number: e.target.value })} />
+                    <Input placeholder="VAT/TIN" value={form.vat_number} onChange={(e) => setForm({ ...form, vat_number: e.target.value })} maxLength={50} />
                   </div>
                 )}
               </CardContent>

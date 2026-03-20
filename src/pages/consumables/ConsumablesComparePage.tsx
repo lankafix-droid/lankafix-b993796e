@@ -4,7 +4,7 @@ import Footer from "@/components/landing/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck, Package, Crown, Home, Building2, Building, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Package, Crown, Home, Building2, Building, ShoppingCart, AlertTriangle } from "lucide-react";
 import { useCompareProducts, useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 
@@ -26,10 +26,7 @@ const ConsumablesComparePage = () => {
 
   if (isLoading) return <div className="min-h-screen bg-background"><Header /><div className="flex items-center justify-center h-64 text-sm text-muted-foreground">Loading comparison...</div></div>;
 
-  const sf = data?.smartfix;
-  const oem = data?.oem;
-
-  if (!sf || !oem) return (
+  if (!data || !data.smartfix || !data.oem) return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="max-w-lg mx-auto px-4 py-6">
@@ -45,12 +42,15 @@ const ConsumablesComparePage = () => {
     </div>
   );
 
+  const sf = data.smartfix as any;
+  const oem = data.oem as any;
+
   const sfCPP = sf.yield_pages && sf.price ? (sf.price / sf.yield_pages) : null;
   const oemCPP = oem.yield_pages && oem.price ? (oem.price / oem.yield_pages) : null;
   const savings = oem.price && sf.price ? Math.round(((oem.price - sf.price) / oem.price) * 100) : 0;
 
-  const addSf = () => cart.addItem({ productId: sf.id, title: sf.title, sku_code: sf.sku_code, brand: sf.brand, range_type: sf.range_type, price: sf.price, stock_qty: sf.stock_qty ?? 0, express_eligible: !!sf.express_delivery_eligible, confidence: "exact" as const });
-  const addOem = () => cart.addItem({ productId: oem.id, title: oem.title, sku_code: oem.sku_code, brand: oem.brand, range_type: oem.range_type, price: oem.price, stock_qty: oem.stock_qty ?? 0, express_eligible: !!oem.express_delivery_eligible, confidence: "exact" as const });
+  const addSf = () => cart.addItem({ productId: sf.id, title: sf.title, sku_code: sf.sku_code, brand: sf.brand, range_type: sf.range_type, price: Number(sf.price), stock_qty: sf.stock_qty ?? 0, express_eligible: !!sf.express_delivery_eligible, confidence: "exact" as const });
+  const addOem = () => cart.addItem({ productId: oem.id, title: oem.title, sku_code: oem.sku_code, brand: oem.brand, range_type: oem.range_type, price: Number(oem.price), stock_qty: oem.stock_qty ?? 0, express_eligible: !!oem.express_delivery_eligible, confidence: "exact" as const });
 
   return (
     <div className="min-h-screen bg-background">
@@ -61,7 +61,17 @@ const ConsumablesComparePage = () => {
         </Link>
 
         <h1 className="text-lg font-bold text-foreground mb-1">SmartFix vs OEM Comparison</h1>
-        <p className="text-xs text-muted-foreground mb-6">Compare value, quality, and trust side by side</p>
+        <p className="text-xs text-muted-foreground mb-4">Compare value, quality, and trust side by side</p>
+
+        {/* Compare group mismatch warning */}
+        {data.groupMismatch && (
+          <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-orange-800 dark:text-orange-200">
+              These products may not be direct alternatives. Verify compatibility before ordering.
+            </p>
+          </div>
+        )}
 
         {/* Header Row */}
         <div className="grid grid-cols-[1fr_1fr_1fr] gap-2 mb-2">
@@ -78,13 +88,13 @@ const ConsumablesComparePage = () => {
           <Card>
             <CardContent className="p-4">
               <CompareField label="Product" sf={sf.title} oem={oem.title} />
-              <CompareField label="Price" sf={`LKR ${Number(sf.price).toLocaleString()}`} oem={`LKR ${Number(oem.price).toLocaleString()}`} highlight="sf" />
+              <CompareField label="Price" sf={`LKR ${Number(sf.price).toLocaleString()}`} oem={`LKR ${Number(oem.price).toLocaleString()}`} highlight={sf.price < oem.price ? "sf" : "oem"} />
               <CompareField label="Yield" sf={sf.yield_pages ? `${sf.yield_pages.toLocaleString()} pages` : "-"} oem={oem.yield_pages ? `${oem.yield_pages.toLocaleString()} pages` : "-"} />
               <CompareField label="Weight" sf={sf.net_weight_grams ? `${sf.net_weight_grams}g` : "-"} oem={oem.net_weight_grams ? `${oem.net_weight_grams}g` : "-"} />
               <CompareField label="Warranty" sf={`${sf.warranty_days || 0} days`} oem={`${oem.warranty_days || 0} days`} />
               <CompareField label="QR Verified" sf={sf.qr_enabled ? "Yes ✓" : "No"} oem={oem.qr_enabled ? "Yes ✓" : "No"} highlight={sf.qr_enabled ? "sf" : undefined} />
               <CompareField label="Cost/Page" sf={sfCPP ? `~LKR ${sfCPP.toFixed(2)}` : "-"} oem={oemCPP ? `~LKR ${oemCPP.toFixed(2)}` : "-"} highlight={sfCPP && oemCPP && sfCPP < oemCPP ? "sf" : "oem"} />
-              <CompareField label="Stock" sf={sf.stock_qty > 0 ? "In Stock" : "Out of Stock"} oem={oem.stock_qty > 0 ? "In Stock" : "Out of Stock"} />
+              <CompareField label="Stock" sf={(sf.stock_qty ?? 0) > 0 ? "In Stock" : "Out of Stock"} oem={(oem.stock_qty ?? 0) > 0 ? "In Stock" : "Out of Stock"} />
             </CardContent>
           </Card>
 
