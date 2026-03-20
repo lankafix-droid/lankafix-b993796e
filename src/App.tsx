@@ -152,6 +152,7 @@ const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPag
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
 const InsightDetailPage = lazy(() => import("./pages/InsightDetailPage"));
 const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelligenceOpsPage"));
+const SPSIntelligenceDashboardPage = lazy(() => import("./pages/ops/SPSIntelligenceDashboardPage"));
 
 // SPS — Smart Print Subscription
 const SPSLandingPage = lazy(() => import("./pages/sps/SPSLandingPage"));
@@ -361,6 +362,7 @@ const App = () => (
             <Route path="/ops/pilot-control" element={<OpsRoute><PilotControlPanelPage /></OpsRoute>} />
             <Route path="/ops/demand-dashboard" element={<OpsRoute><DemandDashboardPage /></OpsRoute>} />
             <Route path="/ops/content-intelligence" element={<OpsRoute><ContentIntelligenceOpsPage /></OpsRoute>} />
+            <Route path="/ops/sps-intelligence" element={<OpsRoute><SPSIntelligenceDashboardPage /></OpsRoute>} />
 
             {/* ─── Content Intelligence ─── */}
             <Route path="/insights/:id" element={<InsightDetailPage />} />

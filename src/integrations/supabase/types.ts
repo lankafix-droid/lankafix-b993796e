@@ -4670,6 +4670,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sps_ai_admin_copilot_notes: {
+        Row: {
+          advisor_note_draft: string | null
+          entity_id: string
+          entity_type: string
+          generated_at: string
+          id: string
+          note_type: string
+          recommended_action: string | null
+          summary: string | null
+          watchouts: string | null
+          why_it_matters: string | null
+        }
+        Insert: {
+          advisor_note_draft?: string | null
+          entity_id: string
+          entity_type: string
+          generated_at?: string
+          id?: string
+          note_type?: string
+          recommended_action?: string | null
+          summary?: string | null
+          watchouts?: string | null
+          why_it_matters?: string | null
+        }
+        Update: {
+          advisor_note_draft?: string | null
+          entity_id?: string
+          entity_type?: string
+          generated_at?: string
+          id?: string
+          note_type?: string
+          recommended_action?: string | null
+          summary?: string | null
+          watchouts?: string | null
+          why_it_matters?: string | null
+        }
+        Relationships: []
+      }
       sps_ai_advisor_sessions: {
         Row: {
           ai_model: string | null
@@ -4718,36 +4757,216 @@ export type Database = {
         }
         Relationships: []
       }
+      sps_ai_alerts: {
+        Row: {
+          alert_type: string
+          asset_id: string | null
+          contract_id: string | null
+          customer_id: string | null
+          dismissed_at: string | null
+          dismissed_by: string | null
+          explanation: string | null
+          generated_at: string
+          id: string
+          message: string
+          priority: string
+          status: string
+          title: string
+        }
+        Insert: {
+          alert_type: string
+          asset_id?: string | null
+          contract_id?: string | null
+          customer_id?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          explanation?: string | null
+          generated_at?: string
+          id?: string
+          message: string
+          priority?: string
+          status?: string
+          title: string
+        }
+        Update: {
+          alert_type?: string
+          asset_id?: string | null
+          contract_id?: string | null
+          customer_id?: string | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          explanation?: string | null
+          generated_at?: string
+          id?: string
+          message?: string
+          priority?: string
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
       sps_ai_asset_health_scores: {
         Row: {
           asset_id: string
+          confidence: string | null
           created_at: string
+          health_score: number | null
+          health_status: string | null
           id: string
+          meter_risk_score: number | null
           predicted_breakdown_risk: number | null
           predicted_profitability_risk: number | null
           predicted_service_need: string | null
+          profitability_risk_score: number | null
+          repeat_issue_score: number | null
+          replacement_risk_score: number | null
           score_date: string
           suggested_action: string | null
+          support_burden_score: number | null
+          top_reasons: Json | null
+          trend_direction: string | null
         }
         Insert: {
           asset_id: string
+          confidence?: string | null
           created_at?: string
+          health_score?: number | null
+          health_status?: string | null
           id?: string
+          meter_risk_score?: number | null
           predicted_breakdown_risk?: number | null
           predicted_profitability_risk?: number | null
           predicted_service_need?: string | null
+          profitability_risk_score?: number | null
+          repeat_issue_score?: number | null
+          replacement_risk_score?: number | null
           score_date?: string
           suggested_action?: string | null
+          support_burden_score?: number | null
+          top_reasons?: Json | null
+          trend_direction?: string | null
         }
         Update: {
           asset_id?: string
+          confidence?: string | null
           created_at?: string
+          health_score?: number | null
+          health_status?: string | null
           id?: string
+          meter_risk_score?: number | null
           predicted_breakdown_risk?: number | null
           predicted_profitability_risk?: number | null
           predicted_service_need?: string | null
+          profitability_risk_score?: number | null
+          repeat_issue_score?: number | null
+          replacement_risk_score?: number | null
           score_date?: string
           suggested_action?: string | null
+          support_burden_score?: number | null
+          top_reasons?: Json | null
+          trend_direction?: string | null
+        }
+        Relationships: []
+      }
+      sps_ai_contract_profitability: {
+        Row: {
+          breakeven_estimate_months: number | null
+          consumable_cost: number | null
+          contract_id: string
+          created_at: string
+          id: string
+          margin_estimate: number | null
+          overage_revenue: number | null
+          payback_progress: number | null
+          profitability_status: string
+          recommended_action: string | null
+          repair_cost: number | null
+          revenue_collected: number | null
+          snapshot_date: string
+          support_cost: number | null
+        }
+        Insert: {
+          breakeven_estimate_months?: number | null
+          consumable_cost?: number | null
+          contract_id: string
+          created_at?: string
+          id?: string
+          margin_estimate?: number | null
+          overage_revenue?: number | null
+          payback_progress?: number | null
+          profitability_status?: string
+          recommended_action?: string | null
+          repair_cost?: number | null
+          revenue_collected?: number | null
+          snapshot_date?: string
+          support_cost?: number | null
+        }
+        Update: {
+          breakeven_estimate_months?: number | null
+          consumable_cost?: number | null
+          contract_id?: string
+          created_at?: string
+          id?: string
+          margin_estimate?: number | null
+          overage_revenue?: number | null
+          payback_progress?: number | null
+          profitability_status?: string
+          recommended_action?: string | null
+          repair_cost?: number | null
+          revenue_collected?: number | null
+          snapshot_date?: string
+          support_cost?: number | null
+        }
+        Relationships: []
+      }
+      sps_ai_contract_signals: {
+        Row: {
+          billing_stability_score: number | null
+          churn_risk: string | null
+          contract_id: string
+          created_at: string
+          downgrade_opportunity: string | null
+          id: string
+          pause_risk: string | null
+          reasons: Json | null
+          renewal_signal: string | null
+          satisfaction_proxy_score: number | null
+          signal_date: string
+          suggested_action: string | null
+          upgrade_opportunity: string | null
+          usage_fit_score: number | null
+        }
+        Insert: {
+          billing_stability_score?: number | null
+          churn_risk?: string | null
+          contract_id: string
+          created_at?: string
+          downgrade_opportunity?: string | null
+          id?: string
+          pause_risk?: string | null
+          reasons?: Json | null
+          renewal_signal?: string | null
+          satisfaction_proxy_score?: number | null
+          signal_date?: string
+          suggested_action?: string | null
+          upgrade_opportunity?: string | null
+          usage_fit_score?: number | null
+        }
+        Update: {
+          billing_stability_score?: number | null
+          churn_risk?: string | null
+          contract_id?: string
+          created_at?: string
+          downgrade_opportunity?: string | null
+          id?: string
+          pause_risk?: string | null
+          reasons?: Json | null
+          renewal_signal?: string | null
+          satisfaction_proxy_score?: number | null
+          signal_date?: string
+          suggested_action?: string | null
+          upgrade_opportunity?: string | null
+          usage_fit_score?: number | null
         }
         Relationships: []
       }
@@ -4913,6 +5132,48 @@ export type Database = {
           upgrade_hint?: string | null
           was_fallback?: boolean | null
           watchouts?: string | null
+        }
+        Relationships: []
+      }
+      sps_ai_predictive_maintenance: {
+        Row: {
+          asset_id: string
+          confidence: string | null
+          contract_id: string | null
+          contributing_factors: Json | null
+          created_at: string
+          id: string
+          maintenance_risk_level: string
+          predicted_issue_category: string | null
+          prediction_date: string
+          suggested_action: string | null
+          trend_direction: string | null
+        }
+        Insert: {
+          asset_id: string
+          confidence?: string | null
+          contract_id?: string | null
+          contributing_factors?: Json | null
+          created_at?: string
+          id?: string
+          maintenance_risk_level?: string
+          predicted_issue_category?: string | null
+          prediction_date?: string
+          suggested_action?: string | null
+          trend_direction?: string | null
+        }
+        Update: {
+          asset_id?: string
+          confidence?: string | null
+          contract_id?: string | null
+          contributing_factors?: Json | null
+          created_at?: string
+          id?: string
+          maintenance_risk_level?: string
+          predicted_issue_category?: string | null
+          prediction_date?: string
+          suggested_action?: string | null
+          trend_direction?: string | null
         }
         Relationships: []
       }
