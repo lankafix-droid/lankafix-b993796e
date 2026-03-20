@@ -53,6 +53,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
   const isEvergreen = item.id.startsWith('evergreen-');
   const isLive = !isEvergreen;
   const isSriLankan = item.source_country === 'lk' || item.source_country === 'LK';
+  const isSafety = item.content_type === 'safety_alert' || item.content_type === 'scam_alert';
   const impressionRef = useTrackContentImpression(item.id, variant);
 
   const handleClick = () => {
@@ -71,6 +72,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
             'flex items-start gap-3 rounded-xl border border-border/40 bg-card p-3 text-left',
             'transition-all duration-200 hover:shadow-md hover:border-border/60 hover:-translate-y-0.5 active:scale-[0.98]',
             'w-[260px] shrink-0 snap-start',
+            isSafety && 'border-destructive/15',
             className
           )}
         >
@@ -84,7 +86,9 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
                 <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{item.source_name}</span>
               )}
               {isSriLankan && <span className="text-[9px]">🇱🇰</span>}
-              <span className="text-[10px] text-muted-foreground">{isEvergreen ? 'LankaFix' : formatTimeAgo(item.published_at)}</span>
+              <span className="text-[10px] text-muted-foreground">
+                {isEvergreen ? 'LankaFix' : formatTimeAgo(item.published_at)}
+              </span>
             </div>
           </div>
           {bannerText && (
@@ -105,6 +109,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           className={cn(
             'relative w-full overflow-hidden rounded-2xl bg-card text-left group',
             'transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]',
+            isSafety && 'ring-1 ring-destructive/15',
             className
           )}
         >
@@ -114,10 +119,15 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
             </div>
           ) : (
-            <div className="h-32 w-full bg-gradient-to-br from-primary/8 via-accent/4 to-primary/3 flex items-center justify-center relative overflow-hidden">
+            <div className={cn(
+              "h-32 w-full flex items-center justify-center relative overflow-hidden",
+              isSafety
+                ? "bg-gradient-to-br from-destructive/6 via-card to-destructive/3"
+                : "bg-gradient-to-br from-primary/8 via-accent/4 to-primary/3"
+            )}>
               <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
               <div className="rounded-full bg-card/80 p-3 backdrop-blur-sm shadow-sm border border-border/20">
-                <Icon className="h-6 w-6 text-primary" />
+                <Icon className={cn("h-6 w-6", isSafety ? "text-destructive" : "text-primary")} />
               </div>
             </div>
           )}
@@ -127,6 +137,11 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
                 <Icon className="mr-1 h-3 w-3" />
                 {config.label}
               </Badge>
+              {isLive && (
+                <Badge variant="outline" className="text-[9px] bg-card/60 backdrop-blur-sm border-primary/15 text-primary">
+                  Live
+                </Badge>
+              )}
               {categoryTags.map(t => (
                 <Badge key={t.id} variant="outline" className="text-[10px] bg-card/60 backdrop-blur-sm">{t.category_code}</Badge>
               ))}
@@ -163,6 +178,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
         className={cn(
           'flex gap-3 rounded-xl border border-border/40 bg-card p-3.5 text-left w-full group',
           'transition-all duration-200 hover:shadow-md hover:border-border/60 hover:-translate-y-0.5 active:scale-[0.98]',
+          isSafety && 'border-destructive/15',
           className
         )}
       >
@@ -172,11 +188,13 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           </div>
         ) : (
           <div className={cn(
-            'h-20 w-20 shrink-0 rounded-lg flex items-center justify-center relative overflow-hidden',
-            'bg-gradient-to-br from-primary/6 via-accent/3 to-muted/30 border border-border/15'
+            'h-20 w-20 shrink-0 rounded-lg flex items-center justify-center relative overflow-hidden border border-border/15',
+            isSafety
+              ? 'bg-gradient-to-br from-destructive/6 via-card to-destructive/3'
+              : 'bg-gradient-to-br from-primary/6 via-accent/3 to-muted/30'
           )}>
             <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
-            <Icon className="h-5 w-5 text-primary/30" />
+            <Icon className={cn("h-5 w-5", isSafety ? "text-destructive/30" : "text-primary/30")} />
           </div>
         )}
         <div className="min-w-0 flex-1">

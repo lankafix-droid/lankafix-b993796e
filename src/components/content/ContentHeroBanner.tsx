@@ -1,7 +1,6 @@
 /**
  * ContentHeroBanner — Premium rotating intelligence banner for homepage hero.
- * Shows AI-ranked top stories with autoplay and category-colored accents.
- * Supports both live content and evergreen fallback seamlessly.
+ * v2 — Enhanced visual hierarchy, live/evergreen signals, premium badge styling.
  */
 import { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useContentIntelligence, trackContentEvent } from '@/hooks/useContentIntelligence';
 import type { EnrichedContentItem } from '@/types/contentIntelligence';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap, Hash, BookOpen, Radio, BarChart3 } from 'lucide-react';
+import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap, Hash, BookOpen, Radio, BarChart3, AlertTriangle } from 'lucide-react';
 
 interface Props {
   onOpenItem?: (item: EnrichedContentItem) => void;
@@ -19,7 +18,7 @@ const TYPE_ICONS: Record<string, typeof Zap> = {
   breaking_news: Zap,
   innovation: Lightbulb,
   safety_alert: Shield,
-  scam_alert: Shield,
+  scam_alert: AlertTriangle,
   trend_signal: TrendingUp,
   hot_topic: TrendingUp,
   numbers_insight: Hash,
@@ -36,7 +35,19 @@ const TYPE_LABELS: Record<string, string> = {
   hot_topic: 'Hot Now',
   numbers_insight: 'Numbers',
   knowledge_fact: 'Insight',
-  market_shift: 'Market',
+  market_shift: 'Market Shift',
+};
+
+const TYPE_ACCENTS: Record<string, string> = {
+  breaking_news: 'bg-destructive/10 text-destructive border-destructive/20',
+  innovation: 'bg-primary/10 text-primary border-primary/20',
+  safety_alert: 'bg-destructive/10 text-destructive border-destructive/20',
+  scam_alert: 'bg-destructive/12 text-destructive border-destructive/25',
+  trend_signal: 'bg-accent/10 text-accent-foreground border-accent/20',
+  hot_topic: 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400',
+  numbers_insight: 'bg-violet-500/10 text-violet-600 border-violet-500/20 dark:text-violet-400',
+  knowledge_fact: 'bg-primary/10 text-primary border-primary/20',
+  market_shift: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400',
 };
 
 const AUTOPLAY_MS = 7000;
@@ -72,17 +83,24 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
   const brief = item.ai_brief;
   const Icon = TYPE_ICONS[item.content_type] ?? TrendingUp;
   const label = TYPE_LABELS[item.content_type] ?? 'Insight';
+  const accent = TYPE_ACCENTS[item.content_type] ?? 'bg-primary/10 text-primary border-primary/20';
   const isEvergreen = item.id.startsWith('evergreen-');
   const isLive = !isEvergreen;
   const isSriLankan = item.source_country === 'lk' || item.source_country === 'LK';
+  const isSafety = item.content_type === 'safety_alert' || item.content_type === 'scam_alert';
 
   return (
     <section className="px-4 py-3">
-      <div className="relative overflow-hidden rounded-2xl border border-border/20 bg-gradient-to-br from-primary/6 via-card to-accent/3 shadow-sm">
-        {/* Subtle pattern */}
+      <div className={cn(
+        "relative overflow-hidden rounded-2xl border shadow-sm",
+        isSafety
+          ? "border-destructive/20 bg-gradient-to-br from-destructive/4 via-card to-card"
+          : "border-border/20 bg-gradient-to-br from-primary/6 via-card to-accent/3"
+      )}>
+        {/* Subtle pattern overlay */}
         <div className="absolute inset-0 opacity-[0.015] z-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
-        {/* Image overlay */}
+        {/* Image overlay for items with images */}
         {item.image_url && (
           <div className="absolute inset-0 z-0">
             <img src={item.image_url} alt="" className="h-full w-full object-cover opacity-10" loading="lazy" />
@@ -90,7 +108,7 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
           </div>
         )}
 
-        {/* Top badges */}
+        {/* Top badge row */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
           <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm text-[10px] font-bold tracking-wide border border-border/20 shadow-sm">
             {isLive ? (
@@ -99,19 +117,19 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
-                Live
+                Live Update
               </>
             ) : (
-              <><Sparkles className="mr-1 h-3 w-3 text-primary" /> AI Insights</>
+              <><Sparkles className="mr-1 h-3 w-3 text-primary" /> LankaFix Intelligence</>
             )}
           </Badge>
-          <Badge variant="outline" className="text-[10px] bg-card/60 backdrop-blur-sm border-border/20">
+          <Badge variant="outline" className={cn("text-[10px] bg-card/60 backdrop-blur-sm border", accent)}>
             <Icon className="mr-0.5 h-3 w-3" />
             {label}
           </Badge>
           {isSriLankan && (
             <Badge variant="outline" className="text-[9px] bg-card/60 backdrop-blur-sm py-0 border-border/20">
-              🇱🇰
+              🇱🇰 Sri Lanka
             </Badge>
           )}
         </div>
@@ -131,7 +149,7 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
               onOpenItem?.(item);
             }}
           >
-            {/* Banner stat */}
+            {/* Banner stat — prominent when present */}
             {brief?.ai_banner_text && (
               <div className="mb-2 inline-flex items-center rounded-lg bg-primary/8 border border-primary/12 px-2.5 py-0.5 text-xs font-bold text-primary">
                 {brief.ai_banner_text}
