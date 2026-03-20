@@ -1,4 +1,4 @@
-/* Content Intelligence Ops v11 — Executive-grade dashboard with premium readiness, SL metrics, source perf */
+/* Content Intelligence Ops v12 — Launch-grade dashboard with structured publish stats, premium readiness, SL metrics */
 import { useState, useMemo } from 'react';
 import PageTransition from '@/components/motion/PageTransition';
 import Header from '@/components/layout/Header';
