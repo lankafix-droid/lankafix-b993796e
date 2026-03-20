@@ -68,6 +68,8 @@ const ConsumablesRefillPage = () => {
       condition.print_issue ? `Issue: ${condition.print_issue}` : null,
     ].filter(Boolean).join("; ");
 
+    const pickupFee = form.pickup_method === "pickup" ? 300 : 0;
+
     createRefill.mutate({
       brand: rule.brand,
       printer_model_id: rule.printer_model_id,
@@ -78,8 +80,17 @@ const ConsumablesRefillPage = () => {
       phone: form.phone,
       notes: `${conditionNotes}. ${form.notes}`.trim(),
       service_fee: 800,
-      pickup_fee: form.pickup_method === "pickup" ? 300 : 0,
-      total: 800 + (form.pickup_method === "pickup" ? 300 : 0),
+      pickup_fee: pickupFee,
+      total: 800 + pickupFee,
+      condition_data: {
+        is_original: condition.is_original,
+        refilled_before: condition.refilled_before,
+        physical_damage: condition.physical_damage,
+        leakage: condition.leakage,
+        color_type: condition.color_type,
+        print_issue: condition.print_issue,
+        urgency: condition.urgency,
+      },
     }, {
       onSuccess: () => navigate("/consumables/refill/track"),
     });

@@ -7,17 +7,16 @@ const BRAND_PREFIXES = ["hp", "canon", "brother", "epson", "xerox", "pantum", "r
 
 export const normalize = (q: string): string => {
   let s = q.toLowerCase().replace(/[\s\-_\.\/\\,()]+/g, "");
-  // Don't strip brand prefix if that's the entire query
   for (const b of BRAND_PREFIXES) {
     if (s.startsWith(b) && s.length > b.length) {
-      s = b + s.slice(b.length); // keep brand attached
+      s = b + s.slice(b.length);
       break;
     }
   }
   return s;
 };
 
-// ─── Confidence helpers ───────────────────────────────────
+// ─── Confidence ───────────────────────────────────────────
 export type MatchConfidence = "exact" | "likely" | "needs_verification";
 
 function inferConfidence(matchType: string, searchMatchType: string): MatchConfidence {
@@ -46,16 +45,45 @@ export interface ConsumableResult {
   image_url: string | null;
   description: string | null;
   product_type: string;
+  compare_group: string | null;
   confidence: MatchConfidence;
   matched_models: Array<{ id: string; model_name: string; brand: string }>;
-  alternative_id?: string; // opposite range_type product for same models
+  alternative_id?: string;
   refill_eligible?: boolean;
+}
+
+export interface CompareGroup {
+  key: string;
+  smartfix?: ConsumableResult;
+  oem?: ConsumableResult;
 }
 
 export interface SearchResult {
   results: ConsumableResult[];
   matchType: string;
-  grouped: Map<string, { smartfix?: ConsumableResult; oem?: ConsumableResult }>;
+  groups: CompareGroup[];
+}
+
+// ─── Search log helper (best-effort, non-blocking) ───────
+async function logSearch(
+  raw_query: string,
+  normalized_query: string,
+  search_type: string,
+  match_status: string
+): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("consumable_search_logs").insert({
+      raw_query: raw_query.slice(0, 500),
+      normalized_query: normalized_query.slice(0, 500),
+      search_type,
+      match_status,
+      selected_product_id: null,
+      user_id: user?.id || null,
+    });
+  } catch {
+    // best-effort — never break user flow
+  }
 }
 
 // ─── Search ───────────────────────────────────────────────
@@ -80,7 +108,7 @@ export function useConsumableSearch(query: string) {
         matchType = "exact_sku";
         products = skuMatch.map((p: any) => mapProduct(p, "exact_sku"));
       } else {
-        // 2. Printer model match (exact then alias)
+        // 2. Printer model match
         const { data: modelMatch } = await supabase
           .from("printer_models")
           .select("*")
@@ -128,42 +156,41 @@ export function useConsumableSearch(query: string) {
         }
       }
 
-      // Build grouped alternatives (SmartFix vs OEM for same SKU family)
-      const grouped = new Map<string, { smartfix?: ConsumableResult; oem?: ConsumableResult }>();
+      // Build groups by compare_group (explicit DB field)
+      const groupMap = new Map<string, CompareGroup>();
       for (const p of products) {
-        // Group key: brand + color (rough grouping)
-        const key = `${p.brand}-${p.color || "bk"}`.toLowerCase();
-        const entry = grouped.get(key) || {};
+        const key = p.compare_group || `_solo_${p.id}`;
+        const entry = groupMap.get(key) || { key };
         if (p.range_type === "smartfix_compatible") entry.smartfix = p;
-        else entry.oem = p;
-        grouped.set(key, entry);
+        else if (p.range_type === "genuine_oem") entry.oem = p;
+        else {
+          // fallback: put in whichever slot is free
+          if (!entry.smartfix) entry.smartfix = p;
+          else if (!entry.oem) entry.oem = p;
+        }
+        groupMap.set(key, entry);
       }
 
       // Cross-link alternatives
-      for (const [, pair] of grouped) {
+      for (const [, pair] of groupMap) {
         if (pair.smartfix && pair.oem) {
           pair.smartfix.alternative_id = pair.oem.id;
           pair.oem.alternative_id = pair.smartfix.id;
         }
       }
 
-      // Sort: exact first, then by range_type for visual grouping
+      const groups = Array.from(groupMap.values());
+
+      // Sort: exact first
       products.sort((a, b) => {
-        const confOrder = { exact: 0, likely: 1, needs_verification: 2 };
-        return (confOrder[a.confidence] || 2) - (confOrder[b.confidence] || 2);
+        const confOrder: Record<MatchConfidence, number> = { exact: 0, likely: 1, needs_verification: 2 };
+        return (confOrder[a.confidence] ?? 2) - (confOrder[b.confidence] ?? 2);
       });
 
-      // Log search (fire-and-forget, no await)
-      supabase.from("consumable_search_logs").insert({
-        raw_query: query,
-        normalized_query: norm,
-        search_type: matchType,
-        match_status: products.length > 0 ? products[0].confidence : "no_match",
-        selected_product_id: null,
-        user_id: (await supabase.auth.getUser()).data.user?.id || null,
-      }).then(() => {});
+      // Log search (non-blocking)
+      logSearch(query, norm, matchType, products.length > 0 ? products[0].confidence : "no_match");
 
-      return { results: products, matchType, grouped };
+      return { results: products, matchType, groups };
     },
   });
 }
@@ -183,7 +210,7 @@ function mapProduct(
     brand: p.brand,
     sku_code: p.sku_code,
     range_type: p.range_type,
-    price: p.price,
+    price: Number(p.price),
     stock_qty: p.stock_qty ?? 0,
     yield_pages: p.yield_pages,
     net_weight_grams: p.net_weight_grams,
@@ -195,6 +222,7 @@ function mapProduct(
     image_url: p.image_url,
     description: p.description,
     product_type: p.product_type,
+    compare_group: p.compare_group ?? null,
     confidence: inferConfidence(compatMatchType || "exact", searchMatchType),
     matched_models: models.map((m: any) => ({
       id: m.id,
@@ -214,7 +242,7 @@ export function useConsumableProduct(id: string) {
         .from("consumable_products")
         .select("*, consumable_compatibility(printer_model_id, match_type, printer_models(*))")
         .eq("id", id)
-        .single();
+        .maybeSingle();
       if (error) throw error;
       return data;
     },
@@ -232,9 +260,17 @@ export function useCompareProducts(sfId: string, oemId: string) {
         .select("*, consumable_compatibility(printer_model_id, match_type, printer_models(*))")
         .in("id", [sfId, oemId]);
       if (error) throw error;
-      const sf = data?.find((p: any) => p.range_type === "smartfix_compatible") || data?.[0];
-      const oem = data?.find((p: any) => p.range_type === "genuine_oem") || data?.[1];
-      return { smartfix: sf, oem };
+      if (!data || data.length < 2) return null;
+
+      // Validate both exist and ideally share compare_group
+      const sf = data.find((p: any) => p.id === sfId);
+      const oem = data.find((p: any) => p.id === oemId);
+      if (!sf || !oem) return null;
+
+      // Warn if compare_group mismatch (but still allow)
+      const groupMismatch = sf.compare_group && oem.compare_group && sf.compare_group !== oem.compare_group;
+
+      return { smartfix: sf, oem, groupMismatch };
     },
   });
 }
@@ -285,15 +321,51 @@ export function useRefillEligibility(cartridgeCode: string) {
   });
 }
 
+export interface RefillOrderPayload {
+  brand: string;
+  printer_model_id: string | null;
+  cartridge_code: string;
+  quantity: number;
+  pickup_method: string;
+  address_text: string;
+  phone: string;
+  notes: string;
+  service_fee: number;
+  pickup_fee: number;
+  total: number;
+  condition_data: Record<string, unknown>;
+}
+
 export function useCreateRefillOrder() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (order: any) => {
+    mutationFn: async (order: RefillOrderPayload) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Please sign in to submit a refill request");
+
+      // Validate input
+      if (!order.phone || order.phone.length < 9) throw new Error("Valid phone number required");
+      if (order.quantity < 1 || order.quantity > 20) throw new Error("Quantity must be 1-20");
+
       const { data, error } = await supabase
         .from("refill_orders")
-        .insert({ ...order, user_id: user.id })
+        .insert([{
+          user_id: user.id,
+          brand: order.brand,
+          printer_model_id: order.printer_model_id,
+          cartridge_code: order.cartridge_code,
+          quantity: order.quantity,
+          pickup_method: order.pickup_method,
+          address_text: order.address_text.slice(0, 500),
+          phone: order.phone.slice(0, 20),
+          notes: order.notes.slice(0, 1000),
+          service_fee: order.service_fee,
+          pickup_fee: order.pickup_fee,
+          total: order.total,
+          refill_status: "request_received",
+          eligibility_status: "eligible",
+          condition_data: order.condition_data as any,
+        }])
         .select()
         .single();
       if (error) throw error;
@@ -303,7 +375,7 @@ export function useCreateRefillOrder() {
       toast.success("Refill request submitted successfully");
       qc.invalidateQueries({ queryKey: ["refill-orders"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -332,7 +404,7 @@ export function useQRVerification(serial: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("product_qr_verifications")
-        .select("*, consumable_products(*)")
+        .select("*, consumable_products(id, title, sku_code, brand, range_type, warranty_days, warranty_text, price)")
         .eq("qr_serial", serial)
         .maybeSingle();
       if (error) throw error;
@@ -341,7 +413,7 @@ export function useQRVerification(serial: string) {
   });
 }
 
-// ─── Cart (Zustand-free, React Query + localStorage) ─────
+// ─── Cart (localStorage + React Query) ───────────────────
 export interface CartItem {
   productId: string;
   title: string;
@@ -358,8 +430,21 @@ export interface CartItem {
 const CART_KEY = "lankafix_consumables_cart";
 
 function readCart(): CartItem[] {
-  try { return JSON.parse(localStorage.getItem(CART_KEY) || "[]"); } catch { return []; }
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    // Validate each item has required fields
+    return parsed.filter(
+      (c: any) => c && typeof c.productId === "string" && typeof c.price === "number" && typeof c.qty === "number"
+    );
+  } catch {
+    localStorage.removeItem(CART_KEY);
+    return [];
+  }
 }
+
 function writeCart(items: CartItem[]) {
   localStorage.setItem(CART_KEY, JSON.stringify(items));
 }
@@ -373,37 +458,42 @@ export function useCart() {
     staleTime: Infinity,
   });
 
+  const syncCart = (cart: CartItem[]) => {
+    writeCart(cart);
+    qc.setQueryData(["consumable-cart"], [...cart]);
+  };
+
   const addItem = (item: Omit<CartItem, "qty"> & { qty?: number }) => {
+    if (item.stock_qty <= 0) {
+      toast.error("This product is out of stock");
+      return;
+    }
     const cart = readCart();
     const existing = cart.find((c) => c.productId === item.productId);
     if (existing) {
-      existing.qty = Math.min(existing.qty + (item.qty || 1), existing.stock_qty);
+      existing.qty = Math.min(existing.qty + (item.qty || 1), Math.max(existing.stock_qty, 1));
     } else {
-      cart.push({ ...item, qty: item.qty || 1 } as CartItem);
+      cart.push({ ...item, qty: Math.min(item.qty || 1, item.stock_qty) } as CartItem);
     }
-    writeCart(cart);
-    qc.setQueryData(["consumable-cart"], cart);
+    syncCart(cart);
     toast.success("Added to cart");
   };
 
   const updateQty = (productId: string, qty: number) => {
     const cart = readCart().map((c) =>
-      c.productId === productId ? { ...c, qty: Math.max(1, Math.min(qty, c.stock_qty)) } : c
+      c.productId === productId ? { ...c, qty: Math.max(1, Math.min(qty, Math.max(c.stock_qty, 1))) } : c
     );
-    writeCart(cart);
-    qc.setQueryData(["consumable-cart"], cart);
+    syncCart(cart);
   };
 
   const removeItem = (productId: string) => {
     const cart = readCart().filter((c) => c.productId !== productId);
-    writeCart(cart);
-    qc.setQueryData(["consumable-cart"], cart);
+    syncCart(cart);
     toast.success("Removed from cart");
   };
 
   const clearCart = () => {
-    writeCart([]);
-    qc.setQueryData(["consumable-cart"], []);
+    syncCart([]);
   };
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
@@ -414,35 +504,66 @@ export function useCart() {
 }
 
 // ─── Orders ───────────────────────────────────────────────
+export interface CreateOrderPayload {
+  delivery_method: string;
+  address_text: string;
+  phone: string;
+  invoice_requested: boolean;
+  vat_number?: string;
+  match_confirmation: boolean;
+  items: CartItem[];
+}
+
 export function useCreateOrder() {
   const qc = useQueryClient();
-  const { clearCart } = useCart();
   return useMutation({
-    mutationFn: async (payload: {
-      delivery_method: string;
-      address_text: string;
-      phone: string;
-      invoice_requested: boolean;
-      vat_number?: string;
-      match_confirmation: boolean;
-      items: CartItem[];
-    }) => {
+    mutationFn: async (payload: CreateOrderPayload) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Please sign in to place an order");
 
-      const subtotal = payload.items.reduce((s, i) => s + i.price * i.qty, 0);
+      if (!payload.phone || payload.phone.length < 9) throw new Error("Valid phone required");
+      if (payload.delivery_method !== "pickup" && !payload.address_text) throw new Error("Address required for delivery");
+      if (payload.items.length === 0) throw new Error("Cart is empty");
+
+      // ── STOCK PREFLIGHT: re-fetch all products from DB ──
+      const productIds = payload.items.map((i) => i.productId);
+      const { data: dbProducts, error: fetchErr } = await supabase
+        .from("consumable_products")
+        .select("id, price, stock_qty, is_active, express_delivery_eligible")
+        .in("id", productIds);
+      if (fetchErr) throw new Error("Could not verify product availability");
+
+      const dbMap = new Map((dbProducts || []).map((p: any) => [p.id, p]));
+
+      // Validate each item
+      for (const item of payload.items) {
+        const dbProd = dbMap.get(item.productId);
+        if (!dbProd) throw new Error(`Product "${item.title}" no longer exists`);
+        if (!dbProd.is_active) throw new Error(`Product "${item.title}" is no longer available`);
+        if ((dbProd.stock_qty ?? 0) < item.qty) throw new Error(`Insufficient stock for "${item.title}" (${dbProd.stock_qty ?? 0} available)`);
+        if (payload.delivery_method === "express" && !dbProd.express_delivery_eligible) {
+          throw new Error(`"${item.title}" is not eligible for express delivery`);
+        }
+      }
+
+      // Calculate using DB prices (source of truth)
+      const subtotal = payload.items.reduce((s, i) => {
+        const dbPrice = Number(dbMap.get(i.productId)!.price);
+        return s + dbPrice * i.qty;
+      }, 0);
       const delivery_fee = payload.delivery_method === "express" ? 500 : payload.delivery_method === "scheduled" ? 250 : 0;
       const total = subtotal + delivery_fee;
 
+      // Insert order
       const { data: order, error: orderError } = await supabase
         .from("consumable_orders")
         .insert({
           user_id: user.id,
           delivery_method: payload.delivery_method,
-          address_text: payload.address_text,
-          phone: payload.phone,
+          address_text: payload.address_text.slice(0, 500),
+          phone: payload.phone.slice(0, 20),
           invoice_requested: payload.invoice_requested,
-          vat_number: payload.vat_number || null,
+          vat_number: payload.vat_number?.slice(0, 50) || null,
           match_confirmation: payload.match_confirmation,
           subtotal,
           delivery_fee,
@@ -454,26 +575,30 @@ export function useCreateOrder() {
         .single();
       if (orderError) throw orderError;
 
-      // Insert line items
+      // Insert line items using DB-validated prices
       const lineItems = payload.items.map((i) => ({
         order_id: order.id,
         consumable_product_id: i.productId,
         qty: i.qty,
-        unit_price: i.price,
-        line_total: i.price * i.qty,
+        unit_price: Number(dbMap.get(i.productId)!.price),
+        line_total: Number(dbMap.get(i.productId)!.price) * i.qty,
         selected_by_match_engine: i.confidence === "exact",
       }));
+
       const { error: itemsError } = await supabase.from("consumable_order_items").insert(lineItems);
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        // Attempt cleanup
+        await supabase.from("consumable_orders").delete().eq("id", order.id);
+        throw new Error("Failed to save order items. Please try again.");
+      }
 
       return order;
     },
     onSuccess: () => {
       toast.success("Order placed successfully");
-      clearCart();
       qc.invalidateQueries({ queryKey: ["consumable-orders"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -515,12 +640,20 @@ export function useSavedDevices() {
 export function useSaveDevice() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (device: { printer_model_id: string; nickname: string; preferred_range_type: string }) => {
+    mutationFn: async (device: { printer_model_id: string; nickname: string; preferred_range_type: string; location_name?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Please sign in");
+      if (!device.nickname || device.nickname.length < 1) throw new Error("Device name required");
+
       const { data, error } = await supabase
         .from("saved_devices")
-        .insert({ ...device, user_id: user.id })
+        .insert({
+          printer_model_id: device.printer_model_id,
+          nickname: device.nickname.slice(0, 100),
+          preferred_range_type: device.preferred_range_type,
+          location_name: device.location_name?.slice(0, 200) || null,
+          user_id: user.id,
+        })
         .select()
         .single();
       if (error) throw error;
@@ -530,23 +663,52 @@ export function useSaveDevice() {
       toast.success("Device saved");
       qc.invalidateQueries({ queryKey: ["saved-devices"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
 // ─── Bulk Quote ───────────────────────────────────────────
+export interface BulkQuotePayload {
+  requester_name: string;
+  phone: string;
+  email?: string;
+  organization_name?: string;
+  product_notes?: string;
+  qty?: number;
+  refill_required?: boolean;
+  oem_preference?: string;
+  recurring_frequency?: string;
+  invoice_requirement?: string;
+  request_type?: string;
+}
+
 export function useCreateBulkQuote() {
   return useMutation({
-    mutationFn: async (quote: any) => {
+    mutationFn: async (quote: BulkQuotePayload) => {
+      if (!quote.requester_name || quote.requester_name.length < 2) throw new Error("Name required");
+      if (!quote.phone || quote.phone.length < 9) throw new Error("Valid phone required");
+
       const { data, error } = await supabase
         .from("bulk_quote_requests")
-        .insert(quote)
+        .insert({
+          requester_name: quote.requester_name.slice(0, 200),
+          phone: quote.phone.slice(0, 20),
+          email: quote.email?.slice(0, 255) || null,
+          organization_name: quote.organization_name?.slice(0, 200) || null,
+          product_notes: quote.product_notes?.slice(0, 2000) || null,
+          qty: quote.qty && quote.qty > 0 ? Math.min(quote.qty, 100000) : null,
+          refill_required: quote.refill_required ?? false,
+          oem_preference: quote.oem_preference || "either",
+          recurring_frequency: quote.recurring_frequency || null,
+          invoice_requirement: quote.invoice_requirement || null,
+          request_type: quote.request_type || "standard",
+        })
         .select()
         .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => toast.success("Bulk quote request submitted"),
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 }

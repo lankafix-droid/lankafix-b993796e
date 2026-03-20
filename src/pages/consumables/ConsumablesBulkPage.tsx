@@ -29,10 +29,17 @@ const ConsumablesBulkPage = () => {
     if (form.email && !form.email.includes("@")) { toast.error("Please enter a valid email"); return; }
 
     createQuote.mutate({
-      ...form,
-      qty: parseInt(form.qty) || null,
+      requester_name: form.requester_name,
+      phone: form.phone,
+      email: form.email || undefined,
+      organization_name: form.organization_name || undefined,
+      product_notes: form.product_notes || undefined,
+      qty: parseInt(form.qty) || undefined,
+      oem_preference: form.oem_preference,
+      refill_required: form.refill_required,
+      recurring_frequency: form.recurring_frequency || undefined,
+      invoice_requirement: form.invoice_requirement || undefined,
       request_type: "bulk",
-      status: "pending",
     }, { onSuccess: () => setSubmitted(true) });
   };
 
