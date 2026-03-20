@@ -464,6 +464,9 @@ export default function ContentIntelligenceOpsPage() {
 
         {/* Pipeline mode buttons — granular controls */}
         <div className="flex gap-1 mb-3 flex-wrap">
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'fetch_only' })} disabled={isPending}>
+            <Database className="h-3 w-3 mr-1" /> Fetch Only
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'brief' })} disabled={isPending}>
             <FileText className="h-3 w-3 mr-1" /> Brief Only
           </Button>
