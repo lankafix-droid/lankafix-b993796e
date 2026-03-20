@@ -150,11 +150,15 @@ function SourceHealthBadges({ src }: { src: any }) {
 
   if (!src.base_url) badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
 
-  // Source blocking badges
-  if (src.source_vendor === 'newsdata' && src.rollout_state === 'failing') {
+  // NewsData source detection - check base_url for newsdata.io
+  const isNewsdataSource = src.base_url?.includes('newsdata.io');
+  if (isNewsdataSource && src.rollout_state === 'failing') {
     badges.push(<Badge key="blocked" variant="destructive" className="text-[9px]">🔑 Blocked by key</Badge>);
   }
-  if (src.rollout_state === 'failing' && src.source_vendor !== 'newsdata') {
+  if (isNewsdataSource && src.rollout_state === 'validated') {
+    badges.push(<Badge key="nd-ok" variant="outline" className="text-[9px] text-primary border-primary/30">✅ NewsData Active</Badge>);
+  }
+  if (!isNewsdataSource && src.rollout_state === 'failing') {
     badges.push(<Badge key="authfail" variant="destructive" className="text-[9px]">Auth failed</Badge>);
   }
 
