@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
 import LocationBar from "@/components/v2/location/LocationBar";
+import AtmosphereBadge from "@/components/atmosphere/AtmosphereBadge";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -109,6 +110,11 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
         }} />
 
         <div className="container relative h-full flex flex-col justify-end pb-20 sm:pb-24 md:pb-28">
+          {/* Atmosphere Badge */}
+          <div className="mb-3">
+            <AtmosphereBadge />
+          </div>
+
           {/* Location + Emergency */}
           <div className="flex items-center justify-between mb-6">
             <LocationBar onSetupLocation={onSetupLocation} />

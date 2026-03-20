@@ -11,6 +11,7 @@ import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
 import SmartCampaignSection from "@/components/campaigns/SmartCampaignSection";
 import ContentIntelligenceLayer from "@/components/content/ContentIntelligenceLayer";
+import AtmosphereGlow from "@/components/atmosphere/AtmosphereGlow";
 
 // Lazy-load below-fold sections for mobile performance
 const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
@@ -46,9 +47,11 @@ const V2HomePage = () => {
   }
 
   return (
-    <PageTransition className="min-h-screen flex flex-col bg-background">
+    <PageTransition className="min-h-screen flex flex-col bg-background relative">
+      {/* Living Atmosphere — ambient weather glow */}
+      <AtmosphereGlow />
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 relative z-[1]">
         {/* 1. Hero — search, location, emergency, trust pills */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
