@@ -543,6 +543,9 @@ export default function ContentIntelligenceOpsPage() {
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'brief' })} disabled={isPending}>
             <FileText className="h-3 w-3 mr-1" /> Brief
           </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'rescue_review' })} disabled={isPending}>
+            <Star className="h-3 w-3 mr-1" /> Rescue
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
             <Layers className="h-3 w-3 mr-1" /> Publish
           </Button>
