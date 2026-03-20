@@ -1224,7 +1224,8 @@ serve(async (req) => {
       }
 
       if (mode === 'full') {
-        await briefItems(results, 15);
+        // Smaller batch to stay within timeout
+        await briefItems(results, 6);
         await rescueReviewItems(results);
         await publishToSurfaces(false);
         results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
