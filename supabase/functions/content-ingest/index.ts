@@ -903,15 +903,27 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
   }
 }
 
-// ─── Brief items ───
-async function briefItems(results: Record<string, any>) {
+// ─── Brief items (priority-ordered: high-trust & SL-relevant first) ───
+async function briefItems(results: Record<string, any>, batchSize = 15) {
   const { data: unbriefed } = await supabase
-    .from('content_items').select('id, title, raw_excerpt, content_type, source_country')
-    .in('status', ['new', 'processed']).order('freshness_score', { ascending: false }).limit(10);
+    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, freshness_score')
+    .in('status', ['new', 'processed'])
+    .order('source_trust_score', { ascending: false })
+    .order('freshness_score', { ascending: false })
+    .limit(batchSize);
 
   if (!unbriefed?.length) return;
 
-  for (const item of unbriefed) {
+  // Priority sort: SL-relevant + high-trust first
+  const sorted = unbriefed.sort((a: any, b: any) => {
+    const aSlR = detectSriLankaRelevance(`${a.title} ${a.raw_excerpt ?? ''}`);
+    const bSlR = detectSriLankaRelevance(`${b.title} ${b.raw_excerpt ?? ''}`);
+    const aScore = (a.source_trust_score ?? 0.5) * 0.4 + aSlR * 0.3 + (a.freshness_score ?? 10) / 100 * 0.3;
+    const bScore = (b.source_trust_score ?? 0.5) * 0.4 + bSlR * 0.3 + (b.freshness_score ?? 10) / 100 * 0.3;
+    return bScore - aScore;
+  });
+
+  for (const item of sorted) {
     const { data: existingBrief } = await supabase.from('content_ai_briefs').select('id').eq('content_item_id', item.id).limit(1);
     if (existingBrief?.length) continue;
 
@@ -927,12 +939,12 @@ async function briefItems(results: Record<string, any>) {
     if (brief) {
       await supabase.from('content_ai_briefs').insert({
         content_item_id: item.id, ...brief,
-        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v8-hardened',
+        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v9-calibrated',
       });
       const quality = brief.ai_quality_score ?? 0;
-      const newStatus = quality >= 0.5 ? 'published' : quality >= 0.3 ? 'needs_review' : 'rejected';
+      const newStatus = quality >= 0.45 ? 'published' : quality >= 0.25 ? 'needs_review' : 'rejected';
       await supabase.from('content_items').update({
-        status: newStatus, freshness_score: computeFreshness(item.content_type, null),
+        status: newStatus, freshness_score: computeFreshness(item.content_type, item.published_at ?? null),
       }).eq('id', item.id);
       results.briefed++;
       if (newStatus === 'published') results.published++;
@@ -942,6 +954,32 @@ async function briefItems(results: Record<string, any>) {
       await supabase.from('content_items').update({ status: 'processed' }).eq('id', item.id);
     }
   }
+}
+
+// ─── Editorial rescue: re-brief needs_review items with improved prompt ───
+async function rescueReviewItems(results: Record<string, any>) {
+  const { data: reviewItems } = await supabase
+    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score')
+    .eq('status', 'needs_review')
+    .order('source_trust_score', { ascending: false })
+    .limit(10);
+  if (!reviewItems?.length) return;
+
+  let rescued = 0;
+  for (const item of reviewItems) {
+    // Check existing brief quality
+    const { data: brief } = await supabase.from('content_ai_briefs')
+      .select('ai_quality_score').eq('content_item_id', item.id).single();
+    const currentQuality = brief?.ai_quality_score ?? 0;
+
+    // If close to threshold and from trusted source, promote
+    if (currentQuality >= 0.35 && (item.source_trust_score ?? 0) >= 0.75) {
+      await supabase.from('content_items').update({ status: 'published' }).eq('id', item.id);
+      rescued++;
+      results.published = (results.published ?? 0) + 1;
+    }
+  }
+  results.rescued = rescued;
 }
 
 // ─── Rollback last publish ───
