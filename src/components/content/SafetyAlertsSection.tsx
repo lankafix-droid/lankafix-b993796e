@@ -1,3 +1,6 @@
+/**
+ * SafetyAlertsSection v4 — Urgent, premium safety surface with distinct alert styling.
+ */
 import { memo } from 'react';
 import { Shield, AlertTriangle } from 'lucide-react';
 import ContentSectionShell from './ContentSectionShell';
@@ -36,20 +39,10 @@ const SafetyAlertsSection = memo(function SafetyAlertsSection({ onOpenItem }: Pr
       </div>
       <div className="px-4 space-y-2.5">
         {items.slice(0, 1).map((item) => (
-          <ContentCard
-            key={item.id}
-            item={item}
-            variant="hero"
-            onOpen={onOpenItem}
-          />
+          <ContentCard key={item.id} item={item} variant="hero" onOpen={onOpenItem} />
         ))}
         {items.slice(1).map((item) => (
-          <ContentCard
-            key={item.id}
-            item={item}
-            variant="standard"
-            onOpen={onOpenItem}
-          />
+          <ContentCard key={item.id} item={item} variant="standard" onOpen={onOpenItem} />
         ))}
       </div>
     </ContentSectionShell>

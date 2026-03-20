@@ -1,3 +1,7 @@
+/**
+ * ContentCard v4 — Launch-grade content card with premium variants.
+ * Clean hierarchy, SL-aware badges, live/evergreen distinction, safe tracking.
+ */
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -48,7 +52,6 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
   const headline = brief?.ai_headline ?? item.title;
   const summary = brief?.ai_summary_short ?? item.raw_excerpt ?? '';
   const whyMatters = brief?.ai_why_it_matters;
-  const bannerText = brief?.ai_banner_text;
   const categoryTags = item.category_tags.slice(0, 2);
   const isEvergreen = item.id.startsWith('evergreen-');
   const isLive = !isEvergreen;
@@ -80,7 +83,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           </div>
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{headline}</p>
-            <div className="mt-1.5 flex items-center gap-1.5">
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
               {isEvergreen && (
                 <span className="text-[10px] text-primary/70 font-medium flex items-center gap-0.5">
                   <Sparkles className="h-2.5 w-2.5" /> LankaFix
@@ -91,9 +94,10 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               )}
               {isSriLankan && <span className="text-[10px]">🇱🇰</span>}
               {isLive && (
-                <span className="text-[10px] text-muted-foreground">
-                  {formatTimeAgo(item.published_at)}
-                </span>
+                <span className="text-[10px] text-muted-foreground">{formatTimeAgo(item.published_at)}</span>
+              )}
+              {categoryTags[0] && (
+                <span className="text-[9px] text-primary/60 font-medium">#{categoryTags[0].category_code}</span>
               )}
             </div>
           </div>
@@ -102,7 +106,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
     );
   }
 
-  // ── Hero card — premium visual treatment ──
+  // ── Hero card — premium visual ──
   if (variant === 'hero') {
     return (
       <div ref={impressionRef}>
@@ -110,39 +114,38 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           onClick={handleClick}
           className={cn(
             'relative w-full overflow-hidden rounded-2xl bg-card text-left group',
-            'transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.99]',
+            'transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]',
             'border',
             isSafety ? 'border-destructive/20 shadow-destructive/5' : 'border-border/30 shadow-sm',
             className
           )}
         >
           {item.image_url ? (
-            <div className="relative h-44 w-full overflow-hidden">
+            <div className="relative h-40 w-full overflow-hidden">
               <img src={item.image_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
               <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
             </div>
           ) : (
             <div className={cn(
-              "h-32 w-full flex items-center justify-center relative overflow-hidden",
+              "h-28 w-full flex items-center justify-center relative overflow-hidden",
               isSafety
                 ? "bg-gradient-to-br from-destructive/8 via-destructive/3 to-card"
                 : "bg-gradient-to-br from-primary/8 via-accent/4 to-card"
             )}>
-              <div className="absolute inset-0 opacity-[0.03]" style={{
-                backgroundImage: `radial-gradient(circle at 25% 45%, hsl(var(--primary)) 1px, transparent 1px),
-                                  radial-gradient(circle at 75% 55%, hsl(var(--primary)) 0.5px, transparent 0.5px)`,
-                backgroundSize: '28px 28px, 20px 20px'
+              <div className="absolute inset-0 opacity-[0.025]" style={{
+                backgroundImage: `radial-gradient(circle at 25% 45%, hsl(var(--primary)) 1px, transparent 1px)`,
+                backgroundSize: '24px 24px'
               }} />
               <div className={cn(
-                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full blur-3xl opacity-[0.06]",
+                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full blur-3xl opacity-[0.05]",
                 isSafety ? "bg-destructive" : "bg-primary"
               )} />
-              <div className="rounded-2xl bg-card/80 p-3.5 backdrop-blur-sm shadow-sm border border-border/30">
-                <Icon className={cn("h-6 w-6", isSafety ? "text-destructive/60" : "text-primary/60")} />
+              <div className="rounded-xl bg-card/80 p-3 backdrop-blur-sm shadow-sm border border-border/30">
+                <Icon className={cn("h-5 w-5", isSafety ? "text-destructive/60" : "text-primary/60")} />
               </div>
             </div>
           )}
-          <div className={cn('p-4', item.image_url ? '-mt-16 relative z-10' : '')}>
+          <div className={cn('p-4', item.image_url ? '-mt-14 relative z-10' : '')}>
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase tracking-wider border', config.accent)}>
                 <Icon className="mr-1 h-3 w-3" />
@@ -162,7 +165,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               )}
             </div>
             <h3 className="text-[15px] font-bold leading-snug text-foreground line-clamp-2">{headline}</h3>
-            {summary && <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
+            {summary && <p className="mt-1.5 text-[13px] text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
             {whyMatters && (
               <p className="mt-2 text-xs font-medium text-primary/80 line-clamp-1 flex items-center gap-1">
                 💡 <span className="italic">{whyMatters}</span>
@@ -173,6 +176,12 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
                 {item.source_name && <span className="font-medium">{item.source_name}</span>}
                 <span className="text-border">·</span>
                 <span>{isEvergreen ? 'LankaFix Intelligence' : formatTimeAgo(item.published_at)}</span>
+                {categoryTags[0] && (
+                  <>
+                    <span className="text-border">·</span>
+                    <span className="text-primary/60 font-medium">#{categoryTags[0].category_code}</span>
+                  </>
+                )}
               </div>
               <ArrowUpRight className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
             </div>
@@ -205,7 +214,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               ? 'bg-gradient-to-br from-destructive/6 via-card to-destructive/3 border-destructive/10'
               : 'bg-gradient-to-br from-primary/6 via-accent/3 to-muted/30 border-border/20'
           )}>
-            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
             <Icon className={cn("h-5 w-5", isSafety ? "text-destructive/40" : "text-primary/40")} />
           </div>
         )}
@@ -226,7 +235,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
             {isLive && item.source_name && <span className="font-medium">{item.source_name}</span>}
             {isLive && <span>{formatTimeAgo(item.published_at)}</span>}
-            {categoryTags.length > 0 && (
+            {categoryTags[0] && (
               <span className="text-primary/60 font-medium">#{categoryTags[0].category_code}</span>
             )}
           </div>
