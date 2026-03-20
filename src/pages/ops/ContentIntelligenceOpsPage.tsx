@@ -11,7 +11,8 @@ import { toast } from 'sonner';
 import {
   RefreshCw, CheckCircle, XCircle, Trash2, Pin, BarChart3,
   Activity, Eye, TrendingUp, AlertTriangle, Power, RotateCw, Star,
-  Clock, Shield, Database, Layers, Radio, Zap, ChevronUp
+  Clock, Shield, Database, Layers, Radio, Zap, ChevronUp,
+  Play, Pause, Search, Filter
 } from 'lucide-react';
 
 function EmptyState({ message, icon: Icon }: { message: string; icon?: any }) {
@@ -77,6 +78,18 @@ const HEALTH_DOT: Record<SourceHealth, string> = {
   disabled: 'bg-muted-foreground',
 };
 
+const TIER_LABELS: Record<string, { label: string; color: string }> = {
+  tier1_safe: { label: 'Tier 1', color: 'text-primary border-primary/20 bg-primary/5' },
+  tier2_controlled: { label: 'Tier 2', color: 'text-accent-foreground border-accent/20 bg-accent/5' },
+  tier3_experimental: { label: 'Tier 3', color: 'text-warning border-warning/20 bg-warning/5' },
+};
+
+function classifySourceTier(src: any): string {
+  if (src.trust_score >= 0.8 && src.base_url) return 'tier1_safe';
+  if (src.trust_score >= 0.7 && src.base_url) return 'tier2_controlled';
+  return 'tier3_experimental';
+}
+
 function SourceHealthBadges({ src }: { src: any }) {
   const badges: React.ReactNode[] = [];
   const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
@@ -85,6 +98,18 @@ function SourceHealthBadges({ src }: { src: any }) {
   if (!src.active) {
     badges.push(<Badge key="dis" variant="secondary" className="text-[9px]">Disabled</Badge>);
     return <>{badges}</>;
+  }
+
+  // Tier badge
+  const tier = classifySourceTier(src);
+  const tierInfo = TIER_LABELS[tier];
+  if (tierInfo) {
+    badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
+  }
+
+  // URL status
+  if (!src.base_url) {
+    badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
   }
 
   // Fetch timing
@@ -113,12 +138,43 @@ function SourceHealthBadges({ src }: { src: any }) {
     badges.push(<Badge key="trl" variant="outline" className="text-[9px] text-warning border-warning/20">Low trust</Badge>);
   }
 
+  // SL relevance
+  if ((src.sri_lanka_bias ?? 0) >= 0.7) {
+    badges.push(<Badge key="sl" variant="outline" className="text-[9px] border-primary/15">🇱🇰 Local</Badge>);
+  }
+
   return <>{badges}</>;
 }
+
+// Surface coverage status
+type SurfaceCoverageStatus = 'full' | 'partial' | 'fallback_only' | 'empty';
+
+function getSurfaceCoverage(surfacesByCode: Record<string, any[]>, code: string): SurfaceCoverageStatus {
+  const items = surfacesByCode[code];
+  if (!items || items.length === 0) return 'fallback_only'; // evergreen will fill
+  const maxExpected: Record<string, number> = {
+    homepage_hero: 3, homepage_hot_now: 8, homepage_did_you_know: 4,
+    homepage_innovations: 4, homepage_safety: 3, homepage_numbers: 4,
+    homepage_popular: 5, ai_banner_forum: 5, category_featured: 1, category_feed: 6,
+  };
+  const max = maxExpected[code] ?? 4;
+  if (items.length >= max) return 'full';
+  if (items.length >= max * 0.5) return 'partial';
+  return 'partial';
+}
+
+const COVERAGE_STYLES: Record<SurfaceCoverageStatus, string> = {
+  full: 'text-primary',
+  partial: 'text-warning',
+  fallback_only: 'text-muted-foreground',
+  empty: 'text-destructive',
+};
 
 export default function ContentIntelligenceOpsPage() {
   const qc = useQueryClient();
   const invalidateAll = () => qc.invalidateQueries({ queryKey: ['content-ops'] });
+  const [lastRunResult, setLastRunResult] = useState<any>(null);
+  const [previewResult, setPreviewResult] = useState<any>(null);
 
   const { data: queue, isLoading: queueLoading } = useQuery({
     queryKey: ['content-ops', 'queue'],
@@ -220,7 +276,6 @@ export default function ContentIntelligenceOpsPage() {
     return (Date.now() - new Date(s.last_fetched_at).getTime()) > 24 * 3600000;
   }).length ?? 0;
   const criticalSources = sources?.filter((s: any) => getSourceHealth(s) === 'critical').length ?? 0;
-  const surfaceCount = surfaces?.length ?? 0;
   const needsReview = queue?.filter((q: any) => q.status === 'needs_review').length ?? 0;
   const totalRejected = sources?.reduce((s: number, src: any) => s + (src.counts?.rejected ?? 0), 0) ?? 0;
   const totalArchived = sources?.reduce((s: number, src: any) => s + (src.counts?.archived ?? 0), 0) ?? 0;
@@ -229,20 +284,43 @@ export default function ContentIntelligenceOpsPage() {
   const publishRate = totalFetched > 0 ? Math.round((totalPublished / totalFetched) * 100) : 0;
   const rejectRate = totalFetched > 0 ? Math.round((totalRejected / totalFetched) * 100) : 0;
 
-  // Surface coverage: how many of the 10 required surfaces have at least 1 active item
+  // Source tier counts
+  const tier1Count = sources?.filter((s: any) => classifySourceTier(s) === 'tier1_safe').length ?? 0;
+  const tier2Count = sources?.filter((s: any) => classifySourceTier(s) === 'tier2_controlled').length ?? 0;
+  const tier3Count = sources?.filter((s: any) => classifySourceTier(s) === 'tier3_experimental').length ?? 0;
+  const readySources = sources?.filter((s: any) => s.active && s.base_url).length ?? 0;
+  const needsUrlSources = sources?.filter((s: any) => s.active && !s.base_url).length ?? 0;
+
+  // Surface coverage
+  const surfacesByCode = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    (surfaces ?? []).forEach((s: any) => { (map[s.surface_code] ??= []).push(s); });
+    return map;
+  }, [surfaces]);
+
   const REQUIRED_SURFACES = ['homepage_hero', 'homepage_hot_now', 'homepage_did_you_know', 'homepage_innovations', 'homepage_safety', 'homepage_numbers', 'homepage_popular', 'ai_banner_forum', 'category_featured', 'category_feed'];
-  const coveredSurfaces = REQUIRED_SURFACES.filter(s => surfacesByCode[s]?.length > 0).length;
+  const coveredSurfaces = REQUIRED_SURFACES.filter(s => (surfacesByCode[s]?.length ?? 0) > 0).length;
   const surfaceCoverage = Math.round((coveredSurfaces / REQUIRED_SURFACES.length) * 100);
 
   // Mutations
   const ingestMutation = useMutation({
-    mutationFn: async (mode: string) => {
-      const { data, error } = await supabase.functions.invoke('content-ingest', { body: { mode } });
+    mutationFn: async ({ mode, tierLimit }: { mode: string; tierLimit?: string }) => {
+      const { data, error } = await supabase.functions.invoke('content-ingest', {
+        body: { mode, tier_limit: tierLimit },
+      });
       if (error) throw error;
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`Pipeline complete`, { description: `Fetched: ${data?.fetched ?? 0}, Deduped: ${data?.deduped ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}` });
+      setLastRunResult({ ...data, timestamp: new Date().toISOString() });
+      if (data.mode === 'dry_run' || data.mode === 'publish_preview') {
+        setPreviewResult(data.preview);
+        toast.success('Preview generated', { description: `${Object.keys(data.preview ?? {}).length} surfaces analyzed` });
+      } else {
+        toast.success(`Pipeline complete`, {
+          description: `Fetched: ${data?.fetched ?? 0}, Briefed: ${data?.briefed ?? 0}, Published: ${data?.published ?? 0}`,
+        });
+      }
       invalidateAll();
     },
     onError: (e) => toast.error(`Pipeline failed: ${(e as Error).message}`),
@@ -264,7 +342,6 @@ export default function ContentIntelligenceOpsPage() {
         await supabase.from('content_surface_state').update({ active: false }).eq('content_item_id', itemId);
       }
       if (action === 'boost') {
-        // Increment rank by +15 rather than hard-setting; cap below pin threshold (990)
         const { data: currentSurfaces } = await supabase
           .from('content_surface_state')
           .select('id, rank_score')
@@ -300,12 +377,6 @@ export default function ContentIntelligenceOpsPage() {
     onError: () => toast.error('Re-brief failed'),
   });
 
-  const surfacesByCode = useMemo(() => {
-    const map: Record<string, any[]> = {};
-    (surfaces ?? []).forEach((s: any) => { (map[s.surface_code] ??= []).push(s); });
-    return map;
-  }, [surfaces]);
-
   const isPending = ingestMutation.isPending || editorialAction.isPending || reBriefMutation.isPending;
 
   return (
@@ -323,7 +394,7 @@ export default function ContentIntelligenceOpsPage() {
                 </Badge>
               )}
             </h1>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {staleSources > 0 && (
                 <span className="text-xs text-warning flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" /> {staleSources} stale
@@ -334,22 +405,93 @@ export default function ContentIntelligenceOpsPage() {
                   <XCircle className="h-3 w-3" /> {criticalSources} critical
                 </span>
               )}
+              {needsUrlSources > 0 && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  {needsUrlSources} need URL
+                </span>
+              )}
             </div>
           </div>
-          <div className="flex gap-1.5">
-            <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate('ingest')} disabled={isPending}>
+          <div className="flex gap-1 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate({ mode: 'dry_run' })} disabled={isPending}>
+              <Search className="h-3.5 w-3.5 mr-1" /> Preview
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier1' })} disabled={isPending}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1 ${ingestMutation.isPending ? 'animate-spin' : ''}`} />
-              Ingest
+              Tier 1
             </Button>
-            <Button size="sm" variant="outline" onClick={() => ingestMutation.mutate('brief')} disabled={isPending}>
-              <Star className="h-3.5 w-3.5 mr-1" /> Brief
-            </Button>
-            <Button size="sm" onClick={() => ingestMutation.mutate('full')} disabled={isPending}>
+            <Button size="sm" onClick={() => ingestMutation.mutate({ mode: 'full' })} disabled={isPending}>
               {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
               Full Run
             </Button>
           </div>
         </div>
+
+        {/* Last Pipeline Run Card */}
+        {lastRunResult && (
+          <Card className="p-3 mb-3 border-primary/20 bg-primary/2">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-bold flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5 text-primary" />
+                Last Run: <Badge variant="outline" className="text-[9px]">{lastRunResult.mode}</Badge>
+              </span>
+              <span className="text-[10px] text-muted-foreground">{lastRunResult.duration_ms}ms · {formatTimeAgo(lastRunResult.timestamp)}</span>
+            </div>
+            <div className="grid grid-cols-5 gap-2 text-[10px]">
+              <div>Fetched: <strong>{lastRunResult.fetched ?? 0}</strong></div>
+              <div>Deduped: <strong>{lastRunResult.deduped ?? 0}</strong></div>
+              <div>Briefed: <strong>{lastRunResult.briefed ?? 0}</strong></div>
+              <div>Published: <strong className="text-primary">{lastRunResult.published ?? 0}</strong></div>
+              <div>Rejected: <strong className="text-destructive">{lastRunResult.rejected ?? 0}</strong></div>
+            </div>
+            {lastRunResult.title_rejected > 0 && (
+              <p className="text-[10px] text-warning mt-1">⚠ {lastRunResult.title_rejected} titles rejected by quality gate</p>
+            )}
+            {lastRunResult.source_errors?.length > 0 && (
+              <div className="mt-1.5 text-[10px] text-destructive">
+                {lastRunResult.source_errors.slice(0, 3).map((e: string, i: number) => (
+                  <p key={i}>⚠ {e}</p>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Preview Result */}
+        {previewResult && (
+          <Card className="p-3 mb-3 border-accent/20 bg-accent/2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold flex items-center gap-1.5">
+                <Eye className="h-3.5 w-3.5 text-accent-foreground" />
+                Publish Preview (Dry Run)
+              </span>
+              <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setPreviewResult(null)}>Dismiss</Button>
+            </div>
+            {Object.entries(previewResult).length === 0 ? (
+              <p className="text-[10px] text-muted-foreground">No published content available for any surface. Evergreen fallback will be used.</p>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(previewResult).slice(0, 12).map(([surface, items]) => (
+                  <div key={surface}>
+                    <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">{surface.replace(/_/g, ' ')}</p>
+                    {(items as any[]).length === 0 ? (
+                      <p className="text-[9px] text-muted-foreground/60 italic">Fallback only</p>
+                    ) : (
+                      (items as any[]).map((item: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-[10px] ml-2">
+                          <span className="text-muted-foreground w-3 text-right">{i + 1}.</span>
+                          <span className="truncate flex-1">{item.title}</span>
+                          <Badge variant="outline" className="text-[8px] shrink-0">{item.relevance_band?.replace(/_/g, ' ') ?? '—'}</Badge>
+                          <span className="text-[9px] text-muted-foreground shrink-0">{item.rank}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Executive Pipeline Metrics */}
         <div className="grid grid-cols-4 gap-2 mb-2">
@@ -359,7 +501,7 @@ export default function ContentIntelligenceOpsPage() {
           <StatCard label="Archived" value={totalArchived} icon={Trash2} color="text-muted-foreground" />
         </div>
         <div className="grid grid-cols-4 gap-2 mb-4">
-          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={criticalSources > 0 ? `${criticalSources} critical` : disabledSources > 0 ? `${disabledSources} disabled` : staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
+          <StatCard label="Sources" value={`${readySources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={`T1:${tier1Count} T2:${tier2Count} T3:${tier3Count}`} />
           <StatCard label="Coverage" value={`${surfaceCoverage}%`} icon={Radio} color="text-primary" subtitle={`${coveredSurfaces}/${REQUIRED_SURFACES.length} surfaces`} />
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
           <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${(analytics as any)?.click ?? 0} clicks`} />
@@ -476,7 +618,7 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* Sources Tab — with color-coded health */}
+          {/* Sources Tab — with tier labels and color-coded health */}
           <TabsContent value="sources" className="space-y-2 mt-3">
             {srcLoading && <p className="text-center py-8 text-muted-foreground text-sm animate-pulse">Loading…</p>}
             {!srcLoading && !sources?.length && <EmptyState message="No sources configured" icon={Database} />}
@@ -502,9 +644,6 @@ export default function ContentIntelligenceOpsPage() {
                         <span>Total: <strong>{src.counts.total}</strong></span>
                         <span>Published: <strong className="text-primary">{src.counts.published}</strong> ({src.counts.total > 0 ? Math.round(publishRate * 100) : 0}%)</span>
                         <span>Rejected: <strong className="text-destructive">{src.counts.rejected}</strong> ({src.counts.total > 0 ? Math.round(rejectRate * 100) : 0}%)</span>
-                        <span>Archived: <strong>{src.counts.archived}</strong></span>
-                        <span>Review: <strong className="text-warning">{src.counts.needs_review}</strong></span>
-                        {src.sri_lanka_bias > 0.5 && <span>🇱🇰 SL bias: <strong>{src.sri_lanka_bias}</strong></span>}
                       </div>
                       {src.category_allowlist?.length > 0 && (
                         <div className="flex gap-1 mt-1 flex-wrap">
@@ -525,8 +664,32 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* Surfaces Tab */}
+          {/* Surfaces Tab — with coverage indicators */}
           <TabsContent value="surfaces" className="space-y-3 mt-3">
+            {/* Surface Coverage Summary */}
+            <Card className="p-3">
+              <h3 className="text-xs font-bold mb-2 flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-primary" /> Surface Coverage
+              </h3>
+              <div className="grid grid-cols-2 gap-1.5">
+                {REQUIRED_SURFACES.map(code => {
+                  const status = getSurfaceCoverage(surfacesByCode, code);
+                  const count = surfacesByCode[code]?.length ?? 0;
+                  return (
+                    <div key={code} className="flex items-center justify-between text-[10px]">
+                      <span className="truncate">{code.replace(/_/g, ' ')}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-muted-foreground">{count}</span>
+                        <span className={`font-semibold capitalize ${COVERAGE_STYLES[status]}`}>
+                          {status === 'fallback_only' ? '🌿' : status === 'full' ? '✓' : status === 'partial' ? '◐' : '✗'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
             {!surfaces?.length && <EmptyState message="No active surface assignments — surfaces use evergreen fallback" icon={Layers} />}
             {Object.entries(surfacesByCode).map(([code, items]) => (
               <Card key={code} className="p-3">
