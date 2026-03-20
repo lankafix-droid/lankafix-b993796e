@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Clock, TrendingUp, Shield, Zap, Lightbulb, Hash, BookOpen, BarChart3, AlertTriangle } from 'lucide-react';
+import { Clock, TrendingUp, Shield, Zap, Lightbulb, Hash, BookOpen, BarChart3, AlertTriangle, Sparkles } from 'lucide-react';
 import type { EnrichedContentItem, ContentType } from '@/types/contentIntelligence';
 import { trackContentEvent } from '@/hooks/useContentIntelligence';
 import { useTrackContentImpression } from '@/hooks/useTrackContentImpression';
