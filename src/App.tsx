@@ -392,6 +392,7 @@ const App = () => (
             <Route path="/ops/demand-dashboard" element={<OpsRoute><DemandDashboardPage /></OpsRoute>} />
             <Route path="/ops/content-intelligence" element={<OpsRoute><ContentIntelligenceOpsPage /></OpsRoute>} />
             <Route path="/ops/sps-intelligence" element={<OpsRoute><SPSIntelligenceDashboardPage /></OpsRoute>} />
+            <Route path="/ops/consumables" element={<OpsRoute><ConsumablesAdminPage /></OpsRoute>} />
 
             {/* ─── Content Intelligence ─── */}
             <Route path="/insights/:id" element={<InsightDetailPage />} />
