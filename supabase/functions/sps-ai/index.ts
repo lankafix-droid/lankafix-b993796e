@@ -225,7 +225,16 @@ async function handlePlanInsight(payload: unknown, apiKey: string, sb: SC): Prom
   const numUsers = validateInt(inputs.numUsers, "numUsers", 1, 500);
 
   const planCode = validateString((p.plan as Record<string, unknown>)?.plan_code, "plan.plan_code", 50);
-  const confidence = validateInt(p.confidence, "confidence", 0, 100);
+  // Accept both numeric confidence (0-100) and semantic labels from frontend
+  const CONFIDENCE_MAP: Record<string, number> = { recommended: 85, good_fit: 60, review_required: 30 };
+  let confidence: number;
+  if (typeof p.confidence === "number") {
+    confidence = validateInt(p.confidence, "confidence", 0, 100);
+  } else if (typeof p.confidence === "string" && p.confidence in CONFIDENCE_MAP) {
+    confidence = CONFIDENCE_MAP[p.confidence];
+  } else {
+    throw new ValidationError("confidence must be a number (0-100) or one of: recommended, good_fit, review_required");
+  }
   const reason = validateOptionalString(p.reason, 500);
 
   const plans = await fetchPlansMetadata(sb);
