@@ -365,6 +365,18 @@ const App = () => (
             {/* ─── Content Intelligence ─── */}
             <Route path="/insights/:id" element={<InsightDetailPage />} />
 
+            {/* ─── SPS — Smart Print Subscription ─── */}
+            <Route path="/sps" element={<SPSLandingPage />} />
+            <Route path="/sps/find-plan" element={<FindMyPlanPage />} />
+            <Route path="/sps/plans" element={<SPSPlansPage />} />
+            <Route path="/sps/plans/:planId" element={<SPSPlanDetailPage />} />
+            <Route path="/sps/fleet" element={<SPSFleetPage />} />
+            <Route path="/sps/request" element={<ProtectedRoute><SPSRequestPage /></ProtectedRoute>} />
+            <Route path="/sps/dashboard" element={<ProtectedRoute><SPSDashboardPage /></ProtectedRoute>} />
+            <Route path="/sps/meter" element={<ProtectedRoute><SPSMeterPage /></ProtectedRoute>} />
+            <Route path="/sps/support" element={<ProtectedRoute><SPSSupportPage /></ProtectedRoute>} />
+            <Route path="/sps/billing" element={<ProtectedRoute><SPSBillingPage /></ProtectedRoute>} />
+
             {/* ─── Settings Pages ─── */}
             <Route path="/settings/ai-preferences" element={<AIPreferencesPage />} />
 
