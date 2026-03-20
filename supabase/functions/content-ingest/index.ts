@@ -845,7 +845,6 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
         articles = data.articles ?? data.results ?? data.data ?? [];
       }
       results.fetched += articles.length;
-      results.fetched += articles.length;
 
       for (const article of articles.slice(0, 15)) {
         const title = (article.title ?? article.headline ?? '').trim();
