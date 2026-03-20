@@ -48,9 +48,10 @@ const MAX_SAME_SOURCE_PER_SURFACE = 2;
 const WEAK_SOURCE_PENALTY: Record<string, number> = {
   'Ars Technica RSS': -10,
   'Electrek Energy': -7,
-  'Hacker News Best': -14,
+  'Hacker News Best': -16,
   'Techmeme': -3,
-  'How-To Geek': -4,
+  'How-To Geek': -6,
+  'CleanTechnica': -5,
 };
 
 /** SL-relevant category codes that get extra local utility boost */
