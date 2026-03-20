@@ -700,21 +700,28 @@ export default function ContentIntelligenceOpsPage() {
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
           <StatCard label="Runs" value={pipelineHistory?.length ?? 0} icon={History} color="text-muted-foreground" subtitle={pipelineHistory?.[0] ? formatTimeAgo(pipelineHistory[0].started_at) : 'None'} />
         </div>
-        {/* Live vs Evergreen + SL Relevance metrics */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        {/* Live vs Evergreen + SL Relevance + Premium metrics */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
           <StatCard
             label="Live Fill"
             value={`${(surfaces ?? []).length}`}
             icon={Radio}
             color="text-primary"
-            subtitle={`${coveredSurfaces} surfaces active`}
+            subtitle={`${coveredSurfaces} surfaces`}
+          />
+          <StatCard
+            label="🇱🇰 SL Published"
+            value={published?.filter((p: any) => p.source_country === 'lk').length ?? 0}
+            icon={Shield}
+            color="text-primary"
+            subtitle={`of ${totalPublished} total`}
           />
           <StatCard
             label="SL Sources"
             value={sources?.filter((s: any) => (s.sri_lanka_bias ?? 0) >= 0.7 && s.active).length ?? 0}
             icon={Shield}
-            color="text-primary"
-            subtitle={`of ${activeSources} active`}
+            color="text-accent-foreground"
+            subtitle={`${sources?.filter((s: any) => s.source_vendor === 'newsdata' && s.rollout_state === 'failing').length ?? 0} blocked by key`}
           />
           <StatCard
             label="Avg Quality"
