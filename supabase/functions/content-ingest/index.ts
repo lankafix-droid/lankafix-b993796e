@@ -113,12 +113,56 @@ function titleSimilarity(a: string, b: string): number {
   return overlap / Math.max(wordsA.size, wordsB.size);
 }
 
-// ─── AI Briefing ───
+// ─── Local Utility Score — combined multi-signal scoring ───
+function computeLocalUtilityScore(item: {
+  source_country?: string;
+  source_trust_score?: number;
+  freshness_score?: number;
+  content_type?: string;
+}, slRelevance: number, commercialRelevance: number, categoryConfidence: number): number {
+  const isLocal = item.source_country === 'lk' || item.source_country === 'LK';
+  const localityScore = isLocal ? 0.9 : (slRelevance > 0.6 ? 0.6 : 0.2);
+  const trustScore = Math.min(1, (item.source_trust_score ?? 0.5));
+  const freshnessNorm = Math.min(1, (item.freshness_score ?? 30) / 100);
+  const isSafety = item.content_type === 'safety_alert' || item.content_type === 'scam_alert';
+  const safetyBonus = isSafety ? 0.15 : 0;
+
+  return Math.min(1,
+    localityScore * 0.25 +
+    slRelevance * 0.20 +
+    categoryConfidence * 0.15 +
+    commercialRelevance * 0.15 +
+    trustScore * 0.10 +
+    freshnessNorm * 0.10 +
+    safetyBonus +
+    0.05 // base
+  );
+}
+
+// ─── Hero Score — specialized for hero surface ───
+function computeHeroScore(item: any, quality: number, localUtility: number): number {
+  const freshness = (item.freshness_score ?? 50) / 100;
+  const hasImage = item.image_url ? 0.1 : 0;
+  const headlineQuality = (item.title?.length > 30 && item.title?.length < 120) ? 0.05 : 0;
+  const isSafety = (item.content_type === 'safety_alert' || item.content_type === 'scam_alert') ? 0.1 : 0;
+
+  return (
+    quality * 0.30 +
+    freshness * 0.25 +
+    localUtility * 0.20 +
+    hasImage +
+    headlineQuality +
+    isSafety +
+    (item.source_trust_score ?? 0.5) * 0.10
+  );
+}
+
+// ─── AI Briefing with hardened safety ───
 async function generateAIBrief(item: { title: string; raw_excerpt: string | null; content_type: string; categories: string[]; sri_lanka_relevance: number }) {
   if (!LOVABLE_API_KEY) return null;
   try {
     const slContext = item.sri_lanka_relevance > 0.5
-      ? `\nSri Lanka Context: This content is relevant to Sri Lanka. Include "What this means in Sri Lanka" perspective where appropriate. Reference local conditions (monsoon, electricity costs, tropical climate, local market) if genuinely relevant.`
+      ? `\nSri Lanka Context: This content has genuine Sri Lanka relevance. Include local perspective where supported by source text only.`
       : '';
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -134,17 +178,19 @@ async function generateAIBrief(item: { title: string; raw_excerpt: string | null
             role: "system",
             content: `You are a content intelligence assistant for LankaFix, Sri Lanka's trusted tech repair & home services marketplace.
 
-RULES:
+STRICT RULES:
 - Generate concise, useful, premium summaries for LankaFix users.
-- NEVER invent facts, statistics, or claims not in the source.
-- NEVER fabricate Sri Lanka relevance if none exists.
+- NEVER invent facts, statistics, numbers, or claims not explicitly in the source text.
+- NEVER fabricate Sri Lanka market data, prices, percentages, or savings claims.
+- NEVER invent urgency that doesn't exist in the source.
 - NEVER sensationalize or use clickbait language.
+- ai_banner_text must ONLY contain a number/stat that appears verbatim in the source. If none exists, return null.
+- ai_risk_flags must ONLY contain risks genuinely described in the source.
+- If source text is thin or vague, set ai_quality_score below 0.4 and keep summaries conservative.
 - Keep tone professional, helpful, trustworthy, and simple.
-- Focus on how the content helps someone making service decisions.
-- For ai_why_it_matters: explain practical impact on homeowners/businesses.
-- For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services.
-- If source quality is weak, give a lower quality score.
-- When Sri Lanka context exists, emphasize practical local relevance.`
+- Focus on how the content helps someone making service/repair/maintenance decisions.
+- For ai_why_it_matters: explain practical impact on homeowners/businesses. Source-grounded only.
+- For ai_lankafix_angle: only include genuine connections to repair/maintenance/home services. Null if forced.`
           },
           {
             role: "user",
@@ -158,8 +204,8 @@ ${slContext}
 Title: ${item.title}
 Excerpt: ${item.raw_excerpt ?? 'No excerpt available'}
 
-Generate a structured brief. Be source-grounded only. Do not invent any facts.
-For ai_quality_score: rate 0.0-1.0 based on source reliability, relevance to tech/home services, usefulness to Sri Lankan consumers, and content depth.`
+Generate a structured brief. Be source-grounded only. Do not invent any facts or numbers.
+For ai_quality_score: rate 0.0-1.0 based on source depth, relevance, and usefulness. Thin sources must score below 0.4.`
           }
         ],
         tools: [{
@@ -173,13 +219,13 @@ For ai_quality_score: rate 0.0-1.0 based on source reliability, relevance to tec
                 ai_headline: { type: "string", description: "Premium rewritten headline, max 80 chars" },
                 ai_summary_short: { type: "string", description: "1-sentence summary, max 120 chars" },
                 ai_summary_medium: { type: "string", description: "2-3 sentence useful summary focusing on practical impact" },
-                ai_why_it_matters: { type: "string", description: "Why this matters to someone using tech/home services in Sri Lanka, 1-2 sentences" },
+                ai_why_it_matters: { type: "string", description: "Why this matters to someone using tech/home services, 1-2 sentences. Source-grounded only." },
                 ai_lankafix_angle: { type: ["string", "null"], description: "How this relates to LankaFix services. Null if no genuine connection." },
-                ai_banner_text: { type: ["string", "null"], description: "Bold stat/number if available in source, null otherwise" },
+                ai_banner_text: { type: ["string", "null"], description: "A number/stat from the source text verbatim. Null if none exists." },
                 ai_cta_label: { type: "string", description: "CTA text like 'Learn More', 'Check Your Device', 'Book Service'" },
                 ai_keywords: { type: "array", items: { type: "string" }, description: "3-5 keywords" },
                 ai_risk_flags: { type: "array", items: { type: "string" }, description: "Risk warnings only if genuinely present in source" },
-                ai_quality_score: { type: "number", description: "0.0-1.0 quality assessment" },
+                ai_quality_score: { type: "number", description: "0.0-1.0. Thin/vague sources MUST score below 0.4." },
               },
               required: ["ai_headline", "ai_summary_short", "ai_summary_medium", "ai_quality_score"],
             }
@@ -229,10 +275,12 @@ function computeFreshness(contentType: string, publishedAt: string | null): numb
 const MAX_ITEMS_PER_SOURCE_PER_SURFACE = 2;
 const MAX_SURFACES_PER_ITEM = 3;
 const SIMILAR_TITLE_THRESHOLD = 0.55;
+const MAX_SAME_CATEGORY_CONSECUTIVE = 2;
+const MAX_SAME_CONTENT_TYPE_PER_SURFACE = 3;
 
 // ─── Surface publishing with diversity governance ───
-const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number }> = {
-  homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic'], maxItems: 3, minQuality: 0.6 },
+const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; isHero?: boolean }> = {
+  homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic', 'market_shift'], maxItems: 3, minQuality: 0.6, isHero: true },
   homepage_hot_now: { types: ['breaking_news', 'hot_topic', 'trend_signal', 'most_read'], maxItems: 8, minQuality: 0.5 },
   homepage_did_you_know: { types: ['knowledge_fact', 'on_this_day', 'history', 'how_to'], maxItems: 4, minQuality: 0.4 },
   homepage_innovations: { types: ['innovation', 'market_shift', 'trend_signal'], maxItems: 4, minQuality: 0.5 },
@@ -243,12 +291,11 @@ const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQual
 };
 
 async function publishToSurfaces() {
-  // Track how many surfaces each item appears on (for diversity)
   const itemSurfaceCount = new Map<string, number>();
 
   const { data: excludedItems } = await supabase
     .from('content_items')
-    .select('id, rejection_reason')
+    .select('id')
     .in('status', ['rejected', 'archived'])
     .limit(500);
   const excludedIds = new Set((excludedItems ?? []).map((e: any) => e.id));
@@ -265,7 +312,7 @@ async function publishToSurfaces() {
 
     const { data: items } = await supabase
       .from('content_items')
-      .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title')
+      .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title, image_url')
       .eq('status', 'published')
       .in('content_type', rules.types)
       .order('freshness_score', { ascending: false })
@@ -298,19 +345,24 @@ async function publishToSurfaces() {
       .filter((item: any) => (qualityMap.get(item.id) ?? 0.5) >= rules.minQuality)
       .map((item: any) => {
         const quality = qualityMap.get(item.id) ?? 0.5;
-        const isSriLankan = item.source_country === 'lk' || item.source_country === 'LK';
-        const slBoost = isSriLankan ? 15 : 0;
-        const safetyBoost = (item.content_type === 'safety_alert' || item.content_type === 'scam_alert') ? 10 : 0;
+        const text = item.title ?? '';
+        const slRelevance = detectSriLankaRelevance(text);
+        const commercialRelevance = detectCommercialRelevance(text);
+        const topCatConf = (tags ?? []).find((t: any) => t.content_item_id === item.id)?.confidence_score ?? 0.3;
+        const localUtility = computeLocalUtilityScore(item, slRelevance, commercialRelevance, topCatConf);
 
-        return {
-          ...item,
-          quality,
-          rank: (item.freshness_score ?? 50) * 0.30 +
-                (item.source_trust_score ?? 0.7) * 100 * 0.20 +
-                quality * 100 * 0.25 +
-                (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15 +
-                slBoost + safetyBoost,
-        };
+        let rank: number;
+        if (rules.isHero) {
+          rank = computeHeroScore(item, quality, localUtility) * 100;
+        } else {
+          rank = (item.freshness_score ?? 50) * 0.25 +
+                 (item.source_trust_score ?? 0.7) * 100 * 0.15 +
+                 quality * 100 * 0.25 +
+                 localUtility * 100 * 0.20 +
+                 (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15;
+        }
+
+        return { ...item, quality, rank, localUtility, categories: catMap.get(item.id) ?? [] };
       })
       .sort((a: any, b: any) => b.rank - a.rank);
 
@@ -318,12 +370,13 @@ async function publishToSurfaces() {
     const selected: any[] = [];
     const sourceCountInSurface = new Map<string, number>();
     const selectedTitles: string[] = [];
+    const contentTypeCount = new Map<string, number>();
     const maxSlots = rules.maxItems - pinnedIds.size;
 
     for (const item of ranked) {
       if (selected.length >= maxSlots) break;
 
-      // Max surfaces per item (unless pinned)
+      // Max surfaces per item
       const surfCount = itemSurfaceCount.get(item.id) ?? 0;
       if (surfCount >= MAX_SURFACES_PER_ITEM) continue;
 
@@ -331,13 +384,25 @@ async function publishToSurfaces() {
       const srcCount = sourceCountInSurface.get(item.source_id ?? '') ?? 0;
       if (srcCount >= MAX_ITEMS_PER_SOURCE_PER_SURFACE) continue;
 
+      // Max same content_type per surface
+      const typeCount = contentTypeCount.get(item.content_type) ?? 0;
+      if (typeCount >= MAX_SAME_CONTENT_TYPE_PER_SURFACE) continue;
+
       // Similar title suppression
       const isDuplicate = selectedTitles.some(t => titleSimilarity(t, item.title) > SIMILAR_TITLE_THRESHOLD);
       if (isDuplicate) continue;
 
+      // Category consecutive check — no more than N same-category items in a row
+      if (selected.length >= MAX_SAME_CATEGORY_CONSECUTIVE) {
+        const recentCats = selected.slice(-MAX_SAME_CATEGORY_CONSECUTIVE).map((s: any) => s.categories?.[0]);
+        const itemCat = item.categories?.[0];
+        if (itemCat && recentCats.every((c: string) => c === itemCat)) continue;
+      }
+
       selected.push(item);
       sourceCountInSurface.set(item.source_id ?? '', srcCount + 1);
       selectedTitles.push(item.title);
+      contentTypeCount.set(item.content_type, typeCount + 1);
       itemSurfaceCount.set(item.id, surfCount + 1);
     }
 
@@ -364,7 +429,7 @@ async function publishToSurfaces() {
           content_item_id: item.id,
           rank_score: Math.round(item.rank * 10) / 10,
           active: true,
-          category_code: catMap.get(item.id)?.[0] ?? null,
+          category_code: item.categories?.[0] ?? null,
         }))
       );
     }
@@ -457,7 +522,6 @@ async function runClustering() {
       const slCount = group.filter(g => g.source_country === 'lk' || g.source_country === 'LK').length;
       const slRelevance = Math.min(100, Math.round((slCount / group.length) * 100));
 
-      // Compute commercial relevance from categories
       const commercialCats = new Set(['MOBILE', 'AC', 'IT', 'SOLAR', 'ELECTRICAL', 'PLUMBING']);
       const commercialRelevance = allCats.some(c => commercialCats.has(c)) ? 70 : 40;
 
@@ -488,7 +552,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const mode = body.mode ?? 'full';
     const results: Record<string, number> = {
-      fetched: 0, normalized: 0, accepted: 0, rejected: 0,
+      fetched: 0, normalized: 0, deduped: 0, accepted: 0, rejected: 0,
       briefed: 0, published: 0, decayed: 0, archived: 0,
       clustered: 0, surfaces_refreshed: 0,
     };
@@ -518,7 +582,7 @@ serve(async (req) => {
 
               const dedupeKey = generateDedupeKey(title, source.source_name);
               const { data: existing } = await supabase.from('content_items').select('id').eq('dedupe_key', dedupeKey).limit(1);
-              if (existing?.length) continue;
+              if (existing?.length) { results.deduped++; continue; }
 
               // Similar title check against recent items
               const { data: recentItems } = await supabase
@@ -527,7 +591,7 @@ serve(async (req) => {
                 .order('created_at', { ascending: false })
                 .limit(30);
               const isSimilar = (recentItems ?? []).some((r: any) => titleSimilarity(r.title, title) > SIMILAR_TITLE_THRESHOLD);
-              if (isSimilar) continue;
+              if (isSimilar) { results.deduped++; continue; }
 
               const text = `${title} ${article.description ?? ''} ${article.content ?? ''}`;
               const categories = detectCategories(text);
@@ -621,7 +685,7 @@ serve(async (req) => {
               content_item_id: item.id,
               ...brief,
               ai_model: 'google/gemini-2.5-flash-lite',
-              prompt_version: 'v3-sl',
+              prompt_version: 'v4-hardened',
             });
 
             const quality = brief.ai_quality_score ?? 0;
