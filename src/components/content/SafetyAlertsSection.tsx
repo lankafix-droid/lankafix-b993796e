@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Shield } from 'lucide-react';
+import { Shield, AlertTriangle } from 'lucide-react';
 import ContentSectionShell from './ContentSectionShell';
 import ContentCard from './ContentCard';
 import { useContentIntelligence } from '@/hooks/useContentIntelligence';
@@ -23,9 +23,18 @@ const SafetyAlertsSection = memo(function SafetyAlertsSection({ onOpenItem }: Pr
       title="Safety & Alerts"
       icon={<Shield className="h-4 w-4 text-destructive" />}
       subtitle="Stay protected, stay informed"
+      premium
     >
+      {/* Urgent safety banner */}
+      <div className="px-4 mb-2.5">
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/15 bg-destructive/[0.03] px-3 py-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 text-destructive/70 shrink-0" />
+          <p className="text-[11px] text-destructive/80 font-medium">
+            {items.length} active alert{items.length !== 1 ? 's' : ''} — review for your safety
+          </p>
+        </div>
+      </div>
       <div className="px-4 space-y-2.5">
-        {/* First safety item gets hero treatment */}
         {items.slice(0, 1).map((item) => (
           <ContentCard
             key={item.id}
