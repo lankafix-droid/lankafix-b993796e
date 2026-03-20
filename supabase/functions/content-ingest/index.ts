@@ -14,8 +14,43 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const NEWSDATA_API_KEY = Deno.env.get("NEWSDATA_API_KEY");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// ─── Dynamic API key injection ───
+function resolveSourceUrl(baseUrl: string): string {
+  if (!baseUrl) return baseUrl;
+  // Replace demo key with real key if available
+  if (baseUrl.includes('apikey=pub_demo') && NEWSDATA_API_KEY) {
+    return baseUrl.replace('apikey=pub_demo', `apikey=${NEWSDATA_API_KEY}`);
+  }
+  return baseUrl;
+}
+
+// ─── RSS Feed parser (for free sources without API keys) ───
+function parseRSSItems(xmlText: string): any[] {
+  const items: any[] = [];
+  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+  let match;
+  while ((match = itemRegex.exec(xmlText)) !== null) {
+    const block = match[1];
+    const get = (tag: string) => {
+      const m = block.match(new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?<\\/${tag}>`, 's'));
+      return m?.[1]?.trim() ?? null;
+    };
+    const title = get('title');
+    if (!title) continue;
+    items.push({
+      title,
+      description: get('description'),
+      url: get('link'),
+      pubDate: get('pubDate'),
+      content: get('content:encoded') ?? get('description'),
+    });
+  }
+  return items;
+}
 
 // ─── Category keyword detection ───
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
