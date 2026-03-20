@@ -452,7 +452,7 @@ export function useCreateRefillOrder() {
           total: order.total,
           refill_status: "request_received",
           eligibility_status: order.derived_eligibility,
-          condition_data: order.condition_data as unknown as Record<string, unknown>,
+          condition_data: order.condition_data as never,
         }])
         .select()
         .single();
