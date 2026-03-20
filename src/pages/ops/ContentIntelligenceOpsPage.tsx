@@ -249,6 +249,7 @@ export default function ContentIntelligenceOpsPage() {
   const avgQuality = totalPublished > 0
     ? ((published ?? []).reduce((s: number, p: any) => s + (p.content_ai_briefs?.[0]?.ai_quality_score ?? 0), 0) / totalPublished)
     : 0;
+  const slShare = totalPublished > 0 ? Math.round(slPublished / totalPublished * 100) : 0;
   const blockedNewsdata = sources?.filter((s: any) => s.base_url?.includes('newsdata.io') && s.rollout_state === 'failing').length ?? 0;
 
   const surfacesByCode = useMemo(() => {
