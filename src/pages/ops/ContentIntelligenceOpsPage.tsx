@@ -46,10 +46,10 @@ function formatTimeAgo(dateStr: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-type SourceHealth = 'healthy' | 'warning' | 'critical';
+type SourceHealth = 'healthy' | 'warning' | 'critical' | 'disabled';
 
 function getSourceHealth(src: any): SourceHealth {
-  if (!src.active) return 'critical';
+  if (!src.active) return 'disabled';
   const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
   const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
   const isStale = src.last_fetched_at && (Date.now() - new Date(src.last_fetched_at).getTime()) > 24 * 3600000;
@@ -67,12 +67,14 @@ const HEALTH_STYLES: Record<SourceHealth, string> = {
   healthy: 'border-primary/30',
   warning: 'border-warning/40 bg-warning/3',
   critical: 'border-destructive/30 bg-destructive/3',
+  disabled: 'border-muted/40 bg-muted/5 opacity-60',
 };
 
 const HEALTH_DOT: Record<SourceHealth, string> = {
   healthy: 'bg-primary',
   warning: 'bg-warning',
   critical: 'bg-destructive',
+  disabled: 'bg-muted-foreground',
 };
 
 function SourceHealthBadges({ src }: { src: any }) {
