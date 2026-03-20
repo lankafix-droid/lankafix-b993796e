@@ -4672,37 +4672,49 @@ export type Database = {
       }
       sps_ai_advisor_sessions: {
         Row: {
+          ai_model: string | null
           ai_response: string
           confidence: number | null
           created_at: string
           customer_id: string | null
+          error_message: string | null
           escalated_to_human: boolean | null
           id: string
+          latency_ms: number | null
           page_context: string | null
           session_channel: string | null
           user_question: string
+          was_fallback: boolean | null
         }
         Insert: {
+          ai_model?: string | null
           ai_response: string
           confidence?: number | null
           created_at?: string
           customer_id?: string | null
+          error_message?: string | null
           escalated_to_human?: boolean | null
           id?: string
+          latency_ms?: number | null
           page_context?: string | null
           session_channel?: string | null
           user_question: string
+          was_fallback?: boolean | null
         }
         Update: {
+          ai_model?: string | null
           ai_response?: string
           confidence?: number | null
           created_at?: string
           customer_id?: string | null
+          error_message?: string | null
           escalated_to_human?: boolean | null
           id?: string
+          latency_ms?: number | null
           page_context?: string | null
           session_channel?: string | null
           user_question?: string
+          was_fallback?: boolean | null
         }
         Relationships: []
       }
@@ -4739,99 +4751,180 @@ export type Database = {
         }
         Relationships: []
       }
+      sps_ai_logs: {
+        Row: {
+          action: string
+          ai_model: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          input_hash: string | null
+          latency_ms: number | null
+          metadata: Json | null
+          session_id: string | null
+          status: string
+          user_id: string | null
+          was_fallback: boolean | null
+        }
+        Insert: {
+          action: string
+          ai_model?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_hash?: string | null
+          latency_ms?: number | null
+          metadata?: Json | null
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+          was_fallback?: boolean | null
+        }
+        Update: {
+          action?: string
+          ai_model?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          input_hash?: string | null
+          latency_ms?: number | null
+          metadata?: Json | null
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+          was_fallback?: boolean | null
+        }
+        Relationships: []
+      }
       sps_ai_meter_reviews: {
         Row: {
+          ai_model: string | null
           anomaly_score: number | null
           anomaly_type: string | null
           asset_id: string | null
           contract_id: string | null
+          error_message: string | null
           explanation: string | null
           generated_at: string
           id: string
+          latency_ms: number | null
           meter_reading_id: string
+          ocr_confidence: number | null
+          ocr_extracted_value: number | null
+          ocr_image_url: string | null
           review_status: string | null
           suggested_action: string | null
+          was_fallback: boolean | null
         }
         Insert: {
+          ai_model?: string | null
           anomaly_score?: number | null
           anomaly_type?: string | null
           asset_id?: string | null
           contract_id?: string | null
+          error_message?: string | null
           explanation?: string | null
           generated_at?: string
           id?: string
+          latency_ms?: number | null
           meter_reading_id: string
+          ocr_confidence?: number | null
+          ocr_extracted_value?: number | null
+          ocr_image_url?: string | null
           review_status?: string | null
           suggested_action?: string | null
+          was_fallback?: boolean | null
         }
         Update: {
+          ai_model?: string | null
           anomaly_score?: number | null
           anomaly_type?: string | null
           asset_id?: string | null
           contract_id?: string | null
+          error_message?: string | null
           explanation?: string | null
           generated_at?: string
           id?: string
+          latency_ms?: number | null
           meter_reading_id?: string
+          ocr_confidence?: number | null
+          ocr_extracted_value?: number | null
+          ocr_image_url?: string | null
           review_status?: string | null
           suggested_action?: string | null
+          was_fallback?: boolean | null
         }
         Relationships: []
       }
       sps_ai_plan_insights: {
         Row: {
+          ai_model: string | null
           confidence_score: number | null
           customer_id: string | null
+          error_message: string | null
           fit_strength: string | null
           generated_at: string
           id: string
           insight_summary: string
+          latency_ms: number | null
           plan_id: string
           recommendation_id: string | null
           review_required_reason: string | null
           session_id: string | null
           tradeoff_summary: string | null
           upgrade_hint: string | null
+          was_fallback: boolean | null
           watchouts: string | null
         }
         Insert: {
+          ai_model?: string | null
           confidence_score?: number | null
           customer_id?: string | null
+          error_message?: string | null
           fit_strength?: string | null
           generated_at?: string
           id?: string
           insight_summary: string
+          latency_ms?: number | null
           plan_id: string
           recommendation_id?: string | null
           review_required_reason?: string | null
           session_id?: string | null
           tradeoff_summary?: string | null
           upgrade_hint?: string | null
+          was_fallback?: boolean | null
           watchouts?: string | null
         }
         Update: {
+          ai_model?: string | null
           confidence_score?: number | null
           customer_id?: string | null
+          error_message?: string | null
           fit_strength?: string | null
           generated_at?: string
           id?: string
           insight_summary?: string
+          latency_ms?: number | null
           plan_id?: string
           recommendation_id?: string | null
           review_required_reason?: string | null
           session_id?: string | null
           tradeoff_summary?: string | null
           upgrade_hint?: string | null
+          was_fallback?: boolean | null
           watchouts?: string | null
         }
         Relationships: []
       }
       sps_ai_ticket_triage: {
         Row: {
+          ai_model: string | null
           asset_id: string | null
           contract_id: string | null
+          error_message: string | null
           generated_at: string
           id: string
+          latency_ms: number | null
           probable_issue_type: string | null
           recommended_action: string | null
           recommended_support_mode: string | null
@@ -4840,12 +4933,16 @@ export type Database = {
           ticket_id: string
           triage_confidence: number | null
           urgency_band: string | null
+          was_fallback: boolean | null
         }
         Insert: {
+          ai_model?: string | null
           asset_id?: string | null
           contract_id?: string | null
+          error_message?: string | null
           generated_at?: string
           id?: string
+          latency_ms?: number | null
           probable_issue_type?: string | null
           recommended_action?: string | null
           recommended_support_mode?: string | null
@@ -4854,12 +4951,16 @@ export type Database = {
           ticket_id: string
           triage_confidence?: number | null
           urgency_band?: string | null
+          was_fallback?: boolean | null
         }
         Update: {
+          ai_model?: string | null
           asset_id?: string | null
           contract_id?: string | null
+          error_message?: string | null
           generated_at?: string
           id?: string
+          latency_ms?: number | null
           probable_issue_type?: string | null
           recommended_action?: string | null
           recommended_support_mode?: string | null
@@ -4868,6 +4969,7 @@ export type Database = {
           ticket_id?: string
           triage_confidence?: number | null
           urgency_band?: string | null
+          was_fallback?: boolean | null
         }
         Relationships: []
       }
@@ -5200,6 +5302,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sps_knowledge_articles: {
+        Row: {
+          article_key: string
+          category: string
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          article_key: string
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          article_key?: string
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       sps_meter_readings: {
         Row: {
