@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.content-ingest]
 verify_jwt = false
+
+[functions.sps-ai]
+verify_jwt = false
