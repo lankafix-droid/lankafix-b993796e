@@ -228,6 +228,7 @@ export default function SPSLandingPage() {
           </button>
         </div>
       </section>
+      <SPSChatAdvisor pageContext="landing" />
     </div>
   );
 }
