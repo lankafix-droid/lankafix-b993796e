@@ -340,6 +340,8 @@ function classifySourceReadiness(source: any): SourceReadiness {
   if (!source.active) return 'disabled';
   if (!source.base_url) return 'needs_url';
   if (source.trust_score < 0.5) return 'low_trust';
+  if ((source.sri_lanka_bias ?? 0) >= 0.7) return 'sl_relevant';
+  if ((source.sri_lanka_bias ?? 0) < 0.3 && source.base_url) return 'global_only';
   return 'ready';
 }
 
