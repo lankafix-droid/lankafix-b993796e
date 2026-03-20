@@ -882,20 +882,22 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-2 mt-3">
             {LANKAFIX_CATEGORIES.map(cat => {
-              const data = categoryCoverage[cat];
-              const isWeak = (data?.featured ?? 0) === 0 && (data?.feed ?? 0) === 0;
+              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0, evergreen: 0 };
+              const readiness = getCategoryReadiness(data);
+              const readinessStyle = READINESS_STYLES[readiness];
               return (
-                <Card key={cat} className={`p-2.5 ${isWeak ? 'border-warning/20' : ''}`}>
+                <Card key={cat} className={`p-2.5 ${readiness === 'blocked' ? 'border-destructive/15' : readiness === 'weak' ? 'border-warning/15' : ''}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">{cat}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold">{cat}</span>
+                      <Badge variant="outline" className={`text-[8px] ${readinessStyle.color}`}>{readinessStyle.label}</Badge>
+                    </div>
                     <div className="flex items-center gap-2 text-[10px]">
-                      <span>Featured: <strong className={data?.featured ? 'text-primary' : 'text-muted-foreground'}>{data?.featured ?? 0}</strong></span>
-                      <span>Feed: <strong className={data?.feed ? 'text-primary' : 'text-muted-foreground'}>{data?.feed ?? 0}</strong></span>
-                      <span>Live: <strong>{data?.live ?? 0}</strong></span>
-                      {isWeak && <Badge variant="outline" className="text-[8px] text-warning border-warning/20">Weak</Badge>}
+                      <span>Featured: <strong className={data.featured ? 'text-primary' : 'text-muted-foreground'}>{data.featured}</strong></span>
+                      <span>Feed: <strong className={data.feed ? 'text-primary' : 'text-muted-foreground'}>{data.feed}</strong></span>
+                      <span>Live: <strong>{data.live}</strong></span>
                     </div>
                   </div>
                 </Card>
