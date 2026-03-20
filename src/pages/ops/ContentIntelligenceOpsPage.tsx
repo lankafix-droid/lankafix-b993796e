@@ -254,7 +254,17 @@ export default function ContentIntelligenceOpsPage() {
         await supabase.from('content_surface_state').update({ active: false }).eq('content_item_id', itemId);
       }
       if (action === 'boost') {
-        await supabase.from('content_surface_state').update({ rank_score: 85 }).eq('content_item_id', itemId).eq('active', true);
+        // Increment rank by +15 rather than hard-setting; cap below pin threshold (990)
+        const { data: currentSurfaces } = await supabase
+          .from('content_surface_state')
+          .select('id, rank_score')
+          .eq('content_item_id', itemId)
+          .eq('active', true)
+          .lt('rank_score', 990);
+        for (const surf of currentSurfaces ?? []) {
+          const newRank = Math.min(989, (surf.rank_score ?? 50) + 15);
+          await supabase.from('content_surface_state').update({ rank_score: newRank }).eq('id', surf.id);
+        }
       }
       await supabase.from('content_editorial_actions').insert({ content_item_id: itemId, action_type: action });
     },
