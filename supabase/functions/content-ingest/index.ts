@@ -1204,7 +1204,8 @@ serve(async (req) => {
       }
 
       if (mode === 'full') {
-        await briefItems(results);
+        await briefItems(results, 15);
+        await rescueReviewItems(results);
         await publishToSurfaces(false);
         results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
         const decayResult = await runDecay();
@@ -1217,7 +1218,7 @@ serve(async (req) => {
       await completePipelineRun(runId, results);
       results.warnings_count = await generateAlerts(results, runId);
 
-      console.log(`[content-ingest] v8 Pipeline complete (mode=${mode}, ${results.duration_ms}ms):`, JSON.stringify(results));
+      console.log(`[content-ingest] v9 Pipeline complete (mode=${mode}, ${results.duration_ms}ms):`, JSON.stringify(results));
 
       return new Response(
         JSON.stringify({ success: true, ...results }),
