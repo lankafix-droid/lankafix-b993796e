@@ -416,6 +416,31 @@ export default function ContentIntelligenceOpsPage() {
     onSuccess: () => { toast.success('Source rollout state updated'); invalidateAll(); },
   });
 
+  const promoteSource = useMutation({
+    mutationFn: async ({ sourceId, targetState }: { sourceId: string; targetState: string }) => {
+      const { data, error } = await supabase.functions.invoke('content-ingest', {
+        body: { mode: 'promote_source', source_id: sourceId, target_state: targetState },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => { toast.success(`Source promoted: ${data.from} → ${data.to}`); invalidateAll(); },
+    onError: (e) => toast.error(`Promotion failed: ${(e as Error).message}`),
+  });
+
+  const rollbackPublish = useMutation({
+    mutationFn: async (surfaceCode?: string) => {
+      const { data, error } = await supabase.functions.invoke('content-ingest', {
+        body: { mode: 'rollback', surface_code: surfaceCode },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => { toast.success(`Rolled back ${data.rolled_back} surface assignments`); invalidateAll(); },
+    onError: (e) => toast.error(`Rollback failed: ${(e as Error).message}`),
+  });
+
   const updateSurfaceRollout = useMutation({
     mutationFn: async ({ surfaceCode, mode }: { surfaceCode: string; mode: string }) => {
       await supabase.from('content_surface_config' as any).update({
