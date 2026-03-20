@@ -1,6 +1,7 @@
 /**
- * ContentCard v5 — Launch-grade content card with premium variants.
+ * ContentCard v6 — Production-closure card with premium variants.
  * Clean hierarchy, SL-aware badges, live/evergreen distinction, safe tracking.
+ * Overflow-safe metadata on mobile, consistent spacing.
  */
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
@@ -52,7 +53,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
   const headline = brief?.ai_headline ?? item.title;
   const summary = brief?.ai_summary_short ?? item.raw_excerpt ?? '';
   const whyMatters = brief?.ai_why_it_matters;
-  const categoryTags = item.category_tags?.slice(0, 2) ?? [];
+  const categoryTag = item.category_tags?.[0];
   const isEvergreen = item.id.startsWith('evergreen-');
   const isLive = !isEvergreen;
   const isSriLankan = item.source_country === 'lk' || item.source_country === 'LK';
@@ -83,21 +84,18 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           </div>
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{headline}</p>
-            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+            <div className="mt-1.5 flex items-center gap-1.5 overflow-hidden">
               {isEvergreen && (
-                <span className="text-[10px] text-primary/70 font-medium flex items-center gap-0.5">
+                <span className="text-[10px] text-primary/70 font-medium flex items-center gap-0.5 shrink-0">
                   <Sparkles className="h-2.5 w-2.5" /> LankaFix
                 </span>
               )}
               {isLive && item.source_name && (
-                <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{item.source_name}</span>
+                <span className="text-[10px] text-muted-foreground truncate max-w-[80px] shrink-0">{item.source_name}</span>
               )}
-              {isSriLankan && <span className="text-[10px]">🇱🇰</span>}
+              {isSriLankan && <span className="text-[10px] shrink-0">🇱🇰</span>}
               {isLive && (
-                <span className="text-[10px] text-muted-foreground">{formatTimeAgo(item.published_at)}</span>
-              )}
-              {categoryTags[0] && (
-                <span className="text-[9px] text-primary/60 font-medium">#{categoryTags[0].category_code}</span>
+                <span className="text-[10px] text-muted-foreground shrink-0">{formatTimeAgo(item.published_at)}</span>
               )}
             </div>
           </div>
@@ -137,7 +135,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
                 backgroundSize: '24px 24px'
               }} />
               <div className={cn(
-                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full blur-3xl opacity-[0.05]",
+                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 rounded-full blur-3xl opacity-[0.06]",
                 isSafety ? "bg-destructive" : "bg-primary"
               )} />
               <div className="rounded-xl bg-card/80 p-3 backdrop-blur-sm shadow-sm border border-border/30">
@@ -172,18 +170,18 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               </p>
             )}
             <div className="mt-3 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                {item.source_name && <span className="font-medium">{item.source_name}</span>}
-                <span className="text-border">·</span>
-                <span>{isEvergreen ? 'LankaFix Intelligence' : formatTimeAgo(item.published_at)}</span>
-                {categoryTags[0] && (
+              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground min-w-0 overflow-hidden">
+                {item.source_name && <span className="font-medium truncate max-w-[100px]">{item.source_name}</span>}
+                <span className="text-border shrink-0">·</span>
+                <span className="shrink-0">{isEvergreen ? 'LankaFix Intelligence' : formatTimeAgo(item.published_at)}</span>
+                {categoryTag && (
                   <>
-                    <span className="text-border">·</span>
-                    <span className="text-primary/60 font-medium">#{categoryTags[0].category_code}</span>
+                    <span className="text-border shrink-0">·</span>
+                    <span className="text-primary/60 font-medium shrink-0">#{categoryTag.category_code}</span>
                   </>
                 )}
               </div>
-              <ArrowUpRight className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
+              <ArrowUpRight className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors shrink-0 ml-1" />
             </div>
           </div>
         </button>
@@ -231,12 +229,12 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
             )}
           </div>
           <h4 className="text-sm font-bold leading-tight text-foreground line-clamp-2">{headline}</h4>
-          {summary && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
-          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-            {isLive && item.source_name && <span className="font-medium">{item.source_name}</span>}
-            {isLive && <span>{formatTimeAgo(item.published_at)}</span>}
-            {categoryTags[0] && (
-              <span className="text-primary/60 font-medium">#{categoryTags[0].category_code}</span>
+          {summary && <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
+          <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-muted-foreground overflow-hidden">
+            {isLive && item.source_name && <span className="font-medium truncate max-w-[90px]">{item.source_name}</span>}
+            {isLive && <span className="shrink-0">{formatTimeAgo(item.published_at)}</span>}
+            {categoryTag && (
+              <span className="text-primary/60 font-medium shrink-0">#{categoryTag.category_code}</span>
             )}
           </div>
         </div>

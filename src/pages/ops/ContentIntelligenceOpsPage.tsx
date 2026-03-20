@@ -268,8 +268,8 @@ export default function ContentIntelligenceOpsPage() {
   }, [surfaceConfigs]);
 
   const categoryCoverage = useMemo(() => {
-    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number; strong: number }> = {};
-    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0, strong: 0 }; });
+    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number; strong: number; _qCount: number }> = {};
+    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0, strong: 0, _qCount: 0 }; });
     (surfaces ?? []).forEach((s: any) => {
       if (!s.category_code || !catData[s.category_code]) return;
       if (s.surface_code === 'category_featured') catData[s.category_code].featured++;
@@ -282,13 +282,14 @@ export default function ContentIntelligenceOpsPage() {
       (p.content_category_tags ?? []).forEach((t: any) => {
         if (catData[t.category_code]) {
           catData[t.category_code].avgQ += q;
+          catData[t.category_code]._qCount++;
           if (q >= 0.5) catData[t.category_code].strong++;
         }
       });
     });
     for (const cat of LANKAFIX_CATEGORIES) {
       const d = catData[cat];
-      if (d.live > 0) d.avgQ = d.avgQ / d.live;
+      if (d._qCount > 0) d.avgQ = d.avgQ / d._qCount;
     }
     return catData;
   }, [surfaces, published]);
