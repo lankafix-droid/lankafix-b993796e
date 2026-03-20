@@ -515,12 +515,17 @@ async function validateSources() {
   return results;
 }
 
-// ─── Surface publishing with rollout mode awareness ───
-async function publishToSurfaces(dryRun = false) {
+// ─── Surface publishing — chunked for timeout safety ───
+async function publishSurfaceBatch(
+  surfaceCodes: string[],
+  dryRun = false,
+  categoryBatch?: string[] // only process these categories for category-bound surfaces
+): Promise<{ preview: Record<string, any[]>; stats: { attempted: number; completed: number; assignments: number; skipped: number } }> {
   const itemSurfaceCount = new Map<string, number>();
   const preview: Record<string, any[]> = {};
+  const stats = { attempted: 0, completed: 0, assignments: 0, skipped: 0 };
 
-  // Load surface configs for rollout mode
+  // Load configs once
   const { data: surfaceConfigs } = await supabase.from('content_surface_config').select('*');
   const configMap = new Map((surfaceConfigs ?? []).map((c: any) => [c.surface_code, c]));
 
@@ -528,27 +533,56 @@ async function publishToSurfaces(dryRun = false) {
     .from('content_items').select('id').in('status', ['rejected', 'archived']).limit(500);
   const excludedIds = new Set((excludedItems ?? []).map((e: any) => e.id));
 
-  const CATEGORY_CODES = ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR', 'CONSUMER_ELEC', 'SMART_HOME_OFFICE', 'ELECTRICAL', 'PLUMBING', 'NETWORK', 'POWER_BACKUP', 'HOME_SECURITY', 'APPLIANCE_INSTALL', 'COPIER', 'PRINT_SUPPLIES'];
+  // Pre-load all published items + briefs + tags in one batch for efficiency
+  const { data: allPublished } = await supabase
+    .from('content_items')
+    .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title, image_url, source_name')
+    .eq('status', 'published')
+    .order('freshness_score', { ascending: false })
+    .limit(300);
 
-  for (const [surfaceCode, rules] of Object.entries(SURFACE_RULES)) {
+  if (!allPublished?.length) return { preview, stats };
+
+  const allIds = allPublished.map((i: any) => i.id);
+  const [{ data: allBriefs }, { data: allTags }] = await Promise.all([
+    supabase.from('content_ai_briefs').select('content_item_id, ai_quality_score').in('content_item_id', allIds),
+    supabase.from('content_category_tags').select('content_item_id, category_code, confidence_score').in('content_item_id', allIds),
+  ]);
+
+  const qualityMap = new Map((allBriefs ?? []).map((b: any) => [b.content_item_id, b.ai_quality_score ?? 0.5]));
+  const catMap = new Map<string, string[]>();
+  const confidenceMap = new Map<string, number>();
+  (allTags ?? []).forEach((t: any) => {
+    const arr = catMap.get(t.content_item_id) ?? [];
+    arr.push(t.category_code);
+    catMap.set(t.content_item_id, arr);
+    confidenceMap.set(`${t.content_item_id}::${t.category_code}`, t.confidence_score ?? 0.3);
+  });
+
+  const CATEGORY_CODES = categoryBatch ?? ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR', 'CONSUMER_ELEC', 'SMART_HOME_OFFICE', 'ELECTRICAL', 'PLUMBING', 'NETWORK', 'POWER_BACKUP', 'HOME_SECURITY', 'APPLIANCE_INSTALL', 'COPIER', 'PRINT_SUPPLIES'];
+
+  for (const surfaceCode of surfaceCodes) {
+    const rules = SURFACE_RULES[surfaceCode];
+    if (!rules) continue;
     const config = configMap.get(surfaceCode);
 
-    // Skip frozen surfaces
     if (config?.frozen && !dryRun) {
-      preview[surfaceCode] = [{ _frozen: true, _reason: 'Surface is frozen by ops' }];
+      preview[surfaceCode] = [{ _frozen: true }];
+      stats.skipped++;
       continue;
     }
-
-    // Skip evergreen_only surfaces in live mode (they stay fallback)
     if (config?.rollout_mode === 'evergreen_only' && !dryRun) {
+      stats.skipped++;
       continue;
     }
 
     const categories = rules.categoryBound ? CATEGORY_CODES : [null];
 
     for (const catCode of categories) {
+      stats.attempted++;
       const previewKey = catCode ? `${surfaceCode}:${catCode}` : surfaceCode;
 
+      // Get pinned items
       let pinnedQuery = supabase
         .from('content_surface_state').select('content_item_id')
         .eq('surface_code', surfaceCode).eq('active', true).gte('rank_score', 990);
@@ -556,70 +590,42 @@ async function publishToSurfaces(dryRun = false) {
       const { data: pinnedSurfaces } = await pinnedQuery;
       const pinnedIds = new Set((pinnedSurfaces ?? []).map((p: any) => p.content_item_id));
 
-      const itemQuery = supabase
-        .from('content_items')
-        .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title, image_url, source_name')
-        .eq('status', 'published')
-        .in('content_type', rules.types)
-        .order('freshness_score', { ascending: false })
-        .limit(rules.maxItems * 6);
-      const { data: items } = await itemQuery;
-
-      if (!items?.length && pinnedIds.size === 0) continue;
-
-      const allItems = items ?? [];
-      const ids = allItems.map((i: any) => i.id);
-
-      const [{ data: briefs }, { data: tags }] = await Promise.all([
-        ids.length > 0 ? supabase.from('content_ai_briefs').select('content_item_id, ai_quality_score').in('content_item_id', ids) : Promise.resolve({ data: [] }),
-        ids.length > 0 ? supabase.from('content_category_tags').select('content_item_id, category_code, confidence_score').in('content_item_id', ids) : Promise.resolve({ data: [] }),
-      ]);
-
-      const qualityMap = new Map((briefs ?? []).map((b: any) => [b.content_item_id, b.ai_quality_score ?? 0.5]));
-      const catMap = new Map<string, string[]>();
-      (tags ?? []).forEach((t: any) => {
-        const arr = catMap.get(t.content_item_id) ?? [];
-        arr.push(t.category_code);
-        catMap.set(t.content_item_id, arr);
-      });
-      const confidenceMap = new Map<string, number>();
-      (tags ?? []).forEach((t: any) => {
-        confidenceMap.set(`${t.content_item_id}::${t.category_code}`, t.confidence_score ?? 0.3);
-      });
-
-      const ranked = allItems
+      // Filter from pre-loaded data
+      const candidates = allPublished
         .filter((item: any) => !excludedIds.has(item.id) && !pinnedIds.has(item.id))
+        .filter((item: any) => rules.types.includes(item.content_type))
         .filter((item: any) => (qualityMap.get(item.id) ?? 0.5) >= rules.minQuality)
         .filter((item: any) => {
           if (!catCode) return true;
           const itemCats = catMap.get(item.id) ?? [];
           if (!itemCats.includes(catCode)) return false;
           return (confidenceMap.get(`${item.id}::${catCode}`) ?? 0) >= 0.35;
-        })
-        .map((item: any) => {
-          const quality = qualityMap.get(item.id) ?? 0.5;
-          const text = item.title ?? '';
-          const slRelevance = detectSriLankaRelevance(text);
-          const commercialRelevance = detectCommercialRelevance(text);
-          const topCatConf = (tags ?? []).find((t: any) => t.content_item_id === item.id)?.confidence_score ?? 0.3;
-          const localUtility = computeLocalUtilityScore(item, slRelevance, commercialRelevance, topCatConf);
-          const relevanceBand = computeRelevanceBand(slRelevance, commercialRelevance, topCatConf);
+        });
 
-          let rank: number;
-          if (rules.isHero) {
-            rank = computeHeroScore(item, quality, localUtility) * 100;
-          } else {
-            rank = (item.freshness_score ?? 50) * 0.25 +
-                   (item.source_trust_score ?? 0.7) * 100 * 0.15 +
-                   quality * 100 * 0.25 +
-                   localUtility * 100 * 0.20 +
-                   (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15;
-          }
-          return { ...item, quality, rank, localUtility, relevanceBand, slRelevance, commercialRelevance, categories: catMap.get(item.id) ?? [] };
-        })
-        .sort((a: any, b: any) => b.rank - a.rank);
+      // Rank
+      const ranked = candidates.map((item: any) => {
+        const quality = qualityMap.get(item.id) ?? 0.5;
+        const text = item.title ?? '';
+        const slRelevance = detectSriLankaRelevance(text);
+        const commercialRelevance = detectCommercialRelevance(text);
+        const topCatConf = (allTags ?? []).find((t: any) => t.content_item_id === item.id)?.confidence_score ?? 0.3;
+        const localUtility = computeLocalUtilityScore(item, slRelevance, commercialRelevance, topCatConf);
+        const relevanceBand = computeRelevanceBand(slRelevance, commercialRelevance, topCatConf);
 
-      // Diversity filters
+        let rank: number;
+        if (rules.isHero) {
+          rank = computeHeroScore(item, quality, localUtility) * 100;
+        } else {
+          rank = (item.freshness_score ?? 50) * 0.25 +
+            (item.source_trust_score ?? 0.7) * 100 * 0.15 +
+            quality * 100 * 0.25 +
+            localUtility * 100 * 0.20 +
+            (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15;
+        }
+        return { ...item, quality, rank, localUtility, relevanceBand, slRelevance, commercialRelevance, categories: catMap.get(item.id) ?? [] };
+      }).sort((a: any, b: any) => b.rank - a.rank);
+
+      // Diversity selection
       const selected: any[] = [];
       const sourceCountInSurface = new Map<string, number>();
       const selectedTitles: string[] = [];
@@ -649,35 +655,26 @@ async function publishToSurfaces(dryRun = false) {
         source_name: s.source_name ?? '—',
         rank: Math.round(s.rank * 10) / 10,
         quality: Math.round((s.quality ?? 0) * 100) / 100,
-        freshness: s.freshness_score ?? 0,
         local_utility: Math.round((s.localUtility ?? 0) * 100) / 100,
         relevance_band: s.relevanceBand,
         source_country: s.source_country,
-        has_image: !!s.image_url,
-        categories: s.categories ?? [],
-        warnings: [
-          ...(s.quality < rules.minQuality + 0.1 ? ['near_quality_threshold'] : []),
-          ...(s.relevanceBand === 'global_low_utility' ? ['low_local_utility'] : []),
-          ...(!s.image_url && rules.isHero ? ['no_hero_image'] : []),
-        ],
       }));
 
-      if (dryRun) continue;
+      if (dryRun) { stats.completed++; continue; }
 
-      // Deactivate old (except pinned)
+      // Deactivate old (except pinned) — single targeted update
       if (pinnedIds.size > 0) {
-        let deactQuery = supabase.from('content_surface_state').select('id')
+        const deactQuery = supabase.from('content_surface_state')
+          .update({ active: false })
           .eq('surface_code', surfaceCode).eq('active', true).lt('rank_score', 990);
-        if (catCode) deactQuery = deactQuery.eq('category_code', catCode);
-        const { data: toDeactivate } = await deactQuery;
-        if (toDeactivate?.length) {
-          await supabase.from('content_surface_state').update({ active: false }).in('id', toDeactivate.map((d: any) => d.id));
-        }
+        if (catCode) await deactQuery.eq('category_code', catCode);
+        else await deactQuery;
       } else {
-        let clearQuery = supabase.from('content_surface_state').update({ active: false })
+        const clearQuery = supabase.from('content_surface_state')
+          .update({ active: false })
           .eq('surface_code', surfaceCode).eq('active', true);
-        if (catCode) clearQuery = clearQuery.eq('category_code', catCode);
-        await clearQuery;
+        if (catCode) await clearQuery.eq('category_code', catCode);
+        else await clearQuery;
       }
 
       if (selected.length > 0) {
@@ -690,11 +687,24 @@ async function publishToSurfaces(dryRun = false) {
             category_code: catCode ?? item.categories?.[0] ?? null,
           }))
         );
+        stats.assignments += selected.length;
       }
+      stats.completed++;
     }
   }
+  return { preview, stats };
+}
+
+// Legacy wrapper — publishes ALL surfaces (used by full mode, may timeout)
+async function publishToSurfaces(dryRun = false) {
+  const allSurfaces = Object.keys(SURFACE_RULES);
+  const { preview } = await publishSurfaceBatch(allSurfaces, dryRun);
   return preview;
 }
+
+// Homepage-only fast publish (no category surfaces — timeout-safe)
+const HOMEPAGE_SURFACES = ['homepage_hero', 'homepage_hot_now', 'homepage_did_you_know', 'homepage_innovations', 'homepage_safety', 'homepage_numbers', 'homepage_popular', 'ai_banner_forum'];
+const PREMIUM_SURFACES = ['homepage_hero', 'homepage_safety', 'ai_banner_forum', 'category_featured'];
 
 // ─── Freshness decay ───
 async function runDecay() {
@@ -1337,13 +1347,55 @@ serve(async (req) => {
       }
 
 
+      // Publish — full (legacy, may timeout with category surfaces)
       if (mode === 'publish') {
-        await publishToSurfaces(false);
-        results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
+        const publishResult = await publishSurfaceBatch(Object.keys(SURFACE_RULES), false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
         results.duration_ms = Date.now() - startTime;
         await completePipelineRun(runId, results);
         return new Response(
           JSON.stringify({ success: true, ...results, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Publish fast — homepage surfaces only, no category iteration (timeout-safe)
+      if (mode === 'publish_fast') {
+        const publishResult = await publishSurfaceBatch(HOMEPAGE_SURFACES, false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, preview: publishResult.preview, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Publish premium — only hero, safety, ai_banner, category_featured (timeout-safe)
+      if (mode === 'publish_premium') {
+        const publishResult = await publishSurfaceBatch(PREMIUM_SURFACES, false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, preview: publishResult.preview, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Publish category batch — only category surfaces for a subset of categories
+      if (mode === 'publish_category_batch') {
+        const catBatch = body.categories ?? ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR'];
+        const publishResult = await publishSurfaceBatch(['category_featured', 'category_feed'], false, catBatch);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, results);
+        return new Response(
+          JSON.stringify({ success: true, ...results, preview: publishResult.preview, duration_ms: results.duration_ms }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -1366,11 +1418,12 @@ serve(async (req) => {
       }
 
       if (mode === 'full') {
-        // Smaller batch to stay within timeout
         await briefItems(results, 6);
         await rescueReviewItems(results);
-        await publishToSurfaces(false);
-        results.surfaces_refreshed = Object.keys(SURFACE_RULES).length;
+        // Use publish_fast in full mode to avoid timeout
+        const publishResult = await publishSurfaceBatch(HOMEPAGE_SURFACES, false);
+        results.surfaces_refreshed = publishResult.stats.completed;
+        results.publish_stats = publishResult.stats;
         const decayResult = await runDecay();
         results.decayed = decayResult.decayed;
         results.archived = decayResult.archived;
@@ -1378,10 +1431,11 @@ serve(async (req) => {
       }
 
       results.duration_ms = Date.now() - startTime;
+      results.newsdata_key_present = !!NEWSDATA_API_KEY;
       await completePipelineRun(runId, results);
       results.warnings_count = await generateAlerts(results, runId);
 
-      console.log(`[content-ingest] v9 Pipeline complete (mode=${mode}, ${results.duration_ms}ms):`, JSON.stringify(results));
+      console.log(`[content-ingest] v10.2 Pipeline complete (mode=${mode}, ${results.duration_ms}ms)`);
 
       return new Response(
         JSON.stringify({ success: true, ...results }),

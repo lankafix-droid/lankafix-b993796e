@@ -145,11 +145,18 @@ function SourceHealthBadges({ src }: { src: any }) {
   const tierInfo = TIER_LABELS[tier];
   if (tierInfo) badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
 
-  // Rollout state badge
   const rolloutInfo = ROLLOUT_STATE_LABELS[src.rollout_state ?? 'inactive'];
   if (rolloutInfo) badges.push(<Badge key="rstate" variant="outline" className={`text-[9px] ${rolloutInfo.color}`}>{rolloutInfo.label}</Badge>);
 
   if (!src.base_url) badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
+
+  // Source blocking badges
+  if (src.source_vendor === 'newsdata' && src.rollout_state === 'failing') {
+    badges.push(<Badge key="blocked" variant="destructive" className="text-[9px]">🔑 Blocked by key</Badge>);
+  }
+  if (src.rollout_state === 'failing' && src.source_vendor !== 'newsdata') {
+    badges.push(<Badge key="authfail" variant="destructive" className="text-[9px]">Auth failed</Badge>);
+  }
 
   if (!src.last_fetched_at) {
     badges.push(<Badge key="nf" variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>);
@@ -161,6 +168,8 @@ function SourceHealthBadges({ src }: { src: any }) {
 
   if (src.counts.total >= 5 && src.counts.published === 0) {
     badges.push(<Badge key="zp" variant="destructive" className="text-[9px]">Zero publish</Badge>);
+  } else if (src.counts.total >= 5 && src.counts.published / src.counts.total < 0.2) {
+    badges.push(<Badge key="ly" variant="outline" className="text-[9px] text-warning border-warning/30">Low yield</Badge>);
   }
 
   if (src.trust_score >= 0.85) badges.push(<Badge key="tr" variant="outline" className="text-[9px] text-primary border-primary/20">★ High trust</Badge>);
@@ -537,7 +546,7 @@ export default function ContentIntelligenceOpsPage() {
         </div>
 
         {/* Granular pipeline controls */}
-        <div className="flex gap-1 mb-3 flex-wrap">
+        <div className="flex gap-1 mb-1.5 flex-wrap">
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'fetch_only' })} disabled={isPending}>
             <Database className="h-3 w-3 mr-1" /> Fetch
           </Button>
@@ -546,9 +555,6 @@ export default function ContentIntelligenceOpsPage() {
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'rescue_review' })} disabled={isPending}>
             <Star className="h-3 w-3 mr-1" /> Rescue
-          </Button>
-          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
-            <Layers className="h-3 w-3 mr-1" /> Publish
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'decay' })} disabled={isPending}>
             <Timer className="h-3 w-3 mr-1" /> Decay
@@ -564,6 +570,22 @@ export default function ContentIntelligenceOpsPage() {
           </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'ingest', tierLimit: 'tier2' })} disabled={isPending}>
             <Gauge className="h-3 w-3 mr-1" /> Tier 1+2
+          </Button>
+        </div>
+        {/* Publish controls — chunked modes */}
+        <div className="flex gap-1 mb-3 flex-wrap">
+          <span className="text-[9px] text-muted-foreground self-center mr-1">Publish:</span>
+          <Button size="sm" variant="outline" className="h-7 text-[10px] border-primary/20 text-primary" onClick={() => ingestMutation.mutate({ mode: 'publish_fast' })} disabled={isPending}>
+            <Zap className="h-3 w-3 mr-1" /> Fast (Homepage)
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-[10px] border-primary/20" onClick={() => ingestMutation.mutate({ mode: 'publish_premium' })} disabled={isPending}>
+            <Star className="h-3 w-3 mr-1" /> Premium Only
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish_category_batch' })} disabled={isPending}>
+            <Layers className="h-3 w-3 mr-1" /> Category Batch
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'publish' })} disabled={isPending}>
+            <Layers className="h-3 w-3 mr-1" /> Full (slow)
           </Button>
         </div>
 
@@ -613,6 +635,17 @@ export default function ContentIntelligenceOpsPage() {
             </div>
             {(lastRunResult.title_rejected ?? 0) > 0 && (
               <p className="text-[10px] text-warning mt-1">⚠ {lastRunResult.title_rejected} titles rejected</p>
+            )}
+            {lastRunResult.publish_stats && (
+              <div className="grid grid-cols-4 gap-2 text-[10px] mt-1.5 border-t border-border/30 pt-1.5">
+                <div>Surfaces: <strong>{lastRunResult.publish_stats.completed ?? 0}</strong>/{lastRunResult.publish_stats.attempted ?? 0}</div>
+                <div>Assignments: <strong className="text-primary">{lastRunResult.publish_stats.assignments ?? 0}</strong></div>
+                <div>Skipped: <strong>{lastRunResult.publish_stats.skipped ?? 0}</strong></div>
+                <div>Duration: <strong>{lastRunResult.duration_ms}ms</strong></div>
+              </div>
+            )}
+            {lastRunResult.newsdata_key_present === false && (
+              <p className="text-[10px] text-warning mt-1">🔑 NEWSDATA_API_KEY not configured — 11 sources blocked</p>
             )}
             {lastRunResult.source_errors?.length > 0 && (
               <div className="mt-1.5 text-[10px] text-destructive">
@@ -678,21 +711,28 @@ export default function ContentIntelligenceOpsPage() {
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
           <StatCard label="Runs" value={pipelineHistory?.length ?? 0} icon={History} color="text-muted-foreground" subtitle={pipelineHistory?.[0] ? formatTimeAgo(pipelineHistory[0].started_at) : 'None'} />
         </div>
-        {/* Live vs Evergreen + SL Relevance metrics */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        {/* Live vs Evergreen + SL Relevance + Premium metrics */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
           <StatCard
             label="Live Fill"
             value={`${(surfaces ?? []).length}`}
             icon={Radio}
             color="text-primary"
-            subtitle={`${coveredSurfaces} surfaces active`}
+            subtitle={`${coveredSurfaces} surfaces`}
+          />
+          <StatCard
+            label="🇱🇰 SL Published"
+            value={published?.filter((p: any) => p.source_country === 'lk').length ?? 0}
+            icon={Shield}
+            color="text-primary"
+            subtitle={`of ${totalPublished} total`}
           />
           <StatCard
             label="SL Sources"
             value={sources?.filter((s: any) => (s.sri_lanka_bias ?? 0) >= 0.7 && s.active).length ?? 0}
             icon={Shield}
-            color="text-primary"
-            subtitle={`of ${activeSources} active`}
+            color="text-accent-foreground"
+            subtitle={`${sources?.filter((s: any) => s.source_vendor === 'newsdata' && s.rollout_state === 'failing').length ?? 0} blocked by key`}
           />
           <StatCard
             label="Avg Quality"
