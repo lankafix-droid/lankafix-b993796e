@@ -72,8 +72,8 @@ const HEALTH_STYLES: Record<SourceHealth, string> = {
 };
 
 type CategoryReadiness = 'ready' | 'weak' | 'fallback_only' | 'blocked';
-function getCategoryReadiness(data: { featured: number; feed: number; live: number }): CategoryReadiness {
-  if (data.live >= 3 && data.featured >= 1) return 'ready';
+function getCategoryReadiness(data: { featured: number; feed: number; live: number; sl?: number; avgQ?: number }): CategoryReadiness {
+  if (data.live >= 3 && data.featured >= 1 && (data.avgQ ?? 0) >= 0.4) return 'ready';
   if (data.live >= 1) return 'weak';
   return 'fallback_only';
 }
@@ -249,6 +249,7 @@ export default function ContentIntelligenceOpsPage() {
   const avgQuality = totalPublished > 0
     ? ((published ?? []).reduce((s: number, p: any) => s + (p.content_ai_briefs?.[0]?.ai_quality_score ?? 0), 0) / totalPublished)
     : 0;
+  const slShare = totalPublished > 0 ? Math.round(slPublished / totalPublished * 100) : 0;
   const blockedNewsdata = sources?.filter((s: any) => s.base_url?.includes('newsdata.io') && s.rollout_state === 'failing').length ?? 0;
 
   const surfacesByCode = useMemo(() => {
@@ -267,16 +268,32 @@ export default function ContentIntelligenceOpsPage() {
   }, [surfaceConfigs]);
 
   const categoryCoverage = useMemo(() => {
-    const catData: Record<string, { featured: number; feed: number; live: number }> = {};
-    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0 }; });
+    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number }> = {};
+    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0 }; });
+    // Count surface assignments
     (surfaces ?? []).forEach((s: any) => {
       if (!s.category_code || !catData[s.category_code]) return;
       if (s.surface_code === 'category_featured') catData[s.category_code].featured++;
       if (s.surface_code === 'category_feed') catData[s.category_code].feed++;
       catData[s.category_code].live++;
+      if (s.content_items?.source_country === 'lk') catData[s.category_code].sl++;
     });
+    // Compute avg quality from published items by category tag
+    (published ?? []).forEach((p: any) => {
+      const q = p.content_ai_briefs?.[0]?.ai_quality_score ?? 0;
+      (p.content_category_tags ?? []).forEach((t: any) => {
+        if (catData[t.category_code]) {
+          catData[t.category_code].avgQ += q;
+        }
+      });
+    });
+    // Average quality
+    for (const cat of LANKAFIX_CATEGORIES) {
+      const d = catData[cat];
+      if (d.live > 0) d.avgQ = d.avgQ / d.live;
+    }
     return catData;
-  }, [surfaces]);
+  }, [surfaces, published]);
 
   // Premium surface analysis
   const premiumAnalysis = useMemo(() => {
@@ -504,7 +521,7 @@ export default function ContentIntelligenceOpsPage() {
           <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-4 w-4 text-primary" /><span className="text-xs font-bold">Executive Summary</span></div>
           <div className="grid grid-cols-4 gap-2 text-[10px]">
             <div className="text-center"><p className="text-lg font-bold text-primary">{totalPublished}</p><p className="text-muted-foreground">Published</p></div>
-            <div className="text-center"><p className="text-lg font-bold">{slPublished}</p><p className="text-muted-foreground">🇱🇰 SL Items</p><p className="text-[9px] text-muted-foreground/60">{totalPublished > 0 ? Math.round(slPublished / totalPublished * 100) : 0}%</p></div>
+            <div className="text-center"><p className="text-lg font-bold">{slPublished}</p><p className="text-muted-foreground">🇱🇰 SL Items</p><p className="text-[9px] text-muted-foreground/60">{slShare}%</p></div>
             <div className="text-center"><p className="text-lg font-bold">{avgQuality.toFixed(2)}</p><p className="text-muted-foreground">Avg Quality</p></div>
             <div className="text-center"><p className="text-lg font-bold">{backlog}</p><p className="text-muted-foreground">Backlog</p></div>
           </div>
@@ -705,10 +722,10 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* ─── Categories Tab (with quality metrics) ─── */}
+          {/* ─── Categories Tab (with quality + SL metrics) ─── */}
           <TabsContent value="categories" className="space-y-2 mt-3">
             {LANKAFIX_CATEGORIES.map(cat => {
-              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0 };
+              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0 };
               const readiness = getCategoryReadiness(data);
               const rs = READINESS_STYLES[readiness];
               return (
@@ -722,6 +739,8 @@ export default function ContentIntelligenceOpsPage() {
                       <span>Featured: <strong className={data.featured ? 'text-primary' : 'text-muted-foreground'}>{data.featured}</strong></span>
                       <span>Feed: <strong className={data.feed ? 'text-primary' : 'text-muted-foreground'}>{data.feed}</strong></span>
                       <span>Live: <strong>{data.live}</strong></span>
+                      <span>🇱🇰 <strong>{data.sl}</strong></span>
+                      {data.avgQ > 0 && <span>Q: <strong className={data.avgQ >= 0.5 ? 'text-primary' : data.avgQ >= 0.4 ? '' : 'text-warning'}>{data.avgQ.toFixed(2)}</strong></span>}
                     </div>
                   </div>
                 </Card>

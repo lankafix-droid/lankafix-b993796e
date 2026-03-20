@@ -10,16 +10,21 @@ interface ContentSectionShellProps {
   onAction?: () => void;
   children: ReactNode;
   className?: string;
+  /** Use a stronger visual treatment for premium sections */
+  premium?: boolean;
 }
 
 const ContentSectionShell = memo(function ContentSectionShell({
-  title, icon, subtitle, actionLabel, onAction, children, className,
+  title, icon, subtitle, actionLabel, onAction, children, className, premium,
 }: ContentSectionShellProps) {
   return (
     <section className={cn('py-4', className)}>
       <div className="px-4 flex items-center justify-between mb-3">
         <div>
-          <h2 className="flex items-center gap-2 font-heading text-base font-bold text-foreground tracking-tight">
+          <h2 className={cn(
+            'flex items-center gap-2 font-heading text-base font-bold text-foreground tracking-tight',
+            premium && 'text-[17px]'
+          )}>
             {icon}
             {title}
           </h2>
