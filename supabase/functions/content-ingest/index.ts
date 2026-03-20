@@ -279,7 +279,7 @@ const MAX_SAME_CATEGORY_CONSECUTIVE = 2;
 const MAX_SAME_CONTENT_TYPE_PER_SURFACE = 3;
 
 // ─── Surface publishing with diversity governance ───
-const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; isHero?: boolean }> = {
+const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQuality: number; isHero?: boolean; categoryBound?: boolean }> = {
   homepage_hero: { types: ['breaking_news', 'innovation', 'safety_alert', 'hot_topic', 'market_shift'], maxItems: 3, minQuality: 0.6, isHero: true },
   homepage_hot_now: { types: ['breaking_news', 'hot_topic', 'trend_signal', 'most_read'], maxItems: 8, minQuality: 0.5 },
   homepage_did_you_know: { types: ['knowledge_fact', 'on_this_day', 'history', 'how_to'], maxItems: 4, minQuality: 0.4 },
@@ -288,6 +288,8 @@ const SURFACE_RULES: Record<string, { types: string[]; maxItems: number; minQual
   homepage_numbers: { types: ['numbers_insight', 'market_shift'], maxItems: 4, minQuality: 0.4 },
   homepage_popular: { types: ['most_read', 'hot_topic', 'how_to', 'innovation'], maxItems: 5, minQuality: 0.4 },
   ai_banner_forum: { types: ['breaking_news', 'innovation', 'safety_alert', 'trend_signal'], maxItems: 5, minQuality: 0.6 },
+  category_featured: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'trend_signal', 'how_to', 'market_shift'], maxItems: 1, minQuality: 0.5, categoryBound: true },
+  category_feed: { types: ['breaking_news', 'hot_topic', 'innovation', 'safety_alert', 'scam_alert', 'trend_signal', 'how_to', 'knowledge_fact', 'numbers_insight', 'market_shift'], maxItems: 6, minQuality: 0.4, categoryBound: true },
 };
 
 async function publishToSurfaces() {
@@ -300,138 +302,158 @@ async function publishToSurfaces() {
     .limit(500);
   const excludedIds = new Set((excludedItems ?? []).map((e: any) => e.id));
 
+  // For category-bound surfaces, enumerate active categories
+  const CATEGORY_CODES = ['MOBILE', 'AC', 'IT', 'CCTV', 'SOLAR', 'CONSUMER_ELEC', 'SMART_HOME_OFFICE', 'ELECTRICAL', 'PLUMBING', 'NETWORK', 'POWER_BACKUP', 'HOME_SECURITY', 'APPLIANCE_INSTALL', 'COPIER', 'PRINT_SUPPLIES'];
+
   for (const [surfaceCode, rules] of Object.entries(SURFACE_RULES)) {
-    // Check for manually pinned items (rank_score >= 990)
-    const { data: pinnedSurfaces } = await supabase
-      .from('content_surface_state')
-      .select('content_item_id')
-      .eq('surface_code', surfaceCode)
-      .eq('active', true)
-      .gte('rank_score', 990);
-    const pinnedIds = new Set((pinnedSurfaces ?? []).map((p: any) => p.content_item_id));
+    // Category-bound surfaces run once per category
+    const categories = rules.categoryBound ? CATEGORY_CODES : [null];
 
-    const { data: items } = await supabase
-      .from('content_items')
-      .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title, image_url')
-      .eq('status', 'published')
-      .in('content_type', rules.types)
-      .order('freshness_score', { ascending: false })
-      .limit(rules.maxItems * 6);
+    for (const catCode of categories) {
+      const effectiveSurface = catCode ? `${surfaceCode}` : surfaceCode;
 
-    if (!items?.length && pinnedIds.size === 0) continue;
+      // Check for manually pinned items (rank_score >= 990)
+      let pinnedQuery = supabase
+        .from('content_surface_state')
+        .select('content_item_id')
+        .eq('surface_code', effectiveSurface)
+        .eq('active', true)
+        .gte('rank_score', 990);
+      if (catCode) pinnedQuery = pinnedQuery.eq('category_code', catCode);
+      const { data: pinnedSurfaces } = await pinnedQuery;
+      const pinnedIds = new Set((pinnedSurfaces ?? []).map((p: any) => p.content_item_id));
 
-    const allItems = items ?? [];
-    const ids = allItems.map((i: any) => i.id);
+      // Fetch candidates
+      let itemQuery = supabase
+        .from('content_items')
+        .select('id, content_type, freshness_score, source_trust_score, published_at, source_country, source_id, title, image_url')
+        .eq('status', 'published')
+        .in('content_type', rules.types)
+        .order('freshness_score', { ascending: false })
+        .limit(rules.maxItems * 6);
+      const { data: items } = await itemQuery;
 
-    const [{ data: briefs }, { data: tags }] = await Promise.all([
-      ids.length > 0
-        ? supabase.from('content_ai_briefs').select('content_item_id, ai_quality_score').in('content_item_id', ids)
-        : Promise.resolve({ data: [] }),
-      ids.length > 0
-        ? supabase.from('content_category_tags').select('content_item_id, category_code, confidence_score').in('content_item_id', ids)
-        : Promise.resolve({ data: [] }),
-    ]);
+      if (!items?.length && pinnedIds.size === 0) continue;
 
-    const qualityMap = new Map((briefs ?? []).map((b: any) => [b.content_item_id, b.ai_quality_score ?? 0.5]));
-    const catMap = new Map<string, string[]>();
-    (tags ?? []).forEach((t: any) => {
-      const arr = catMap.get(t.content_item_id) ?? [];
-      arr.push(t.category_code);
-      catMap.set(t.content_item_id, arr);
-    });
+      const allItems = items ?? [];
+      const ids = allItems.map((i: any) => i.id);
 
-    const ranked = allItems
-      .filter((item: any) => !excludedIds.has(item.id) && !pinnedIds.has(item.id))
-      .filter((item: any) => (qualityMap.get(item.id) ?? 0.5) >= rules.minQuality)
-      .map((item: any) => {
-        const quality = qualityMap.get(item.id) ?? 0.5;
-        const text = item.title ?? '';
-        const slRelevance = detectSriLankaRelevance(text);
-        const commercialRelevance = detectCommercialRelevance(text);
-        const topCatConf = (tags ?? []).find((t: any) => t.content_item_id === item.id)?.confidence_score ?? 0.3;
-        const localUtility = computeLocalUtilityScore(item, slRelevance, commercialRelevance, topCatConf);
+      const [{ data: briefs }, { data: tags }] = await Promise.all([
+        ids.length > 0
+          ? supabase.from('content_ai_briefs').select('content_item_id, ai_quality_score').in('content_item_id', ids)
+          : Promise.resolve({ data: [] }),
+        ids.length > 0
+          ? supabase.from('content_category_tags').select('content_item_id, category_code, confidence_score').in('content_item_id', ids)
+          : Promise.resolve({ data: [] }),
+      ]);
 
-        let rank: number;
-        if (rules.isHero) {
-          rank = computeHeroScore(item, quality, localUtility) * 100;
-        } else {
-          rank = (item.freshness_score ?? 50) * 0.25 +
-                 (item.source_trust_score ?? 0.7) * 100 * 0.15 +
-                 quality * 100 * 0.25 +
-                 localUtility * 100 * 0.20 +
-                 (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15;
+      const qualityMap = new Map((briefs ?? []).map((b: any) => [b.content_item_id, b.ai_quality_score ?? 0.5]));
+      const catMap = new Map<string, string[]>();
+      (tags ?? []).forEach((t: any) => {
+        const arr = catMap.get(t.content_item_id) ?? [];
+        arr.push(t.category_code);
+        catMap.set(t.content_item_id, arr);
+      });
+
+      const ranked = allItems
+        .filter((item: any) => !excludedIds.has(item.id) && !pinnedIds.has(item.id))
+        .filter((item: any) => (qualityMap.get(item.id) ?? 0.5) >= rules.minQuality)
+        // For category-bound surfaces, prefer items tagged with the target category
+        .filter((item: any) => {
+          if (!catCode) return true;
+          const itemCats = catMap.get(item.id) ?? [];
+          return itemCats.includes(catCode);
+        })
+        .map((item: any) => {
+          const quality = qualityMap.get(item.id) ?? 0.5;
+          const text = item.title ?? '';
+          const slRelevance = detectSriLankaRelevance(text);
+          const commercialRelevance = detectCommercialRelevance(text);
+          const topCatConf = (tags ?? []).find((t: any) => t.content_item_id === item.id)?.confidence_score ?? 0.3;
+          const localUtility = computeLocalUtilityScore(item, slRelevance, commercialRelevance, topCatConf);
+
+          let rank: number;
+          if (rules.isHero) {
+            rank = computeHeroScore(item, quality, localUtility) * 100;
+          } else {
+            rank = (item.freshness_score ?? 50) * 0.25 +
+                   (item.source_trust_score ?? 0.7) * 100 * 0.15 +
+                   quality * 100 * 0.25 +
+                   localUtility * 100 * 0.20 +
+                   (item.published_at ? Math.max(0, 100 - (Date.now() - new Date(item.published_at).getTime()) / 3600000) : 0) * 0.15;
+          }
+
+          return { ...item, quality, rank, localUtility, categories: catMap.get(item.id) ?? [] };
+        })
+        .sort((a: any, b: any) => b.rank - a.rank);
+
+      // ─── Apply diversity filters ───
+      const selected: any[] = [];
+      const sourceCountInSurface = new Map<string, number>();
+      const selectedTitles: string[] = [];
+      const contentTypeCount = new Map<string, number>();
+      const maxSlots = rules.maxItems - pinnedIds.size;
+
+      for (const item of ranked) {
+        if (selected.length >= maxSlots) break;
+
+        const surfCount = itemSurfaceCount.get(item.id) ?? 0;
+        if (surfCount >= MAX_SURFACES_PER_ITEM) continue;
+
+        const srcCount = sourceCountInSurface.get(item.source_id ?? '') ?? 0;
+        if (srcCount >= MAX_ITEMS_PER_SOURCE_PER_SURFACE) continue;
+
+        const typeCount = contentTypeCount.get(item.content_type) ?? 0;
+        if (typeCount >= MAX_SAME_CONTENT_TYPE_PER_SURFACE) continue;
+
+        const isDuplicate = selectedTitles.some(t => titleSimilarity(t, item.title) > SIMILAR_TITLE_THRESHOLD);
+        if (isDuplicate) continue;
+
+        if (selected.length >= MAX_SAME_CATEGORY_CONSECUTIVE) {
+          const recentCats = selected.slice(-MAX_SAME_CATEGORY_CONSECUTIVE).map((s: any) => s.categories?.[0]);
+          const itemCat = item.categories?.[0];
+          if (itemCat && recentCats.every((c: string) => c === itemCat)) continue;
         }
 
-        return { ...item, quality, rank, localUtility, categories: catMap.get(item.id) ?? [] };
-      })
-      .sort((a: any, b: any) => b.rank - a.rank);
-
-    // ─── Apply diversity filters ───
-    const selected: any[] = [];
-    const sourceCountInSurface = new Map<string, number>();
-    const selectedTitles: string[] = [];
-    const contentTypeCount = new Map<string, number>();
-    const maxSlots = rules.maxItems - pinnedIds.size;
-
-    for (const item of ranked) {
-      if (selected.length >= maxSlots) break;
-
-      // Max surfaces per item
-      const surfCount = itemSurfaceCount.get(item.id) ?? 0;
-      if (surfCount >= MAX_SURFACES_PER_ITEM) continue;
-
-      // Max items per source per surface
-      const srcCount = sourceCountInSurface.get(item.source_id ?? '') ?? 0;
-      if (srcCount >= MAX_ITEMS_PER_SOURCE_PER_SURFACE) continue;
-
-      // Max same content_type per surface
-      const typeCount = contentTypeCount.get(item.content_type) ?? 0;
-      if (typeCount >= MAX_SAME_CONTENT_TYPE_PER_SURFACE) continue;
-
-      // Similar title suppression
-      const isDuplicate = selectedTitles.some(t => titleSimilarity(t, item.title) > SIMILAR_TITLE_THRESHOLD);
-      if (isDuplicate) continue;
-
-      // Category consecutive check — no more than N same-category items in a row
-      if (selected.length >= MAX_SAME_CATEGORY_CONSECUTIVE) {
-        const recentCats = selected.slice(-MAX_SAME_CATEGORY_CONSECUTIVE).map((s: any) => s.categories?.[0]);
-        const itemCat = item.categories?.[0];
-        if (itemCat && recentCats.every((c: string) => c === itemCat)) continue;
+        selected.push(item);
+        sourceCountInSurface.set(item.source_id ?? '', srcCount + 1);
+        selectedTitles.push(item.title);
+        contentTypeCount.set(item.content_type, typeCount + 1);
+        itemSurfaceCount.set(item.id, surfCount + 1);
       }
 
-      selected.push(item);
-      sourceCountInSurface.set(item.source_id ?? '', srcCount + 1);
-      selectedTitles.push(item.title);
-      contentTypeCount.set(item.content_type, typeCount + 1);
-      itemSurfaceCount.set(item.id, surfCount + 1);
-    }
-
-    // Deactivate old (except pinned)
-    if (pinnedIds.size > 0) {
-      const { data: toDeactivate } = await supabase
+      // Deactivate old (except pinned)
+      let deactQuery = supabase
         .from('content_surface_state')
         .select('id')
-        .eq('surface_code', surfaceCode)
+        .eq('surface_code', effectiveSurface)
         .eq('active', true)
         .lt('rank_score', 990);
-      if (toDeactivate?.length) {
-        await supabase.from('content_surface_state').update({ active: false }).in('id', toDeactivate.map((d: any) => d.id));
-      }
-    } else {
-      await supabase.from('content_surface_state').update({ active: false }).eq('surface_code', surfaceCode).eq('active', true);
-    }
+      if (catCode) deactQuery = deactQuery.eq('category_code', catCode);
 
-    // Insert new ranked items
-    if (selected.length > 0) {
-      await supabase.from('content_surface_state').insert(
-        selected.map((item: any) => ({
-          surface_code: surfaceCode,
-          content_item_id: item.id,
-          rank_score: Math.round(item.rank * 10) / 10,
-          active: true,
-          category_code: item.categories?.[0] ?? null,
-        }))
-      );
+      if (pinnedIds.size > 0) {
+        const { data: toDeactivate } = await deactQuery;
+        if (toDeactivate?.length) {
+          await supabase.from('content_surface_state').update({ active: false }).in('id', toDeactivate.map((d: any) => d.id));
+        }
+      } else {
+        let clearQuery = supabase.from('content_surface_state').update({ active: false }).eq('surface_code', effectiveSurface).eq('active', true);
+        if (catCode) clearQuery = clearQuery.eq('category_code', catCode);
+        await clearQuery;
+      }
+
+      // Insert new ranked items
+      if (selected.length > 0) {
+        await supabase.from('content_surface_state').insert(
+          selected.map((item: any) => ({
+            surface_code: effectiveSurface,
+            content_item_id: item.id,
+            rank_score: Math.round(item.rank * 10) / 10,
+            active: true,
+            category_code: catCode ?? item.categories?.[0] ?? null,
+          }))
+        );
+      }
     }
   }
 }

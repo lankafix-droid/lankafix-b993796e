@@ -76,8 +76,21 @@ export function useContentIntelligence({
     queryKey: ['content-intelligence', surface, categoryCode, limit],
     queryFn: async () => {
       const liveContent = await fetchSurfaceContent(surface, categoryCode, limit);
-      if (liveContent.length > 0) return liveContent;
-      // Fallback to evergreen content
+
+      // If live content fully satisfies the limit, return it
+      if (liveContent.length >= limit) return liveContent;
+
+      // Hybrid blend: fill remaining slots with evergreen fallbacks
+      if (liveContent.length > 0) {
+        const remaining = limit - liveContent.length;
+        const liveTitles = new Set(liveContent.map(i => i.title.toLowerCase()));
+        const evergreen = getEvergreenFallbacksForSurface(surface, categoryCode, remaining + 4)
+          .filter(eg => !liveTitles.has(eg.title.toLowerCase()))
+          .slice(0, remaining);
+        return [...liveContent, ...evergreen];
+      }
+
+      // No live content at all — full evergreen fallback
       return getEvergreenFallbacksForSurface(surface, categoryCode, limit);
     },
     staleTime: 5 * 60 * 1000,
