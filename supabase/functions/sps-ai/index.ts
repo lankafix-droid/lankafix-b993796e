@@ -533,5 +533,5 @@ RULES:
   const answer = res.result as string;
   const lowConfidence = answer.includes("advisor should confirm") || answer.includes("not sure") || answer.includes("cannot confirm");
 
-  return { answer, confidence: lowConfidence ? 40 : 80, escalate: lowConfidence, advisory_only: true };
+  return { answer, confidence: lowConfidence ? 40 : 80, escalate: lowConfidence, advisory_only: true, fallback: false };
 }

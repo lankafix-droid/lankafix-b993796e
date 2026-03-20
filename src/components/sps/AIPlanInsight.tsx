@@ -39,9 +39,9 @@ export default function AIPlanInsight({ plan, inputs, confidence, reason }: Prop
     setError(false);
     try {
       const { data, error: fnErr } = await supabase.functions.invoke("sps-ai", {
-        body: { action: "plan_insight", payload: { plan, inputs, confidence, reason } },
+        body: { action: "plan_insight", payload: { plan: { plan_code: plan.plan_code }, inputs, confidence, reason } },
       });
-      if (fnErr || data?.error) throw new Error(data?.error || fnErr?.message);
+      if (fnErr || (data?.error && !data?.fallback)) throw new Error(data?.error || fnErr?.message);
       setInsight(data.insight as PlanInsight);
     } catch {
       setError(true);
