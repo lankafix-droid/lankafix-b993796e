@@ -18,6 +18,16 @@ interface UseContentIntelligenceOptions {
 /** Minimum AI quality for a live item to be considered "strong" enough to keep over evergreen */
 const MIN_LIVE_QUALITY = 0.45;
 
+/** Get the user-visible display title for an item (AI headline preferred, fallback to raw title) */
+function getDisplayTitle(item: EnrichedContentItem): string {
+  return (item.ai_brief?.ai_headline ?? item.title ?? '').trim().toLowerCase();
+}
+
+/** Normalize a title for dedupe comparison */
+function normalizeForDedupe(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 async function fetchSurfaceContent(
   surface: SurfaceCode,
   categoryCode?: string,
