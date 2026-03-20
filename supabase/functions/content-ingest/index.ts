@@ -463,10 +463,17 @@ async function validateSources() {
       } else if (!resp.ok) {
         result.error = `HTTP ${resp.status}`;
       } else {
-        const data = await resp.json();
-        const articles = data.articles ?? data.results ?? data.data ?? [];
+        let articles: any[];
+        if (isRSS) {
+          const xmlText = await resp.text();
+          articles = parseRSSItems(xmlText);
+        } else {
+          const data = await resp.json();
+          articles = data.articles ?? data.results ?? data.data ?? [];
+        }
         result.fetched_count = articles.length;
         result.response_valid = Array.isArray(articles) && articles.length > 0;
+        result.has_real_key = !source.base_url.includes('pub_demo') || !!NEWSDATA_API_KEY;
 
         if (result.response_valid && source.rollout_state === 'inactive') {
           await supabase.from('content_sources').update({ rollout_state: 'validated' }).eq('id', source.id);
