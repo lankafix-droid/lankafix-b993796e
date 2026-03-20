@@ -57,9 +57,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
   const impressionRef = useTrackContentImpression(item.id, variant);
 
   const handleClick = () => {
-    if (isLive) {
-      trackContentEvent(item.id, 'click', { variant });
-    }
+    if (isLive) trackContentEvent(item.id, 'click', { variant });
     onOpen?.(item);
   };
 
@@ -99,11 +97,6 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               )}
             </div>
           </div>
-          {bannerText && (
-            <div className="shrink-0 rounded-md bg-primary/10 border border-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-              {bannerText}
-            </div>
-          )}
         </button>
       </div>
     );
@@ -124,34 +117,32 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           )}
         >
           {item.image_url ? (
-            <div className="relative h-48 w-full overflow-hidden">
+            <div className="relative h-44 w-full overflow-hidden">
               <img src={item.image_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/70 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
             </div>
           ) : (
             <div className={cn(
-              "h-36 w-full flex items-center justify-center relative overflow-hidden",
+              "h-32 w-full flex items-center justify-center relative overflow-hidden",
               isSafety
                 ? "bg-gradient-to-br from-destructive/8 via-destructive/3 to-card"
-                : "bg-gradient-to-br from-primary/10 via-accent/5 to-card"
+                : "bg-gradient-to-br from-primary/8 via-accent/4 to-card"
             )}>
-              {/* Decorative pattern */}
-              <div className="absolute inset-0 opacity-[0.04]" style={{
+              <div className="absolute inset-0 opacity-[0.03]" style={{
                 backgroundImage: `radial-gradient(circle at 25% 45%, hsl(var(--primary)) 1px, transparent 1px),
                                   radial-gradient(circle at 75% 55%, hsl(var(--primary)) 0.5px, transparent 0.5px)`,
                 backgroundSize: '28px 28px, 20px 20px'
               }} />
-              {/* Gradient orb */}
               <div className={cn(
-                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full blur-3xl opacity-[0.08]",
+                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full blur-3xl opacity-[0.06]",
                 isSafety ? "bg-destructive" : "bg-primary"
               )} />
-              <div className="rounded-2xl bg-card/80 p-4 backdrop-blur-sm shadow-sm border border-border/30">
-                <Icon className={cn("h-7 w-7", isSafety ? "text-destructive/70" : "text-primary/70")} />
+              <div className="rounded-2xl bg-card/80 p-3.5 backdrop-blur-sm shadow-sm border border-border/30">
+                <Icon className={cn("h-6 w-6", isSafety ? "text-destructive/60" : "text-primary/60")} />
               </div>
             </div>
           )}
-          <div className={cn('p-4', item.image_url ? '-mt-20 relative z-10' : '')}>
+          <div className={cn('p-4', item.image_url ? '-mt-16 relative z-10' : '')}>
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase tracking-wider border', config.accent)}>
                 <Icon className="mr-1 h-3 w-3" />
@@ -168,11 +159,6 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               )}
               {isSriLankan && (
                 <Badge variant="outline" className="text-[9px] py-0 h-4 bg-card/80 backdrop-blur-sm border-border/30 font-semibold">🇱🇰 Local</Badge>
-              )}
-              {bannerText && (
-                <Badge variant="secondary" className="text-[10px] font-bold bg-primary/12 text-primary border border-primary/20">
-                  {bannerText}
-                </Badge>
               )}
             </div>
             <h3 className="text-[15px] font-bold leading-snug text-foreground line-clamp-2">{headline}</h3>
@@ -229,19 +215,19 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               {config.label}
             </Badge>
             {isSriLankan && <span className="text-[10px]">🇱🇰</span>}
-            {isLive && item.source_name && (
-              <span className="text-[10px] text-muted-foreground/70 truncate max-w-[90px]">{item.source_name}</span>
+            {isEvergreen && (
+              <span className="text-[10px] text-primary/60 font-medium flex items-center gap-0.5">
+                <Sparkles className="h-2.5 w-2.5" /> LankaFix
+              </span>
             )}
-            <span className="text-[10px] text-muted-foreground">{isEvergreen ? 'LankaFix' : formatTimeAgo(item.published_at)}</span>
           </div>
           <h4 className="text-sm font-bold leading-tight text-foreground line-clamp-2">{headline}</h4>
           {summary && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
-          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-            {categoryTags.map(t => (
-              <span key={t.id} className="text-[10px] text-primary/60 font-medium">#{t.category_code}</span>
-            ))}
-            {bannerText && (
-              <span className="text-[10px] font-bold text-primary bg-primary/6 rounded-md px-1.5 py-px border border-primary/10">{bannerText}</span>
+          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+            {isLive && item.source_name && <span className="font-medium">{item.source_name}</span>}
+            {isLive && <span>{formatTimeAgo(item.published_at)}</span>}
+            {categoryTags.length > 0 && (
+              <span className="text-primary/60 font-medium">#{categoryTags[0].category_code}</span>
             )}
           </div>
         </div>
