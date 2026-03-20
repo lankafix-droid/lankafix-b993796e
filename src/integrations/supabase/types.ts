@@ -4765,6 +4765,7 @@ export type Database = {
           customer_id: string | null
           dismissed_at: string | null
           dismissed_by: string | null
+          expires_at: string | null
           explanation: string | null
           generated_at: string
           id: string
@@ -4780,6 +4781,7 @@ export type Database = {
           customer_id?: string | null
           dismissed_at?: string | null
           dismissed_by?: string | null
+          expires_at?: string | null
           explanation?: string | null
           generated_at?: string
           id?: string
@@ -4795,6 +4797,7 @@ export type Database = {
           customer_id?: string | null
           dismissed_at?: string | null
           dismissed_by?: string | null
+          expires_at?: string | null
           explanation?: string | null
           generated_at?: string
           id?: string
@@ -6310,6 +6313,7 @@ export type Database = {
         Args: { _retention_days?: number }
         Returns: number
       }
+      expire_stale_sps_alerts: { Args: never; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
