@@ -813,110 +813,19 @@ serve(async (req) => {
       );
     }
 
+    // ─── Fetch only — ingest without briefing/publishing ───
+    if (mode === 'fetch_only') {
+      const fetchResults = await ingestFromSources(body.tier_limit, results);
+      return new Response(
+        JSON.stringify({ success: true, ...results, duration_ms: Date.now() - startTime }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // ─── Full or ingest mode ───
     // 1. Ingest from sources
     if (mode === 'full' || mode === 'ingest') {
-      const { data: sources } = await supabase.from('content_sources').select('*').eq('active', true);
-      if (sources?.length) {
-        for (const source of sources) {
-          if (source.source_type === 'internal_editorial' || source.source_type === 'knowledge' || !source.base_url) continue;
-
-          // Staged rollout: tier-based filtering
-          if (body.tier_limit) {
-            const tier = classifySourceTier(source);
-            if (body.tier_limit === 'tier1' && tier !== 'tier1_safe') continue;
-            if (body.tier_limit === 'tier2' && tier === 'tier3_experimental') continue;
-          }
-
-          try {
-            const resp = await fetch(source.base_url, {
-              headers: { 'Accept': 'application/json' },
-              signal: AbortSignal.timeout(10000),
-            });
-            if (!resp.ok) {
-              console.warn(`Source ${source.source_name} returned ${resp.status}`);
-              results.source_errors.push(`${source.source_name}: HTTP ${resp.status}`);
-              continue;
-            }
-            const data = await resp.json();
-            const articles = data.articles ?? data.results ?? data.data ?? [];
-            results.fetched += articles.length;
-
-            for (const article of articles.slice(0, 15)) {
-              const title = (article.title ?? article.headline ?? '').trim();
-              if (!title || title.length < 10) continue;
-
-              // Title quality gate
-              const titleCheck = assessTitleQuality(title);
-              if (!titleCheck.pass) {
-                results.title_rejected++;
-                continue;
-              }
-
-              const dedupeKey = generateDedupeKey(title, source.source_name);
-              const { data: existing } = await supabase.from('content_items').select('id').eq('dedupe_key', dedupeKey).limit(1);
-              if (existing?.length) { results.deduped++; continue; }
-
-              // Similar title check against recent items
-              const { data: recentItems } = await supabase
-                .from('content_items')
-                .select('title')
-                .order('created_at', { ascending: false })
-                .limit(30);
-              const isSimilar = (recentItems ?? []).some((r: any) => titleSimilarity(r.title, title) > SIMILAR_TITLE_THRESHOLD);
-              if (isSimilar) { results.deduped++; continue; }
-
-              const text = `${title} ${article.description ?? ''} ${article.content ?? ''}`;
-              const categories = detectCategories(text);
-              const contentType = detectContentType(text);
-              const slRelevance = detectSriLankaRelevance(text);
-
-              const publishedAt = article.publishedAt ?? article.published_at ?? article.pubDate ?? null;
-              const freshness = computeFreshness(contentType, publishedAt);
-              const sourceSLBias = source.sri_lanka_bias ?? 0.3;
-              const effectiveSLRelevance = Math.max(slRelevance, sourceSLBias);
-              const sourceCountry = effectiveSLRelevance > 0.7 ? 'lk' : (article.country ?? 'global');
-
-              const { data: inserted } = await supabase.from('content_items').insert({
-                source_id: source.id,
-                source_item_id: article.id ?? article.url ?? dedupeKey,
-                content_type: contentType,
-                title,
-                raw_excerpt: (article.description ?? article.excerpt ?? '').slice(0, 1000) || null,
-                raw_body: (article.content ?? article.body ?? '').slice(0, 10000) || null,
-                canonical_url: article.url ?? article.link ?? null,
-                image_url: article.urlToImage ?? article.image ?? article.image_url ?? null,
-                source_name: source.source_name,
-                source_country: sourceCountry,
-                language: article.language ?? 'en',
-                published_at: publishedAt,
-                source_trust_score: source.trust_score,
-                freshness_score: freshness,
-                status: 'new',
-                dedupe_key: dedupeKey,
-                raw_payload: article,
-              }).select('id').single();
-
-              if (inserted) {
-                results.normalized++;
-                for (const cat of categories) {
-                  await supabase.from('content_category_tags').insert({
-                    content_item_id: inserted.id,
-                    category_code: cat.code,
-                    confidence_score: cat.confidence,
-                  });
-                }
-                results.accepted++;
-              }
-            }
-          } catch (e) {
-            console.error(`Source fetch error for ${source.source_name}:`, e);
-            results.source_errors.push(`${source.source_name}: ${e instanceof Error ? e.message : 'Unknown'}`);
-          }
-        }
-
-        await supabase.from('content_sources').update({ last_fetched_at: new Date().toISOString() }).eq('active', true);
-      }
+      await ingestFromSources(body.tier_limit, results);
     }
 
     // 2. AI Briefing (full mode)
