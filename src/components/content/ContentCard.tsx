@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Clock, TrendingUp, Shield, Zap, Lightbulb, Hash, BookOpen, BarChart3, AlertTriangle } from 'lucide-react';
+import { Clock, TrendingUp, Shield, Zap, Lightbulb, Hash, BookOpen, BarChart3, AlertTriangle, Sparkles } from 'lucide-react';
 import type { EnrichedContentItem, ContentType } from '@/types/contentIntelligence';
 import { trackContentEvent } from '@/hooks/useContentIntelligence';
 import { useTrackContentImpression } from '@/hooks/useTrackContentImpression';
@@ -85,10 +85,17 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               {isLive && item.source_name && (
                 <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{item.source_name}</span>
               )}
+              {isEvergreen && (
+                <span className="text-[10px] text-primary/70 font-medium flex items-center gap-0.5">
+                  <Sparkles className="h-2.5 w-2.5" /> LankaFix
+                </span>
+              )}
               {isSriLankan && <span className="text-[9px]">🇱🇰</span>}
-              <span className="text-[10px] text-muted-foreground">
-                {isEvergreen ? 'LankaFix' : formatTimeAgo(item.published_at)}
-              </span>
+              {isLive && (
+                <span className="text-[10px] text-muted-foreground">
+                  {formatTimeAgo(item.published_at)}
+                </span>
+              )}
             </div>
           </div>
           {bannerText && (

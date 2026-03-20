@@ -90,6 +90,25 @@ function classifySourceTier(src: any): string {
   return 'tier3_experimental';
 }
 
+function classifySourceReadiness(src: any): string {
+  if (!src.active) return 'disabled';
+  if (!src.base_url) return 'needs_url';
+  if (src.trust_score < 0.5) return 'low_trust';
+  if ((src.sri_lanka_bias ?? 0) >= 0.7) return 'sl_relevant';
+  if ((src.sri_lanka_bias ?? 0) < 0.3 && src.base_url) return 'global_only';
+  return 'ready';
+}
+
+const READINESS_BADGES: Record<string, { label: string; className: string }> = {
+  ready: { label: 'Ready', className: 'text-primary border-primary/20' },
+  needs_url: { label: 'Needs URL', className: 'text-warning border-warning/30' },
+  low_trust: { label: 'Low Trust', className: 'text-warning border-warning/30' },
+  disabled: { label: 'Disabled', className: 'text-muted-foreground border-muted' },
+  sl_relevant: { label: '🇱🇰 SL Source', className: 'text-primary border-primary/15' },
+  global_only: { label: '🌍 Global', className: 'text-accent-foreground border-accent/20' },
+  failing: { label: 'Failing', className: 'text-destructive border-destructive/30' },
+};
+
 function SourceHealthBadges({ src }: { src: any }) {
   const badges: React.ReactNode[] = [];
   const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
@@ -100,10 +119,18 @@ function SourceHealthBadges({ src }: { src: any }) {
     return <>{badges}</>;
   }
 
+  // Tier badge
   const tier = classifySourceTier(src);
   const tierInfo = TIER_LABELS[tier];
   if (tierInfo) {
     badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
+  }
+
+  // Readiness badge
+  const readiness = classifySourceReadiness(src);
+  const readinessInfo = READINESS_BADGES[readiness];
+  if (readinessInfo && readiness !== 'ready') {
+    badges.push(<Badge key="rdy" variant="outline" className={`text-[9px] ${readinessInfo.className}`}>{readinessInfo.label}</Badge>);
   }
 
   if (!src.base_url) {
@@ -437,6 +464,9 @@ export default function ContentIntelligenceOpsPage() {
 
         {/* Pipeline mode buttons — granular controls */}
         <div className="flex gap-1 mb-3 flex-wrap">
+          <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'fetch_only' })} disabled={isPending}>
+            <Database className="h-3 w-3 mr-1" /> Fetch Only
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 text-[10px]" onClick={() => ingestMutation.mutate({ mode: 'brief' })} disabled={isPending}>
             <FileText className="h-3 w-3 mr-1" /> Brief Only
           </Button>
