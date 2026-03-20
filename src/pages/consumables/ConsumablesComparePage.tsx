@@ -4,7 +4,7 @@ import Footer from "@/components/landing/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck, Package, Crown, Home, Building2, Building, ShoppingCart, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Package, Crown, Home, Building2, Building, ShoppingCart, AlertTriangle, Info } from "lucide-react";
 import { useCompareProducts, useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 
@@ -68,7 +68,17 @@ const ConsumablesComparePage = () => {
           <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
             <p className="text-xs text-orange-800 dark:text-orange-200">
-              These products may not be direct alternatives. Verify compatibility before ordering.
+              These products belong to different product families and may not be direct alternatives. Verify compatibility before ordering.
+            </p>
+          </div>
+        )}
+
+        {/* No group data info */}
+        {data.noGroupData && !data.groupMismatch && (
+          <div className="bg-muted/50 border border-border rounded-lg p-3 mb-4 flex items-start gap-2">
+            <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              These products have not been explicitly grouped. Confirm they are suitable alternatives for your printer before ordering.
             </p>
           </div>
         )}

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, RotateCcw, Search, CheckCircle, AlertTriangle, XCircle, Truck, ClipboardCheck, TestTube, PackageCheck } from "lucide-react";
-import { useRefillEligibility, useCreateRefillOrder } from "@/hooks/useConsumables";
+import { useRefillEligibility, useCreateRefillOrder, deriveEligibilityStatus, type ConditionData, type RefillEligibilityStatus } from "@/hooks/useConsumables";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -23,6 +23,12 @@ const REFILL_STEPS = [
   { icon: PackageCheck, label: "Return" },
 ];
 
+const ELIGIBILITY_LABELS: Record<RefillEligibilityStatus, { text: string; color: string; icon: typeof CheckCircle }> = {
+  eligible: { text: "Eligible for Refill", color: "text-accent", icon: CheckCircle },
+  likely_eligible: { text: "Likely Eligible – Needs Inspection", color: "text-orange-600", icon: AlertTriangle },
+  not_recommended: { text: "Not Recommended for Refill", color: "text-destructive", icon: XCircle },
+};
+
 const ConsumablesRefillPage = () => {
   const [step, setStep] = useState<"search" | "eligibility" | "condition" | "request">("search");
   const [cartridgeCode, setCartridgeCode] = useState("");
@@ -31,8 +37,7 @@ const ConsumablesRefillPage = () => {
   const createRefill = useCreateRefillOrder();
   const navigate = useNavigate();
 
-  // Condition questions
-  const [condition, setCondition] = useState({
+  const [condition, setCondition] = useState<ConditionData>({
     is_original: true,
     refilled_before: false,
     physical_damage: false,
@@ -42,8 +47,10 @@ const ConsumablesRefillPage = () => {
     urgency: "standard",
   });
 
-  // Request form
   const [form, setForm] = useState({ phone: "", address: "", pickup_method: "pickup", quantity: "1", notes: "" });
+
+  const rule = eligibility?.[0] ?? null;
+  const derivedStatus = deriveEligibilityStatus(rule, step === "condition" || step === "request" ? condition : null);
 
   const handleCheck = () => {
     if (cartridgeCode.trim()) {
@@ -55,18 +62,8 @@ const ConsumablesRefillPage = () => {
   const handleSubmitRefill = () => {
     if (!form.phone || form.phone.length < 9) { toast.error("Please enter a valid phone number"); return; }
     if (form.pickup_method === "pickup" && !form.address) { toast.error("Please enter pickup address"); return; }
-
-    const rule = eligibility?.[0];
     if (!rule) return;
-
-    const conditionNotes = [
-      condition.is_original ? "Original cartridge" : "Not original",
-      condition.refilled_before ? "Previously refilled" : "First refill",
-      condition.physical_damage ? "Physical damage reported" : null,
-      condition.leakage ? "Leakage reported" : null,
-      `Color: ${condition.color_type}`,
-      condition.print_issue ? `Issue: ${condition.print_issue}` : null,
-    ].filter(Boolean).join("; ");
+    if (derivedStatus === "not_recommended") { toast.error("This cartridge is not recommended for refill"); return; }
 
     const pickupFee = form.pickup_method === "pickup" ? 300 : 0;
 
@@ -78,19 +75,12 @@ const ConsumablesRefillPage = () => {
       pickup_method: form.pickup_method,
       address_text: form.address,
       phone: form.phone,
-      notes: `${conditionNotes}. ${form.notes}`.trim(),
+      notes: form.notes.slice(0, 1000),
       service_fee: 800,
       pickup_fee: pickupFee,
       total: 800 + pickupFee,
-      condition_data: {
-        is_original: condition.is_original,
-        refilled_before: condition.refilled_before,
-        physical_damage: condition.physical_damage,
-        leakage: condition.leakage,
-        color_type: condition.color_type,
-        print_issue: condition.print_issue,
-        urgency: condition.urgency,
-      },
+      condition_data: condition,
+      derived_eligibility: derivedStatus,
     }, {
       onSuccess: () => navigate("/consumables/refill/track"),
     });
@@ -122,7 +112,6 @@ const ConsumablesRefillPage = () => {
           ))}
         </div>
 
-        {/* Track link */}
         <Link to="/consumables/refill/track" className="block mb-4">
           <Button variant="outline" size="sm" className="w-full text-xs">Track Existing Refill Order</Button>
         </Link>
@@ -162,24 +151,24 @@ const ConsumablesRefillPage = () => {
                   </CardContent>
                 </Card>
               )}
-              {eligibility && eligibility.length > 0 && (
+              {rule && (
                 <Card>
                   <CardContent className="p-4">
-                    {eligibility[0].refill_supported ? (
+                    {rule.refill_supported ? (
                       <>
                         <div className="flex items-center gap-2 mb-3">
                           <CheckCircle className="w-5 h-5 text-accent" />
                           <span className="text-sm font-semibold text-foreground">Eligible for Refill</span>
                         </div>
                         <div className="space-y-1 text-xs text-muted-foreground mb-3">
-                          <p>Brand: <span className="font-medium text-foreground">{eligibility[0].brand}</span></p>
-                          <p>Code: <span className="font-medium text-foreground">{eligibility[0].cartridge_code}</span></p>
-                          <p>Type: <span className="font-medium text-foreground capitalize">{eligibility[0].refill_type}</span></p>
-                          <p>Max cycles: <span className="font-medium text-foreground">{eligibility[0].max_recommended_cycles}</span></p>
-                          {eligibility[0].caution_text && (
+                          <p>Brand: <span className="font-medium text-foreground">{rule.brand}</span></p>
+                          <p>Code: <span className="font-medium text-foreground">{rule.cartridge_code}</span></p>
+                          <p>Type: <span className="font-medium text-foreground capitalize">{rule.refill_type}</span></p>
+                          <p>Max cycles: <span className="font-medium text-foreground">{rule.max_recommended_cycles}</span></p>
+                          {rule.caution_text && (
                             <div className="bg-orange-50 dark:bg-orange-950/20 p-2 rounded mt-2 flex items-start gap-1.5">
                               <AlertTriangle className="w-3.5 h-3.5 text-orange-600 mt-0.5 shrink-0" />
-                              <span className="text-[10px] text-orange-700 dark:text-orange-300">{eligibility[0].caution_text}</span>
+                              <span className="text-[10px] text-orange-700 dark:text-orange-300">{rule.caution_text}</span>
                             </div>
                           )}
                         </div>
@@ -191,7 +180,7 @@ const ConsumablesRefillPage = () => {
                           <AlertTriangle className="w-5 h-5 text-orange-600" />
                           <span className="text-sm font-semibold text-foreground">Not Recommended</span>
                         </div>
-                        <p className="text-xs text-muted-foreground mb-3">{eligibility[0].notes}</p>
+                        <p className="text-xs text-muted-foreground mb-3">{rule.notes}</p>
                         <Button variant="outline" size="sm" onClick={() => navigate("/consumables/results?q=" + searchCode)}>
                           View Replacement Options
                         </Button>
@@ -244,10 +233,10 @@ const ConsumablesRefillPage = () => {
                   </div>
                   <div>
                     <Label className="text-xs">Print Issue (if any)</Label>
-                    <Select value={condition.print_issue} onValueChange={(v) => setCondition({ ...condition, print_issue: v })}>
+                    <Select value={condition.print_issue || "none"} onValueChange={(v) => setCondition({ ...condition, print_issue: v === "none" ? "" : v })}>
                       <SelectTrigger><SelectValue placeholder="Select if applicable" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value="none">None</SelectItem>
                         <SelectItem value="faded">Faded prints</SelectItem>
                         <SelectItem value="streaky">Streaky lines</SelectItem>
                         <SelectItem value="not_printing">Not printing at all</SelectItem>
@@ -266,16 +255,30 @@ const ConsumablesRefillPage = () => {
                     </Select>
                   </div>
 
-                  {(condition.physical_damage || condition.leakage) && (
-                    <div className="bg-orange-50 dark:bg-orange-950/20 p-2 rounded flex items-start gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 text-orange-600 mt-0.5 shrink-0" />
-                      <span className="text-[10px] text-orange-700 dark:text-orange-300">
-                        Physical damage or leakage may affect refill acceptance. Final decision is made after inspection.
-                      </span>
-                    </div>
-                  )}
+                  {/* Derived eligibility status display */}
+                  {(() => {
+                    const cfg = ELIGIBILITY_LABELS[derivedStatus];
+                    const Icon = cfg.icon;
+                    return (
+                      <div className={`rounded-lg border p-3 flex items-start gap-2 ${derivedStatus === "not_recommended" ? "border-destructive/30 bg-destructive/5" : derivedStatus === "likely_eligible" ? "border-orange-300 bg-orange-50 dark:bg-orange-950/20" : "border-accent/30 bg-accent/5"}`}>
+                        <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${cfg.color}`} />
+                        <div>
+                          <p className={`text-xs font-medium ${cfg.color}`}>{cfg.text}</p>
+                          {derivedStatus === "not_recommended" && <p className="text-[10px] text-muted-foreground mt-0.5">Physical damage and leakage together make refill unlikely. Consider a new replacement.</p>}
+                          {derivedStatus === "likely_eligible" && <p className="text-[10px] text-muted-foreground mt-0.5">Final acceptance depends on physical inspection at our facility.</p>}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
-                  <Button className="w-full" onClick={() => setStep("request")}>Continue to Request</Button>
+                  <Button className="w-full" onClick={() => setStep("request")} disabled={derivedStatus === "not_recommended"}>
+                    {derivedStatus === "not_recommended" ? "Not Eligible" : "Continue to Request"}
+                  </Button>
+                  {derivedStatus === "not_recommended" && (
+                    <Button variant="outline" className="w-full text-xs" onClick={() => navigate("/consumables/results?q=" + searchCode)}>
+                      View Replacement Options Instead
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
               <Button variant="ghost" size="sm" className="mt-3" onClick={() => setStep("eligibility")}>
@@ -289,8 +292,14 @@ const ConsumablesRefillPage = () => {
               <Card>
                 <CardHeader className="pb-3"><CardTitle className="text-sm">Refill Request Details</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
-                  <div><Label className="text-xs">Phone *</Label><Input placeholder="07X XXX XXXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-                  <div><Label className="text-xs">Address *</Label><Textarea placeholder="Delivery / pickup address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} /></div>
+                  {derivedStatus === "likely_eligible" && (
+                    <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-2 flex items-start gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-orange-600 mt-0.5 shrink-0" />
+                      <span className="text-[10px] text-orange-700 dark:text-orange-300">Your cartridge condition flags may affect acceptance. Inspection is required.</span>
+                    </div>
+                  )}
+                  <div><Label className="text-xs">Phone *</Label><Input placeholder="07X XXX XXXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} maxLength={20} /></div>
+                  <div><Label className="text-xs">Address *</Label><Textarea placeholder="Delivery / pickup address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} maxLength={500} /></div>
                   <div>
                     <Label className="text-xs">Collection Method</Label>
                     <Select value={form.pickup_method} onValueChange={(v) => setForm({ ...form, pickup_method: v })}>
@@ -301,14 +310,15 @@ const ConsumablesRefillPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div><Label className="text-xs">Quantity</Label><Input type="number" min="1" max="10" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
-                  <div><Label className="text-xs">Additional Notes</Label><Textarea placeholder="Any other details..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} /></div>
+                  <div><Label className="text-xs">Quantity</Label><Input type="number" min="1" max="20" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></div>
+                  <div><Label className="text-xs">Additional Notes</Label><Textarea placeholder="Any other details..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} maxLength={1000} /></div>
 
                   <div className="bg-muted rounded-lg p-3 space-y-1 text-xs text-muted-foreground">
                     <p className="font-medium text-foreground">Order Summary</p>
                     <p>Refill service fee: LKR 800</p>
                     {form.pickup_method === "pickup" && <p>Pickup fee: LKR 300</p>}
                     <p className="font-semibold text-foreground pt-1 border-t border-border mt-1">Total: LKR {800 + (form.pickup_method === "pickup" ? 300 : 0)}</p>
+                    <Badge variant="outline" className="text-[9px] capitalize mt-1">{derivedStatus.replace("_", " ")}</Badge>
                     <p className="text-[10px] text-orange-600 mt-2">⚠ Refill acceptance is subject to physical inspection. Full refund if cartridge is rejected.</p>
                   </div>
 
