@@ -805,17 +805,27 @@ export default function ContentIntelligenceOpsPage() {
                         {src.active ? 'Disable' : 'Enable'}
                       </Button>
                       {src.active && (
-                        <Button size="sm" variant="ghost" className="h-6 text-[9px]"
-                          onClick={() => quarantineSource.mutate({
-                            sourceId: src.id,
-                            quarantine: src.rollout_state !== 'quarantined',
-                          })}>
-                          {src.rollout_state === 'quarantined' ? (
-                            <><Unlock className="h-3 w-3 mr-1" /> Unquarantine</>
-                          ) : (
-                            <><Lock className="h-3 w-3 mr-1 text-destructive" /> Quarantine</>
-                          )}
-                        </Button>
+                        <>
+                          <Button size="sm" variant="ghost" className="h-6 text-[9px]"
+                            onClick={() => quarantineSource.mutate({
+                              sourceId: src.id,
+                              quarantine: src.rollout_state !== 'quarantined',
+                            })}>
+                            {src.rollout_state === 'quarantined' ? (
+                              <><Unlock className="h-3 w-3 mr-1" /> Unquarantine</>
+                            ) : (
+                              <><Lock className="h-3 w-3 mr-1 text-destructive" /> Quarantine</>
+                            )}
+                          </Button>
+                          {/* Promotion controls */}
+                          {SOURCE_ROLLOUT_TRANSITIONS[src.rollout_state ?? 'inactive']?.filter(s => s !== 'quarantined' && s !== 'inactive').map(target => (
+                            <Button key={target} size="sm" variant="ghost" className="h-6 text-[9px] text-primary"
+                              disabled={promoteSource.isPending}
+                              onClick={() => promoteSource.mutate({ sourceId: src.id, targetState: target })}>
+                              <ChevronUp className="h-3 w-3 mr-1" /> → {target.replace(/_/g, ' ')}
+                            </Button>
+                          ))}
+                        </>
                       )}
                     </div>
                   </div>
