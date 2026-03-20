@@ -29,7 +29,7 @@ interface Props {
 
 const MODE_ICONS: Record<string, React.ReactNode> = {
   self_help: <Info className="w-4 h-4 text-accent" />,
-  remote_troubleshooting: <Monitor className="w-4 h-4 text-blue-500" />,
+  remote_troubleshooting: <Monitor className="w-4 h-4 text-primary" />,
   technician_visit: <Wrench className="w-4 h-4 text-warning" />,
   replacement_review: <Replace className="w-4 h-4 text-destructive" />,
 };
