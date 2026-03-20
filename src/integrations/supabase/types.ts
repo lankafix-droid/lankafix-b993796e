@@ -744,6 +744,57 @@ export type Database = {
           },
         ]
       }
+      bulk_quote_requests: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          invoice_requirement: string | null
+          oem_preference: string | null
+          organization_name: string | null
+          phone: string
+          product_notes: string | null
+          qty: number | null
+          recurring_frequency: string | null
+          refill_required: boolean | null
+          request_type: string | null
+          requester_name: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          invoice_requirement?: string | null
+          oem_preference?: string | null
+          organization_name?: string | null
+          phone: string
+          product_notes?: string | null
+          qty?: number | null
+          recurring_frequency?: string | null
+          refill_required?: boolean | null
+          request_type?: string | null
+          requester_name: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          invoice_requirement?: string | null
+          oem_preference?: string | null
+          organization_name?: string | null
+          phone?: string
+          product_notes?: string | null
+          qty?: number | null
+          recurring_frequency?: string | null
+          refill_required?: boolean | null
+          request_type?: string | null
+          requester_name?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
       bypass_attempts: {
         Row: {
           action_taken: string | null
@@ -986,6 +1037,257 @@ export type Database = {
           zones?: string[] | null
         }
         Relationships: []
+      }
+      consumable_compatibility: {
+        Row: {
+          consumable_product_id: string
+          id: string
+          match_type: string | null
+          notes: string | null
+          printer_model_id: string
+        }
+        Insert: {
+          consumable_product_id: string
+          id?: string
+          match_type?: string | null
+          notes?: string | null
+          printer_model_id: string
+        }
+        Update: {
+          consumable_product_id?: string
+          id?: string
+          match_type?: string | null
+          notes?: string | null
+          printer_model_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_compatibility_consumable_product_id_fkey"
+            columns: ["consumable_product_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumable_compatibility_printer_model_id_fkey"
+            columns: ["printer_model_id"]
+            isOneToOne: false
+            referencedRelation: "printer_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consumable_order_items: {
+        Row: {
+          consumable_product_id: string | null
+          id: string
+          line_total: number
+          order_id: string
+          qty: number | null
+          selected_by_match_engine: boolean | null
+          unit_price: number
+        }
+        Insert: {
+          consumable_product_id?: string | null
+          id?: string
+          line_total: number
+          order_id: string
+          qty?: number | null
+          selected_by_match_engine?: boolean | null
+          unit_price: number
+        }
+        Update: {
+          consumable_product_id?: string | null
+          id?: string
+          line_total?: number
+          order_id?: string
+          qty?: number | null
+          selected_by_match_engine?: boolean | null
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_order_items_consumable_product_id_fkey"
+            columns: ["consumable_product_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumable_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consumable_orders: {
+        Row: {
+          address_text: string | null
+          created_at: string | null
+          delivery_fee: number | null
+          delivery_method: string | null
+          id: string
+          invoice_requested: boolean | null
+          match_confirmation: boolean | null
+          order_no: string
+          order_status: string | null
+          payment_status: string | null
+          phone: string | null
+          subtotal: number | null
+          total: number | null
+          updated_at: string | null
+          user_id: string
+          vat_number: string | null
+        }
+        Insert: {
+          address_text?: string | null
+          created_at?: string | null
+          delivery_fee?: number | null
+          delivery_method?: string | null
+          id?: string
+          invoice_requested?: boolean | null
+          match_confirmation?: boolean | null
+          order_no?: string
+          order_status?: string | null
+          payment_status?: string | null
+          phone?: string | null
+          subtotal?: number | null
+          total?: number | null
+          updated_at?: string | null
+          user_id: string
+          vat_number?: string | null
+        }
+        Update: {
+          address_text?: string | null
+          created_at?: string | null
+          delivery_fee?: number | null
+          delivery_method?: string | null
+          id?: string
+          invoice_requested?: boolean | null
+          match_confirmation?: boolean | null
+          order_no?: string
+          order_status?: string | null
+          payment_status?: string | null
+          phone?: string | null
+          subtotal?: number | null
+          total?: number | null
+          updated_at?: string | null
+          user_id?: string
+          vat_number?: string | null
+        }
+        Relationships: []
+      }
+      consumable_products: {
+        Row: {
+          brand: string
+          color: string | null
+          created_at: string | null
+          description: string | null
+          express_delivery_eligible: boolean | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          net_weight_grams: number | null
+          price: number
+          product_type: string
+          qr_enabled: boolean | null
+          range_type: string
+          sku_code: string
+          stock_qty: number | null
+          title: string
+          updated_at: string | null
+          warranty_days: number | null
+          warranty_text: string | null
+          yield_pages: number | null
+        }
+        Insert: {
+          brand: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          express_delivery_eligible?: boolean | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          net_weight_grams?: number | null
+          price: number
+          product_type?: string
+          qr_enabled?: boolean | null
+          range_type: string
+          sku_code: string
+          stock_qty?: number | null
+          title: string
+          updated_at?: string | null
+          warranty_days?: number | null
+          warranty_text?: string | null
+          yield_pages?: number | null
+        }
+        Update: {
+          brand?: string
+          color?: string | null
+          created_at?: string | null
+          description?: string | null
+          express_delivery_eligible?: boolean | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          net_weight_grams?: number | null
+          price?: number
+          product_type?: string
+          qr_enabled?: boolean | null
+          range_type?: string
+          sku_code?: string
+          stock_qty?: number | null
+          title?: string
+          updated_at?: string | null
+          warranty_days?: number | null
+          warranty_text?: string | null
+          yield_pages?: number | null
+        }
+        Relationships: []
+      }
+      consumable_search_logs: {
+        Row: {
+          created_at: string | null
+          id: string
+          match_status: string | null
+          normalized_query: string | null
+          raw_query: string | null
+          search_type: string | null
+          selected_product_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          match_status?: string | null
+          normalized_query?: string | null
+          raw_query?: string | null
+          search_type?: string | null
+          selected_product_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          match_status?: string | null
+          normalized_query?: string | null
+          raw_query?: string | null
+          search_type?: string | null
+          selected_product_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumable_search_logs_selected_product_id_fkey"
+            columns: ["selected_product_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       content_ai_briefs: {
         Row: {
@@ -3722,6 +4024,86 @@ export type Database = {
         }
         Relationships: []
       }
+      printer_models: {
+        Row: {
+          aliases: string[] | null
+          brand: string
+          created_at: string | null
+          device_type: string
+          id: string
+          is_active: boolean | null
+          model_family: string | null
+          model_name: string
+          mono_or_color: string | null
+          normalized_model: string
+          updated_at: string | null
+        }
+        Insert: {
+          aliases?: string[] | null
+          brand: string
+          created_at?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean | null
+          model_family?: string | null
+          model_name: string
+          mono_or_color?: string | null
+          normalized_model: string
+          updated_at?: string | null
+        }
+        Update: {
+          aliases?: string[] | null
+          brand?: string
+          created_at?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean | null
+          model_family?: string | null
+          model_name?: string
+          mono_or_color?: string | null
+          normalized_model?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      product_qr_verifications: {
+        Row: {
+          batch_no: string | null
+          consumable_product_id: string
+          created_at: string | null
+          id: string
+          qr_serial: string
+          verification_status: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          batch_no?: string | null
+          consumable_product_id: string
+          created_at?: string | null
+          id?: string
+          qr_serial: string
+          verification_status?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          batch_no?: string | null
+          consumable_product_id?: string
+          created_at?: string | null
+          id?: string
+          qr_serial?: string
+          verification_status?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_qr_verifications_consumable_product_id_fkey"
+            columns: ["consumable_product_id"]
+            isOneToOne: false
+            referencedRelation: "consumable_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ai_preferences: Json | null
@@ -4119,6 +4501,171 @@ export type Database = {
           },
         ]
       }
+      refill_eligibility_rules: {
+        Row: {
+          brand: string
+          cartridge_code: string
+          caution_text: string | null
+          id: string
+          max_recommended_cycles: number | null
+          notes: string | null
+          printer_model_id: string | null
+          refill_supported: boolean | null
+          refill_type: string | null
+        }
+        Insert: {
+          brand: string
+          cartridge_code: string
+          caution_text?: string | null
+          id?: string
+          max_recommended_cycles?: number | null
+          notes?: string | null
+          printer_model_id?: string | null
+          refill_supported?: boolean | null
+          refill_type?: string | null
+        }
+        Update: {
+          brand?: string
+          cartridge_code?: string
+          caution_text?: string | null
+          id?: string
+          max_recommended_cycles?: number | null
+          notes?: string | null
+          printer_model_id?: string | null
+          refill_supported?: boolean | null
+          refill_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refill_eligibility_rules_printer_model_id_fkey"
+            columns: ["printer_model_id"]
+            isOneToOne: false
+            referencedRelation: "printer_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refill_inspection_logs: {
+        Row: {
+          accepted_status: string | null
+          caution_flag: boolean | null
+          completed_at: string | null
+          condition_notes: string | null
+          id: string
+          intake_photos: string[] | null
+          recommended_action: string | null
+          refill_order_id: string
+          test_result: string | null
+        }
+        Insert: {
+          accepted_status?: string | null
+          caution_flag?: boolean | null
+          completed_at?: string | null
+          condition_notes?: string | null
+          id?: string
+          intake_photos?: string[] | null
+          recommended_action?: string | null
+          refill_order_id: string
+          test_result?: string | null
+        }
+        Update: {
+          accepted_status?: string | null
+          caution_flag?: boolean | null
+          completed_at?: string | null
+          condition_notes?: string | null
+          id?: string
+          intake_photos?: string[] | null
+          recommended_action?: string | null
+          refill_order_id?: string
+          test_result?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refill_inspection_logs_refill_order_id_fkey"
+            columns: ["refill_order_id"]
+            isOneToOne: false
+            referencedRelation: "refill_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refill_orders: {
+        Row: {
+          address_text: string | null
+          brand: string | null
+          cartridge_code: string | null
+          created_at: string | null
+          eligibility_status: string | null
+          id: string
+          inspection_status: string | null
+          notes: string | null
+          phone: string | null
+          pickup_fee: number | null
+          pickup_method: string | null
+          printer_model_id: string | null
+          quantity: number | null
+          refill_order_no: string
+          refill_status: string | null
+          return_fee: number | null
+          service_fee: number | null
+          total: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          address_text?: string | null
+          brand?: string | null
+          cartridge_code?: string | null
+          created_at?: string | null
+          eligibility_status?: string | null
+          id?: string
+          inspection_status?: string | null
+          notes?: string | null
+          phone?: string | null
+          pickup_fee?: number | null
+          pickup_method?: string | null
+          printer_model_id?: string | null
+          quantity?: number | null
+          refill_order_no?: string
+          refill_status?: string | null
+          return_fee?: number | null
+          service_fee?: number | null
+          total?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          address_text?: string | null
+          brand?: string | null
+          cartridge_code?: string | null
+          created_at?: string | null
+          eligibility_status?: string | null
+          id?: string
+          inspection_status?: string | null
+          notes?: string | null
+          phone?: string | null
+          pickup_fee?: number | null
+          pickup_method?: string | null
+          printer_model_id?: string | null
+          quantity?: number | null
+          refill_order_no?: string
+          refill_status?: string | null
+          return_fee?: number | null
+          service_fee?: number | null
+          total?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refill_orders_printer_model_id_fkey"
+            columns: ["printer_model_id"]
+            isOneToOne: false
+            referencedRelation: "printer_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reliability_operator_actions: {
         Row: {
           action_title: string
@@ -4336,6 +4883,53 @@ export type Database = {
             columns: ["reminder_job_id"]
             isOneToOne: false
             referencedRelation: "reminder_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      saved_devices: {
+        Row: {
+          average_monthly_usage: number | null
+          created_at: string | null
+          id: string
+          last_ordered_at: string | null
+          location_name: string | null
+          nickname: string | null
+          preferred_cartridge_code: string | null
+          preferred_range_type: string | null
+          printer_model_id: string | null
+          user_id: string
+        }
+        Insert: {
+          average_monthly_usage?: number | null
+          created_at?: string | null
+          id?: string
+          last_ordered_at?: string | null
+          location_name?: string | null
+          nickname?: string | null
+          preferred_cartridge_code?: string | null
+          preferred_range_type?: string | null
+          printer_model_id?: string | null
+          user_id: string
+        }
+        Update: {
+          average_monthly_usage?: number | null
+          created_at?: string | null
+          id?: string
+          last_ordered_at?: string | null
+          location_name?: string | null
+          nickname?: string | null
+          preferred_cartridge_code?: string | null
+          preferred_range_type?: string | null
+          printer_model_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_devices_printer_model_id_fkey"
+            columns: ["printer_model_id"]
+            isOneToOne: false
+            referencedRelation: "printer_models"
             referencedColumns: ["id"]
           },
         ]
