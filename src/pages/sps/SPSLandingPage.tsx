@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SPS_SEGMENTS } from "@/types/sps";
 import { getGroupedPlans } from "@/data/spsPlans";
+import SPSChatAdvisor from "@/components/sps/SPSChatAdvisor";
 
 const benefits = [
   { icon: TrendingUp, label: "Low Upfront Cost", desc: "Start printing without heavy capital investment" },
