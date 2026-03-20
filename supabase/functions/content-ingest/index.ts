@@ -446,8 +446,10 @@ async function validateSources() {
     }
 
     try {
-      const resp = await fetch(source.base_url, {
-        headers: { 'Accept': 'application/json' },
+      const resolvedUrl = resolveSourceUrl(source.base_url);
+      const isRSS = source.source_type === 'rss' || resolvedUrl.includes('/feed') || resolvedUrl.includes('/rss');
+      const resp = await fetch(resolvedUrl, {
+        headers: { 'Accept': isRSS ? 'application/xml, text/xml' : 'application/json' },
         signal: AbortSignal.timeout(8000),
       });
 
