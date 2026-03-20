@@ -4919,12 +4919,18 @@ export type Database = {
       sps_ai_ticket_triage: {
         Row: {
           ai_model: string | null
+          asset_brand: string | null
           asset_id: string | null
+          asset_model: string | null
+          asset_total_tickets: number | null
           contract_id: string | null
           error_message: string | null
           generated_at: string
           id: string
           latency_ms: number | null
+          plan_support_level: string | null
+          prior_same_category_count: number | null
+          prior_ticket_count: number | null
           probable_issue_type: string | null
           recommended_action: string | null
           recommended_support_mode: string | null
@@ -4937,12 +4943,18 @@ export type Database = {
         }
         Insert: {
           ai_model?: string | null
+          asset_brand?: string | null
           asset_id?: string | null
+          asset_model?: string | null
+          asset_total_tickets?: number | null
           contract_id?: string | null
           error_message?: string | null
           generated_at?: string
           id?: string
           latency_ms?: number | null
+          plan_support_level?: string | null
+          prior_same_category_count?: number | null
+          prior_ticket_count?: number | null
           probable_issue_type?: string | null
           recommended_action?: string | null
           recommended_support_mode?: string | null
@@ -4955,12 +4967,18 @@ export type Database = {
         }
         Update: {
           ai_model?: string | null
+          asset_brand?: string | null
           asset_id?: string | null
+          asset_model?: string | null
+          asset_total_tickets?: number | null
           contract_id?: string | null
           error_message?: string | null
           generated_at?: string
           id?: string
           latency_ms?: number | null
+          plan_support_level?: string | null
+          prior_same_category_count?: number | null
+          prior_ticket_count?: number | null
           probable_issue_type?: string | null
           recommended_action?: string | null
           recommended_support_mode?: string | null
@@ -6027,6 +6045,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      cleanup_sps_ai_logs: {
+        Args: { _retention_days?: number }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
