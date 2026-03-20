@@ -5,7 +5,6 @@ import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, Camera, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,11 +13,11 @@ const BRANDS = ["HP", "Canon", "Brother", "Epson", "Xerox", "Pantum", "Other"];
 const DEVICE_TYPES = ["Printer", "Copier", "MFP (Multi-Function)"];
 const PRINT_TYPES = ["Mono (Black & White)", "Color", "Not Sure"];
 const KNOW_OPTIONS = [
-  "I know the printer model",
-  "I know the toner / cartridge code",
-  "I only know the brand",
-  "I want refill",
-  "I am not sure",
+  { label: "I know the printer model", target: "search" },
+  { label: "I know the toner / cartridge code", target: "search" },
+  { label: "I only know the brand", target: "search" },
+  { label: "I want refill", target: "refill" },
+  { label: "I am not sure – help me identify", target: "search" },
 ];
 
 const ConsumablesFinderPage = () => {
@@ -26,7 +25,6 @@ const ConsumablesFinderPage = () => {
   const [brand, setBrand] = useState("");
   const [deviceType, setDeviceType] = useState("");
   const [printType, setPrintType] = useState("");
-  const [knowType, setKnowType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
@@ -38,9 +36,8 @@ const ConsumablesFinderPage = () => {
     }
   };
 
-  const handleKnowSelect = (option: string) => {
-    setKnowType(option);
-    if (option === "I want refill") {
+  const handleKnowSelect = (target: string) => {
+    if (target === "refill") {
       navigate("/consumables/refill");
     } else {
       setStep(5);
@@ -56,12 +53,12 @@ const ConsumablesFinderPage = () => {
         </Link>
 
         <h1 className="text-lg font-bold text-foreground mb-1">Guided Finder</h1>
-        <p className="text-xs text-muted-foreground mb-4">We'll help you find the right consumable</p>
+        <p className="text-xs text-muted-foreground mb-4">We'll help you find the right consumable step by step</p>
 
         {/* Progress */}
         <div className="flex gap-1 mb-6">
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <div key={i} className={`h-1 flex-1 rounded-full ${i < step ? "bg-primary" : "bg-muted"}`} />
+            <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < step ? "bg-primary" : "bg-muted"}`} />
           ))}
         </div>
 
@@ -120,9 +117,9 @@ const ConsumablesFinderPage = () => {
                 <CardHeader className="pb-3"><CardTitle className="text-base">Step 4: What do you know?</CardTitle></CardHeader>
                 <CardContent className="space-y-2">
                   {KNOW_OPTIONS.map((o) => (
-                    <Button key={o} variant="outline" className="w-full justify-start text-left text-sm"
-                      onClick={() => handleKnowSelect(o)}>
-                      {o}
+                    <Button key={o.label} variant="outline" className="w-full justify-start text-left text-sm"
+                      onClick={() => handleKnowSelect(o.target)}>
+                      {o.label}
                     </Button>
                   ))}
                 </CardContent>
@@ -139,13 +136,16 @@ const ConsumablesFinderPage = () => {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex gap-2">
-                    <Input placeholder="e.g. M404dn or CF258A" value={searchQuery}
+                    <Input placeholder="e.g. M404dn, CF258A, TN-2365" value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleSearch()} />
                     <Button onClick={handleSearch} size="icon"><Search className="w-4 h-4" /></Button>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground mb-2">Can't find it?</p>
+                  {brand && (
+                    <p className="text-[10px] text-muted-foreground">Searching within: <span className="font-medium text-foreground">{brand}</span> {deviceType && `· ${deviceType}`} {printType && `· ${printType}`}</p>
+                  )}
+                  <div className="text-center pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground mb-2">Can't find your model?</p>
                     <Button variant="outline" size="sm" className="text-xs">
                       <Camera className="w-3.5 h-3.5 mr-1.5" /> Upload a Photo Instead
                     </Button>
