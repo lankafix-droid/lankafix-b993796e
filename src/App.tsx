@@ -152,6 +152,18 @@ const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPag
 const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
 const InsightDetailPage = lazy(() => import("./pages/InsightDetailPage"));
 const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelligenceOpsPage"));
+
+// SPS — Smart Print Subscription
+const SPSLandingPage = lazy(() => import("./pages/sps/SPSLandingPage"));
+const FindMyPlanPage = lazy(() => import("./pages/sps/FindMyPlanPage"));
+const SPSPlansPage = lazy(() => import("./pages/sps/SPSPlansPage"));
+const SPSPlanDetailPage = lazy(() => import("./pages/sps/SPSPlanDetailPage"));
+const SPSFleetPage = lazy(() => import("./pages/sps/SPSFleetPage"));
+const SPSRequestPage = lazy(() => import("./pages/sps/SPSRequestPage"));
+const SPSDashboardPage = lazy(() => import("./pages/sps/SPSDashboardPage"));
+const SPSMeterPage = lazy(() => import("./pages/sps/SPSMeterPage"));
+const SPSSupportPage = lazy(() => import("./pages/sps/SPSSupportPage"));
+const SPSBillingPage = lazy(() => import("./pages/sps/SPSBillingPage"));
 // Redirect helpers for legacy routes with params
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
 const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
