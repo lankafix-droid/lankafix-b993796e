@@ -3,16 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Headphones, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { SPS_SUPPORT_CATEGORIES } from "@/types/sps";
+import AISupportTriage from "@/components/sps/AISupportTriage";
+import SPSChatAdvisor from "@/components/sps/SPSChatAdvisor";
 
 export default function SPSSupportPage() {
   const navigate = useNavigate();
   const [category, setCategory] = useState("general");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
 
   useEffect(() => { loadTickets(); }, []);
@@ -38,7 +40,7 @@ export default function SPSSupportPage() {
         status: "open",
       } as any);
       toast({ title: "Support ticket created", description: "Our team will respond shortly." });
-      setDescription("");
+      setSubmitted(true);
       loadTickets();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -57,32 +59,54 @@ export default function SPSSupportPage() {
           <h1 className="font-heading text-lg font-bold">SPS Support</h1>
         </div>
 
-        <Card className="mb-4">
-          <CardContent className="p-4 space-y-3">
-            <div className="text-xs font-semibold text-foreground">New Support Request</div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Issue Category</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                {SPS_SUPPORT_CATEGORIES.map((c) => (
-                  <option key={c.code} value={c.code}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Describe the issue</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="What's happening with your printer?"
-              />
-            </div>
-            <Button className="w-full" onClick={handleSubmit} disabled={!description.trim() || submitting}>
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Ticket"}
+        {!submitted ? (
+          <Card className="mb-4">
+            <CardContent className="p-4 space-y-3">
+              <div className="text-xs font-semibold text-foreground">New Support Request</div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Issue Category</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {SPS_SUPPORT_CATEGORIES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Describe the issue</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="What's happening with your printer?"
+                />
+              </div>
+              <Button className="w-full" onClick={handleSubmit} disabled={!description.trim() || submitting}>
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Ticket"}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3 mb-4">
+            <Card className="border-accent/20 bg-accent/5">
+              <CardContent className="p-4 text-center">
+                <div className="text-sm font-semibold text-foreground mb-1">Ticket Submitted ✓</div>
+                <div className="text-xs text-muted-foreground">Our team will review shortly.</div>
+              </CardContent>
+            </Card>
+
+            {/* AI Triage */}
+            <AISupportTriage
+              category={category}
+              description={description}
+              onDismiss={() => {}}
+            />
+
+            <Button variant="outline" className="w-full" onClick={() => { setSubmitted(false); setDescription(""); }}>
+              Submit Another Ticket
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
         {tickets.length > 0 && (
           <div>
@@ -107,6 +131,8 @@ export default function SPSSupportPage() {
             </div>
           </div>
         )}
+
+        <SPSChatAdvisor pageContext="support" />
       </div>
     </div>
   );
