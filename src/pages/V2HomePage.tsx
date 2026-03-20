@@ -63,6 +63,12 @@ const V2HomePage = () => {
         {/* 3. Popular Services — high-conversion quick links */}
         <V2PopularServices />
 
+        {/* 3.5 Super App Shortcuts — Devices, Care Plans, SPS, Supplies */}
+        <SuperAppShortcuts />
+
+        {/* 3.7 SPS Promo Banner */}
+        <SPSPromoBanner />
+
         {/* 4. Book Again — returning users only */}
         <Suspense fallback={<SectionFallback />}>
           <V2BookAgain />
