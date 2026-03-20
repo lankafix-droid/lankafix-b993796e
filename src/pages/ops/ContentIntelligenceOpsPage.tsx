@@ -268,8 +268,8 @@ export default function ContentIntelligenceOpsPage() {
   }, [surfaceConfigs]);
 
   const categoryCoverage = useMemo(() => {
-    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number; strong: number }> = {};
-    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0, strong: 0 }; });
+    const catData: Record<string, { featured: number; feed: number; live: number; sl: number; avgQ: number; strong: number; _qCount: number }> = {};
+    LANKAFIX_CATEGORIES.forEach(c => { catData[c] = { featured: 0, feed: 0, live: 0, sl: 0, avgQ: 0, strong: 0, _qCount: 0 }; });
     (surfaces ?? []).forEach((s: any) => {
       if (!s.category_code || !catData[s.category_code]) return;
       if (s.surface_code === 'category_featured') catData[s.category_code].featured++;
@@ -282,13 +282,14 @@ export default function ContentIntelligenceOpsPage() {
       (p.content_category_tags ?? []).forEach((t: any) => {
         if (catData[t.category_code]) {
           catData[t.category_code].avgQ += q;
+          catData[t.category_code]._qCount++;
           if (q >= 0.5) catData[t.category_code].strong++;
         }
       });
     });
     for (const cat of LANKAFIX_CATEGORIES) {
       const d = catData[cat];
-      if (d.live > 0) d.avgQ = d.avgQ / d.live;
+      if (d._qCount > 0) d.avgQ = d.avgQ / d._qCount;
     }
     return catData;
   }, [surfaces, published]);
@@ -531,10 +532,11 @@ export default function ContentIntelligenceOpsPage() {
             <div className="text-center"><p className="text-lg font-bold">{publishRate}%</p><p className="text-muted-foreground">Pub Rate</p></div>
             <div className="text-center"><p className="text-lg font-bold">{backlog}</p><p className="text-muted-foreground">Backlog</p></div>
           </div>
-          <div className="grid grid-cols-5 gap-2 text-[10px] mt-2 pt-2 border-t border-border/20">
+          <div className="grid grid-cols-6 gap-2 text-[10px] mt-2 pt-2 border-t border-border/20">
             <div className="text-center"><strong>{activeSources}</strong>/{totalSources}<br /><span className="text-muted-foreground">Sources</span></div>
             <div className="text-center"><strong className={criticalSources > 0 ? 'text-warning' : ''}>{criticalSources}</strong><br /><span className="text-muted-foreground">Critical</span></div>
             <div className="text-center"><strong className={blockedNewsdata > 0 ? 'text-destructive' : ''}>{blockedNewsdata}</strong><br /><span className="text-muted-foreground">🔑 Blocked</span></div>
+            <div className="text-center"><strong className={needsReview > 0 ? 'text-warning' : ''}>{needsReview}</strong><br /><span className="text-muted-foreground">Review</span></div>
             <div className="text-center"><strong>{coveredSurfaces}</strong>/10<br /><span className="text-muted-foreground">Surfaces</span></div>
             <div className="text-center"><strong>{catReadyCount}</strong>/15<br /><span className="text-muted-foreground">Cat Ready</span></div>
           </div>
