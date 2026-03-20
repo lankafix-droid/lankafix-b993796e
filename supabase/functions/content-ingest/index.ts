@@ -912,11 +912,11 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
 async function briefItems(results: Record<string, any>, batchSize = 8) {
   // First get items that don't have briefs yet
   const { data: unbriefed } = await supabase
-    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, freshness_score, published_at')
+    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, freshness_score, published_at, source_name')
     .in('status', ['new', 'processed'])
     .order('source_trust_score', { ascending: false })
     .order('freshness_score', { ascending: false })
-    .limit(batchSize * 2);
+    .limit(batchSize * 3);
 
   if (!unbriefed?.length) return;
 
@@ -928,14 +928,17 @@ async function briefItems(results: Record<string, any>, batchSize = 8) {
 
   if (!toBrief.length) return;
 
-  // Priority sort: SL-relevant + high-trust first
-  const sorted = toBrief.sort((a: any, b: any) => {
-    const aSlR = detectSriLankaRelevance(`${a.title} ${a.raw_excerpt ?? ''}`);
-    const bSlR = detectSriLankaRelevance(`${b.title} ${b.raw_excerpt ?? ''}`);
-    const aScore = (a.source_trust_score ?? 0.5) * 0.4 + aSlR * 0.3 + (a.freshness_score ?? 10) / 100 * 0.3;
-    const bScore = (b.source_trust_score ?? 0.5) * 0.4 + bSlR * 0.3 + (b.freshness_score ?? 10) / 100 * 0.3;
-    return bScore - aScore;
-  }).slice(0, batchSize);
+  // Priority sort: SL-relevant + high-trust first, skip likely-low-value items
+  const sorted = toBrief.map((item: any) => {
+    const text = `${item.title} ${item.raw_excerpt ?? ''}`;
+    const slR = detectSriLankaRelevance(text);
+    const cats = detectCategories(text);
+    const catConf = cats[0]?.confidence ?? 0;
+    // SL items get massive priority boost
+    const slBoost = item.source_country === 'lk' ? 0.4 : slR >= 0.5 ? 0.2 : 0;
+    const priorityScore = (item.source_trust_score ?? 0.5) * 0.3 + slBoost + catConf * 0.15 + (item.freshness_score ?? 10) / 100 * 0.15;
+    return { ...item, _priority: priorityScore, _slR: slR };
+  }).sort((a: any, b: any) => b._priority - a._priority).slice(0, batchSize);
 
   // Batch-fetch all category tags at once
   const sortedIds = sorted.map((s: any) => s.id);
@@ -949,7 +952,7 @@ async function briefItems(results: Record<string, any>, batchSize = 8) {
 
   for (const item of sorted) {
     const categories = tagMap.get(item.id) ?? [];
-    const slRelevance = detectSriLankaRelevance(`${item.title} ${item.raw_excerpt ?? ''}`);
+    const slRelevance = item._slR ?? detectSriLankaRelevance(`${item.title} ${item.raw_excerpt ?? ''}`);
 
     const brief = await generateAIBrief({
       title: item.title, raw_excerpt: item.raw_excerpt,
@@ -959,10 +962,13 @@ async function briefItems(results: Record<string, any>, batchSize = 8) {
     if (brief) {
       await supabase.from('content_ai_briefs').insert({
         content_item_id: item.id, ...brief,
-        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v10-calibrated',
+        ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v10.1-sl-priority',
       });
       const quality = brief.ai_quality_score ?? 0;
-      const newStatus = quality >= 0.40 ? 'published' : quality >= 0.20 ? 'needs_review' : 'rejected';
+      // SL content from trusted sources gets a slightly more generous threshold
+      const isLocalTrusted = (item.source_country === 'lk' || slRelevance >= 0.6) && (item.source_trust_score ?? 0) >= 0.75;
+      const publishThreshold = isLocalTrusted ? 0.35 : 0.40;
+      const newStatus = quality >= publishThreshold ? 'published' : quality >= 0.20 ? 'needs_review' : 'rejected';
       await supabase.from('content_items').update({
         status: newStatus, freshness_score: computeFreshness(item.content_type, item.published_at ?? null),
       }).eq('id', item.id);
