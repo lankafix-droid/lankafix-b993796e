@@ -982,30 +982,151 @@ async function briefItems(results: Record<string, any>, batchSize = 8) {
   }
 }
 
-// ─── Editorial rescue: re-brief needs_review items with improved prompt ───
+// ─── Editorial rescue 2.0: trust-aware, SL-aware, category-value-aware ───
 async function rescueReviewItems(results: Record<string, any>) {
   const { data: reviewItems } = await supabase
-    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score')
+    .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, source_name')
     .eq('status', 'needs_review')
     .order('source_trust_score', { ascending: false })
-    .limit(10);
+    .limit(15);
   if (!reviewItems?.length) return;
 
-  let rescued = 0;
-  for (const item of reviewItems) {
-    // Check existing brief quality
-    const { data: brief } = await supabase.from('content_ai_briefs')
-      .select('ai_quality_score').eq('content_item_id', item.id).single();
-    const currentQuality = brief?.ai_quality_score ?? 0;
+  // Batch-fetch briefs
+  const ids = reviewItems.map((r: any) => r.id);
+  const { data: briefs } = await supabase.from('content_ai_briefs').select('content_item_id, ai_quality_score').in('content_item_id', ids);
+  const qualityMap = new Map((briefs ?? []).map((b: any) => [b.content_item_id, b.ai_quality_score ?? 0]));
 
-    // If close to threshold and from trusted source, promote
-    if (currentQuality >= 0.35 && (item.source_trust_score ?? 0) >= 0.75) {
+  // Rescue blacklist patterns
+  const JUNK_PATTERNS = /\b(sponsored|advertisement|subscribe now|buy now|free trial|click here|casino|lottery)\b/i;
+
+  let rescued = 0;
+  const rescueLog: string[] = [];
+  for (const item of reviewItems) {
+    const currentQuality = qualityMap.get(item.id) ?? 0;
+    const text = `${item.title} ${item.raw_excerpt ?? ''}`;
+    
+    // Never rescue junk
+    if (JUNK_PATTERNS.test(text)) continue;
+    
+    const slRelevance = detectSriLankaRelevance(text);
+    const isLocal = item.source_country === 'lk' || slRelevance >= 0.6;
+    const isTrusted = (item.source_trust_score ?? 0) >= 0.75;
+    const cats = detectCategories(text);
+    const hasCategoryValue = cats.length > 0 && cats[0].confidence >= 0.4;
+    
+    // Rescue conditions (from most to least generous):
+    // 1. SL local + trusted source + quality >= 0.30
+    if (isLocal && isTrusted && currentQuality >= 0.30) {
       await supabase.from('content_items').update({ status: 'published' }).eq('id', item.id);
       rescued++;
-      results.published = (results.published ?? 0) + 1;
+      rescueLog.push(`SL+trust: ${item.title.slice(0, 50)}`);
+      continue;
+    }
+    // 2. Trusted source + strong category + quality >= 0.35
+    if (isTrusted && hasCategoryValue && currentQuality >= 0.35) {
+      await supabase.from('content_items').update({ status: 'published' }).eq('id', item.id);
+      rescued++;
+      rescueLog.push(`trust+cat: ${item.title.slice(0, 50)}`);
+      continue;
+    }
+    // 3. High trust (0.85+) + quality >= 0.30
+    if ((item.source_trust_score ?? 0) >= 0.85 && currentQuality >= 0.30) {
+      await supabase.from('content_items').update({ status: 'published' }).eq('id', item.id);
+      rescued++;
+      rescueLog.push(`high-trust: ${item.title.slice(0, 50)}`);
+      continue;
     }
   }
-  results.rescued = rescued;
+  results.rescued = (results.rescued ?? 0) + rescued;
+  results.rescue_log = rescueLog;
+  if (rescued > 0) results.published = (results.published ?? 0) + rescued;
+}
+
+// ─── Backlog burn engine: process highest-value unbriefed items in priority order ───
+async function burnBacklog(results: Record<string, any>, maxBatches = 3, batchSize = 8) {
+  let totalProcessed = 0;
+  let totalPublished = 0;
+  let totalSkipped = 0;
+  
+  for (let batch = 0; batch < maxBatches; batch++) {
+    // Get unbriefed items, SL-first
+    const { data: unbriefed } = await supabase
+      .from('content_items').select('id, title, raw_excerpt, content_type, source_country, source_trust_score, freshness_score, published_at, source_name')
+      .in('status', ['new', 'processed'])
+      .order('source_trust_score', { ascending: false })
+      .limit(batchSize * 3);
+
+    if (!unbriefed?.length) break;
+    
+    // Filter already-briefed
+    const ids = unbriefed.map((u: any) => u.id);
+    const { data: existing } = await supabase.from('content_ai_briefs').select('content_item_id').in('content_item_id', ids);
+    const briefedIds = new Set((existing ?? []).map((b: any) => b.content_item_id));
+    const candidates = unbriefed.filter((u: any) => !briefedIds.has(u.id));
+    
+    if (!candidates.length) break;
+    
+    // Score and sort: SL items first, then by trust + category relevance
+    const scored = candidates.map((item: any) => {
+      const text = `${item.title} ${item.raw_excerpt ?? ''}`;
+      const slR = detectSriLankaRelevance(text);
+      const cats = detectCategories(text);
+      const catConf = cats[0]?.confidence ?? 0;
+      const isLocal = item.source_country === 'lk' || slR >= 0.6;
+      // Skip obviously low-value: no category match + global + low trust
+      const isLowValue = !isLocal && catConf < 0.2 && (item.source_trust_score ?? 0) < 0.7;
+      const score = isLocal ? 1.0 + slR : (item.source_trust_score ?? 0.5) * 0.4 + catConf * 0.3 + (item.freshness_score ?? 10) / 100 * 0.3;
+      return { ...item, _score: score, _isLowValue: isLowValue, _slR: slR };
+    }).sort((a: any, b: any) => b._score - a._score);
+    
+    // Skip low-value items to save AI budget
+    const worthBriefing = scored.filter((s: any) => !s._isLowValue).slice(0, batchSize);
+    totalSkipped += scored.filter((s: any) => s._isLowValue).length;
+    
+    if (!worthBriefing.length) break;
+    
+    // Brief this batch
+    const batchIds = worthBriefing.map((w: any) => w.id);
+    const { data: allTags } = await supabase.from('content_category_tags').select('content_item_id, category_code').in('content_item_id', batchIds);
+    const tagMap = new Map<string, string[]>();
+    (allTags ?? []).forEach((t: any) => { (tagMap.get(t.content_item_id) ?? (tagMap.set(t.content_item_id, []), tagMap.get(t.content_item_id)!)).push(t.category_code); });
+
+    for (const item of worthBriefing) {
+      const categories = tagMap.get(item.id) ?? [];
+      const brief = await generateAIBrief({
+        title: item.title, raw_excerpt: item.raw_excerpt,
+        content_type: item.content_type, categories, sri_lanka_relevance: item._slR,
+      });
+      if (brief) {
+        await supabase.from('content_ai_briefs').insert({
+          content_item_id: item.id, ...brief,
+          ai_model: 'google/gemini-2.5-flash-lite', prompt_version: 'v10.1-backlog-burn',
+        });
+        const quality = brief.ai_quality_score ?? 0;
+        const isLocalTrusted = (item.source_country === 'lk' || item._slR >= 0.6) && (item.source_trust_score ?? 0) >= 0.75;
+        const publishThreshold = isLocalTrusted ? 0.35 : 0.40;
+        const newStatus = quality >= publishThreshold ? 'published' : quality >= 0.20 ? 'needs_review' : 'rejected';
+        await supabase.from('content_items').update({
+          status: newStatus, freshness_score: computeFreshness(item.content_type, item.published_at ?? null),
+        }).eq('id', item.id);
+        totalProcessed++;
+        if (newStatus === 'published') totalPublished++;
+        results.briefed = (results.briefed ?? 0) + 1;
+        if (newStatus === 'published') results.published = (results.published ?? 0) + 1;
+        if (newStatus === 'rejected') results.rejected = (results.rejected ?? 0) + 1;
+        if (newStatus === 'needs_review') results.needs_review = (results.needs_review ?? 0) + 1;
+      }
+    }
+  }
+  
+  // Get remaining backlog count
+  const { count } = await supabase.from('content_items').select('id', { count: 'exact', head: true }).in('status', ['new', 'processed']);
+  results.backlog_burn = {
+    processed: totalProcessed,
+    published: totalPublished,
+    skipped_low_value: totalSkipped,
+    remaining_backlog: count ?? 0,
+  };
 }
 
 // ─── Rollback last publish ───
