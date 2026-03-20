@@ -249,6 +249,21 @@ const App = () => (
             <Route path="/referral" element={<ProtectedRoute><ReferralPage /></ProtectedRoute>} />
             <Route path="/corporate" element={<CorporateServicesPage />} />
             <Route path="/supplies" element={<ConsumablesPage />} />
+
+            {/* ─── Consumables Ecosystem ─── */}
+            <Route path="/consumables" element={<ConsumablesLandingPage />} />
+            <Route path="/consumables/finder" element={<ConsumablesFinderPage />} />
+            <Route path="/consumables/results" element={<ConsumablesResultsPage />} />
+            <Route path="/consumables/product/:productId" element={<ConsumableProductPage />} />
+            <Route path="/consumables/compare" element={<ConsumablesComparePage />} />
+            <Route path="/consumables/compatible" element={<ConsumablesRangeListPage />} />
+            <Route path="/consumables/oem" element={<ConsumablesRangeListPage />} />
+            <Route path="/consumables/refill" element={<ConsumablesRefillPage />} />
+            <Route path="/consumables/refill/track" element={<ProtectedRoute><ConsumablesRefillTrackPage /></ProtectedRoute>} />
+            <Route path="/consumables/reorder" element={<ProtectedRoute><ConsumablesReorderPage /></ProtectedRoute>} />
+            <Route path="/consumables/bulk" element={<ConsumablesBulkPage />} />
+            <Route path="/consumables/qr-verify" element={<ConsumablesQRVerifyPage />} />
+
             <Route path="/home-health" element={<ProtectedRoute><HomeHealthPage /></ProtectedRoute>} />
             <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
