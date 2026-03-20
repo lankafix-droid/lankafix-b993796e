@@ -14,8 +14,43 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+const NEWSDATA_API_KEY = Deno.env.get("NEWSDATA_API_KEY");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+// ─── Dynamic API key injection ───
+function resolveSourceUrl(baseUrl: string): string {
+  if (!baseUrl) return baseUrl;
+  // Replace demo key with real key if available
+  if (baseUrl.includes('apikey=pub_demo') && NEWSDATA_API_KEY) {
+    return baseUrl.replace('apikey=pub_demo', `apikey=${NEWSDATA_API_KEY}`);
+  }
+  return baseUrl;
+}
+
+// ─── RSS Feed parser (for free sources without API keys) ───
+function parseRSSItems(xmlText: string): any[] {
+  const items: any[] = [];
+  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
+  let match;
+  while ((match = itemRegex.exec(xmlText)) !== null) {
+    const block = match[1];
+    const get = (tag: string) => {
+      const m = block.match(new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?<\\/${tag}>`, 's'));
+      return m?.[1]?.trim() ?? null;
+    };
+    const title = get('title');
+    if (!title) continue;
+    items.push({
+      title,
+      description: get('description'),
+      url: get('link'),
+      pubDate: get('pubDate'),
+      content: get('content:encoded') ?? get('description'),
+    });
+  }
+  return items;
+}
 
 // ─── Category keyword detection ───
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
@@ -411,8 +446,10 @@ async function validateSources() {
     }
 
     try {
-      const resp = await fetch(source.base_url, {
-        headers: { 'Accept': 'application/json' },
+      const resolvedUrl = resolveSourceUrl(source.base_url);
+      const isRSS = source.source_type === 'rss' || resolvedUrl.includes('/feed') || resolvedUrl.includes('/rss');
+      const resp = await fetch(resolvedUrl, {
+        headers: { 'Accept': isRSS ? 'application/xml, text/xml' : 'application/json' },
         signal: AbortSignal.timeout(8000),
       });
 
@@ -426,10 +463,17 @@ async function validateSources() {
       } else if (!resp.ok) {
         result.error = `HTTP ${resp.status}`;
       } else {
-        const data = await resp.json();
-        const articles = data.articles ?? data.results ?? data.data ?? [];
+        let articles: any[];
+        if (isRSS) {
+          const xmlText = await resp.text();
+          articles = parseRSSItems(xmlText);
+        } else {
+          const data = await resp.json();
+          articles = data.articles ?? data.results ?? data.data ?? [];
+        }
         result.fetched_count = articles.length;
         result.response_valid = Array.isArray(articles) && articles.length > 0;
+        result.has_real_key = !source.base_url.includes('pub_demo') || !!NEWSDATA_API_KEY;
 
         if (result.response_valid && source.rollout_state === 'inactive') {
           await supabase.from('content_sources').update({ rollout_state: 'validated' }).eq('id', source.id);
@@ -768,18 +812,33 @@ async function ingestFromSources(tierLimit: string | undefined, results: Record<
     }
 
     try {
-      const resp = await fetch(source.base_url, {
-        headers: { 'Accept': 'application/json' },
+      const resolvedUrl = resolveSourceUrl(source.base_url);
+      const isRSS = source.source_type === 'rss' || resolvedUrl.includes('/feed') || resolvedUrl.includes('/rss') || resolvedUrl.endsWith('.xml');
+
+      const resp = await fetch(resolvedUrl, {
+        headers: { 'Accept': isRSS ? 'application/xml, text/xml, application/rss+xml' : 'application/json' },
         signal: AbortSignal.timeout(10000),
       });
       if (!resp.ok) {
         console.warn(`Source ${source.source_name} returned ${resp.status}`);
         results.source_errors.push(`${source.source_name}: HTTP ${resp.status}`);
+        // Track auth failures for alerting
+        if (resp.status === 401 || resp.status === 403) {
+          await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
+        }
         continue;
       }
       fetchedSourceIds.push(source.id);
-      const data = await resp.json();
-      const articles = data.articles ?? data.results ?? data.data ?? [];
+
+      let articles: any[];
+      if (isRSS) {
+        const xmlText = await resp.text();
+        articles = parseRSSItems(xmlText);
+      } else {
+        const data = await resp.json();
+        articles = data.articles ?? data.results ?? data.data ?? [];
+      }
+      results.fetched += articles.length;
       results.fetched += articles.length;
 
       for (const article of articles.slice(0, 15)) {
