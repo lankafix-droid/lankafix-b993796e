@@ -286,6 +286,41 @@ const V2CategoryGrid = () => {
               />
             ))}
           </div>
+
+          {/* SPS — Smart Print Subscription promo in grid */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-30px" }}
+            transition={{ delay: 0.15, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-3.5"
+          >
+            <Link
+              to="/sps"
+              className="group flex items-center gap-4 p-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/6 to-chart-1/6 hover:border-primary/35 hover:shadow-card-hover transition-all duration-300 active:scale-[0.97]"
+            >
+              <div className="w-11 h-11 rounded-xl bg-primary/12 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <Printer className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-heading text-sm font-bold text-foreground">Smart Print Subscription</h4>
+                  <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary border-primary/20 font-bold px-1.5 py-0">
+                    SPS
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Certified printers with monthly plans, support & consumables included</p>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="inline-flex items-center gap-1 text-[10px] text-foreground/70 font-medium">
+                    <BadgeCheck className="w-3 h-3 text-primary/70" /> SmartFix Certified
+                  </span>
+                  <span className="text-[10px] text-primary font-semibold group-hover:underline">
+                    Explore Plans →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </motion.div>
         </div>
 
         {/* Coming Soon — demand capture */}
