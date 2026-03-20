@@ -4,7 +4,7 @@ import Footer from "@/components/landing/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShieldCheck, Package, Crown, Home, Building2, Building, ShoppingCart, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Package, Crown, Home, Building2, Building, ShoppingCart, AlertTriangle, Info } from "lucide-react";
 import { useCompareProducts, useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 
