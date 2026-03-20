@@ -476,17 +476,44 @@ async function validateSources() {
     try {
       const resolvedUrl = resolveSourceUrl(source.base_url);
       const isRSS = source.source_type === 'rss' || resolvedUrl.includes('/feed') || resolvedUrl.includes('/rss');
+      const isNewsdata = isNewsdataUrl(source.base_url);
+      result.is_newsdata = isNewsdata;
+      result.has_real_key = !source.base_url.includes('pub_demo') || !!NEWSDATA_API_KEY;
+      
       const resp = await fetch(resolvedUrl, {
         headers: { 'Accept': isRSS ? 'application/xml, text/xml' : 'application/json' },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(10000),
       });
 
       result.reachable = true;
 
-      if (resp.status === 401 || resp.status === 403) {
+      if (isNewsdata) {
+        const body = await resp.json();
+        const classification = classifyNewsdataError(resp.status, body);
+        result.newsdata_status = classification;
+        
+        if (classification === 'auth_failed') {
+          result.auth_ok = false;
+          result.error = `NewsData auth failed (key ${NEWSDATA_API_KEY ? 'present but invalid' : 'missing'})`;
+          await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
+        } else if (classification === 'quota_exceeded') {
+          result.error = 'NewsData quota exceeded';
+          result.response_valid = false;
+        } else if (classification === 'malformed') {
+          result.error = `NewsData malformed: ${body?.results?.message ?? body?.message ?? 'unknown'}`;
+        } else {
+          const articles = body.results ?? [];
+          result.fetched_count = articles.length;
+          result.response_valid = articles.length > 0;
+          // Auto-promote from failing/inactive to validated on success
+          if (result.response_valid && ['failing', 'inactive'].includes(source.rollout_state ?? 'inactive')) {
+            await supabase.from('content_sources').update({ rollout_state: 'validated' }).eq('id', source.id);
+            result.promoted = true;
+          }
+        }
+      } else if (resp.status === 401 || resp.status === 403) {
         result.auth_ok = false;
         result.error = `Auth failure: HTTP ${resp.status}`;
-        // Auto-quarantine on auth failure
         await supabase.from('content_sources').update({ rollout_state: 'failing' }).eq('id', source.id);
       } else if (!resp.ok) {
         result.error = `HTTP ${resp.status}`;
@@ -501,10 +528,10 @@ async function validateSources() {
         }
         result.fetched_count = articles.length;
         result.response_valid = Array.isArray(articles) && articles.length > 0;
-        result.has_real_key = !source.base_url.includes('pub_demo') || !!NEWSDATA_API_KEY;
 
-        if (result.response_valid && source.rollout_state === 'inactive') {
+        if (result.response_valid && ['failing', 'inactive'].includes(source.rollout_state ?? 'inactive')) {
           await supabase.from('content_sources').update({ rollout_state: 'validated' }).eq('id', source.id);
+          result.promoted = true;
         }
       }
     } catch (e) {
