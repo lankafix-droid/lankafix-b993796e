@@ -880,6 +880,74 @@ async function briefItems(results: Record<string, any>) {
   }
 }
 
+// ─── Rollback last publish ───
+async function rollbackLastPublish(surfaceCode?: string) {
+  // Get the last completed publish run
+  const { data: lastRun } = await supabase.from('pipeline_runs')
+    .select('id, started_at')
+    .in('mode', ['full', 'publish'])
+    .eq('status', 'completed')
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (!lastRun) return { rolled_back: 0, error: 'No publish run found to rollback' };
+
+  // Deactivate surface states created after that run started
+  let query = supabase.from('content_surface_state')
+    .update({ active: false })
+    .gte('starts_at', lastRun.started_at)
+    .eq('active', true)
+    .lt('rank_score', 990); // Never rollback pinned items
+  if (surfaceCode) query = query.eq('surface_code', surfaceCode);
+
+  const { count } = await query.select('id', { count: 'exact', head: true });
+
+  // Execute the deactivation
+  let execQuery = supabase.from('content_surface_state')
+    .update({ active: false })
+    .gte('starts_at', lastRun.started_at)
+    .eq('active', true)
+    .lt('rank_score', 990);
+  if (surfaceCode) execQuery = execQuery.eq('surface_code', surfaceCode);
+  await execQuery;
+
+  // Log as alert
+  await supabase.from('content_alerts').insert({
+    alert_type: 'source_failure',
+    severity: 'info',
+    title: `Rollback executed${surfaceCode ? ` for ${surfaceCode}` : ''}`,
+    description: `Rolled back ~${count ?? 0} surface assignments from run ${lastRun.id}`,
+    pipeline_run_id: lastRun.id,
+  });
+
+  return { rolled_back: count ?? 0, run_id: lastRun.id };
+}
+
+// ─── Source promotion ───
+async function promoteSource(sourceId: string, targetState: string) {
+  const validTransitions: Record<string, string[]> = {
+    inactive: ['validated'],
+    validated: ['pilot_live', 'inactive'],
+    pilot_live: ['production_live', 'validated', 'quarantined'],
+    production_live: ['quarantined', 'pilot_live'],
+    failing: ['quarantined', 'validated', 'inactive'],
+    quarantined: ['validated', 'inactive'],
+  };
+
+  const { data: source } = await supabase.from('content_sources')
+    .select('rollout_state, source_name').eq('id', sourceId).single();
+  if (!source) return { error: 'Source not found' };
+
+  const current = source.rollout_state ?? 'inactive';
+  const allowed = validTransitions[current] ?? ['inactive'];
+  if (!allowed.includes(targetState)) {
+    return { error: `Cannot transition from ${current} to ${targetState}. Allowed: ${allowed.join(', ')}` };
+  }
+
+  await supabase.from('content_sources').update({ rollout_state: targetState }).eq('id', sourceId);
+  return { success: true, source: source.source_name, from: current, to: targetState };
+}
+
 // ─── Main handler ───
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -903,6 +971,28 @@ serve(async (req) => {
     };
 
     try {
+      // Rollback mode
+      if (mode === 'rollback') {
+        const rollbackResult = await rollbackLastPublish(body.surface_code);
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, { ...results, mode: 'rollback' });
+        return new Response(
+          JSON.stringify({ success: true, mode, ...rollbackResult, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Source promotion mode
+      if (mode === 'promote_source') {
+        const promoResult = await promoteSource(body.source_id, body.target_state);
+        results.duration_ms = Date.now() - startTime;
+        await completePipelineRun(runId, { ...results, mode: 'promote_source' });
+        return new Response(
+          JSON.stringify({ success: true, mode, ...promoResult, duration_ms: results.duration_ms }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Source validation mode
       if (mode === 'validate_sources') {
         const validation = await validateSources();

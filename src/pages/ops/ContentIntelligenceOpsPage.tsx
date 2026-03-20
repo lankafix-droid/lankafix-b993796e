@@ -93,6 +93,31 @@ const ROLLOUT_STATE_LABELS: Record<string, { label: string; color: string }> = {
 
 const SURFACE_ROLLOUT_MODES = ['evergreen_only', 'hybrid_preview', 'hybrid_live', 'live_preferred', 'editorial_only'] as const;
 
+const SOURCE_ROLLOUT_TRANSITIONS: Record<string, string[]> = {
+  inactive: ['validated'],
+  validated: ['pilot_live', 'inactive'],
+  pilot_live: ['production_live', 'validated', 'quarantined'],
+  production_live: ['quarantined', 'pilot_live'],
+  failing: ['quarantined', 'validated', 'inactive'],
+  quarantined: ['validated', 'inactive'],
+};
+
+type CategoryReadiness = 'ready' | 'weak' | 'fallback_only' | 'blocked';
+
+function getCategoryReadiness(data: { featured: number; feed: number; live: number; evergreen: number }): CategoryReadiness {
+  if (data.live >= 3 && data.featured >= 1) return 'ready';
+  if (data.live >= 1) return 'weak';
+  if (data.evergreen > 0) return 'fallback_only';
+  return 'blocked';
+}
+
+const READINESS_STYLES: Record<CategoryReadiness, { label: string; color: string }> = {
+  ready: { label: 'Ready', color: 'text-primary border-primary/20 bg-primary/5' },
+  weak: { label: 'Weak', color: 'text-warning border-warning/20 bg-warning/5' },
+  fallback_only: { label: 'Fallback', color: 'text-muted-foreground border-muted' },
+  blocked: { label: 'Blocked', color: 'text-destructive border-destructive/20 bg-destructive/5' },
+};
+
 function classifySourceTier(src: any): string {
   if (src.trust_score >= 0.8 && src.base_url) return 'tier1_safe';
   if (src.trust_score >= 0.7 && src.base_url) return 'tier2_controlled';
@@ -391,6 +416,31 @@ export default function ContentIntelligenceOpsPage() {
     onSuccess: () => { toast.success('Source rollout state updated'); invalidateAll(); },
   });
 
+  const promoteSource = useMutation({
+    mutationFn: async ({ sourceId, targetState }: { sourceId: string; targetState: string }) => {
+      const { data, error } = await supabase.functions.invoke('content-ingest', {
+        body: { mode: 'promote_source', source_id: sourceId, target_state: targetState },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => { toast.success(`Source promoted: ${data.from} → ${data.to}`); invalidateAll(); },
+    onError: (e) => toast.error(`Promotion failed: ${(e as Error).message}`),
+  });
+
+  const rollbackPublish = useMutation({
+    mutationFn: async (surfaceCode?: string) => {
+      const { data, error } = await supabase.functions.invoke('content-ingest', {
+        body: { mode: 'rollback', surface_code: surfaceCode },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => { toast.success(`Rolled back ${data.rolled_back} surface assignments`); invalidateAll(); },
+    onError: (e) => toast.error(`Rollback failed: ${(e as Error).message}`),
+  });
+
   const updateSurfaceRollout = useMutation({
     mutationFn: async ({ surfaceCode, mode }: { surfaceCode: string; mode: string }) => {
       await supabase.from('content_surface_config' as any).update({
@@ -478,6 +528,9 @@ export default function ContentIntelligenceOpsPage() {
             <Button size="sm" onClick={() => ingestMutation.mutate({ mode: 'full' })} disabled={isPending}>
               {ingestMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Zap className="h-3.5 w-3.5 mr-1" />}
               Full Run
+            </Button>
+            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => rollbackPublish.mutate(undefined)} disabled={isPending || rollbackPublish.isPending}>
+              <RotateCw className="h-3.5 w-3.5 mr-1" /> Rollback
             </Button>
           </div>
         </div>
@@ -752,17 +805,27 @@ export default function ContentIntelligenceOpsPage() {
                         {src.active ? 'Disable' : 'Enable'}
                       </Button>
                       {src.active && (
-                        <Button size="sm" variant="ghost" className="h-6 text-[9px]"
-                          onClick={() => quarantineSource.mutate({
-                            sourceId: src.id,
-                            quarantine: src.rollout_state !== 'quarantined',
-                          })}>
-                          {src.rollout_state === 'quarantined' ? (
-                            <><Unlock className="h-3 w-3 mr-1" /> Unquarantine</>
-                          ) : (
-                            <><Lock className="h-3 w-3 mr-1 text-destructive" /> Quarantine</>
-                          )}
-                        </Button>
+                        <>
+                          <Button size="sm" variant="ghost" className="h-6 text-[9px]"
+                            onClick={() => quarantineSource.mutate({
+                              sourceId: src.id,
+                              quarantine: src.rollout_state !== 'quarantined',
+                            })}>
+                            {src.rollout_state === 'quarantined' ? (
+                              <><Unlock className="h-3 w-3 mr-1" /> Unquarantine</>
+                            ) : (
+                              <><Lock className="h-3 w-3 mr-1 text-destructive" /> Quarantine</>
+                            )}
+                          </Button>
+                          {/* Promotion controls */}
+                          {SOURCE_ROLLOUT_TRANSITIONS[src.rollout_state ?? 'inactive']?.filter(s => s !== 'quarantined' && s !== 'inactive').map(target => (
+                            <Button key={target} size="sm" variant="ghost" className="h-6 text-[9px] text-primary"
+                              disabled={promoteSource.isPending}
+                              onClick={() => promoteSource.mutate({ sourceId: src.id, targetState: target })}>
+                              <ChevronUp className="h-3 w-3 mr-1" /> → {target.replace(/_/g, ' ')}
+                            </Button>
+                          ))}
+                        </>
                       )}
                     </div>
                   </div>
@@ -819,20 +882,22 @@ export default function ContentIntelligenceOpsPage() {
             })}
           </TabsContent>
 
-          {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-2 mt-3">
             {LANKAFIX_CATEGORIES.map(cat => {
-              const data = categoryCoverage[cat];
-              const isWeak = (data?.featured ?? 0) === 0 && (data?.feed ?? 0) === 0;
+              const data = categoryCoverage[cat] ?? { featured: 0, feed: 0, live: 0, evergreen: 0 };
+              const readiness = getCategoryReadiness(data);
+              const readinessStyle = READINESS_STYLES[readiness];
               return (
-                <Card key={cat} className={`p-2.5 ${isWeak ? 'border-warning/20' : ''}`}>
+                <Card key={cat} className={`p-2.5 ${readiness === 'blocked' ? 'border-destructive/15' : readiness === 'weak' ? 'border-warning/15' : ''}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">{cat}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold">{cat}</span>
+                      <Badge variant="outline" className={`text-[8px] ${readinessStyle.color}`}>{readinessStyle.label}</Badge>
+                    </div>
                     <div className="flex items-center gap-2 text-[10px]">
-                      <span>Featured: <strong className={data?.featured ? 'text-primary' : 'text-muted-foreground'}>{data?.featured ?? 0}</strong></span>
-                      <span>Feed: <strong className={data?.feed ? 'text-primary' : 'text-muted-foreground'}>{data?.feed ?? 0}</strong></span>
-                      <span>Live: <strong>{data?.live ?? 0}</strong></span>
-                      {isWeak && <Badge variant="outline" className="text-[8px] text-warning border-warning/20">Weak</Badge>}
+                      <span>Featured: <strong className={data.featured ? 'text-primary' : 'text-muted-foreground'}>{data.featured}</strong></span>
+                      <span>Feed: <strong className={data.feed ? 'text-primary' : 'text-muted-foreground'}>{data.feed}</strong></span>
+                      <span>Live: <strong>{data.live}</strong></span>
                     </div>
                   </div>
                 </Card>
