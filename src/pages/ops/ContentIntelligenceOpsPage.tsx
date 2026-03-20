@@ -145,11 +145,18 @@ function SourceHealthBadges({ src }: { src: any }) {
   const tierInfo = TIER_LABELS[tier];
   if (tierInfo) badges.push(<Badge key="tier" variant="outline" className={`text-[9px] ${tierInfo.color}`}>{tierInfo.label}</Badge>);
 
-  // Rollout state badge
   const rolloutInfo = ROLLOUT_STATE_LABELS[src.rollout_state ?? 'inactive'];
   if (rolloutInfo) badges.push(<Badge key="rstate" variant="outline" className={`text-[9px] ${rolloutInfo.color}`}>{rolloutInfo.label}</Badge>);
 
   if (!src.base_url) badges.push(<Badge key="nourl" variant="outline" className="text-[9px] text-warning border-warning/30">No URL</Badge>);
+
+  // Source blocking badges
+  if (src.source_vendor === 'newsdata' && src.rollout_state === 'failing') {
+    badges.push(<Badge key="blocked" variant="destructive" className="text-[9px]">🔑 Blocked by key</Badge>);
+  }
+  if (src.rollout_state === 'failing' && src.source_vendor !== 'newsdata') {
+    badges.push(<Badge key="authfail" variant="destructive" className="text-[9px]">Auth failed</Badge>);
+  }
 
   if (!src.last_fetched_at) {
     badges.push(<Badge key="nf" variant="outline" className="text-[9px] text-warning border-warning/30">Never fetched</Badge>);
@@ -161,6 +168,8 @@ function SourceHealthBadges({ src }: { src: any }) {
 
   if (src.counts.total >= 5 && src.counts.published === 0) {
     badges.push(<Badge key="zp" variant="destructive" className="text-[9px]">Zero publish</Badge>);
+  } else if (src.counts.total >= 5 && src.counts.published / src.counts.total < 0.2) {
+    badges.push(<Badge key="ly" variant="outline" className="text-[9px] text-warning border-warning/30">Low yield</Badge>);
   }
 
   if (src.trust_score >= 0.85) badges.push(<Badge key="tr" variant="outline" className="text-[9px] text-primary border-primary/20">★ High trust</Badge>);
