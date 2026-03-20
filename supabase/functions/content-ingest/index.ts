@@ -33,18 +33,11 @@ function isNewsdataUrl(url: string): boolean {
 
 /** Detect NewsData-specific error conditions from response */
 function classifyNewsdataError(status: number, body: any): 'auth_failed' | 'quota_exceeded' | 'malformed' | 'empty' | 'ok' {
-  // Log for debugging
-  console.log(`[NewsData] HTTP ${status}, body.status=${body?.status}, totalResults=${body?.totalResults}, results type=${typeof body?.results}, results length=${Array.isArray(body?.results) ? body.results.length : 'N/A'}`);
-  if (body?.results && typeof body.results === 'object' && !Array.isArray(body.results)) {
-    console.log(`[NewsData] Error message: ${JSON.stringify(body.results)}`);
-  }
-  
   if (status === 401 || status === 403) return 'auth_failed';
   if (status === 429) return 'quota_exceeded';
   if (body?.status === 'error') {
     const msg = (body.results?.message ?? body.message ?? '').toLowerCase();
-    console.log(`[NewsData] Error msg: ${msg}`);
-    if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('authentication') || msg.includes('invalid')) return 'auth_failed';
+    if (msg.includes('api key') || msg.includes('unauthorized') || msg.includes('authentication') || msg.includes('invalid') || msg.includes('not valid')) return 'auth_failed';
     if (msg.includes('rate limit') || msg.includes('quota') || msg.includes('limit exceeded') || msg.includes('credit')) return 'quota_exceeded';
     return 'malformed';
   }
