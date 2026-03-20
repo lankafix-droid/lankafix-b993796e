@@ -46,10 +46,10 @@ function formatTimeAgo(dateStr: string | null): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-type SourceHealth = 'healthy' | 'warning' | 'critical';
+type SourceHealth = 'healthy' | 'warning' | 'critical' | 'disabled';
 
 function getSourceHealth(src: any): SourceHealth {
-  if (!src.active) return 'critical';
+  if (!src.active) return 'disabled';
   const rejectRate = src.counts.total > 0 ? src.counts.rejected / src.counts.total : 0;
   const publishRate = src.counts.total > 0 ? src.counts.published / src.counts.total : 0;
   const isStale = src.last_fetched_at && (Date.now() - new Date(src.last_fetched_at).getTime()) > 24 * 3600000;
@@ -67,12 +67,14 @@ const HEALTH_STYLES: Record<SourceHealth, string> = {
   healthy: 'border-primary/30',
   warning: 'border-warning/40 bg-warning/3',
   critical: 'border-destructive/30 bg-destructive/3',
+  disabled: 'border-muted/40 bg-muted/5 opacity-60',
 };
 
 const HEALTH_DOT: Record<SourceHealth, string> = {
   healthy: 'bg-primary',
   warning: 'bg-warning',
   critical: 'bg-destructive',
+  disabled: 'bg-muted-foreground',
 };
 
 function SourceHealthBadges({ src }: { src: any }) {
@@ -212,6 +214,7 @@ export default function ContentIntelligenceOpsPage() {
   const totalPublished = published?.length ?? 0;
   const totalSources = sources?.length ?? 0;
   const activeSources = sources?.filter((s: any) => s.active).length ?? 0;
+  const disabledSources = sources?.filter((s: any) => !s.active).length ?? 0;
   const staleSources = sources?.filter((s: any) => {
     if (!s.active || !s.last_fetched_at) return s.active;
     return (Date.now() - new Date(s.last_fetched_at).getTime()) > 24 * 3600000;
@@ -221,6 +224,15 @@ export default function ContentIntelligenceOpsPage() {
   const needsReview = queue?.filter((q: any) => q.status === 'needs_review').length ?? 0;
   const totalRejected = sources?.reduce((s: number, src: any) => s + (src.counts?.rejected ?? 0), 0) ?? 0;
   const totalArchived = sources?.reduce((s: number, src: any) => s + (src.counts?.archived ?? 0), 0) ?? 0;
+  const totalFetched = sources?.reduce((s: number, src: any) => s + (src.counts?.total ?? 0), 0) ?? 0;
+  const backlog = queue?.length ?? 0;
+  const publishRate = totalFetched > 0 ? Math.round((totalPublished / totalFetched) * 100) : 0;
+  const rejectRate = totalFetched > 0 ? Math.round((totalRejected / totalFetched) * 100) : 0;
+
+  // Surface coverage: how many of the 10 required surfaces have at least 1 active item
+  const REQUIRED_SURFACES = ['homepage_hero', 'homepage_hot_now', 'homepage_did_you_know', 'homepage_innovations', 'homepage_safety', 'homepage_numbers', 'homepage_popular', 'ai_banner_forum', 'category_featured', 'category_feed'];
+  const coveredSurfaces = REQUIRED_SURFACES.filter(s => surfacesByCode[s]?.length > 0).length;
+  const surfaceCoverage = Math.round((coveredSurfaces / REQUIRED_SURFACES.length) * 100);
 
   // Mutations
   const ingestMutation = useMutation({
@@ -252,7 +264,17 @@ export default function ContentIntelligenceOpsPage() {
         await supabase.from('content_surface_state').update({ active: false }).eq('content_item_id', itemId);
       }
       if (action === 'boost') {
-        await supabase.from('content_surface_state').update({ rank_score: 85 }).eq('content_item_id', itemId).eq('active', true);
+        // Increment rank by +15 rather than hard-setting; cap below pin threshold (990)
+        const { data: currentSurfaces } = await supabase
+          .from('content_surface_state')
+          .select('id, rank_score')
+          .eq('content_item_id', itemId)
+          .eq('active', true)
+          .lt('rank_score', 990);
+        for (const surf of currentSurfaces ?? []) {
+          const newRank = Math.min(989, (surf.rank_score ?? 50) + 15);
+          await supabase.from('content_surface_state').update({ rank_score: newRank }).eq('id', surf.id);
+        }
       }
       await supabase.from('content_editorial_actions').insert({ content_item_id: itemId, action_type: action });
     },
@@ -329,16 +351,16 @@ export default function ContentIntelligenceOpsPage() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Executive Pipeline Metrics */}
         <div className="grid grid-cols-4 gap-2 mb-2">
-          <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" />
-          <StatCard label="Review" value={needsReview} icon={AlertTriangle} color="text-warning" />
-          <StatCard label="Rejected" value={totalRejected} icon={XCircle} color="text-destructive" />
+          <StatCard label="Published" value={totalPublished} icon={Eye} color="text-primary" subtitle={`${publishRate}% rate`} />
+          <StatCard label="Review" value={needsReview} icon={AlertTriangle} color="text-warning" subtitle={`${backlog} backlog`} />
+          <StatCard label="Rejected" value={totalRejected} icon={XCircle} color="text-destructive" subtitle={`${rejectRate}% rate`} />
           <StatCard label="Archived" value={totalArchived} icon={Trash2} color="text-muted-foreground" />
         </div>
         <div className="grid grid-cols-4 gap-2 mb-4">
-          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={criticalSources > 0 ? `${criticalSources} critical` : staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
-          <StatCard label="Surfaces" value={surfaceCount} icon={Pin} color="text-primary" subtitle={`${Object.keys(surfacesByCode).length} slots`} />
+          <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={criticalSources > 0 ? `${criticalSources} critical` : disabledSources > 0 ? `${disabledSources} disabled` : staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
+          <StatCard label="Coverage" value={`${surfaceCoverage}%`} icon={Radio} color="text-primary" subtitle={`${coveredSurfaces}/${REQUIRED_SURFACES.length} surfaces`} />
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
           <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${(analytics as any)?.click ?? 0} clicks`} />
         </div>

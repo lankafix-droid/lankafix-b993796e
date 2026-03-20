@@ -18,6 +18,16 @@ interface UseContentIntelligenceOptions {
 /** Minimum AI quality for a live item to be considered "strong" enough to keep over evergreen */
 const MIN_LIVE_QUALITY = 0.45;
 
+/** Get the user-visible display title for an item (AI headline preferred, fallback to raw title) */
+function getDisplayTitle(item: EnrichedContentItem): string {
+  return (item.ai_brief?.ai_headline ?? item.title ?? '').trim().toLowerCase();
+}
+
+/** Normalize a title for dedupe comparison */
+function normalizeForDedupe(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
 async function fetchSurfaceContent(
   surface: SurfaceCode,
   categoryCode?: string,
@@ -91,11 +101,12 @@ export function useContentIntelligence({
       if (strongLive.length >= limit) return strongLive.slice(0, limit);
 
       // Hybrid blend: fill remaining slots with evergreen fallbacks
+      // Use DISPLAY title (ai_headline ?? title) for dedupe so users never see two visually-identical cards
       if (strongLive.length > 0) {
         const remaining = limit - strongLive.length;
-        const liveTitles = new Set(strongLive.map(i => i.title.toLowerCase()));
+        const liveDisplayTitles = new Set(strongLive.map(i => normalizeForDedupe(getDisplayTitle(i))));
         const evergreen = getEvergreenFallbacksForSurface(surface, categoryCode, remaining + 4)
-          .filter(eg => !liveTitles.has(eg.title.toLowerCase()))
+          .filter(eg => !liveDisplayTitles.has(normalizeForDedupe(getDisplayTitle(eg))))
           .slice(0, remaining);
         return [...strongLive, ...evergreen];
       }
