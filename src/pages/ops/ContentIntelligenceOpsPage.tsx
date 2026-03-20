@@ -281,7 +281,7 @@ export default function ContentIntelligenceOpsPage() {
           <StatCard label="Sources" value={`${activeSources}/${totalSources}`} icon={Layers} color="text-accent-foreground" subtitle={staleSources > 0 ? `${staleSources} stale` : 'All healthy'} />
           <StatCard label="Surfaces" value={surfaceCount} icon={Pin} color="text-primary" subtitle={`${Object.keys(surfacesByCode).length} slots`} />
           <StatCard label="Clusters" value={clusters?.length ?? 0} icon={TrendingUp} color="text-accent-foreground" />
-          <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${analytics?.click ?? 0} clicks`} />
+          <StatCard label="Events" value={analytics?.total ?? 0} icon={BarChart3} color="text-muted-foreground" subtitle={`${(analytics as any)?.click ?? 0} clicks`} />
         </div>
 
         <Tabs defaultValue="queue">
