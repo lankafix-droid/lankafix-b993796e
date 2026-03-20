@@ -15,8 +15,7 @@ const SafetyAlertsSection = memo(function SafetyAlertsSection({ onOpenItem }: Pr
     limit: 3,
   });
 
-  if (isLoading) return null; // Don't show skeleton for safety — only show when relevant
-
+  if (isLoading) return null;
   if (!items?.length) return null;
 
   return (
@@ -25,8 +24,17 @@ const SafetyAlertsSection = memo(function SafetyAlertsSection({ onOpenItem }: Pr
       icon={<Shield className="h-4 w-4 text-destructive" />}
       subtitle="Stay protected, stay informed"
     >
-      <div className="px-4 space-y-2">
-        {items.map((item) => (
+      <div className="px-4 space-y-2.5">
+        {/* First safety item gets hero treatment */}
+        {items.slice(0, 1).map((item) => (
+          <ContentCard
+            key={item.id}
+            item={item}
+            variant="hero"
+            onOpen={onOpenItem}
+          />
+        ))}
+        {items.slice(1).map((item) => (
           <ContentCard
             key={item.id}
             item={item}

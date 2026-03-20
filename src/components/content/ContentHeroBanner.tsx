@@ -1,6 +1,6 @@
 /**
- * ContentHeroBanner — Premium rotating intelligence banner for homepage hero.
- * v2 — Enhanced visual hierarchy, live/evergreen signals, premium badge styling.
+ * ContentHeroBanner v3 — Premium rotating intelligence banner.
+ * Rich visual hierarchy, glassmorphism accents, live/evergreen signals.
  */
 import { useEffect, useRef, useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -8,34 +8,22 @@ import { cn } from '@/lib/utils';
 import { useContentIntelligence, trackContentEvent } from '@/hooks/useContentIntelligence';
 import type { EnrichedContentItem } from '@/types/contentIntelligence';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap, Hash, BookOpen, Radio, BarChart3, AlertTriangle } from 'lucide-react';
+import { Sparkles, ChevronRight, TrendingUp, Shield, Lightbulb, Zap, Hash, BookOpen, BarChart3, AlertTriangle, ArrowUpRight } from 'lucide-react';
 
 interface Props {
   onOpenItem?: (item: EnrichedContentItem) => void;
 }
 
 const TYPE_ICONS: Record<string, typeof Zap> = {
-  breaking_news: Zap,
-  innovation: Lightbulb,
-  safety_alert: Shield,
-  scam_alert: AlertTriangle,
-  trend_signal: TrendingUp,
-  hot_topic: TrendingUp,
-  numbers_insight: Hash,
-  knowledge_fact: BookOpen,
-  market_shift: BarChart3,
+  breaking_news: Zap, innovation: Lightbulb, safety_alert: Shield, scam_alert: AlertTriangle,
+  trend_signal: TrendingUp, hot_topic: TrendingUp, numbers_insight: Hash,
+  knowledge_fact: BookOpen, market_shift: BarChart3,
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  breaking_news: 'Breaking',
-  innovation: 'Innovation',
-  safety_alert: 'Safety Alert',
-  scam_alert: 'Scam Alert',
-  trend_signal: 'Trending',
-  hot_topic: 'Hot Now',
-  numbers_insight: 'Numbers',
-  knowledge_fact: 'Insight',
-  market_shift: 'Market Shift',
+  breaking_news: 'Breaking', innovation: 'Innovation', safety_alert: 'Safety Alert',
+  scam_alert: 'Scam Alert', trend_signal: 'Trending', hot_topic: 'Hot Now',
+  numbers_insight: 'Numbers', knowledge_fact: 'Insight', market_shift: 'Market Shift',
 };
 
 const TYPE_ACCENTS: Record<string, string> = {
@@ -54,7 +42,7 @@ const AUTOPLAY_MS = 7000;
 
 const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props) {
   const { data: items } = useContentIntelligence({
-    surface: 'ai_banner_forum',
+    surface: 'homepage_hero',
     limit: 5,
   });
 
@@ -90,45 +78,55 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
   const isSafety = item.content_type === 'safety_alert' || item.content_type === 'scam_alert';
 
   return (
-    <section className="px-4 py-3">
+    <section className="px-4 pt-3 pb-1">
       <div className={cn(
-        "relative overflow-hidden rounded-2xl border shadow-sm",
+        "relative overflow-hidden rounded-2xl border shadow-md",
         isSafety
-          ? "border-destructive/20 bg-gradient-to-br from-destructive/4 via-card to-card"
-          : "border-border/20 bg-gradient-to-br from-primary/6 via-card to-accent/3"
+          ? "border-destructive/25 bg-gradient-to-br from-destructive/5 via-card to-card shadow-destructive/5"
+          : "border-border/30 bg-gradient-to-br from-primary/8 via-card to-accent/4 shadow-primary/5"
       )}>
-        {/* Subtle pattern overlay */}
-        <div className="absolute inset-0 opacity-[0.015] z-0" style={{ backgroundImage: 'radial-gradient(circle at 30% 40%, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        {/* Premium pattern overlay */}
+        <div className="absolute inset-0 opacity-[0.02] z-0" style={{
+          backgroundImage: `radial-gradient(circle at 20% 35%, hsl(var(--primary)) 1px, transparent 1px),
+                            radial-gradient(circle at 80% 65%, hsl(var(--primary)) 0.5px, transparent 0.5px)`,
+          backgroundSize: '30px 30px, 22px 22px'
+        }} />
+
+        {/* Gradient orb for depth */}
+        <div className={cn(
+          "absolute -top-12 -right-12 w-40 h-40 rounded-full blur-3xl opacity-[0.06] z-0",
+          isSafety ? "bg-destructive" : "bg-primary"
+        )} />
 
         {/* Image overlay for items with images */}
         {item.image_url && (
           <div className="absolute inset-0 z-0">
-            <img src={item.image_url} alt="" className="h-full w-full object-cover opacity-10" loading="lazy" />
-            <div className="absolute inset-0 bg-gradient-to-r from-card/95 via-card/85 to-card/70" />
+            <img src={item.image_url} alt="" className="h-full w-full object-cover opacity-15" loading="lazy" />
+            <div className="absolute inset-0 bg-gradient-to-r from-card/95 via-card/90 to-card/75" />
           </div>
         )}
 
         {/* Top badge row */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5">
-          <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm text-[10px] font-bold tracking-wide border border-border/20 shadow-sm">
+          <Badge variant="secondary" className="bg-card/90 backdrop-blur-md text-[10px] font-bold tracking-wide border border-border/30 shadow-sm">
             {isLive ? (
               <>
                 <span className="relative mr-1.5 flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
                 </span>
-                Live Update
+                Live Intelligence
               </>
             ) : (
               <><Sparkles className="mr-1 h-3 w-3 text-primary" /> LankaFix Intelligence</>
             )}
           </Badge>
-          <Badge variant="outline" className={cn("text-[10px] bg-card/60 backdrop-blur-sm border", accent)}>
+          <Badge variant="outline" className={cn("text-[10px] bg-card/70 backdrop-blur-md border", accent)}>
             <Icon className="mr-0.5 h-3 w-3" />
             {label}
           </Badge>
           {isSriLankan && (
-            <Badge variant="outline" className="text-[9px] bg-card/60 backdrop-blur-sm py-0 border-border/20">
+            <Badge variant="outline" className="text-[9px] bg-card/70 backdrop-blur-md py-0 border-border/30 font-semibold">
               🇱🇰 Sri Lanka
             </Badge>
           )}
@@ -137,26 +135,24 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
         <AnimatePresence mode="wait">
           <motion.button
             key={item.id}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="relative z-10 w-full text-left p-4 pt-11"
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+            className="relative z-10 w-full text-left p-4 pt-12"
             onClick={() => {
-              if (isLive) {
-                trackContentEvent(item.id, 'click', { surface: 'ai_banner_forum' });
-              }
+              if (isLive) trackContentEvent(item.id, 'click', { surface: 'homepage_hero' });
               onOpenItem?.(item);
             }}
           >
-            {/* Banner stat — prominent when present */}
+            {/* Banner stat */}
             {brief?.ai_banner_text && (
-              <div className="mb-2 inline-flex items-center rounded-lg bg-primary/8 border border-primary/12 px-2.5 py-0.5 text-xs font-bold text-primary">
+              <div className="mb-2 inline-flex items-center rounded-lg bg-primary/8 border border-primary/15 px-2.5 py-1 text-xs font-bold text-primary shadow-sm">
                 {brief.ai_banner_text}
               </div>
             )}
 
-            <h3 className="font-heading text-base font-bold text-foreground leading-snug line-clamp-2 pr-2">
+            <h3 className="font-heading text-[17px] font-bold text-foreground leading-snug line-clamp-2 pr-6">
               {brief?.ai_headline ?? item.title}
             </h3>
             {brief?.ai_summary_short && (
@@ -170,25 +166,28 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
                 <span className="line-clamp-1">{brief.ai_lankafix_angle}</span>
               </p>
             )}
-            <div className="mt-3 flex items-center gap-2 text-[10px] text-muted-foreground">
-              {item.source_name && <span className="font-medium">{item.source_name}</span>}
-              {item.category_tags[0] && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="text-primary/70 font-semibold">#{item.category_tags[0].category_code}</span>
-                </>
-              )}
-              {brief?.ai_cta_label && (
-                <>
-                  <span className="text-border">·</span>
-                  <span className="text-primary font-semibold">{brief.ai_cta_label} →</span>
-                </>
-              )}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                {item.source_name && <span className="font-medium">{item.source_name}</span>}
+                {item.category_tags[0] && (
+                  <>
+                    <span className="text-border">·</span>
+                    <span className="text-primary/70 font-semibold">#{item.category_tags[0].category_code}</span>
+                  </>
+                )}
+                {brief?.ai_cta_label && (
+                  <>
+                    <span className="text-border">·</span>
+                    <span className="text-primary font-semibold">{brief.ai_cta_label} →</span>
+                  </>
+                )}
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-primary/30" />
             </div>
           </motion.button>
         </AnimatePresence>
 
-        {/* Progress dots */}
+        {/* Progress indicators */}
         {items.length > 1 && (
           <div className="relative z-10 flex justify-center gap-1.5 pb-3">
             {items.map((_, i) => (
@@ -197,7 +196,7 @@ const ContentHeroBanner = memo(function ContentHeroBanner({ onOpenItem }: Props)
                 onClick={() => { setActive(i); resetTimer(); }}
                 className={cn(
                   'h-1 rounded-full transition-all duration-300',
-                  i === active ? 'w-6 bg-primary shadow-sm' : 'w-1.5 bg-muted-foreground/20 hover:bg-muted-foreground/40'
+                  i === active ? 'w-7 bg-primary shadow-sm' : 'w-1.5 bg-muted-foreground/20 hover:bg-muted-foreground/40'
                 )}
                 aria-label={`Show slide ${i + 1}`}
               />

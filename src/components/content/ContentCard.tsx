@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Clock, TrendingUp, Shield, Zap, Lightbulb, Hash, BookOpen, BarChart3, AlertTriangle, Sparkles } from 'lucide-react';
+import { Clock, TrendingUp, Shield, Zap, Lightbulb, Hash, BookOpen, BarChart3, AlertTriangle, Sparkles, ArrowUpRight } from 'lucide-react';
 import type { EnrichedContentItem, ContentType } from '@/types/contentIntelligence';
 import { trackContentEvent } from '@/hooks/useContentIntelligence';
 import { useTrackContentImpression } from '@/hooks/useTrackContentImpression';
@@ -63,16 +63,17 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
     onOpen?.(item);
   };
 
+  // ── Compact card ──
   if (variant === 'compact') {
     return (
       <div ref={impressionRef}>
         <button
           onClick={handleClick}
           className={cn(
-            'flex items-start gap-3 rounded-xl border border-border/40 bg-card p-3 text-left',
-            'transition-all duration-200 hover:shadow-md hover:border-border/60 hover:-translate-y-0.5 active:scale-[0.98]',
+            'flex items-start gap-3 rounded-xl border border-border/50 bg-card p-3 text-left',
+            'transition-all duration-200 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 active:scale-[0.98]',
             'w-[260px] shrink-0 snap-start',
-            isSafety && 'border-destructive/15',
+            isSafety && 'border-destructive/20 bg-destructive/[0.02]',
             className
           )}
         >
@@ -82,15 +83,15 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           <div className="min-w-0 flex-1">
             <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{headline}</p>
             <div className="mt-1.5 flex items-center gap-1.5">
-              {isLive && item.source_name && (
-                <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{item.source_name}</span>
-              )}
               {isEvergreen && (
                 <span className="text-[10px] text-primary/70 font-medium flex items-center gap-0.5">
                   <Sparkles className="h-2.5 w-2.5" /> LankaFix
                 </span>
               )}
-              {isSriLankan && <span className="text-[9px]">🇱🇰</span>}
+              {isLive && item.source_name && (
+                <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{item.source_name}</span>
+              )}
+              {isSriLankan && <span className="text-[10px]">🇱🇰</span>}
               {isLive && (
                 <span className="text-[10px] text-muted-foreground">
                   {formatTimeAgo(item.published_at)}
@@ -108,6 +109,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
     );
   }
 
+  // ── Hero card — premium visual treatment ──
   if (variant === 'hero') {
     return (
       <div ref={impressionRef}>
@@ -115,61 +117,78 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
           onClick={handleClick}
           className={cn(
             'relative w-full overflow-hidden rounded-2xl bg-card text-left group',
-            'transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.99]',
-            isSafety && 'ring-1 ring-destructive/15',
+            'transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.99]',
+            'border',
+            isSafety ? 'border-destructive/20 shadow-destructive/5' : 'border-border/30 shadow-sm',
             className
           )}
         >
           {item.image_url ? (
-            <div className="relative h-44 w-full overflow-hidden">
+            <div className="relative h-48 w-full overflow-hidden">
               <img src={item.image_url} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-card via-card/70 to-transparent" />
             </div>
           ) : (
             <div className={cn(
-              "h-32 w-full flex items-center justify-center relative overflow-hidden",
+              "h-36 w-full flex items-center justify-center relative overflow-hidden",
               isSafety
-                ? "bg-gradient-to-br from-destructive/6 via-card to-destructive/3"
-                : "bg-gradient-to-br from-primary/8 via-accent/4 to-primary/3"
+                ? "bg-gradient-to-br from-destructive/8 via-destructive/3 to-card"
+                : "bg-gradient-to-br from-primary/10 via-accent/5 to-card"
             )}>
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-              <div className="rounded-full bg-card/80 p-3 backdrop-blur-sm shadow-sm border border-border/20">
-                <Icon className={cn("h-6 w-6", isSafety ? "text-destructive" : "text-primary")} />
+              {/* Decorative pattern */}
+              <div className="absolute inset-0 opacity-[0.04]" style={{
+                backgroundImage: `radial-gradient(circle at 25% 45%, hsl(var(--primary)) 1px, transparent 1px),
+                                  radial-gradient(circle at 75% 55%, hsl(var(--primary)) 0.5px, transparent 0.5px)`,
+                backgroundSize: '28px 28px, 20px 20px'
+              }} />
+              {/* Gradient orb */}
+              <div className={cn(
+                "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 rounded-full blur-3xl opacity-[0.08]",
+                isSafety ? "bg-destructive" : "bg-primary"
+              )} />
+              <div className="rounded-2xl bg-card/80 p-4 backdrop-blur-sm shadow-sm border border-border/30">
+                <Icon className={cn("h-7 w-7", isSafety ? "text-destructive/70" : "text-primary/70")} />
               </div>
             </div>
           )}
-          <div className={cn('p-4', item.image_url ? '-mt-16 relative z-10' : '')}>
-            <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+          <div className={cn('p-4', item.image_url ? '-mt-20 relative z-10' : '')}>
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
               <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase tracking-wider border', config.accent)}>
                 <Icon className="mr-1 h-3 w-3" />
                 {config.label}
               </Badge>
               {isLive && (
-                <Badge variant="outline" className="text-[9px] bg-card/60 backdrop-blur-sm border-primary/15 text-primary">
+                <Badge variant="outline" className="text-[9px] bg-card/80 backdrop-blur-sm border-primary/20 text-primary font-semibold">
+                  <span className="relative mr-1 flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                  </span>
                   Live
                 </Badge>
               )}
-              {categoryTags.map(t => (
-                <Badge key={t.id} variant="outline" className="text-[10px] bg-card/60 backdrop-blur-sm">{t.category_code}</Badge>
-              ))}
+              {isSriLankan && (
+                <Badge variant="outline" className="text-[9px] py-0 h-4 bg-card/80 backdrop-blur-sm border-border/30 font-semibold">🇱🇰 Local</Badge>
+              )}
               {bannerText && (
-                <Badge variant="secondary" className="text-[10px] font-bold bg-primary/10 text-primary border border-primary/15">
+                <Badge variant="secondary" className="text-[10px] font-bold bg-primary/12 text-primary border border-primary/20">
                   {bannerText}
                 </Badge>
               )}
             </div>
-            <h3 className="text-base font-bold leading-tight text-foreground line-clamp-2">{headline}</h3>
-            {summary && <p className="mt-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
+            <h3 className="text-[15px] font-bold leading-snug text-foreground line-clamp-2">{headline}</h3>
+            {summary && <p className="mt-1.5 text-sm text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
             {whyMatters && (
-              <p className="mt-2 text-xs font-medium text-primary/80 line-clamp-1 italic">💡 {whyMatters}</p>
+              <p className="mt-2 text-xs font-medium text-primary/80 line-clamp-1 flex items-center gap-1">
+                💡 <span className="italic">{whyMatters}</span>
+              </p>
             )}
-            <div className="mt-2.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-              {item.source_name && <span className="font-medium">{item.source_name}</span>}
-              <span className="text-border">·</span>
-              <span>{isEvergreen ? 'LankaFix Intelligence' : formatTimeAgo(item.published_at)}</span>
-              {isSriLankan && (
-                <Badge variant="outline" className="text-[9px] py-0 h-4 bg-card/60">🇱🇰 Local</Badge>
-              )}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                {item.source_name && <span className="font-medium">{item.source_name}</span>}
+                <span className="text-border">·</span>
+                <span>{isEvergreen ? 'LankaFix Intelligence' : formatTimeAgo(item.published_at)}</span>
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-primary/40 group-hover:text-primary transition-colors" />
             </div>
           </div>
         </button>
@@ -177,31 +196,31 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
     );
   }
 
-  // Standard card
+  // ── Standard card ──
   return (
     <div ref={impressionRef}>
       <button
         onClick={handleClick}
         className={cn(
-          'flex gap-3 rounded-xl border border-border/40 bg-card p-3.5 text-left w-full group',
-          'transition-all duration-200 hover:shadow-md hover:border-border/60 hover:-translate-y-0.5 active:scale-[0.98]',
-          isSafety && 'border-destructive/15',
+          'flex gap-3.5 rounded-xl border border-border/50 bg-card p-3.5 text-left w-full group',
+          'transition-all duration-200 hover:shadow-md hover:border-border/70 hover:-translate-y-0.5 active:scale-[0.98]',
+          isSafety && 'border-destructive/20 bg-destructive/[0.02]',
           className
         )}
       >
         {item.image_url ? (
-          <div className="h-20 w-20 shrink-0 rounded-lg overflow-hidden">
+          <div className="h-20 w-20 shrink-0 rounded-lg overflow-hidden shadow-sm">
             <img src={item.image_url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
           </div>
         ) : (
           <div className={cn(
-            'h-20 w-20 shrink-0 rounded-lg flex items-center justify-center relative overflow-hidden border border-border/15',
+            'h-20 w-20 shrink-0 rounded-lg flex items-center justify-center relative overflow-hidden border',
             isSafety
-              ? 'bg-gradient-to-br from-destructive/6 via-card to-destructive/3'
-              : 'bg-gradient-to-br from-primary/6 via-accent/3 to-muted/30'
+              ? 'bg-gradient-to-br from-destructive/6 via-card to-destructive/3 border-destructive/10'
+              : 'bg-gradient-to-br from-primary/6 via-accent/3 to-muted/30 border-border/20'
           )}>
-            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
-            <Icon className={cn("h-5 w-5", isSafety ? "text-destructive/30" : "text-primary/30")} />
+            <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle, hsl(var(--primary)) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
+            <Icon className={cn("h-5 w-5", isSafety ? "text-destructive/40" : "text-primary/40")} />
           </div>
         )}
         <div className="min-w-0 flex-1">
@@ -209,11 +228,11 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
             <Badge variant="secondary" className={cn('text-[10px] font-semibold uppercase tracking-wide border', config.accent)}>
               {config.label}
             </Badge>
+            {isSriLankan && <span className="text-[10px]">🇱🇰</span>}
             {isLive && item.source_name && (
               <span className="text-[10px] text-muted-foreground/70 truncate max-w-[90px]">{item.source_name}</span>
             )}
             <span className="text-[10px] text-muted-foreground">{isEvergreen ? 'LankaFix' : formatTimeAgo(item.published_at)}</span>
-            {isSriLankan && <span className="text-[9px]">🇱🇰</span>}
           </div>
           <h4 className="text-sm font-bold leading-tight text-foreground line-clamp-2">{headline}</h4>
           {summary && <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{summary}</p>}
@@ -222,7 +241,7 @@ const ContentCard = memo(function ContentCard({ item, variant = 'standard', clas
               <span key={t.id} className="text-[10px] text-primary/60 font-medium">#{t.category_code}</span>
             ))}
             {bannerText && (
-              <span className="text-[10px] font-bold text-primary bg-primary/5 rounded-md px-1.5 py-px border border-primary/10">{bannerText}</span>
+              <span className="text-[10px] font-bold text-primary bg-primary/6 rounded-md px-1.5 py-px border border-primary/10">{bannerText}</span>
             )}
           </div>
         </div>
