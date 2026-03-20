@@ -153,6 +153,20 @@ const AssetDetailPage = lazy(() => import("./pages/property/AssetDetailPage"));
 const InsightDetailPage = lazy(() => import("./pages/InsightDetailPage"));
 const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelligenceOpsPage"));
 const SPSIntelligenceDashboardPage = lazy(() => import("./pages/ops/SPSIntelligenceDashboardPage"));
+const ConsumablesAdminPage = lazy(() => import("./pages/ops/ConsumablesAdminPage"));
+
+// Consumables Ecosystem
+const ConsumablesLandingPage = lazy(() => import("./pages/consumables/ConsumablesLandingPage"));
+const ConsumablesFinderPage = lazy(() => import("./pages/consumables/ConsumablesFinderPage"));
+const ConsumablesResultsPage = lazy(() => import("./pages/consumables/ConsumablesResultsPage"));
+const ConsumableProductPage = lazy(() => import("./pages/consumables/ConsumableProductPage"));
+const ConsumablesComparePage = lazy(() => import("./pages/consumables/ConsumablesComparePage"));
+const ConsumablesRefillPage = lazy(() => import("./pages/consumables/ConsumablesRefillPage"));
+const ConsumablesRefillTrackPage = lazy(() => import("./pages/consumables/ConsumablesRefillTrackPage"));
+const ConsumablesRangeListPage = lazy(() => import("./pages/consumables/ConsumablesRangeListPage"));
+const ConsumablesReorderPage = lazy(() => import("./pages/consumables/ConsumablesReorderPage"));
+const ConsumablesBulkPage = lazy(() => import("./pages/consumables/ConsumablesBulkPage"));
+const ConsumablesQRVerifyPage = lazy(() => import("./pages/consumables/ConsumablesQRVerifyPage"));
 
 // SPS — Smart Print Subscription
 const SPSLandingPage = lazy(() => import("./pages/sps/SPSLandingPage"));
