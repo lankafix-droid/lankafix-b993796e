@@ -396,7 +396,7 @@ Triage this.`;
     };
   }
   return {
-    triage: res.result, advisory_only: true,
+    triage: res.result, advisory_only: true, fallback: false,
     context: { prior_tickets: priorTicketCount, same_category: priorSameCategoryCount, asset_tickets: assetTotalTickets },
   };
 }
