@@ -167,6 +167,7 @@ const ConsumablesRangeListPage = lazy(() => import("./pages/consumables/Consumab
 const ConsumablesReorderPage = lazy(() => import("./pages/consumables/ConsumablesReorderPage"));
 const ConsumablesBulkPage = lazy(() => import("./pages/consumables/ConsumablesBulkPage"));
 const ConsumablesQRVerifyPage = lazy(() => import("./pages/consumables/ConsumablesQRVerifyPage"));
+const ConsumablesCartPage = lazy(() => import("./pages/consumables/ConsumablesCartPage"));
 
 // SPS — Smart Print Subscription
 const SPSLandingPage = lazy(() => import("./pages/sps/SPSLandingPage"));
