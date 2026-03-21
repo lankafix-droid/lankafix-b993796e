@@ -480,40 +480,32 @@ export default function ProviderOnboardingPage() {
 
 function ProviderBenefitsPitch() {
   const benefits = [
-    { icon: Zap, label: "Structured Job Pipeline", desc: "No more chasing leads on WhatsApp — get real bookings sent to you" },
-    { icon: Shield, label: "Verified Identity", desc: "Build a trusted marketplace profile customers can rely on" },
-    { icon: BarChart3, label: "Digital Quote Support", desc: "Professional quoting tools that reduce disputes" },
-    { icon: Heart, label: "Repeat Booking Potential", desc: "Customers can rebook you directly through the platform" },
-    { icon: MapPin, label: "Zone-Based Growth", desc: "Grow your reputation in your local service areas" },
-    { icon: TrendingUp, label: "Merit-Based Ranking", desc: "Better work = more visibility = more jobs" },
-    { icon: Star, label: "Customer Trust", desc: "LankaFix guarantee gives customers confidence to book you" },
-    { icon: Sparkles, label: "Operational Visibility", desc: "Track jobs, earnings, and performance in one place" },
+    { icon: Zap, label: "Real Job Offers", desc: "Get structured bookings — no more chasing leads" },
+    { icon: Shield, label: "Verified Profile", desc: "Build trust with a verified marketplace identity" },
+    { icon: TrendingUp, label: "Merit-Based Growth", desc: "Better work = higher visibility = more jobs" },
+    { icon: Heart, label: "Repeat Customers", desc: "Customers can rebook you directly" },
   ];
 
   return (
-    <Card className="bg-primary/5 border-primary/20 mb-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" /> Why Join LankaFix?
-        </CardTitle>
-        <CardDescription className="text-xs">
-          Stop relying only on WhatsApp, Facebook & referrals. Build a professional service business.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-2">
-          {benefits.map((b) => (
-            <div key={b.label} className="flex items-start gap-2 text-xs">
-              <b.icon className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-              <div>
-                <span className="font-medium text-foreground">{b.label}</span>
-                <span className="text-muted-foreground"> — {b.desc}</span>
-              </div>
+    <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="w-4 h-4 text-primary" />
+        <p className="text-sm font-semibold text-foreground">Why Join LankaFix?</p>
+      </div>
+      <div className="grid grid-cols-1 gap-2.5">
+        {benefits.map((b) => (
+          <div key={b.label} className="flex items-start gap-2.5">
+            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <b.icon className="w-3 h-3 text-primary" />
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            <div>
+              <span className="text-xs font-medium text-foreground">{b.label}</span>
+              <span className="text-xs text-muted-foreground"> — {b.desc}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
