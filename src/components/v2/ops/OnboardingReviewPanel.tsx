@@ -128,18 +128,8 @@ export default function OnboardingReviewPanel() {
                   </div>
 
                   {/* Actions */}
-                  {(p.verification_status === "pending" || p.verification_status === "under_review") && (
+                  {(p.verification_status === "pending") && (
                     <div className="flex gap-2 mt-3 pt-3 border-t border-border/40">
-                      {p.verification_status === "pending" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-7 flex-1"
-                          onClick={() => updateStatus(p.id, "under_review")}
-                        >
-                          <Eye className="w-3 h-3 mr-1" /> Start Review
-                        </Button>
-                      )}
                       <Button
                         size="sm"
                         className="text-xs h-7 flex-1"
@@ -151,7 +141,7 @@ export default function OnboardingReviewPanel() {
                         size="sm"
                         variant="destructive"
                         className="text-xs h-7"
-                        onClick={() => updateStatus(p.id, "rejected")}
+                        onClick={() => updateStatus(p.id, "suspended")}
                       >
                         <XCircle className="w-3 h-3 mr-1" /> Reject
                       </Button>
