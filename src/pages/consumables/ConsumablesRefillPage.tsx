@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { PRINTER_MAPPINGS, BRANDS } from "@/data/printerMappings";
 import { whatsappLink, SUPPORT_WHATSAPP, SUPPORT_PHONE } from "@/config/contact";
-import { useCreateRefillOrder, type ConditionData } from "@/hooks/useConsumables";
+import { useCreateRefillOrder, deriveEligibilityStatus, type ConditionData, type RefillEligibilityStatus } from "@/hooks/useConsumables";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import smartfixInkBox from "@/assets/smartfix-ink-box.png";
@@ -103,17 +103,52 @@ const CONDITION_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
+/** Derive eligibility from cartridge type and condition */
+function deriveRefillEligibility(condition: string, isColor: boolean): RefillEligibilityStatus {
+  // Leaking cartridges are risky
+  if (condition === "leaking") return "not_recommended";
+  // Not detected may indicate chip/electrical damage
+  if (condition === "not_detected") return "likely_eligible";
+  // Standard conditions
+  return "eligible";
+}
+
+/** Build condition-aware notes */
+function buildConditionNotes(condition: string, printerInfo: string, userNotes: string): string {
+  const parts = [printerInfo];
+  
+  if (condition === "leaking") {
+    parts.push("⚠ Cartridge reported as leaking — requires careful inspection before refill.");
+  } else if (condition === "not_detected") {
+    parts.push("⚠ Cartridge not detected by printer — chip/contact inspection required.");
+  } else if (condition === "faded") {
+    parts.push("Cartridge printing faded — likely low ink, standard refill expected.");
+  } else if (condition === "empty") {
+    parts.push("Cartridge reported empty — standard refill.");
+  } else if (condition === "other") {
+    parts.push("Custom condition reported — manual inspection required.");
+  }
+
+  if (userNotes.trim()) parts.push(userNotes.trim());
+  return parts.join(" ");
+}
+
 type FlowStep = "select" | "results" | "request" | "submitted";
 
 const ConsumablesRefillPage = () => {
+  const [searchParams] = useSearchParams();
+  const preCode = searchParams.get("code") || "";
+  const preBrand = searchParams.get("brand") || "";
+
   const [step, setStep] = useState<FlowStep>("select");
-  const [selectedBrand, setSelectedBrand] = useState("");
+  const [selectedBrand, setSelectedBrand] = useState(preBrand);
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedCartridges, setSelectedCartridges] = useState<RefillableCartridge[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState<RefillablePrinter | null>(null);
+  const [selectedCartridge, setSelectedCartridge] = useState<RefillableCartridge | null>(null);
   const [form, setForm] = useState({
     phone: "", address: "", pickup_method: "pickup", quantity: "1", notes: "",
-    selected_code: "", condition: "",
+    selected_code: preCode, condition: "",
   });
   const navigate = useNavigate();
   const createRefill = useCreateRefillOrder();
@@ -129,6 +164,7 @@ const ConsumablesRefillPage = () => {
     setSelectedModel("");
     setSelectedCartridges([]);
     setSelectedPrinter(null);
+    setSelectedCartridge(null);
   };
 
   const handleModelChange = (model: string) => {
@@ -142,6 +178,7 @@ const ConsumablesRefillPage = () => {
   };
 
   const handleContinueRefill = (cartridge: RefillableCartridge) => {
+    setSelectedCartridge(cartridge);
     setForm(prev => ({ ...prev, selected_code: cartridge.code }));
     setStep("request");
   };
@@ -149,18 +186,32 @@ const ConsumablesRefillPage = () => {
   const handleSubmit = () => {
     if (!form.phone || form.phone.length < 9) { toast.error("Please enter a valid phone number"); return; }
     if (form.pickup_method === "pickup" && !form.address) { toast.error("Please enter pickup address"); return; }
-    if (!selectedPrinter) return;
+    if (!selectedPrinter || !selectedCartridge) return;
 
     const pickupFee = form.pickup_method === "pickup" ? 300 : 0;
+    const isLeaking = form.condition === "leaking";
+    const isPhysicalDamage = isLeaking; // leaking implies physical damage
+
+    const colorType = selectedCartridge.isColor ? "colour" : "black";
+    const derivedEligibility = deriveRefillEligibility(form.condition, selectedCartridge.isColor);
+
+    if (derivedEligibility === "not_recommended") {
+      toast.error("This cartridge condition is not recommended for refill. Please contact us for assistance.");
+      return;
+    }
+
     const conditionData: ConditionData = {
       is_original: true,
       refilled_before: false,
-      physical_damage: form.condition === "leaking",
-      leakage: form.condition === "leaking",
-      color_type: "black",
+      physical_damage: isPhysicalDamage,
+      leakage: isLeaking,
+      color_type: colorType,
       print_issue: form.condition || "",
       urgency: "standard",
     };
+
+    const printerInfo = `Printer: ${selectedPrinter.brand} ${selectedPrinter.model}. Cartridge: ${selectedCartridge.code} (${colorType}). Condition: ${form.condition || "not specified"}.`;
+    const enrichedNotes = buildConditionNotes(form.condition, printerInfo, form.notes);
 
     createRefill.mutate({
       brand: selectedPrinter.brand,
@@ -170,12 +221,12 @@ const ConsumablesRefillPage = () => {
       pickup_method: form.pickup_method,
       address_text: form.address,
       phone: form.phone,
-      notes: `Printer: ${selectedPrinter.brand} ${selectedPrinter.model}. Condition: ${form.condition || "not specified"}. ${form.notes}`.trim(),
+      notes: enrichedNotes,
       service_fee: 800,
       pickup_fee: pickupFee,
       total: 800 + pickupFee,
       condition_data: conditionData,
-      derived_eligibility: "eligible",
+      derived_eligibility: derivedEligibility,
     }, {
       onSuccess: () => setStep("submitted"),
     });
@@ -337,14 +388,14 @@ const ConsumablesRefillPage = () => {
                 </motion.div>
               ))}
 
-              <Button variant="ghost" size="sm" className="mt-2" onClick={() => { setStep("select"); setSelectedCartridges([]); setSelectedPrinter(null); }}>
+              <Button variant="ghost" size="sm" className="mt-2" onClick={() => { setStep("select"); setSelectedCartridges([]); setSelectedPrinter(null); setSelectedCartridge(null); }}>
                 <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Change Printer
               </Button>
             </motion.div>
           )}
 
           {/* STEP: Refill Request Form */}
-          {step === "request" && selectedPrinter && (
+          {step === "request" && selectedPrinter && selectedCartridge && (
             <motion.div key="request" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <Card>
                 <CardContent className="p-5 space-y-4">
@@ -353,7 +404,10 @@ const ConsumablesRefillPage = () => {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{selectedPrinter.brand} {selectedPrinter.model}</span>
                       <span>·</span>
-                      <Badge variant="outline" className="text-[10px]">{form.selected_code}</Badge>
+                      <Badge variant="outline" className="text-[10px]">{selectedCartridge.code}</Badge>
+                      <Badge variant={selectedCartridge.isColor ? "secondary" : "default"} className="text-[10px]">
+                        {selectedCartridge.isColor ? "Colour" : "Black"}
+                      </Badge>
                     </div>
                   </div>
 
@@ -390,6 +444,16 @@ const ConsumablesRefillPage = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    {form.condition === "leaking" && (
+                      <p className="text-[10px] text-destructive mt-1">
+                        ⚠ Leaking cartridges may not be eligible for refill. Our team will inspect and advise.
+                      </p>
+                    )}
+                    {form.condition === "not_detected" && (
+                      <p className="text-[10px] text-orange-600 mt-1">
+                        ⚠ Cartridge not detected may indicate chip damage. Inspection required before refill.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -448,7 +512,7 @@ const ConsumablesRefillPage = () => {
                   </p>
                   <div className="flex flex-col gap-2">
                     <Button onClick={() => navigate("/consumables/refill/track")}>Track My Refill</Button>
-                    <Button variant="outline" onClick={() => { setStep("select"); setSelectedBrand(""); setSelectedModel(""); }}>
+                    <Button variant="outline" onClick={() => { setStep("select"); setSelectedBrand(""); setSelectedModel(""); setSelectedCartridge(null); }}>
                       Submit Another Refill
                     </Button>
                   </div>
