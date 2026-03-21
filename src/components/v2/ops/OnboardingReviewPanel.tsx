@@ -36,7 +36,7 @@ export default function OnboardingReviewPanel() {
     },
   });
 
-  const updateStatus = async (partnerId: string, newStatus: string) => {
+  const updateStatus = async (partnerId: string, newStatus: "pending" | "verified" | "suspended") => {
     const { error } = await supabase
       .from("partners")
       .update({ verification_status: newStatus })
