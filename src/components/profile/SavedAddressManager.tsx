@@ -250,7 +250,7 @@ export default function SavedAddressManager({ onSelect, selectable }: Props) {
       )}
 
       {addresses.map(addr => {
-        const svcStatus = serviceabilityFor(addr);
+        const vState = verificationStateFor(addr);
         return (
           <div
             key={addr.id}
