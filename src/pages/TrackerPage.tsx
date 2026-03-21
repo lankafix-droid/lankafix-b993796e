@@ -54,6 +54,7 @@ import CustomerTrustPanel from "@/components/trust/CustomerTrustPanel";
 import HumanSupportAvailableCard from "@/components/trust/HumanSupportAvailableCard";
 import BookingExceptionCard from "@/components/booking/BookingExceptionCard";
 import BookingProgressTimeline from "@/components/booking/BookingProgressTimeline";
+import ConsumerLifecycleTracker from "@/components/v2/lifecycle/ConsumerLifecycleTracker";
 import QuoteTransparencyPanel from "@/components/trust/QuoteTransparencyPanel";
 import { mapBookingStatusToStage } from "@/lib/bookingLifecycleModel";
 import SLAExpectationCard from "@/components/booking/SLAExpectationCard";
