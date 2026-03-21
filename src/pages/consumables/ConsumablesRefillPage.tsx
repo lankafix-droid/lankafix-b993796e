@@ -597,11 +597,17 @@ const ConsumablesRefillPage = () => {
 
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Consider these alternatives</p>
                   <div className="flex flex-col gap-2">
-                    <Button className="w-full" onClick={() => navigate("/consumables/compatible")}>
-                      <ShieldCheck className="w-4 h-4 mr-1.5" /> View SmartFix Compatible Replacement
+                    <Button className="w-full" onClick={() => {
+                      if (replacementIds.sfId) navigate(`/consumables/product/${replacementIds.sfId}`);
+                      else navigate("/consumables/compatible");
+                    }}>
+                      <ShieldCheck className="w-4 h-4 mr-1.5" /> {replacementIds.sfId ? "View SmartFix Replacement" : "Browse SmartFix Compatible"}
                     </Button>
-                    <Button variant="outline" className="w-full" onClick={() => navigate("/consumables/oem")}>
-                      <Droplets className="w-4 h-4 mr-1.5" /> View Genuine OEM Replacement
+                    <Button variant="outline" className="w-full" onClick={() => {
+                      if (replacementIds.oemId) navigate(`/consumables/product/${replacementIds.oemId}`);
+                      else navigate("/consumables/oem");
+                    }}>
+                      <Droplets className="w-4 h-4 mr-1.5" /> {replacementIds.oemId ? "View Genuine OEM Replacement" : "Browse Genuine OEM"}
                     </Button>
                     <Button variant="outline" className="w-full" asChild>
                       <a href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, my ${selectedCartridge?.code || "cartridge"} is ${form.condition}. Can you help me find a replacement or alternative?`)} target="_blank" rel="noopener noreferrer">
