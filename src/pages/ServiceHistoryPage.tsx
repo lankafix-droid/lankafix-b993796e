@@ -24,18 +24,12 @@ import { CATEGORY_LABELS, type CategoryCode } from "@/types/booking";
 import { mapBookingStatusToStage, LIFECYCLE_STAGES } from "@/lib/bookingLifecycleModel";
 import { motion } from "framer-motion";
 
-/* ── Status display config ── */
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  completed:    { label: "Completed",     color: "bg-green-500/10 text-green-700 border-green-500/20", icon: CheckCircle2 },
-  in_progress:  { label: "In Progress",   color: "bg-primary/10 text-primary border-primary/20",       icon: Loader2 },
-  confirmed:    { label: "Confirmed",     color: "bg-primary/10 text-primary border-primary/20",       icon: Clock },
-  requested:    { label: "Requested",     color: "bg-amber-500/10 text-amber-700 border-amber-500/20", icon: Clock },
-  tech_assigned:{ label: "Tech Assigned", color: "bg-accent/10 text-accent-foreground border-accent/20", icon: Wrench },
-  tech_en_route:{ label: "En Route",      color: "bg-primary/10 text-primary border-primary/20",       icon: Clock },
-  cancelled:    { label: "Cancelled",     color: "bg-destructive/10 text-destructive border-destructive/20", icon: XCircle },
-  escalated:    { label: "Escalated",     color: "bg-destructive/10 text-destructive border-destructive/20", icon: AlertTriangle },
-  quote_submitted: { label: "Quote Ready", color: "bg-amber-500/10 text-amber-700 border-amber-500/20", icon: FileText },
-};
+/* ── Status display — derived from lifecycle model for consistency ── */
+function getStatusDisplay(status: string, dispatchStatus?: string | null) {
+  const stage = mapBookingStatusToStage(status, dispatchStatus);
+  const info = LIFECYCLE_STAGES[stage];
+  return { label: info.label, badgeBg: info.badgeBg };
+}
 
 const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
   paid:             { label: "Paid",     color: "text-green-700" },
