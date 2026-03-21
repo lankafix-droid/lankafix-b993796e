@@ -40,7 +40,7 @@ const V2PopularServices = () => {
               >
                 <Link
                   to={`/book/${cat.code}`}
-                  onClick={() => track("homepage_popular_click", { label: cat.label })}
+                  onClick={() => { track("homepage_popular_click", { label: cat.label }); trackCategoryClick(cat.code, "homepage_popular"); }}
                   className="group block bg-card rounded-2xl border border-border/40 p-4 hover:border-primary/20 hover:shadow-card-hover transition-all duration-300 active:scale-[0.97]"
                 >
                   <div className="w-10 h-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center mb-3 group-hover:bg-primary/12 transition-colors duration-300 text-xl">

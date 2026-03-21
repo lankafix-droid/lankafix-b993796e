@@ -53,7 +53,7 @@ export default function DiagnoseStepArea({ onSelect, selected }: Props) {
           return (
             <button
               key={area.name}
-              onClick={() => onSelect(area.name)}
+              onClick={() => { trackServiceabilityCheck(area.name, area.status); onSelect(area.name); }}
               aria-label={`Select area: ${area.name}`}
               className={`w-full text-left p-3 rounded-xl border transition-all flex items-center gap-3 ${
                 isSelected

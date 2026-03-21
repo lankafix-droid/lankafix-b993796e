@@ -61,6 +61,7 @@ export default function RatingModal({ open, onClose, bookingId, partnerId, custo
     });
     setSubmitting(false);
 
+    trackRatingSubmitted(bookingId, rating);
     if (result.error) {
       toast.error(
         result.error.includes("duplicate") || result.error.includes("unique")
