@@ -156,6 +156,8 @@ const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelli
 const SPSIntelligenceDashboardPage = lazy(() => import("./pages/ops/SPSIntelligenceDashboardPage"));
 const ConsumablesAdminPage = lazy(() => import("./pages/ops/ConsumablesAdminPage"));
 const MarketplaceOverviewPage = lazy(() => import("./pages/ops/MarketplaceOverviewPage"));
+const BookingDetailPage = lazy(() => import("./pages/BookingDetailPage"));
+const NotificationPreferencesPage = lazy(() => import("./pages/NotificationPreferencesPage"));
 
 // Consumables Ecosystem
 const ConsumablesLandingPage = lazy(() => import("./pages/consumables/ConsumablesLandingPage"));
