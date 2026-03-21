@@ -5,6 +5,7 @@ import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
+import OnboardingStatusBanner from "@/components/v2/partner/OnboardingStatusBanner";
 import {
   Briefcase, Clock, CheckCircle2, AlertTriangle, Users,
   MapPin, ArrowRight, Wrench, BarChart3, Wallet,
@@ -126,6 +127,10 @@ export default function PartnerDashboardPage() {
       </div>
 
       <div className="p-4 space-y-4 max-w-2xl mx-auto">
+        {/* Verification Status */}
+        {partner.verification_status !== "verified" && (
+          <OnboardingStatusBanner status={partner.verification_status} />
+        )}
         {/* Job Invitations Alert */}
         {awaitingConfirmation.length > 0 && (
           <motion.div

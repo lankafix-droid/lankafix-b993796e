@@ -326,12 +326,22 @@ export default function ProviderOnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-primary text-primary-foreground px-4 py-6">
+      {/* Premium Header */}
+      <div className="bg-gradient-to-b from-primary/10 to-background px-4 pt-8 pb-4">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold">Join LankaFix</h1>
-          <p className="text-primary-foreground/80 text-sm mt-1">
-            {existingPartnerId ? "Update your provider application" : "Become a verified service provider"}
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Join LankaFix</h1>
+              <p className="text-xs text-muted-foreground">
+                {existingPartnerId ? "Update your provider application" : "Become a verified service provider"}
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Join Sri Lanka's trusted marketplace for verified technicians. Get real job offers, build your reputation, and grow your business.
           </p>
         </div>
       </div>
@@ -470,40 +480,32 @@ export default function ProviderOnboardingPage() {
 
 function ProviderBenefitsPitch() {
   const benefits = [
-    { icon: Zap, label: "Structured Job Pipeline", desc: "No more chasing leads on WhatsApp — get real bookings sent to you" },
-    { icon: Shield, label: "Verified Identity", desc: "Build a trusted marketplace profile customers can rely on" },
-    { icon: BarChart3, label: "Digital Quote Support", desc: "Professional quoting tools that reduce disputes" },
-    { icon: Heart, label: "Repeat Booking Potential", desc: "Customers can rebook you directly through the platform" },
-    { icon: MapPin, label: "Zone-Based Growth", desc: "Grow your reputation in your local service areas" },
-    { icon: TrendingUp, label: "Merit-Based Ranking", desc: "Better work = more visibility = more jobs" },
-    { icon: Star, label: "Customer Trust", desc: "LankaFix guarantee gives customers confidence to book you" },
-    { icon: Sparkles, label: "Operational Visibility", desc: "Track jobs, earnings, and performance in one place" },
+    { icon: Zap, label: "Real Job Offers", desc: "Get structured bookings — no more chasing leads" },
+    { icon: Shield, label: "Verified Profile", desc: "Build trust with a verified marketplace identity" },
+    { icon: TrendingUp, label: "Merit-Based Growth", desc: "Better work = higher visibility = more jobs" },
+    { icon: Heart, label: "Repeat Customers", desc: "Customers can rebook you directly" },
   ];
 
   return (
-    <Card className="bg-primary/5 border-primary/20 mb-4">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" /> Why Join LankaFix?
-        </CardTitle>
-        <CardDescription className="text-xs">
-          Stop relying only on WhatsApp, Facebook & referrals. Build a professional service business.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-2">
-          {benefits.map((b) => (
-            <div key={b.label} className="flex items-start gap-2 text-xs">
-              <b.icon className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-              <div>
-                <span className="font-medium text-foreground">{b.label}</span>
-                <span className="text-muted-foreground"> — {b.desc}</span>
-              </div>
+    <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 mb-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Sparkles className="w-4 h-4 text-primary" />
+        <p className="text-sm font-semibold text-foreground">Why Join LankaFix?</p>
+      </div>
+      <div className="grid grid-cols-1 gap-2.5">
+        {benefits.map((b) => (
+          <div key={b.label} className="flex items-start gap-2.5">
+            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <b.icon className="w-3 h-3 text-primary" />
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            <div>
+              <span className="text-xs font-medium text-foreground">{b.label}</span>
+              <span className="text-xs text-muted-foreground"> — {b.desc}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1088,20 +1090,24 @@ function StepReview() {
         </CardContent>
       </Card>
 
-      {/* Tier info */}
-      <Card>
+      {/* What Happens Next */}
+      <Card className="border-primary/15 bg-primary/5">
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-5 h-5 text-warning" />
-            <p className="font-semibold text-foreground">Provider Tiers</p>
-          </div>
-          <div className="space-y-2">
-            {Object.entries(TIER_CONFIG).map(([key, tier]) => (
-              <div key={key} className="flex items-center justify-between text-sm">
-                <Badge className={tier.color}>{tier.label}</Badge>
-                <span className="text-muted-foreground text-xs">
-                  {tier.minJobs === 0 ? "Starting tier" : `${tier.minJobs}+ jobs, ${tier.minRating}+ rating`}
-                </span>
+          <p className="font-semibold text-foreground mb-3 text-sm">What happens after you submit?</p>
+          <div className="space-y-3">
+            {[
+              { step: "1", label: "Application Review", desc: "Our team reviews your profile within 24–48 hours" },
+              { step: "2", label: "Document Verification", desc: "We verify your NIC and any professional certifications" },
+              { step: "3", label: "Profile Activation", desc: "Once verified, you'll start receiving job offers in your zones" },
+            ].map((item) => (
+              <div key={item.step} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                  {item.step}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
