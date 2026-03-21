@@ -14,7 +14,8 @@ import { searchConsumables, type FinderResult, type SearchResultGroup, type Matc
 import { useCart } from "@/hooks/useConsumables";
 import { whatsappLink, SUPPORT_WHATSAPP } from "@/config/contact";
 import { motion } from "framer-motion";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import smartfixTonerBox from "@/assets/smartfix-toner-box.png";
 import smartfixInkBox from "@/assets/smartfix-ink-box.png";
 
@@ -29,14 +30,50 @@ const confidenceBadge = (c: MatchConfidence) => {
   }
 };
 
-function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: number }) {
+/** Resolved DB product IDs for a supply code group */
+interface ResolvedProducts {
+  smartfixId: string | null;
+  oemId: string | null;
+  smartfixPrice: number | null;
+  oemPrice: number | null;
+  smartfixStock: number | null;
+  oemStock: number | null;
+}
+
+function SupplyResultCard({ group, index, resolved }: { group: SearchResultGroup; index: number; resolved: ResolvedProducts | null }) {
   const navigate = useNavigate();
+  const cart = useCart();
   const isInk = group.consumableType.toLowerCase().includes("ink");
   const smartfixImage = isInk ? smartfixInkBox : smartfixTonerBox;
 
   const typeLabel = group.isColor ? "Colour" : "Black";
   const categoryLabel = group.category.includes("Ink Tank") ? "Ink Bottle" :
     group.consumableType.includes("Toner") ? "Toner Cartridge" : "Ink Cartridge";
+
+  const hasSf = !!resolved?.smartfixId;
+  const hasOem = !!resolved?.oemId;
+
+  const handleViewSmartFix = () => {
+    if (resolved?.smartfixId) navigate(`/consumables/product/${resolved.smartfixId}`);
+    else navigate(`/consumables/compatible`);
+  };
+
+  const handleViewOEM = () => {
+    if (resolved?.oemId) navigate(`/consumables/product/${resolved.oemId}`);
+    else navigate(`/consumables/oem`);
+  };
+
+  const handleCompare = () => {
+    if (resolved?.smartfixId && resolved?.oemId) {
+      navigate(`/consumables/compare?sf=${resolved.smartfixId}&oem=${resolved.oemId}`);
+    } else {
+      navigate(`/consumables/compare`);
+    }
+  };
+
+  const handleRefill = () => {
+    navigate(`/consumables/refill?code=${encodeURIComponent(group.supplyCode)}&brand=${encodeURIComponent(group.brand)}`);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
@@ -97,8 +134,16 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
                   <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Warranty Backed</div>
                   <div className="flex items-center gap-1"><Scale className="w-2.5 h-2.5" /> Yield & Weight Declared</div>
                 </div>
-                <Button size="sm" className="w-full mt-3 text-xs h-8" onClick={() => navigate("/consumables/compatible")}>
-                  <ShoppingCart className="w-3 h-3 mr-1" /> View SmartFix Option
+                {resolved?.smartfixPrice != null && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                    <span className="text-sm font-bold text-foreground">LKR {resolved.smartfixPrice.toLocaleString()}</span>
+                    <Badge variant={resolved.smartfixStock && resolved.smartfixStock > 0 ? "secondary" : "outline"} className="text-[9px]">
+                      {resolved.smartfixStock && resolved.smartfixStock > 0 ? "In Stock" : "On Request"}
+                    </Badge>
+                  </div>
+                )}
+                <Button size="sm" className="w-full mt-2 text-xs h-8" onClick={handleViewSmartFix}>
+                  <ShoppingCart className="w-3 h-3 mr-1" /> {hasSf ? "View Product" : "Browse SmartFix"}
                 </Button>
               </div>
 
@@ -115,19 +160,29 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
                   <div className="flex items-center gap-1"><Package className="w-2.5 h-2.5" /> Original Manufacturer</div>
                   <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Manufacturer Warranty</div>
                 </div>
-                <Button size="sm" variant="outline" className="w-full mt-3 text-xs h-8" onClick={() => navigate("/consumables/oem")}>
-                  View OEM Option
+                {resolved?.oemPrice != null && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                    <span className="text-sm font-bold text-foreground">LKR {resolved.oemPrice.toLocaleString()}</span>
+                    <Badge variant={resolved.oemStock && resolved.oemStock > 0 ? "secondary" : "outline"} className="text-[9px]">
+                      {resolved.oemStock && resolved.oemStock > 0 ? "In Stock" : "On Request"}
+                    </Badge>
+                  </div>
+                )}
+                <Button size="sm" variant="outline" className="w-full mt-2 text-xs h-8" onClick={handleViewOEM}>
+                  {hasOem ? "View Product" : "Browse OEM"}
                 </Button>
               </div>
             </div>
 
             {/* Actions row */}
             <div className="flex flex-wrap gap-2 mt-3">
-              <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2" onClick={() => navigate("/consumables/compare")}>
-                <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare Options
-              </Button>
+              {hasSf && hasOem && (
+                <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2" onClick={handleCompare}>
+                  <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare Options
+                </Button>
+              )}
               {group.refillEligible && (
-                <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2 text-orange-600" onClick={() => navigate("/consumables/refill")}>
+                <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2 text-orange-600" onClick={handleRefill}>
                   <RotateCcw className="w-2.5 h-2.5 mr-0.5" /> Refill This Cartridge
                 </Button>
               )}
@@ -188,12 +243,47 @@ function LeadCaptureSection({ query }: { query: string }) {
   );
 }
 
+/** Resolve DB product IDs for each supply code group */
+async function resolveProductIds(groups: SearchResultGroup[]): Promise<Map<string, ResolvedProducts>> {
+  const map = new Map<string, ResolvedProducts>();
+  if (groups.length === 0) return map;
+
+  // Collect unique supply codes
+  const codes = [...new Set(groups.map(g => g.supplyCode))];
+
+  const { data } = await supabase
+    .from("consumable_products")
+    .select("id, sku_code, range_type, price, stock_qty")
+    .eq("is_active", true)
+    .in("sku_code", codes);
+
+  if (!data) return map;
+
+  // Group by sku_code
+  for (const code of codes) {
+    const matching = data.filter(p => p.sku_code === code);
+    const sf = matching.find(p => p.range_type === "smartfix_compatible");
+    const oem = matching.find(p => p.range_type === "genuine_oem");
+    map.set(code, {
+      smartfixId: sf?.id ?? null,
+      oemId: oem?.id ?? null,
+      smartfixPrice: sf ? Number(sf.price) : null,
+      oemPrice: oem ? Number(oem.price) : null,
+      smartfixStock: sf?.stock_qty ?? null,
+      oemStock: oem?.stock_qty ?? null,
+    });
+  }
+
+  return map;
+}
+
 const ConsumablesResultsPage = () => {
   const [params] = useSearchParams();
   const initialQ = params.get("q") || "";
   const initialBrand = params.get("brand") || "";
   const [query, setQuery] = useState(initialQ);
   const [searchQ, setSearchQ] = useState(initialQ);
+  const [resolvedMap, setResolvedMap] = useState<Map<string, ResolvedProducts>>(new Map());
   const navigate = useNavigate();
   const cart = useCart();
 
@@ -203,6 +293,15 @@ const ConsumablesResultsPage = () => {
     }
     return searchConsumables(searchQ, initialBrand || undefined);
   }, [searchQ, initialBrand]);
+
+  // Resolve DB product IDs whenever results change
+  useEffect(() => {
+    if (result.groups.length > 0) {
+      resolveProductIds(result.groups).then(setResolvedMap);
+    } else {
+      setResolvedMap(new Map());
+    }
+  }, [result.groups]);
 
   const handleSearch = () => {
     if (query.trim()) setSearchQ(query.trim());
@@ -282,7 +381,12 @@ const ConsumablesResultsPage = () => {
         {result.groups.length > 0 && (
           <div className="space-y-4">
             {result.groups.map((group, i) => (
-              <SupplyResultCard key={`${group.brand}-${group.supplyCode}`} group={group} index={i} />
+              <SupplyResultCard
+                key={`${group.brand}-${group.supplyCode}`}
+                group={group}
+                index={i}
+                resolved={resolvedMap.get(group.supplyCode) ?? null}
+              />
             ))}
           </div>
         )}
