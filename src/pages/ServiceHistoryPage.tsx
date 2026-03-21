@@ -32,10 +32,10 @@ function getStatusDisplay(status: string, dispatchStatus?: string | null) {
 }
 
 const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
-  paid:             { label: "Paid",     color: "text-green-700" },
-  payment_verified: { label: "Verified", color: "text-green-700" },
-  cash_collected:   { label: "Cash",     color: "text-green-700" },
-  payment_pending:  { label: "Pending",  color: "text-amber-600" },
+  paid:             { label: "Paid",     color: "text-success" },
+  payment_verified: { label: "Verified", color: "text-success" },
+  cash_collected:   { label: "Cash",     color: "text-success" },
+  payment_pending:  { label: "Pending",  color: "text-warning" },
   failed:           { label: "Failed",   color: "text-destructive" },
 };
 
