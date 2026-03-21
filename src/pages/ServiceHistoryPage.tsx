@@ -1,6 +1,7 @@
 /**
  * My Bookings — Premium consumer dashboard for booking history.
  * Shows active and past requests with lifecycle awareness, next actions, and trust-first design.
+ * Uses centralized lifecycle model and state alignment for consistency.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
