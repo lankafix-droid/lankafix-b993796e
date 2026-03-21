@@ -50,8 +50,10 @@ function SupplyResultCard({ group, index, resolved }: { group: SearchResultGroup
   const categoryLabel = group.category.includes("Ink Tank") ? "Ink Bottle" :
     group.consumableType.includes("Toner") ? "Toner Cartridge" : "Ink Cartridge";
 
-  const hasSf = !!resolved?.smartfixId;
+  // Determine actual availability for each offering
   const hasOem = !!resolved?.oemId;
+  const hasSmartFixCompatible = !!resolved?.smartfixId;
+  const hasSmartFixRefill = !!group.refillEligible;
 
   const handleViewSmartFix = () => {
     if (resolved?.smartfixId) navigate(`/consumables/product/${resolved.smartfixId}`);
@@ -74,6 +76,8 @@ function SupplyResultCard({ group, index, resolved }: { group: SearchResultGroup
   const handleRefill = () => {
     navigate(`/consumables/refill?code=${encodeURIComponent(group.supplyCode)}&brand=${encodeURIComponent(group.brand)}`);
   };
+
+  const optionCount = [hasOem, hasSmartFixCompatible, hasSmartFixRefill].filter(Boolean).length;
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
@@ -114,79 +118,119 @@ function SupplyResultCard({ group, index, resolved }: { group: SearchResultGroup
             </div>
           </div>
 
-          {/* SmartFix + OEM Options */}
+          {/* Available Options — only render cards that truly exist */}
           <div className="p-4">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
-              Available Options
+              Available Options ({optionCount})
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* SmartFix Compatible */}
-              <div className="rounded-lg border-2 border-accent/30 bg-accent/5 p-3">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-accent" />
-                  <span className="text-[11px] font-semibold text-accent">SmartFix Compatible</span>
-                </div>
-                <div className="w-full h-24 rounded-md bg-white dark:bg-muted flex items-center justify-center mb-2 overflow-hidden">
-                  <img src={smartfixImage} alt="SmartFix Compatible" className="h-20 w-auto object-contain" />
-                </div>
-                <div className="space-y-1 text-[10px] text-muted-foreground">
-                  <div className="flex items-center gap-1"><QrCode className="w-2.5 h-2.5" /> QR Verified</div>
-                  <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Warranty Backed</div>
-                  <div className="flex items-center gap-1"><Scale className="w-2.5 h-2.5" /> Yield & Weight Declared</div>
-                </div>
-                {resolved?.smartfixPrice != null && (
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                    <span className="text-sm font-bold text-foreground">LKR {resolved.smartfixPrice.toLocaleString()}</span>
-                    <Badge variant={resolved.smartfixStock && resolved.smartfixStock > 0 ? "secondary" : "outline"} className="text-[9px]">
-                      {resolved.smartfixStock && resolved.smartfixStock > 0 ? "In Stock" : "On Request"}
-                    </Badge>
-                  </div>
-                )}
-                <Button size="sm" className="w-full mt-2 text-xs h-8" onClick={handleViewSmartFix}>
-                  <ShoppingCart className="w-3 h-3 mr-1" /> {hasSf ? "View Product" : "Browse SmartFix"}
-                </Button>
-              </div>
+            <div className={`grid grid-cols-1 ${optionCount >= 2 ? "sm:grid-cols-2" : ""} gap-3`}>
 
-              {/* Genuine OEM */}
-              <div className="rounded-lg border border-border bg-card p-3">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Package className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-[11px] font-semibold text-primary">Genuine OEM</span>
-                </div>
-                <div className="w-full h-24 rounded-md bg-muted flex items-center justify-center mb-2">
-                  <Package className="w-10 h-10 text-muted-foreground/30" />
-                </div>
-                <div className="space-y-1 text-[10px] text-muted-foreground">
-                  <div className="flex items-center gap-1"><Package className="w-2.5 h-2.5" /> Original Manufacturer</div>
-                  <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Manufacturer Warranty</div>
-                </div>
-                {resolved?.oemPrice != null && (
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                    <span className="text-sm font-bold text-foreground">LKR {resolved.oemPrice.toLocaleString()}</span>
-                    <Badge variant={resolved.oemStock && resolved.oemStock > 0 ? "secondary" : "outline"} className="text-[9px]">
-                      {resolved.oemStock && resolved.oemStock > 0 ? "In Stock" : "On Request"}
-                    </Badge>
+              {/* Genuine OEM — only if OEM product exists */}
+              {hasOem && (
+                <div className="rounded-lg border border-border bg-card p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Package className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[11px] font-semibold text-primary">Genuine OEM</span>
                   </div>
-                )}
-                <Button size="sm" variant="outline" className="w-full mt-2 text-xs h-8" onClick={handleViewOEM}>
-                  {hasOem ? "View Product" : "Browse OEM"}
-                </Button>
-              </div>
+                  <div className="w-full h-24 rounded-md bg-muted flex items-center justify-center mb-2">
+                    <Package className="w-10 h-10 text-muted-foreground/30" />
+                  </div>
+                  <div className="space-y-1 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1"><Package className="w-2.5 h-2.5" /> Original Manufacturer</div>
+                    <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Manufacturer Warranty</div>
+                  </div>
+                  {resolved?.oemPrice != null && (
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                      <span className="text-sm font-bold text-foreground">LKR {resolved.oemPrice.toLocaleString()}</span>
+                      <Badge variant={resolved.oemStock && resolved.oemStock > 0 ? "secondary" : "outline"} className="text-[9px]">
+                        {resolved.oemStock && resolved.oemStock > 0 ? "In Stock" : "On Request"}
+                      </Badge>
+                    </div>
+                  )}
+                  <Button size="sm" variant="outline" className="w-full mt-2 text-xs h-8" onClick={handleViewOEM}>
+                    <ShoppingCart className="w-3 h-3 mr-1" /> View Product
+                  </Button>
+                </div>
+              )}
+
+              {/* SmartFix Compatible — only if a real compatible product exists */}
+              {hasSmartFixCompatible && (
+                <div className="rounded-lg border-2 border-accent/30 bg-accent/5 p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <ShieldCheck className="w-3.5 h-3.5 text-accent" />
+                    <span className="text-[11px] font-semibold text-accent">SmartFix Compatible</span>
+                  </div>
+                  <div className="w-full h-24 rounded-md bg-white dark:bg-muted flex items-center justify-center mb-2 overflow-hidden">
+                    <img src={smartfixImage} alt="SmartFix Compatible" className="h-20 w-auto object-contain" />
+                  </div>
+                  <div className="space-y-1 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1"><QrCode className="w-2.5 h-2.5" /> QR Verified</div>
+                    <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Warranty Backed</div>
+                    <div className="flex items-center gap-1"><Scale className="w-2.5 h-2.5" /> Yield & Weight Declared</div>
+                  </div>
+                  {resolved?.smartfixPrice != null && (
+                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                      <span className="text-sm font-bold text-foreground">LKR {resolved.smartfixPrice.toLocaleString()}</span>
+                      <Badge variant={resolved.smartfixStock && resolved.smartfixStock > 0 ? "secondary" : "outline"} className="text-[9px]">
+                        {resolved.smartfixStock && resolved.smartfixStock > 0 ? "In Stock" : "On Request"}
+                      </Badge>
+                    </div>
+                  )}
+                  <Button size="sm" className="w-full mt-2 text-xs h-8" onClick={handleViewSmartFix}>
+                    <ShoppingCart className="w-3 h-3 mr-1" /> View Product
+                  </Button>
+                </div>
+              )}
+
+              {/* SmartFix Refill — only if refill-eligible, rendered as SERVICE card */}
+              {hasSmartFixRefill && (
+                <div className="rounded-lg border-2 border-orange-300/40 bg-orange-50/50 dark:bg-orange-950/10 p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <RotateCcw className="w-3.5 h-3.5 text-orange-600" />
+                    <span className="text-[11px] font-semibold text-orange-600">SmartFix Refill</span>
+                    <Badge variant="outline" className="text-[8px] border-orange-300 text-orange-500 ml-auto">SERVICE</Badge>
+                  </div>
+                  <div className="w-full h-24 rounded-md bg-orange-100/50 dark:bg-orange-950/20 flex items-center justify-center mb-2">
+                    <div className="text-center">
+                      <RotateCcw className="w-8 h-8 text-orange-400 mx-auto mb-1" />
+                      <p className="text-[9px] text-orange-500 font-medium">Refill Service</p>
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-1"><Truck className="w-2.5 h-2.5" /> Pickup & Return</div>
+                    <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Tested Before Return</div>
+                    <div className="flex items-center gap-1"><RotateCcw className="w-2.5 h-2.5" /> Eco-Friendly Reuse</div>
+                  </div>
+                  <Button size="sm" variant="outline" className="w-full mt-3 text-xs h-8 border-orange-300 text-orange-700 hover:bg-orange-100 dark:hover:bg-orange-950/30" onClick={handleRefill}>
+                    <RotateCcw className="w-3 h-3 mr-1" /> Request Refill
+                  </Button>
+                </div>
+              )}
             </div>
 
-            {/* Actions row */}
-            <div className="flex flex-wrap gap-2 mt-3">
-              {hasSf && hasOem && (
+            {/* No options available at all */}
+            {optionCount === 0 && (
+              <div className="text-center py-6 text-muted-foreground">
+                <HelpCircle className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                <p className="text-xs">No products or services currently available for this supply code.</p>
+                <a
+                  href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, I'm looking for ${group.supplyCode} (${group.brand}) but no options are showing. Can you help?`)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] text-primary font-medium mt-2 hover:underline"
+                >
+                  <MessageCircle className="w-3 h-3" /> WhatsApp us for availability
+                </a>
+              </div>
+            )}
+
+            {/* Compare action — only when both OEM and Compatible exist */}
+            {hasOem && hasSmartFixCompatible && (
+              <div className="mt-3">
                 <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2" onClick={handleCompare}>
-                  <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare Options
+                  <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare OEM vs Compatible
                 </Button>
-              )}
-              {group.refillEligible && (
-                <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2 text-orange-600" onClick={handleRefill}>
-                  <RotateCcw className="w-2.5 h-2.5 mr-0.5" /> Refill This Cartridge
-                </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Notes */}
