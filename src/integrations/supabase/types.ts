@@ -490,6 +490,36 @@ export type Database = {
           },
         ]
       }
+      booking_intake_answers: {
+        Row: {
+          answers: Json
+          category_code: string
+          created_at: string
+          escalation_outcome: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          category_code: string
+          created_at?: string
+          escalation_outcome?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          category_code?: string
+          created_at?: string
+          escalation_outcome?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       booking_messages: {
         Row: {
           booking_id: string
@@ -533,6 +563,8 @@ export type Database = {
       }
       booking_readiness_overrides: {
         Row: {
+          admin_note: string | null
+          admin_user_id: string | null
           booking_id: string | null
           category_code: string | null
           created_at: string
@@ -545,6 +577,8 @@ export type Database = {
           override_type: string
         }
         Insert: {
+          admin_note?: string | null
+          admin_user_id?: string | null
           booking_id?: string | null
           category_code?: string | null
           created_at?: string
@@ -557,6 +591,8 @@ export type Database = {
           override_type: string
         }
         Update: {
+          admin_note?: string | null
+          admin_user_id?: string | null
           booking_id?: string | null
           category_code?: string | null
           created_at?: string
@@ -1080,6 +1116,7 @@ export type Database = {
       consent_records: {
         Row: {
           accepted: boolean
+          accepted_at: string | null
           consent_key: string
           consent_type: string
           context: Json | null
@@ -1090,6 +1127,7 @@ export type Database = {
         }
         Insert: {
           accepted?: boolean
+          accepted_at?: string | null
           consent_key: string
           consent_type: string
           context?: Json | null
@@ -1100,6 +1138,7 @@ export type Database = {
         }
         Update: {
           accepted?: boolean
+          accepted_at?: string | null
           consent_key?: string
           consent_type?: string
           context?: Json | null

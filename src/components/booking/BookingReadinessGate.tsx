@@ -1,6 +1,6 @@
 /**
  * BookingReadinessGate — Production-safe booking validation gate.
- * Surfaces only missing items for the current category. Premium, mobile-first.
+ * Persists category answers, enforces escalations, backend-aligned.
  */
 import { useState, useEffect, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -9,18 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShieldCheck, User, Phone, MapPin, Loader2, CheckCircle2, AlertTriangle, Camera, ChevronRight } from "lucide-react";
+import { ShieldCheck, User, Phone, MapPin, Loader2, CheckCircle2, AlertTriangle, Camera, ChevronRight, Ban, FileSearch } from "lucide-react";
 import { useCustomerProfile } from "@/hooks/useCustomerProfile";
-import { getCategoryRules, getVisibleFields, checkEscalationRules, type OnboardingField, type EscalationRule } from "@/lib/categoryOnboardingConfig";
+import { useBookingIntake, type EscalationOutcome } from "@/hooks/useBookingIntake";
+import { getCategoryRules, getVisibleFields, checkEscalationRules, type OnboardingField } from "@/lib/categoryOnboardingConfig";
 import CoverageWaitlist from "@/components/profile/CoverageWaitlist";
 import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
 import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 
+export type BookingOutcome = "ready_for_booking" | "ready_for_inspection_only" | "blocked" | "outside_coverage_waitlist";
+
 interface Props {
   open: boolean;
   onClose: () => void;
-  onReady: (categoryAnswers?: Record<string, any>) => void;
+  onReady: (outcome: BookingOutcome, categoryAnswers?: Record<string, any>) => void;
   categoryCode?: string;
 }
 
@@ -31,12 +34,23 @@ const stepAnimation = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y
 export default function BookingReadinessGate({ open, onClose, onReady, categoryCode }: Props) {
   const { user } = useAuth();
   const { profile, getBookingReadiness, updateProfile, recordConsent, hasServiceableAddress, defaultAddress, acceptedConsents } = useCustomerProfile();
+  const { answers: persistedAnswers, upsertAnswers, computeEscalationOutcome, isLoading: intakeLoading } = useBookingIntake(categoryCode);
+
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [catAnswers, setCatAnswers] = useState<Record<string, any>>({});
   const [consentChecks, setConsentChecks] = useState<Record<string, boolean>>({});
   const [escalationsAcked, setEscalationsAcked] = useState(false);
+  const [answersInitialized, setAnswersInitialized] = useState(false);
+
+  // Load persisted answers on mount
+  useEffect(() => {
+    if (persistedAnswers && Object.keys(persistedAnswers).length > 0 && !answersInitialized) {
+      setCatAnswers(persistedAnswers);
+      setAnswersInitialized(true);
+    }
+  }, [persistedAnswers, answersInitialized]);
 
   // Sync form values when profile loads
   useEffect(() => {
@@ -50,13 +64,14 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
   const readiness = getBookingReadiness(categoryCode, catAnswers);
   const firedEscalations = categoryCode ? checkEscalationRules(categoryCode, catAnswers) : [];
   const blockingEscalations = firedEscalations.filter(e => e.action === "block");
+  const inspectionEscalations = firedEscalations.filter(e => e.action === "inspection_required");
+  const diagnosticFeeEscalations = firedEscalations.filter(e => e.action === "diagnostic_fee");
 
   // Determine current step
   const getCurrentStep = useCallback((): Step => {
     if (!user) return "auth";
     if (!profile?.full_name || !profile?.phone) return "identity";
 
-    // Check address
     if (!defaultAddress || readiness.errors.includes("address_outside_coverage")) {
       if (readiness.errors.includes("address_outside_coverage")) return "outside_coverage";
       return "address";
@@ -65,15 +80,12 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
       return "address";
     }
 
-    // Category-specific answers needed?
     const catMissing = readiness.missing.filter(m => m.startsWith("category:"));
-    if (catMissing.length > 0) return "category_answers";
+    if (readiness.missing.includes("category_answers") || catMissing.length > 0) return "category_answers";
 
-    // Consents
     const consentMissing = readiness.missing.filter(m => m.startsWith("consent:"));
     if (consentMissing.length > 0) return "consents";
 
-    // Escalation review
     if (firedEscalations.length > 0 && !escalationsAcked) return "escalation_review";
 
     return "done";
@@ -84,10 +96,20 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
   // Auto-proceed when done
   useEffect(() => {
     if (currentStep === "done" && open && !saving) {
-      const timer = setTimeout(() => onReady(catAnswers), 150);
+      const outcome = computeOutcome();
+      const timer = setTimeout(() => onReady(outcome, catAnswers), 150);
       return () => clearTimeout(timer);
     }
   }, [currentStep, open, saving]);
+
+  function computeOutcome(): BookingOutcome {
+    if (readiness.errors.includes("address_outside_coverage")) return "outside_coverage_waitlist";
+    if (blockingEscalations.length > 0) return "blocked";
+    const escOutcome = computeEscalationOutcome(catAnswers);
+    if (escOutcome === "inspection_only" || escOutcome === "diagnostic_fee_required") return "ready_for_inspection_only";
+    if (rules?.inspectionOnly) return "ready_for_inspection_only";
+    return "ready_for_booking";
+  }
 
   const completedSteps = [
     !!user,
@@ -102,6 +124,16 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
     setSaving(true);
     try {
       await updateProfile.mutateAsync({ full_name: name.trim(), phone: phone.trim() } as any);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveCategoryAnswers = async () => {
+    setSaving(true);
+    try {
+      const outcome = computeEscalationOutcome(catAnswers);
+      await upsertAnswers.mutateAsync({ answers: catAnswers, escalationOutcome: outcome });
     } finally {
       setSaving(false);
     }
@@ -201,13 +233,20 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
                 <div>
                   <p className="text-sm font-semibold text-foreground">Service address needed</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {readiness.missing.includes("address_coordinates")
-                      ? "Your address needs location verification. Please update with GPS coordinates."
-                      : "Add an address within Greater Colombo to proceed."
-                    }
+                    {readiness.missing.includes("address_verification")
+                      ? "Your address needs location verification. Please confirm with GPS or map pin."
+                      : readiness.missing.includes("address_coordinates")
+                      ? "Your address needs GPS coordinates. Update with location services."
+                      : "Add an address within Greater Colombo to proceed."}
                   </p>
                 </div>
               </div>
+              {defaultAddress && defaultAddress.verification_state === "needs_verification" && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 rounded-lg">
+                  <span className="text-[10px] font-medium text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full">Needs Verification</span>
+                  <span className="text-xs text-muted-foreground">{defaultAddress.address_line_1}</span>
+                </div>
+              )}
               <Button onClick={onClose} variant="outline" className="w-full rounded-xl h-11">
                 <MapPin className="w-4 h-4 mr-2" />
                 Go to Address Manager
@@ -245,12 +284,12 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
                 />
               ))}
               <Button
-                onClick={() => {/* fields auto-proceed via readiness check */}}
-                disabled={!allCatFieldsFilled}
+                onClick={handleSaveCategoryAnswers}
+                disabled={!allCatFieldsFilled || saving}
                 className="w-full rounded-xl h-12 font-semibold text-sm"
               >
-                <ChevronRight className="w-4 h-4 mr-1" />
-                Continue
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ChevronRight className="w-4 h-4 mr-1" />}
+                Save & Continue
               </Button>
             </motion.div>
           )}
@@ -290,15 +329,21 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
               <p className="text-sm font-semibold text-foreground">Important Notes</p>
               {firedEscalations.map((esc, i) => (
                 <div key={i} className={`p-3.5 rounded-xl border ${
-                  esc.severity === "critical" ? "bg-destructive/5 border-destructive/20" :
-                  esc.severity === "warning" ? "bg-amber-500/5 border-amber-500/20" :
+                  esc.action === "block" ? "bg-destructive/5 border-destructive/20" :
+                  esc.action === "inspection_required" ? "bg-amber-500/5 border-amber-500/20" :
+                  esc.action === "diagnostic_fee" ? "bg-amber-500/5 border-amber-500/20" :
                   "bg-muted/30 border-border"
                 }`}>
                   <div className="flex items-center gap-2 mb-1">
-                    <AlertTriangle className={`w-4 h-4 ${
-                      esc.severity === "critical" ? "text-destructive" : "text-amber-600"
-                    }`} />
-                    <span className="text-xs font-semibold uppercase text-muted-foreground">{esc.action.replace("_", " ")}</span>
+                    {esc.action === "block" ? <Ban className="w-4 h-4 text-destructive" /> :
+                     esc.action === "inspection_required" ? <FileSearch className="w-4 h-4 text-amber-600" /> :
+                     <AlertTriangle className="w-4 h-4 text-amber-600" />}
+                    <span className="text-xs font-semibold uppercase text-muted-foreground">
+                      {esc.action === "inspection_required" ? "Inspection Required" :
+                       esc.action === "diagnostic_fee" ? "Diagnostic Fee Required" :
+                       esc.action === "block" ? "Cannot Proceed" :
+                       "Notice"}
+                    </span>
                   </div>
                   <p className="text-sm text-foreground">{esc.message}</p>
                 </div>
@@ -308,9 +353,16 @@ export default function BookingReadinessGate({ open, onClose, onReady, categoryC
                   Close
                 </Button>
               ) : (
-                <Button onClick={() => setEscalationsAcked(true)} className="w-full rounded-xl h-12 font-semibold text-sm">
-                  I Understand, Continue
-                </Button>
+                <div className="space-y-2">
+                  {(inspectionEscalations.length > 0 || diagnosticFeeEscalations.length > 0) && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      This booking will proceed as an {inspectionEscalations.length > 0 ? "inspection-first" : "diagnostic"} request.
+                    </p>
+                  )}
+                  <Button onClick={() => setEscalationsAcked(true)} className="w-full rounded-xl h-12 font-semibold text-sm">
+                    I Understand, Continue
+                  </Button>
+                </div>
               )}
             </motion.div>
           )}
@@ -328,7 +380,6 @@ function CategoryFieldInput({ field, value, onChange, answers }: {
   onChange: (v: any) => void;
   answers: Record<string, any>;
 }) {
-  // Conditional visibility
   if (field.showWhen && !field.showWhen.values.includes(answers[field.showWhen.field])) {
     return null;
   }
@@ -391,14 +442,17 @@ function getConsentDescription(key: string): string {
   const descriptions: Record<string, string> = {
     data_safety: "Your personal data and device info are handled securely by vetted LankaFix partners.",
     backup_responsibility: "Please back up important data before service. LankaFix is not liable for data loss.",
+    backup_recommendation: "We strongly recommend backing up all data before service begins.",
     data_risk: "I understand repairs may carry data-loss risk and have taken precautions.",
     pin_sharing: "I may need to share my device PIN for proper diagnosis.",
     quote_variance: "Final pricing may differ from the initial estimate based on diagnosis.",
     inspection_first: "This service requires a technician inspection before final pricing.",
     adult_presence: "An adult (18+) will be present during the service.",
     network_readiness: "I confirm network/power readiness at the service location.",
-    data_access_permission: "I grant permission for technicians to access data during repair.",
-    backup_recommendation: "I acknowledge that backing up data is recommended before service.",
+    data_access_permission: "I grant permission for data access during repair.",
+    diagnostic_fee_ack: "I acknowledge a diagnostic fee is required before work begins.",
+    no_full_recovery_ack: "Full data recovery is not guaranteed. I understand the limitations.",
+    inspection_ack: "I understand an inspection is needed before final pricing.",
   };
   return descriptions[key] || `I acknowledge the ${key.replace(/_/g, " ")} requirement.`;
 }

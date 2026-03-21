@@ -147,13 +147,12 @@ export default function SavedAddressManager({ onSelect, selectable }: Props) {
     deleteAddress.mutate(addr.id);
   };
 
-  const serviceabilityFor = (addr: SavedAddress) => {
-    if (addr.phase1_serviceable === true) return "inside";
-    if (addr.phase1_serviceable === false) return "outside";
-    if (addr.latitude && addr.longitude) {
-      return checkServiceability(addr.latitude, addr.longitude).status;
-    }
-    return null;
+  const verificationStateFor = (addr: SavedAddress): string => {
+    return addr.verification_state || (
+      addr.admin_serviceability_override ? "verified_serviceable" :
+      !addr.latitude || !addr.longitude ? "needs_verification" :
+      addr.phase1_serviceable ? "verified_serviceable" : "outside_coverage"
+    );
   };
 
   const AddressFormFields = () => (
@@ -251,7 +250,7 @@ export default function SavedAddressManager({ onSelect, selectable }: Props) {
       )}
 
       {addresses.map(addr => {
-        const svcStatus = serviceabilityFor(addr);
+        const vState = verificationStateFor(addr);
         return (
           <div
             key={addr.id}
@@ -294,9 +293,9 @@ export default function SavedAddressManager({ onSelect, selectable }: Props) {
                 {[addr.floor_or_unit && `Floor: ${addr.floor_or_unit}`, addr.parking_notes && `Parking: ${addr.parking_notes}`].filter(Boolean).join(" · ")}
               </p>
             )}
-            {svcStatus && (
+            {vState && (
               <div className="mt-1.5">
-                <ServiceabilityBadge status={svcStatus} compact />
+                <ServiceabilityBadge verificationState={vState as any} compact />
               </div>
             )}
           </div>
