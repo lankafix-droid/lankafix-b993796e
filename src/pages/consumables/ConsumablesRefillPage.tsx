@@ -15,12 +15,12 @@ import {
 } from "lucide-react";
 import { PRINTER_MAPPINGS, BRANDS } from "@/data/printerMappings";
 import { whatsappLink, SUPPORT_WHATSAPP, SUPPORT_PHONE } from "@/config/contact";
-import { useCreateRefillOrder } from "@/hooks/useConsumables";
+import { useCreateRefillOrder, type ConditionData } from "@/hooks/useConsumables";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import smartfixInkBox from "@/assets/smartfix-ink-box.png";
 
-/* ─── Refill-eligible filter: only Inkjet category with Ink / Cartridge type (NOT Ink Tank) ─── */
+/* ─── Types ─── */
 interface RefillableCartridge {
   code: string;
   isColor: boolean;
@@ -32,9 +32,9 @@ interface RefillablePrinter {
   model: string;
   modelGroup: string;
   cartridges: RefillableCartridge[];
-  consumableCodes: string;
 }
 
+/* ─── Build refillable printer list from mapping data ─── */
 function getRefillablePrinters(): RefillablePrinter[] {
   const seen = new Set<string>();
   const result: RefillablePrinter[] = [];
@@ -42,27 +42,24 @@ function getRefillablePrinters(): RefillablePrinter[] {
   for (const m of PRINTER_MAPPINGS) {
     const cat = m.category.toLowerCase();
     const type = m.consumableType.toLowerCase();
-    // Only inkjet cartridges are refillable, not ink tanks
-    if (!cat.includes("inkjet") || cat.includes("ink tank") || !type.includes("ink")) continue;
+    // Only inkjet cartridges are refillable — exclude toner, ink tanks/bottles
+    if (cat !== "inkjet" || !type.includes("ink")) continue;
 
     const key = `${m.brand}|${m.printerModel}`;
     if (seen.has(key)) continue;
     seen.add(key);
 
-    // Parse codes - split by / and extract individual cartridge codes
     const cartridges: RefillableCartridge[] = [];
     const rawCodes = m.consumableCodes;
 
-    // Handle patterns like "PG-47 / CL-57" or "HP 682 (B/C)"
     if (rawCodes.includes("/")) {
       const parts = rawCodes.split("/").map(s => s.trim());
       for (const part of parts) {
-        // Skip XL/high-yield variants in parenthetical notes
         if (part.toLowerCase().includes("high yield")) continue;
         const clean = part.replace(/\(.*?\)/g, "").trim();
         if (!clean) continue;
         const isColor = /^cl[-\s]|colour|color|cyan|magenta|yellow|tri/i.test(clean) ||
-          /^cli[-\s]/i.test(clean) || /^gt52/i.test(clean);
+          /^cli[-\s]/i.test(clean);
         cartridges.push({
           code: clean,
           isColor,
@@ -70,7 +67,6 @@ function getRefillablePrinters(): RefillablePrinter[] {
         });
       }
     } else {
-      // Single code like "HP 682 (B/C)"
       const hasBothColors = /\(B\/C\)/i.test(rawCodes);
       const clean = rawCodes.replace(/\(.*?\)/g, "").trim();
       if (hasBothColors) {
@@ -82,13 +78,7 @@ function getRefillablePrinters(): RefillablePrinter[] {
     }
 
     if (cartridges.length > 0) {
-      result.push({
-        brand: m.brand,
-        model: m.printerModel,
-        modelGroup: m.modelGroup,
-        cartridges,
-        consumableCodes: m.consumableCodes,
-      });
+      result.push({ brand: m.brand, model: m.printerModel, modelGroup: m.modelGroup, cartridges });
     }
   }
   return result;
@@ -105,6 +95,14 @@ const PROCESS_STEPS = [
   { icon: PackageCheck, label: "Return" },
 ];
 
+const CONDITION_OPTIONS = [
+  { value: "empty", label: "Empty / Out of ink" },
+  { value: "faded", label: "Faded print" },
+  { value: "not_detected", label: "Not detected by printer" },
+  { value: "leaking", label: "Leaking" },
+  { value: "other", label: "Other" },
+];
+
 type FlowStep = "select" | "results" | "request" | "submitted";
 
 const ConsumablesRefillPage = () => {
@@ -115,12 +113,11 @@ const ConsumablesRefillPage = () => {
   const [selectedPrinter, setSelectedPrinter] = useState<RefillablePrinter | null>(null);
   const [form, setForm] = useState({
     phone: "", address: "", pickup_method: "pickup", quantity: "1", notes: "",
-    selected_code: "", // which cartridge is being refilled
+    selected_code: "", condition: "",
   });
   const navigate = useNavigate();
   const createRefill = useCreateRefillOrder();
 
-  // Filtered models by brand
   const modelsForBrand = useMemo(() => {
     if (!selectedBrand) return [];
     return ALL_REFILLABLE.filter(p => p.brand === selectedBrand)
@@ -155,6 +152,16 @@ const ConsumablesRefillPage = () => {
     if (!selectedPrinter) return;
 
     const pickupFee = form.pickup_method === "pickup" ? 300 : 0;
+    const conditionData: ConditionData = {
+      is_original: true,
+      refilled_before: false,
+      physical_damage: form.condition === "leaking",
+      leakage: form.condition === "leaking",
+      color_type: "black",
+      print_issue: form.condition || "",
+      urgency: "standard",
+    };
+
     createRefill.mutate({
       brand: selectedPrinter.brand,
       printer_model_id: null,
@@ -163,11 +170,11 @@ const ConsumablesRefillPage = () => {
       pickup_method: form.pickup_method,
       address_text: form.address,
       phone: form.phone,
-      notes: `Printer: ${selectedPrinter.brand} ${selectedPrinter.model}. ${form.notes}`.trim(),
+      notes: `Printer: ${selectedPrinter.brand} ${selectedPrinter.model}. Condition: ${form.condition || "not specified"}. ${form.notes}`.trim(),
       service_fee: 800,
       pickup_fee: pickupFee,
       total: 800 + pickupFee,
-      condition_data: { is_original: true, refilled_before: false, physical_damage: false, leakage: false, color_type: "black", print_issue: "", urgency: "standard" },
+      condition_data: conditionData,
       derived_eligibility: "eligible",
     }, {
       onSuccess: () => setStep("submitted"),
@@ -205,7 +212,7 @@ const ConsumablesRefillPage = () => {
 
               {/* Process Steps */}
               <div className="flex items-center justify-between bg-muted/40 rounded-lg px-3 py-2.5">
-                {PROCESS_STEPS.map((s, i) => (
+                {PROCESS_STEPS.map((s) => (
                   <div key={s.label} className="flex flex-col items-center gap-1">
                     <div className="w-8 h-8 rounded-full bg-background border border-border flex items-center justify-center">
                       <s.icon className="w-3.5 h-3.5 text-orange-600" />
@@ -273,15 +280,12 @@ const ConsumablesRefillPage = () => {
                     </motion.div>
                   )}
 
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Only eligible ink cartridges are shown. Toner and ink-tank printers are not refillable through this service.
-                    </p>
-                  </div>
+                  <p className="text-xs text-muted-foreground pt-2 border-t border-border">
+                    Only eligible ink cartridges are shown. Toner and ink-tank printers are not available for this service.
+                  </p>
                 </CardContent>
               </Card>
 
-              {/* Track existing refill */}
               <Link to="/consumables/refill/track" className="block mt-3">
                 <Button variant="outline" size="sm" className="w-full text-xs">Track Existing Refill Order</Button>
               </Link>
@@ -292,29 +296,20 @@ const ConsumablesRefillPage = () => {
           {step === "results" && selectedPrinter && (
             <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
               <div className="mb-1">
-                <p className="text-sm text-muted-foreground">
-                  Showing refillable cartridges for
-                </p>
+                <p className="text-sm text-muted-foreground">Refillable cartridges for</p>
                 <p className="text-base font-semibold text-foreground">
                   {selectedPrinter.brand} {selectedPrinter.model}
                 </p>
               </div>
 
               {selectedCartridges.map((cartridge, i) => (
-                <motion.div key={cartridge.code + i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+                <motion.div key={cartridge.code + cartridge.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
                   <Card className="overflow-hidden">
                     <CardContent className="p-0">
                       <div className="flex gap-3 p-4">
-                        {/* Cartridge Image */}
                         <div className="w-20 h-20 rounded-lg bg-muted/30 border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                          <img
-                            src={smartfixInkBox}
-                            alt={`${cartridge.code} cartridge`}
-                            className="w-16 h-16 object-contain"
-                          />
+                          <img src={smartfixInkBox} alt={`${cartridge.code} cartridge`} className="w-16 h-16 object-contain" />
                         </div>
-
-                        {/* Details */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <Badge variant={cartridge.isColor ? "secondary" : "default"} className="text-[10px]">
@@ -327,7 +322,7 @@ const ConsumablesRefillPage = () => {
                           <h3 className="text-sm font-semibold text-foreground">{cartridge.code}</h3>
                           <p className="text-xs text-muted-foreground">{cartridge.label}</p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            Refill service for your existing eligible cartridge
+                            Bring or send your empty eligible cartridge for refill
                           </p>
                           <div className="flex items-center justify-between mt-2">
                             <p className="text-sm font-bold text-foreground">LKR 800</p>
@@ -386,17 +381,29 @@ const ConsumablesRefillPage = () => {
                   )}
 
                   <div>
+                    <Label className="text-xs font-medium">Cartridge Condition</Label>
+                    <Select value={form.condition} onValueChange={(v) => setForm({ ...form, condition: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select condition" /></SelectTrigger>
+                      <SelectContent>
+                        {CONDITION_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
                     <Label className="text-xs font-medium">Quantity</Label>
                     <Input type="number" min="1" max="10" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
                   </div>
 
                   <div>
                     <Label className="text-xs font-medium">Additional Notes</Label>
-                    <Textarea placeholder="Any issues with the cartridge or special instructions" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} maxLength={500} />
+                    <Textarea placeholder="Any issues or special instructions" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} maxLength={500} />
                   </div>
 
                   {/* Order Summary */}
-                  <div className="bg-muted/50 rounded-lg p-4 space-y-1.5 text-sm">
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-1.5">
                     <p className="font-semibold text-foreground text-xs">Order Summary</p>
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Refill service fee</span><span>LKR 800</span>
