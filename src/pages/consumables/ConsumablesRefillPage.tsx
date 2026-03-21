@@ -242,6 +242,8 @@ const ConsumablesRefillPage = () => {
     const derivedEligibility = deriveRefillEligibility(form.condition, selectedCartridge.isColor);
 
     if (derivedEligibility === "not_recommended") {
+      // Resolve exact replacement product IDs for the rejection fallback
+      resolveReplacementIds(selectedCartridge.code, selectedPrinter.brand).then(setReplacementIds);
       setStep("rejected");
       return;
     }
