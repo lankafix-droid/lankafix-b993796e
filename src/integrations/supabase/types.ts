@@ -1839,6 +1839,7 @@ export type Database = {
           city: string | null
           created_at: string
           customer_id: string
+          district: string | null
           id: string
           is_default: boolean | null
           label: string
@@ -1853,6 +1854,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           customer_id: string
+          district?: string | null
           id?: string
           is_default?: boolean | null
           label?: string
@@ -1867,6 +1869,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           customer_id?: string
+          district?: string | null
           id?: string
           is_default?: boolean | null
           label?: string
@@ -4146,36 +4149,57 @@ export type Database = {
       profiles: {
         Row: {
           ai_preferences: Json | null
+          auth_providers: string[] | null
           avatar_url: string | null
           created_at: string
           default_address: Json | null
+          district: string | null
+          email: string | null
           full_name: string | null
           id: string
+          onboarding_completed: boolean | null
           phone: string | null
+          preferred_contact_method: string | null
+          profile_completion_pct: number | null
           updated_at: string
           user_id: string
+          whatsapp_number: string | null
         }
         Insert: {
           ai_preferences?: Json | null
+          auth_providers?: string[] | null
           avatar_url?: string | null
           created_at?: string
           default_address?: Json | null
+          district?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           phone?: string | null
+          preferred_contact_method?: string | null
+          profile_completion_pct?: number | null
           updated_at?: string
           user_id: string
+          whatsapp_number?: string | null
         }
         Update: {
           ai_preferences?: Json | null
+          auth_providers?: string[] | null
           avatar_url?: string | null
           created_at?: string
           default_address?: Json | null
+          district?: string | null
+          email?: string | null
           full_name?: string | null
           id?: string
+          onboarding_completed?: boolean | null
           phone?: string | null
+          preferred_contact_method?: string | null
+          profile_completion_pct?: number | null
           updated_at?: string
           user_id?: string
+          whatsapp_number?: string | null
         }
         Relationships: []
       }
@@ -6956,6 +6980,10 @@ export type Database = {
     }
     Functions: {
       bootstrap_admin_if_none: { Args: never; Returns: undefined }
+      calculate_profile_completion: {
+        Args: { _user_id: string }
+        Returns: number
+      }
       check_rate_limit: {
         Args: {
           _endpoint: string

@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense } from "react";
 import PageTransition from "@/components/motion/PageTransition";
+import ProfileCompletionPrompt from "@/components/profile/ProfileCompletionPrompt";
 import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2PopularServices from "@/components/v2/V2PopularServices";
@@ -51,6 +52,9 @@ const V2HomePage = () => {
       <main className="flex-1 relative z-[1]">
         {/* 1. Hero — search, location, trust */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
+
+        {/* Progressive profile completion prompt */}
+        <ProfileCompletionPrompt />
 
         {/* 2. Trust strip — immediate confidence */}
         <Suspense fallback={<SectionFallback />}>

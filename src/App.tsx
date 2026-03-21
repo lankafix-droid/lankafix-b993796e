@@ -71,6 +71,7 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const WarrantyPage = lazy(() => import("./pages/WarrantyPage"));
 const RefundPage = lazy(() => import("./pages/RefundPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
+const CustomerProfilePage = lazy(() => import("./pages/CustomerProfilePage"));
 const BypassMonitorPage = lazy(() => import("./pages/ops/BypassMonitorPage"));
 const SupportCasesPage = lazy(() => import("./pages/ops/SupportCasesPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -259,6 +260,7 @@ const App = () => (
             <Route path="/request/:category" element={<DemandRequestPage />} />
             <Route path="/submit/:category" element={<SubmitRequirementPage />} />
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+            <Route path="/my-profile" element={<ProtectedRoute><CustomerProfilePage /></ProtectedRoute>} />
             <Route path="/account/delete" element={<ProtectedRoute><AccountDeletionPage /></ProtectedRoute>} />
             <Route path="/support/account-deletion" element={<AccountDeletionPublicPage />} />
             <Route path="/bundle/:bundleId" element={<BundleBookingPage />} />
