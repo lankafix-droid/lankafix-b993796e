@@ -2,6 +2,7 @@ import { CONSUMER_CATEGORIES, type BookingCategory } from "@/data/consumerBookin
 import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
 import { motion } from "framer-motion";
 import { Clock, ArrowRight } from "lucide-react";
+import { trackCategoryClick } from "@/lib/marketplaceAnalytics";
 
 interface Props {
   selected: string;
