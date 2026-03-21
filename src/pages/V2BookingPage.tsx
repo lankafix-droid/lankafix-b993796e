@@ -313,6 +313,9 @@ const V2BookingPage = () => {
                   })}
                 </div>
               )}
+
+              {/* Contextual trust message */}
+              <BookingTrustStrip currentStep={currentStepName} />
             </div>
           </div>
         )}
