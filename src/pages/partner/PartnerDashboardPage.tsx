@@ -127,6 +127,10 @@ export default function PartnerDashboardPage() {
       </div>
 
       <div className="p-4 space-y-4 max-w-2xl mx-auto">
+        {/* Verification Status */}
+        {partner.verification_status !== "verified" && (
+          <OnboardingStatusBanner status={partner.verification_status} />
+        )}
         {/* Job Invitations Alert */}
         {awaitingConfirmation.length > 0 && (
           <motion.div
