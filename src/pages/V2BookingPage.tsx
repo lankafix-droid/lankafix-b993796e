@@ -524,7 +524,16 @@ const V2BookingPage = () => {
                   onConfirm={goNext}
                 />
               )}
-              {currentStepName === "confirmation" && <V2BookingConfirmation flow={flow} booking={booking} />}
+              {currentStepName === "confirmation" && (
+                <V2BookingConfirmation
+                  flow={flow}
+                  booking={booking}
+                  onEditStep={(stepName) => {
+                    const idx = steps.indexOf(stepName);
+                    if (idx >= 0) setStep(idx);
+                  }}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
