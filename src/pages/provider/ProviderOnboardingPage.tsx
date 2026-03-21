@@ -467,7 +467,7 @@ export default function ProviderOnboardingPage() {
               )}
             </Button>
           ) : (
-            <Button onClick={() => { trackOnboardingStep(step.key, store.providerType); store.nextStep(); }} className="flex-1">
+            <Button onClick={() => { trackOnboardingStep(step.key); store.nextStep(); }} className="flex-1">
               Continue <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           )}
