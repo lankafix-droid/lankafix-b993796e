@@ -69,7 +69,7 @@ const ConsumablesLandingPage = () => {
     { title: "SmartFix Premium Refill", desc: "Pickup → Inspect → Refill → Test → Return", icon: RotateCcw, color: "text-orange-600", link: "/consumables/refill" },
   ];
 
-  const quickActions = [
+  const quickActions: Array<{ label: string; icon: typeof RefreshCw; link: string; external?: boolean }> = [
     { label: "Reorder / Saved Devices", icon: RefreshCw, link: "/consumables/reorder" },
     { label: "Bulk / SME Quote", icon: FileText, link: "/consumables/bulk" },
     { label: "Verify SmartFix QR", icon: QrCode, link: "/consumables/qr-verify" },
