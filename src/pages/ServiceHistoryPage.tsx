@@ -17,8 +17,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   ArrowLeft, Calendar, Wrench, History, Star,
-  ChevronRight, CreditCard, Clock, CheckCircle2, XCircle, AlertTriangle,
-  Shield, ArrowRight, FileText, Phone, Loader2,
+  ChevronRight, CreditCard, Clock, AlertTriangle,
+  Shield, ArrowRight,
 } from "lucide-react";
 import { CATEGORY_LABELS, type CategoryCode } from "@/types/booking";
 import { mapBookingStatusToStage, LIFECYCLE_STAGES } from "@/lib/bookingLifecycleModel";
