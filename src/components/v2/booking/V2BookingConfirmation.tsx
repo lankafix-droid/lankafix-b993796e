@@ -26,6 +26,7 @@ import AIBookingSummaryCard from "@/components/ai/AIBookingSummaryCard";
 interface Props {
   flow: V2CategoryFlow;
   booking: V2BookingState;
+  onEditStep?: (stepName: string) => void;
 }
 
 const WARRANTY_NOTES: Record<string, string> = {
