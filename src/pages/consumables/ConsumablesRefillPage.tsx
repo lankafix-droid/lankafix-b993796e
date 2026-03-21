@@ -135,6 +135,30 @@ function buildConditionNotes(condition: string, printerInfo: string, userNotes: 
 
 type FlowStep = "select" | "results" | "request" | "submitted" | "rejected";
 
+/** Resolve exact SmartFix/OEM replacement product IDs for a given cartridge code + brand */
+async function resolveReplacementIds(code: string, brand: string): Promise<{ sfId: string | null; oemId: string | null }> {
+  const norm = code.toLowerCase().replace(/[\s\-_./\\,()]+/g, "");
+  const { data } = await supabase
+    .from("consumable_products")
+    .select("id, sku_code, range_type")
+    .eq("is_active", true)
+    .eq("brand", brand)
+    .limit(200);
+
+  if (!data || data.length === 0) return { sfId: null, oemId: null };
+
+  const normSku = (s: string) => s.toLowerCase().replace(/[\s\-_./\\,()]+/g, "");
+  let candidates = data.filter(p => normSku(p.sku_code) === norm);
+  if (candidates.length === 0) {
+    candidates = data.filter(p => normSku(p.sku_code).includes(norm) || norm.includes(normSku(p.sku_code)));
+  }
+
+  return {
+    sfId: candidates.find(p => p.range_type === "smartfix_compatible")?.id ?? null,
+    oemId: candidates.find(p => p.range_type === "genuine_oem")?.id ?? null,
+  };
+}
+
 const ConsumablesRefillPage = () => {
   const [searchParams] = useSearchParams();
   const preCode = searchParams.get("code") || "";
