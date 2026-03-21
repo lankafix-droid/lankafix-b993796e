@@ -275,8 +275,8 @@ function BookingCard({ booking, onClick }: { booking: any; onClick: () => void }
             </span>
           )}
           {booking.customer_rating && (
-            <span className="flex items-center gap-1 text-amber-600">
-              <Star className="w-3 h-3 fill-amber-500" /> {booking.customer_rating}
+            <span className="flex items-center gap-1 text-warning">
+              <Star className="w-3 h-3 fill-warning" /> {booking.customer_rating}
             </span>
           )}
           {actionHint && (
