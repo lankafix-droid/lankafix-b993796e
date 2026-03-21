@@ -13,6 +13,7 @@ import type { CategoryCode } from "@/types/booking";
 import { MOCK_PARTNERS, MOCK_TECHNICIANS } from "@/data/mockPartnerData";
 import { TECHNICIAN_CAPABILITIES } from "@/lib/dispatchEngine";
 import { track } from "@/lib/analytics";
+import { useBookingStore } from "@/store/bookingStore";
 
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
