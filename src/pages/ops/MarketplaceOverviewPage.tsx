@@ -8,7 +8,7 @@ import Footer from "@/components/landing/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  AlertTriangle, Clock, CheckCircle2, XCircle, TrendingUp,
+  AlertTriangle, Clock, CheckCircle2, XCircle, TrendingUp, Star,
   BarChart3, Users, Wrench, Activity, RefreshCw,
 } from "lucide-react";
 import { LIFECYCLE_STAGES, mapBookingStatusToStage, type BookingLifecycleStage } from "@/lib/bookingLifecycleModel";
