@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import PageTransition from "@/components/motion/PageTransition";
 import Header from "@/components/layout/Header";
-import { Progress } from "@/components/ui/progress";
 import { ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import mascotImg from "@/assets/lankafix-mascot.jpg";
@@ -15,6 +14,7 @@ import DiagnosePhotoUpload from "@/components/diagnose/DiagnosePhotoUpload";
 import DiagnoseVoiceInput from "@/components/diagnose/DiagnoseVoiceInput";
 import { getDiagnoseRecommendation } from "@/engines/diagnoseEngine";
 import { track } from "@/lib/analytics";
+import { trackFunnelStep, trackFunnelDrop, trackCategoryClick, trackServiceabilityCheck } from "@/lib/marketplaceAnalytics";
 import type { CategoryCode } from "@/types/booking";
 import type { DiagnoseRecommendation } from "@/engines/diagnoseEngine";
 
@@ -31,6 +31,8 @@ const MASCOT_COPY = [
   "How soon do you need help?",
   "Let's check service availability in your area",
 ];
+
+const STEP_NAMES = ["category", "problem", "urgency", "area", "result"] as const;
 
 const stepVariants = {
   enter: { opacity: 0, x: 20 },
@@ -52,18 +54,25 @@ const DiagnosePage = () => {
 
   useEffect(() => {
     track("diagnose_start", { sessionId });
+    trackFunnelStep("diagnose_start", undefined);
     const saved = localStorage.getItem("lankafix_area");
     if (saved) setSelectedArea(saved);
   }, []);
 
-  useEffect(() => { track("diagnose_step_view", { step, sessionId }); }, [step]);
-
+  // Track step views and funnel progression
   useEffect(() => {
+    track("diagnose_step_view", { step, sessionId });
+    if (step < STEP_NAMES.length) {
+      trackFunnelStep(`diagnose_${STEP_NAMES[step]}`, selectedCategory ?? undefined);
+    }
+  }, [step]);
+
+  // Abandonment detection — 3 min idle per step
+  useEffect(() => {
+    if (step === 0 || step >= 4 || result) return;
     const timer = setTimeout(() => {
-      if (step > 0 && step < 4 && !result) {
-        track("diagnose_abandoned", { sessionId, category: selectedCategory, problem: selectedProblem, step });
-      }
-    }, 5 * 60 * 1000);
+      trackFunnelDrop(`diagnose_${STEP_NAMES[step]}`, selectedCategory ?? undefined, "idle_timeout");
+    }, 3 * 60 * 1000);
     return () => clearTimeout(timer);
   }, [step, selectedCategory, selectedProblem, result]);
 
@@ -71,26 +80,36 @@ const DiagnosePage = () => {
   const showResult = step === 4;
   const progress = showResult ? 100 : ((step + 1) / totalSteps) * 100;
 
-  const handleBack = () => {
-    if (step === 0) navigate("/");
-    else { setStep(step - 1); if (step === 4) setResult(null); }
-  };
+  const handleBack = useCallback(() => {
+    if (step === 0) {
+      trackFunnelDrop("diagnose_category", undefined, "back_to_home");
+      navigate("/");
+    } else {
+      trackFunnelDrop(`diagnose_${STEP_NAMES[step]}`, selectedCategory ?? undefined, "back_navigation");
+      setStep(step - 1);
+      if (step === 4) setResult(null);
+    }
+  }, [step, selectedCategory, navigate]);
 
   const handleCategorySelect = (code: CategoryCode) => {
-    setSelectedCategory(code); setSelectedProblem(null);
+    setSelectedCategory(code);
+    setSelectedProblem(null);
     track("diagnose_category_select", { category: code, sessionId });
+    trackCategoryClick(code, "diagnose_wizard");
     setTimeout(() => setStep(1), 200);
   };
 
   const handleProblemSelect = (key: string) => {
     setSelectedProblem(key);
     track("diagnose_problem_select", { problem: key, sessionId });
+    trackFunnelStep("diagnose_problem_selected", selectedCategory ?? undefined);
     setTimeout(() => setStep(2), 200);
   };
 
   const handleUrgencySelect = (key: string) => {
     setSelectedUrgency(key);
     track("diagnose_urgency_select", { urgency: key, sessionId });
+    trackFunnelStep("diagnose_urgency_selected", selectedCategory ?? undefined);
     setTimeout(() => setStep(3), 200);
   };
 
@@ -98,10 +117,12 @@ const DiagnosePage = () => {
     setSelectedArea(area);
     localStorage.setItem("lankafix_area", area);
     track("diagnose_area_select", { area, sessionId });
+    trackFunnelStep("diagnose_area_selected", selectedCategory ?? undefined);
     if (selectedCategory && selectedProblem) {
       const rec = getDiagnoseRecommendation(selectedCategory, selectedProblem, selectedUrgency ?? "flexible", area);
       setResult(rec);
       track("diagnose_result_view", { ...rec, sessionId, photoCount: photos.length, hasVoiceInput: !!voiceTranscript });
+      trackFunnelStep("diagnose_result_shown", selectedCategory);
       setTimeout(() => setStep(4), 200);
     }
   };
@@ -112,6 +133,7 @@ const DiagnosePage = () => {
   };
 
   const handleRestart = () => {
+    trackFunnelDrop("diagnose_result", selectedCategory ?? undefined, "restart");
     setStep(0); setSelectedCategory(null); setSelectedProblem(null);
     setSelectedUrgency(null); setResult(null); setPhotos([]); setVoiceTranscript("");
   };
@@ -190,7 +212,12 @@ const DiagnosePage = () => {
                 </div>
               )}
               {step === 2 && selectedCategory && (
-                <DiagnoseStepUrgency categoryCode={selectedCategory} onSelect={handleUrgencySelect} selected={selectedUrgency} />
+                <DiagnoseStepUrgency
+                  categoryCode={selectedCategory}
+                  problemKey={selectedProblem}
+                  onSelect={handleUrgencySelect}
+                  selected={selectedUrgency}
+                />
               )}
               {step === 3 && (
                 <DiagnoseStepArea onSelect={handleAreaSelect} selected={selectedArea} />
