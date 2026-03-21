@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { checkServiceability, type ServiceabilityResult } from "@/lib/serviceabilityEngine";
-import { getCategoryRules, type AddressVerificationState } from "@/lib/categoryOnboardingConfig";
+import { getCategoryRules, checkEscalationRules as runEscalationRules, type AddressVerificationState } from "@/lib/categoryOnboardingConfig";
 
 export interface CustomerProfile {
   id: string;
