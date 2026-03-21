@@ -355,7 +355,14 @@ const V2BookingConfirmation = ({ flow, booking, onEditStep }: Props) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h3 className="font-bold text-foreground text-sm mb-1">Service Summary</h3>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-bold text-foreground text-sm">Service Summary</h3>
+          {onEditStep && (
+            <button onClick={() => onEditStep("service_type")} className="text-[11px] font-medium text-primary hover:underline">
+              Edit
+            </button>
+          )}
+        </div>
         <SummaryRow label="Category" value={flow.name} />
         {selectedService && <SummaryRow label="Service" value={selectedService.label} />}
         {booking.issueId && (
