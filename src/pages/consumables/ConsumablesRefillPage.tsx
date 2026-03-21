@@ -190,7 +190,6 @@ const ConsumablesRefillPage = () => {
   useMemo(() => {
     if (preBrand && preCode && step === "select") {
       const normTarget = preCode.toLowerCase().replace(/[\s\-_]+/g, "");
-      // Find printer that has this cartridge code
       const match = ALL_REFILLABLE.find(p => {
         if (p.brand.toLowerCase() !== preBrand.toLowerCase()) return false;
         return p.cartridges.some(c => c.code.toLowerCase().replace(/[\s\-_]+/g, "") === normTarget);
@@ -200,6 +199,7 @@ const ConsumablesRefillPage = () => {
         setSelectedModel(match.model);
         setSelectedPrinter(match);
         setSelectedCartridges(match.cartridges);
+        setPrefilled(true);
         setStep("results");
       }
     }
