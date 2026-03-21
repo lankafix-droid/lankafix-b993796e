@@ -318,6 +318,16 @@ const ConsumablesRefillPage = () => {
                   </div>
                 ))}
               </div>
+
+              {/* Prefill context banner */}
+              {prefilled && preCode && (
+                <div className="mt-3 flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-lg px-3 py-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <p className="text-xs text-foreground">
+                    Refill option preselected for <span className="font-semibold">{preBrand} {preCode}</span>
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
