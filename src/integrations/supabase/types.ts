@@ -3141,6 +3141,42 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          booking_updates: boolean
+          created_at: string
+          id: string
+          onboarding_status: boolean
+          promotions: boolean
+          quote_alerts: boolean
+          reminders: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_updates?: boolean
+          created_at?: string
+          id?: string
+          onboarding_status?: boolean
+          promotions?: boolean
+          quote_alerts?: boolean
+          reminders?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_updates?: boolean
+          created_at?: string
+          id?: string
+          onboarding_status?: boolean
+          promotions?: boolean
+          quote_alerts?: boolean
+          reminders?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_queue: {
         Row: {
           body: string | null
@@ -4467,7 +4503,9 @@ export type Database = {
           id: string
           partner_id: string
           rating: number
+          review_source: string | null
           review_text: string | null
+          tags: string[] | null
         }
         Insert: {
           booking_id: string
@@ -4476,7 +4514,9 @@ export type Database = {
           id?: string
           partner_id: string
           rating: number
+          review_source?: string | null
           review_text?: string | null
+          tags?: string[] | null
         }
         Update: {
           booking_id?: string
@@ -4485,7 +4525,9 @@ export type Database = {
           id?: string
           partner_id?: string
           rating?: number
+          review_source?: string | null
           review_text?: string | null
+          tags?: string[] | null
         }
         Relationships: [
           {

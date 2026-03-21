@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import PartnerReviewsPanel from "@/components/partner/PartnerReviewsPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner";
@@ -282,6 +283,9 @@ export default function PartnerDashboardPage() {
             </div>
           </motion.div>
         )}
+
+        {/* Reviews & Ratings */}
+        <PartnerReviewsPanel partnerId={partner.id} ratingAverage={partner.rating_average} />
 
         {/* Quick Actions */}
         <div className="space-y-2">

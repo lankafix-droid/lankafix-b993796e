@@ -1,18 +1,20 @@
 /**
- * Notification Preferences — Scaffold for consumer alert settings.
- * Manages preferences for booking updates, quote alerts, reminders, and marketing.
+ * Notification Preferences — Consumer alert settings persisted to DB.
+ * Falls back to localStorage for unauthenticated users.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import PageTransition from "@/components/motion/PageTransition";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, MessageSquare, Mail, Smartphone, Shield } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowLeft, Bell, MessageSquare, Mail, Smartphone, Shield, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { track } from "@/lib/analytics";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface NotificationPref {
   key: string;
@@ -30,32 +32,78 @@ const DEFAULT_PREFS: NotificationPref[] = [
   { key: "promotions",        label: "Offers & Tips",      description: "Seasonal offers, maintenance tips, and new services",         icon: Mail,          enabled: false },
 ];
 
+const PREF_KEYS = ["booking_updates", "quote_alerts", "reminders", "onboarding_status", "promotions"] as const;
+
 export default function NotificationPreferencesPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [prefs, setPrefs] = useState<NotificationPref[]>(DEFAULT_PREFS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
+  // Load preferences — DB if authenticated, localStorage fallback
   useEffect(() => {
     track("notification_prefs_view");
-    // Future: load from DB
-    const saved = localStorage.getItem("lf_notification_prefs");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as Record<string, boolean>;
-        setPrefs((prev) => prev.map((p) => ({ ...p, enabled: parsed[p.key] ?? p.enabled })));
-      } catch { /* ignore */ }
-    }
-  }, []);
 
-  const toggle = (key: string) => {
-    setPrefs((prev) => {
-      const next = prev.map((p) => p.key === key ? { ...p, enabled: !p.enabled } : p);
-      const map = Object.fromEntries(next.map((p) => [p.key, p.enabled]));
+    const loadPrefs = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from("notification_preferences")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (data) {
+          setPrefs(prev => prev.map(p => ({
+            ...p,
+            enabled: (data as any)[p.key] ?? p.enabled,
+          })));
+        }
+      } else {
+        const saved = localStorage.getItem("lf_notification_prefs");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved) as Record<string, boolean>;
+            setPrefs(prev => prev.map(p => ({ ...p, enabled: parsed[p.key] ?? p.enabled })));
+          } catch { /* ignore */ }
+        }
+      }
+      setLoading(false);
+    };
+
+    loadPrefs();
+  }, [user]);
+
+  const toggle = useCallback(async (key: string) => {
+    setPrefs(prev => {
+      const next = prev.map(p => p.key === key ? { ...p, enabled: !p.enabled } : p);
+
+      // Persist
+      const map = Object.fromEntries(next.map(p => [p.key, p.enabled]));
       localStorage.setItem("lf_notification_prefs", JSON.stringify(map));
-      track("notification_pref_toggle", { key, enabled: !prev.find((p) => p.key === key)?.enabled });
+
+      if (user) {
+        supabase
+          .from("notification_preferences")
+          .upsert({
+            user_id: user.id,
+            booking_updates: map["booking_updates"] ?? true,
+            quote_alerts: map["quote_alerts"] ?? true,
+            reminders: map["reminders"] ?? true,
+            onboarding_status: map["onboarding_status"] ?? true,
+            promotions: map["promotions"] ?? false,
+          } as any, { onConflict: "user_id" })
+          .then(({ error }) => {
+            if (error) console.error("Failed to save preferences:", error);
+          });
+      }
+
+      track("notification_pref_toggle", { key, enabled: !prev.find(p => p.key === key)?.enabled });
       return next;
     });
+
     toast.success("Preference updated");
-  };
+  }, [user]);
 
   return (
     <PageTransition>
@@ -72,29 +120,37 @@ export default function NotificationPreferencesPage() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">Notification Preferences</h1>
-              <p className="text-xs text-muted-foreground">Control what updates you receive</p>
+              <p className="text-xs text-muted-foreground">
+                {user ? "Your preferences are saved to your account" : "Sign in to save preferences across devices"}
+              </p>
             </div>
           </div>
 
-          <Card>
-            <CardContent className="p-0 divide-y divide-border/40">
-              {prefs.map((pref) => {
-                const Icon = pref.icon;
-                return (
-                  <div key={pref.key} className="flex items-center gap-4 p-4">
-                    <div className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-0 divide-y divide-border/40">
+                {prefs.map(pref => {
+                  const Icon = pref.icon;
+                  return (
+                    <div key={pref.key} className="flex items-center gap-4 p-4">
+                      <div className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground">{pref.label}</p>
+                        <p className="text-[11px] text-muted-foreground leading-snug">{pref.description}</p>
+                      </div>
+                      <Switch checked={pref.enabled} onCheckedChange={() => toggle(pref.key)} />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">{pref.label}</p>
-                      <p className="text-[11px] text-muted-foreground leading-snug">{pref.description}</p>
-                    </div>
-                    <Switch checked={pref.enabled} onCheckedChange={() => toggle(pref.key)} />
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="p-4 rounded-2xl bg-muted/30 border border-border/30">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
