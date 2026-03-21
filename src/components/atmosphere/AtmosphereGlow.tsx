@@ -28,7 +28,7 @@ const AtmosphereGlow = () => {
         <div
           className="absolute -top-1/2 left-1/2 -translate-x-1/2 w-[120vw] h-[80vh] rounded-full blur-[120px]"
           style={{
-            background: `radial-gradient(ellipse at center, hsl(${atmosphere.ambientGlow} / ${atmosphere.moodIntensity * 0.08}) 0%, transparent 70%)`,
+            background: `radial-gradient(ellipse at center, hsl(${atmosphere.ambientGlow} / ${atmosphere.moodIntensity * 0.04}) 0%, transparent 70%)`,
             transition: "background 3s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         />
@@ -37,7 +37,7 @@ const AtmosphereGlow = () => {
         <div
           className="absolute -top-1/3 left-1/3 w-[60vw] h-[50vh] rounded-full blur-[100px]"
           style={{
-            background: `radial-gradient(ellipse at center, hsl(var(--atmosphere-accent, 147 57% 43%) / ${atmosphere.moodIntensity * 0.05}) 0%, transparent 60%)`,
+            background: `radial-gradient(ellipse at center, hsl(var(--atmosphere-accent, 147 57% 43%) / ${atmosphere.moodIntensity * 0.025}) 0%, transparent 60%)`,
             transition: "background 3s cubic-bezier(0.16, 1, 0.3, 1)",
           }}
         />

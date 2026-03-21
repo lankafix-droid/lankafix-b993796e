@@ -18,6 +18,7 @@ import V2PartGradeSelection from "@/components/v2/booking/V2PartGradeSelection";
 import V2ACInstallAddons from "@/components/v2/booking/V2ACInstallAddons";
 import SmartDiagnosisStep from "@/components/v2/booking/SmartDiagnosisStep";
 import EnhancedDiagnosisSummary from "@/components/v2/booking/EnhancedDiagnosisSummary";
+import BookingTrustStrip from "@/components/v2/booking/BookingTrustStrip";
 
 import DeviceIdentificationStep from "@/components/v2/booking/DeviceIdentificationStep";
 import LocationPicker from "@/components/v2/location/LocationPicker";
@@ -312,6 +313,9 @@ const V2BookingPage = () => {
                   })}
                 </div>
               )}
+
+              {/* Contextual trust message */}
+              <BookingTrustStrip currentStep={currentStepName} />
             </div>
           </div>
         )}
@@ -520,7 +524,16 @@ const V2BookingPage = () => {
                   onConfirm={goNext}
                 />
               )}
-              {currentStepName === "confirmation" && <V2BookingConfirmation flow={flow} booking={booking} />}
+              {currentStepName === "confirmation" && (
+                <V2BookingConfirmation
+                  flow={flow}
+                  booking={booking}
+                  onEditStep={(stepName) => {
+                    const idx = steps.indexOf(stepName);
+                    if (idx >= 0) setStep(idx);
+                  }}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>

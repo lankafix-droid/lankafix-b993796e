@@ -26,6 +26,7 @@ import AIBookingSummaryCard from "@/components/ai/AIBookingSummaryCard";
 interface Props {
   flow: V2CategoryFlow;
   booking: V2BookingState;
+  onEditStep?: (stepName: string) => void;
 }
 
 const WARRANTY_NOTES: Record<string, string> = {
@@ -55,7 +56,7 @@ function SummaryRow({ label, value, bold }: { label: string; value: React.ReactN
   );
 }
 
-const V2BookingConfirmation = ({ flow, booking }: Props) => {
+const V2BookingConfirmation = ({ flow, booking, onEditStep }: Props) => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { getActiveAddress } = useLocationStore();
@@ -354,7 +355,14 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <h3 className="font-bold text-foreground text-sm mb-1">Service Summary</h3>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="font-bold text-foreground text-sm">Service Summary</h3>
+          {onEditStep && (
+            <button onClick={() => onEditStep("service_type")} className="text-[11px] font-medium text-primary hover:underline">
+              Edit
+            </button>
+          )}
+        </div>
         <SummaryRow label="Category" value={flow.name} />
         {selectedService && <SummaryRow label="Service" value={selectedService.label} />}
         {booking.issueId && (
@@ -381,7 +389,14 @@ const V2BookingConfirmation = ({ flow, booking }: Props) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, duration: 0.3 }}
         >
-          <h3 className="font-bold text-foreground text-sm mb-1">Device Details</h3>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="font-bold text-foreground text-sm">Device Details</h3>
+            {onEditStep && (
+              <button onClick={() => onEditStep("device_details")} className="text-[11px] font-medium text-primary hover:underline">
+                Edit
+              </button>
+            )}
+          </div>
           {Object.entries(booking.deviceAnswers).map(([key, value]) => {
             const question = flow.deviceQuestions.find((q) => q.key === key);
             const rawValue = typeof value === "boolean" ? (value ? "Yes" : "No") : value;
