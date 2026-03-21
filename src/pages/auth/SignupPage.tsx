@@ -1,5 +1,5 @@
 /**
- * LankaFix Signup Page
+ * LankaFix Signup Page — Email/Password + Social Sign-In
  */
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -11,6 +11,7 @@ import { Mail, Lock, User, Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from 
 import { toast } from "sonner";
 import LankaFixLogo from "@/components/brand/LankaFixLogo";
 import PageTransition from "@/components/motion/PageTransition";
+import SocialSignInButtons from "@/components/auth/SocialSignInButtons";
 
 export default function SignupPage() {
   const navigate = useNavigate();
@@ -88,6 +89,18 @@ export default function SignupPage() {
             <p className="text-sm text-muted-foreground">Sign up to book services and track jobs</p>
           </div>
 
+          {/* Social Sign-In */}
+          <SocialSignInButtons onError={setError} disabled={loading} />
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">or sign up with email</span>
+            </div>
+          </div>
+
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
@@ -132,6 +145,11 @@ export default function SignupPage() {
               </Link>
             </p>
           </form>
+
+          <p className="text-center text-[10px] text-muted-foreground leading-relaxed">
+            Social sign-in only imports your name and email.
+            <br />Phone and address can be added later.
+          </p>
 
           <div className="text-center">
             <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
