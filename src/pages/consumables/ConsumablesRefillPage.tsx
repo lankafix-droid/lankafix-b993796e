@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft, RotateCcw, ChevronRight, ShieldCheck, Droplets, MessageCircle,
-  Truck, ClipboardCheck, TestTube, PackageCheck, HelpCircle, Phone
+  Truck, ClipboardCheck, TestTube, PackageCheck, HelpCircle, Phone, AlertTriangle
 } from "lucide-react";
 import { PRINTER_MAPPINGS, BRANDS } from "@/data/printerMappings";
 import { whatsappLink, SUPPORT_WHATSAPP, SUPPORT_PHONE } from "@/config/contact";
@@ -133,7 +133,7 @@ function buildConditionNotes(condition: string, printerInfo: string, userNotes: 
   return parts.join(" ");
 }
 
-type FlowStep = "select" | "results" | "request" | "submitted";
+type FlowStep = "select" | "results" | "request" | "submitted" | "rejected";
 
 const ConsumablesRefillPage = () => {
   const [searchParams] = useSearchParams();
@@ -158,6 +158,25 @@ const ConsumablesRefillPage = () => {
     return ALL_REFILLABLE.filter(p => p.brand === selectedBrand)
       .sort((a, b) => a.model.localeCompare(b.model));
   }, [selectedBrand]);
+
+  // Auto-prefill from URL params: find matching printer + cartridge and jump to results
+  useMemo(() => {
+    if (preBrand && preCode && step === "select") {
+      const normTarget = preCode.toLowerCase().replace(/[\s\-_]+/g, "");
+      // Find printer that has this cartridge code
+      const match = ALL_REFILLABLE.find(p => {
+        if (p.brand.toLowerCase() !== preBrand.toLowerCase()) return false;
+        return p.cartridges.some(c => c.code.toLowerCase().replace(/[\s\-_]+/g, "") === normTarget);
+      });
+      if (match) {
+        setSelectedBrand(match.brand);
+        setSelectedModel(match.model);
+        setSelectedPrinter(match);
+        setSelectedCartridges(match.cartridges);
+        setStep("results");
+      }
+    }
+  }, []);
 
   const handleBrandChange = (brand: string) => {
     setSelectedBrand(brand);
@@ -196,7 +215,7 @@ const ConsumablesRefillPage = () => {
     const derivedEligibility = deriveRefillEligibility(form.condition, selectedCartridge.isColor);
 
     if (derivedEligibility === "not_recommended") {
-      toast.error("This cartridge condition is not recommended for refill. Please contact us for assistance.");
+      setStep("rejected");
       return;
     }
 
@@ -514,6 +533,46 @@ const ConsumablesRefillPage = () => {
                     <Button onClick={() => navigate("/consumables/refill/track")}>Track My Refill</Button>
                     <Button variant="outline" onClick={() => { setStep("select"); setSelectedBrand(""); setSelectedModel(""); setSelectedCartridge(null); }}>
                       Submit Another Refill
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* STEP: Rejected — cartridge not recommended for refill */}
+          {step === "rejected" && (
+            <motion.div key="rejected" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-3">
+                    <AlertTriangle className="w-7 h-7 text-destructive" />
+                  </div>
+                  <h2 className="text-lg font-bold text-foreground mb-1">Refill Not Recommended</h2>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Based on the reported condition ({form.condition || "unknown"}), this cartridge is not recommended for refill.
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-5">
+                    {form.condition === "leaking"
+                      ? "Leaking cartridges may have internal damage that prevents a safe refill."
+                      : "This condition requires professional assessment before refill."}
+                  </p>
+
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Consider these alternatives</p>
+                  <div className="flex flex-col gap-2">
+                    <Button className="w-full" onClick={() => navigate("/consumables/compatible")}>
+                      <ShieldCheck className="w-4 h-4 mr-1.5" /> View SmartFix Compatible Replacement
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => navigate("/consumables/oem")}>
+                      <Droplets className="w-4 h-4 mr-1.5" /> View Genuine OEM Replacement
+                    </Button>
+                    <Button variant="outline" className="w-full" asChild>
+                      <a href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, my ${selectedCartridge?.code || "cartridge"} is ${form.condition}. Can you help me find a replacement or alternative?`)} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="w-4 h-4 mr-1.5" /> WhatsApp LankaFix for Help
+                      </a>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="mt-1" onClick={() => { setStep("request"); setForm(prev => ({ ...prev, condition: "" })); }}>
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Change Condition & Try Again
                     </Button>
                   </div>
                 </CardContent>
