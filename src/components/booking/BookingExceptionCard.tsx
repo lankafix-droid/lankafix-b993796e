@@ -85,7 +85,7 @@ const BookingExceptionCard = ({ type, message }: Props) => {
       </div>
       <div className="flex items-center gap-2">
         <a
-          href={whatsappLink("I need help with my booking")}
+          href={whatsappLink(SUPPORT_WHATSAPP, "I need help with my booking")}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-[10px] font-medium text-primary hover:underline"
