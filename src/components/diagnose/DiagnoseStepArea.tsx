@@ -3,6 +3,7 @@
  * Shows coverage status, travel surcharge warnings, and outside-area messaging.
  */
 import { MapPin, AlertTriangle, CheckCircle2, Clock, Info } from "lucide-react";
+import { trackServiceabilityCheck } from "@/lib/marketplaceAnalytics";
 
 type CoverageStatus = "inside" | "edge" | "outside";
 
