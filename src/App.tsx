@@ -7,10 +7,13 @@ import { lazy, Suspense } from "react";
 import TermsGuard from "@/components/consent/TermsGuard";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
+import NativeSplash from "@/components/layout/NativeSplash";
 import ChatWidget from "./components/chat/ChatWidget";
 import PilotModeBanner from "./components/ops/PilotModeBanner";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PartnerRoute from "@/components/auth/PartnerRoute";
+import { useNativeBackButton } from "@/hooks/useNativeBackButton";
+import { useExternalLinks } from "@/hooks/useExternalLinks";
 // Eager-load homepage for fast first paint
 import HomePage from "./pages/V2HomePage";
 import GoogleMapsProvider from "./components/maps/GoogleMapsProvider";
@@ -214,9 +217,17 @@ const OpsRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute requiredRole="admin">{children}</ProtectedRoute>
 );
 
+/** Hooks that require Router context */
+function NativeShell({ children }: { children: React.ReactNode }) {
+  useNativeBackButton();
+  useExternalLinks();
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <GoogleMapsProvider>
+    <NativeSplash>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -224,6 +235,7 @@ const App = () => (
       <PilotModeBanner />
       <ChatWidget />
       <BrowserRouter>
+        <NativeShell>
         <TermsGuard>
         <Suspense fallback={<PageLoader />}>
           <Routes>
@@ -438,8 +450,10 @@ const App = () => (
         {/* Mobile bottom navigation */}
         <MobileBottomNav />
         </TermsGuard>
+        </NativeShell>
       </BrowserRouter>
     </TooltipProvider>
+    </NativeSplash>
     </GoogleMapsProvider>
   </QueryClientProvider>
 );

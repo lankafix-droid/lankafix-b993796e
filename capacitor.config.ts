@@ -7,7 +7,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
-      launchAutoHide: true,
+      launchAutoHide: false, // We hide manually after native bridge init
       backgroundColor: '#0E4C92',
       showSpinner: false,
       androidScaleType: 'CENTER_INSIDE',
@@ -30,8 +30,11 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
-    versionCode: 4,
-    versionName: '1.3.0',
+    // Internal pilot build — v5 / 1.4.0-pilot
+    versionCode: 5,
+    versionName: '1.4.0-pilot',
+    // Keep links inside the app
+    appendUserAgent: 'LankaFix/Android',
   },
   ios: {
     contentInset: 'automatic',
