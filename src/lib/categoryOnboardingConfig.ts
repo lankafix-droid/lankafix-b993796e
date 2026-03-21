@@ -181,6 +181,8 @@ const CONSUMER_ELEC: CategoryRequirements = {
   escalationRules: [
     { triggerField: "appliance_type", triggerValues: ["washing_machine", "fridge"], action: "inspection_required", severity: "info",
       message: "Major appliance repairs require an inspection before final pricing." },
+    { triggerField: "appliance_type", triggerValues: ["tv"], action: "warn", severity: "warning",
+      message: "TV/display repairs may require parts ordering. Quote may change after diagnosis." },
   ],
 };
 
