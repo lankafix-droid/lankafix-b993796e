@@ -16,7 +16,7 @@ const HumanSupportAvailableCard = () => (
         <p className="text-[11px] text-muted-foreground mt-0.5">Our support team is available to assist you.</p>
       </div>
       <a
-        href={whatsappLink("I need help with my booking")}
+        href={whatsappLink(SUPPORT_WHATSAPP, "I need help with my booking")}
         target="_blank"
         rel="noopener noreferrer"
         className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0"
