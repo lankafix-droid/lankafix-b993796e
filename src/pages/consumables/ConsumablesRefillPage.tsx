@@ -171,6 +171,8 @@ const ConsumablesRefillPage = () => {
   const [selectedCartridges, setSelectedCartridges] = useState<RefillableCartridge[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState<RefillablePrinter | null>(null);
   const [selectedCartridge, setSelectedCartridge] = useState<RefillableCartridge | null>(null);
+  const [replacementIds, setReplacementIds] = useState<{ sfId: string | null; oemId: string | null }>({ sfId: null, oemId: null });
+  const [prefilled, setPrefilled] = useState(false);
   const [form, setForm] = useState({
     phone: "", address: "", pickup_method: "pickup", quantity: "1", notes: "",
     selected_code: preCode, condition: "",
