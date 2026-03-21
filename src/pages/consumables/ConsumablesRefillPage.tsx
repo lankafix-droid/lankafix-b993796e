@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft, RotateCcw, ChevronRight, ShieldCheck, Droplets, MessageCircle,
-  Truck, ClipboardCheck, TestTube, PackageCheck, HelpCircle, Phone, AlertTriangle
+  Truck, ClipboardCheck, TestTube, PackageCheck, HelpCircle, Phone, AlertTriangle, CheckCircle2
 } from "lucide-react";
 import { PRINTER_MAPPINGS, BRANDS } from "@/data/printerMappings";
 import { whatsappLink, SUPPORT_WHATSAPP, SUPPORT_PHONE } from "@/config/contact";
@@ -135,6 +136,30 @@ function buildConditionNotes(condition: string, printerInfo: string, userNotes: 
 
 type FlowStep = "select" | "results" | "request" | "submitted" | "rejected";
 
+/** Resolve exact SmartFix/OEM replacement product IDs for a given cartridge code + brand */
+async function resolveReplacementIds(code: string, brand: string): Promise<{ sfId: string | null; oemId: string | null }> {
+  const norm = code.toLowerCase().replace(/[\s\-_./\\,()]+/g, "");
+  const { data } = await supabase
+    .from("consumable_products")
+    .select("id, sku_code, range_type")
+    .eq("is_active", true)
+    .eq("brand", brand)
+    .limit(200);
+
+  if (!data || data.length === 0) return { sfId: null, oemId: null };
+
+  const normSku = (s: string) => s.toLowerCase().replace(/[\s\-_./\\,()]+/g, "");
+  let candidates = data.filter(p => normSku(p.sku_code) === norm);
+  if (candidates.length === 0) {
+    candidates = data.filter(p => normSku(p.sku_code).includes(norm) || norm.includes(normSku(p.sku_code)));
+  }
+
+  return {
+    sfId: candidates.find(p => p.range_type === "smartfix_compatible")?.id ?? null,
+    oemId: candidates.find(p => p.range_type === "genuine_oem")?.id ?? null,
+  };
+}
+
 const ConsumablesRefillPage = () => {
   const [searchParams] = useSearchParams();
   const preCode = searchParams.get("code") || "";
@@ -146,6 +171,8 @@ const ConsumablesRefillPage = () => {
   const [selectedCartridges, setSelectedCartridges] = useState<RefillableCartridge[]>([]);
   const [selectedPrinter, setSelectedPrinter] = useState<RefillablePrinter | null>(null);
   const [selectedCartridge, setSelectedCartridge] = useState<RefillableCartridge | null>(null);
+  const [replacementIds, setReplacementIds] = useState<{ sfId: string | null; oemId: string | null }>({ sfId: null, oemId: null });
+  const [prefilled, setPrefilled] = useState(false);
   const [form, setForm] = useState({
     phone: "", address: "", pickup_method: "pickup", quantity: "1", notes: "",
     selected_code: preCode, condition: "",
@@ -163,7 +190,6 @@ const ConsumablesRefillPage = () => {
   useMemo(() => {
     if (preBrand && preCode && step === "select") {
       const normTarget = preCode.toLowerCase().replace(/[\s\-_]+/g, "");
-      // Find printer that has this cartridge code
       const match = ALL_REFILLABLE.find(p => {
         if (p.brand.toLowerCase() !== preBrand.toLowerCase()) return false;
         return p.cartridges.some(c => c.code.toLowerCase().replace(/[\s\-_]+/g, "") === normTarget);
@@ -173,6 +199,7 @@ const ConsumablesRefillPage = () => {
         setSelectedModel(match.model);
         setSelectedPrinter(match);
         setSelectedCartridges(match.cartridges);
+        setPrefilled(true);
         setStep("results");
       }
     }
@@ -215,6 +242,8 @@ const ConsumablesRefillPage = () => {
     const derivedEligibility = deriveRefillEligibility(form.condition, selectedCartridge.isColor);
 
     if (derivedEligibility === "not_recommended") {
+      // Resolve exact replacement product IDs for the rejection fallback
+      resolveReplacementIds(selectedCartridge.code, selectedPrinter.brand).then(setReplacementIds);
       setStep("rejected");
       return;
     }
@@ -291,6 +320,16 @@ const ConsumablesRefillPage = () => {
                   </div>
                 ))}
               </div>
+
+              {/* Prefill context banner */}
+              {prefilled && preCode && (
+                <div className="mt-3 flex items-center gap-2 bg-accent/10 border border-accent/20 rounded-lg px-3 py-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <p className="text-xs text-foreground">
+                    Refill option preselected for <span className="font-semibold">{preBrand} {preCode}</span>
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -560,11 +599,17 @@ const ConsumablesRefillPage = () => {
 
                   <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Consider these alternatives</p>
                   <div className="flex flex-col gap-2">
-                    <Button className="w-full" onClick={() => navigate("/consumables/compatible")}>
-                      <ShieldCheck className="w-4 h-4 mr-1.5" /> View SmartFix Compatible Replacement
+                    <Button className="w-full" onClick={() => {
+                      if (replacementIds.sfId) navigate(`/consumables/product/${replacementIds.sfId}`);
+                      else navigate("/consumables/compatible");
+                    }}>
+                      <ShieldCheck className="w-4 h-4 mr-1.5" /> {replacementIds.sfId ? "View SmartFix Replacement" : "Browse SmartFix Compatible"}
                     </Button>
-                    <Button variant="outline" className="w-full" onClick={() => navigate("/consumables/oem")}>
-                      <Droplets className="w-4 h-4 mr-1.5" /> View Genuine OEM Replacement
+                    <Button variant="outline" className="w-full" onClick={() => {
+                      if (replacementIds.oemId) navigate(`/consumables/product/${replacementIds.oemId}`);
+                      else navigate("/consumables/oem");
+                    }}>
+                      <Droplets className="w-4 h-4 mr-1.5" /> {replacementIds.oemId ? "View Genuine OEM Replacement" : "Browse Genuine OEM"}
                     </Button>
                     <Button variant="outline" className="w-full" asChild>
                       <a href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, my ${selectedCartridge?.code || "cartridge"} is ${form.condition}. Can you help me find a replacement or alternative?`)} target="_blank" rel="noopener noreferrer">

@@ -248,6 +248,22 @@ function normCode(s: string): string {
   return s.toLowerCase().replace(/[\s\-_./\\,()]+/g, "");
 }
 
+/** Extract the core numeric/alpha code from a supply code (e.g. "PG-47" → "pg47", "TN-2380" → "tn2380") */
+function coreCode(s: string): string {
+  return s.toLowerCase().replace(/[\s\-_./\\,()]+/g, "");
+}
+
+/** Check if two codes belong to the same product family (e.g. PG-745 and CL-746 should NOT pair) */
+function isSameCodeFamily(skuCode: string, targetCode: string): boolean {
+  const a = coreCode(skuCode);
+  const b = coreCode(targetCode);
+  // Exact match
+  if (a === b) return true;
+  // For paired codes like PG-47/CL-57, PG-745/CL-746 — the sku must match the specific code
+  // Don't let PG-745 match CL-746 just because they share digits
+  return false;
+}
+
 /** Resolve DB product IDs for each supply code group using multi-strategy lookup */
 async function resolveProductIds(groups: SearchResultGroup[]): Promise<Map<string, ResolvedProducts>> {
   const map = new Map<string, ResolvedProducts>();
@@ -256,7 +272,6 @@ async function resolveProductIds(groups: SearchResultGroup[]): Promise<Map<strin
   const codes = [...new Set(groups.map(g => g.supplyCode))];
   const brands = [...new Set(groups.map(g => g.brand))];
 
-  // Fetch a broad set: exact sku match OR same brand products (for fallback)
   const { data: allProducts } = await supabase
     .from("consumable_products")
     .select("id, sku_code, range_type, price, stock_qty, compare_group, brand")
@@ -271,29 +286,43 @@ async function resolveProductIds(groups: SearchResultGroup[]): Promise<Map<strin
     const brand = group.brand;
     const normTarget = normCode(code);
 
-    // Strategy 1: Exact sku_code match
+    // Strategy 1: Exact sku_code match (highest priority)
     let candidates = allProducts.filter(p => p.sku_code === code && p.brand === brand);
 
-    // Strategy 2: Normalized sku_code match
+    // Strategy 2: Normalized sku_code match (PG-47 == pg47)
     if (candidates.length === 0) {
       candidates = allProducts.filter(p => normCode(p.sku_code) === normTarget && p.brand === brand);
     }
 
-    // Strategy 3: compare_group match (e.g. "canon_325" family)
+    // Strategy 3: compare_group exact match (e.g. compare_group "canon_325" for Canon 325)
     if (candidates.length === 0) {
-      const codeFamily = normTarget.replace(/\d+$/, ""); // strip trailing digits for family
       candidates = allProducts.filter(p =>
         p.compare_group && p.brand === brand &&
-        (normCode(p.compare_group).includes(normTarget) || normCode(p.compare_group) === codeFamily)
+        normCode(p.compare_group) === normTarget
       );
     }
 
-    // Strategy 4: Brand + code substring fallback
+    // Strategy 4: compare_group contains the target code
     if (candidates.length === 0) {
       candidates = allProducts.filter(p =>
-        p.brand === brand &&
-        (normCode(p.sku_code).includes(normTarget) || normTarget.includes(normCode(p.sku_code)))
+        p.compare_group && p.brand === brand &&
+        normCode(p.compare_group).includes(normTarget)
       );
+    }
+
+    // Strategy 5: Brand + sku substring — BUT enforce strict matching
+    // Only match if the sku contains the full target or vice versa, and they share
+    // the same prefix family (e.g. "TN" for Brother toners)
+    if (candidates.length === 0) {
+      const targetPrefix = normTarget.replace(/\d+.*$/, ""); // e.g. "tn" from "tn2380"
+      candidates = allProducts.filter(p => {
+        if (p.brand !== brand) return false;
+        const skuNorm = normCode(p.sku_code);
+        const skuPrefix = skuNorm.replace(/\d+.*$/, "");
+        // Prefixes must match to avoid cross-family pairing (PG vs CL)
+        if (targetPrefix && skuPrefix && targetPrefix !== skuPrefix) return false;
+        return skuNorm.includes(normTarget) || normTarget.includes(skuNorm);
+      });
     }
 
     const sf = candidates.find(p => p.range_type === "smartfix_compatible");
