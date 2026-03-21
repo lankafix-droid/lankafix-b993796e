@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ShieldCheck, Package, Truck, QrCode, RotateCcw, Scale, FileText, HelpCircle, ShoppingCart, ArrowRight } from "lucide-react";
+import smartfixTonerBox from "@/assets/smartfix-toner-box.png";
+import smartfixInkBox from "@/assets/smartfix-ink-box.png";
 import { useConsumableProduct, useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 
