@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -10,16 +10,14 @@ import { useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 import { getSuggestions } from "@/lib/consumableSearch";
 import { BRANDS, POPULAR_CHIPS } from "@/data/printerMappings";
+import { whatsappLink, SUPPORT_WHATSAPP } from "@/config/contact";
 import {
   Search, Printer, ShieldCheck, RotateCcw, QrCode, Camera, ScanLine,
-  Package, ArrowRight, RefreshCw, FileText, HelpCircle, ShoppingCart, ChevronDown
+  Package, ArrowRight, RefreshCw, FileText, HelpCircle, ShoppingCart,
+  MessageCircle, Phone, Upload
 } from "lucide-react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 
 const ConsumablesLandingPage = () => {
@@ -28,6 +26,7 @@ const ConsumablesLandingPage = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const navigate = useNavigate();
   const cart = useCart();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo(() => {
     if (query.length < 2) return [];
@@ -52,6 +51,18 @@ const ConsumablesLandingPage = () => {
     navigate(`/consumables/results?q=${encodeURIComponent(label)}`);
   };
 
+  const handlePhotoUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // For now, navigate to results with a photo-upload indicator
+      navigate(`/consumables/results?photo=pending`);
+    }
+  };
+
   const segments = [
     { title: "SmartFix Verified Compatible", desc: "QR-backed, warranty-protected, better value", icon: ShieldCheck, color: "text-accent", link: "/consumables/compatible" },
     { title: "Genuine OEM Supplies", desc: "Original manufacturer cartridges & toner", icon: Package, color: "text-primary", link: "/consumables/oem" },
@@ -62,7 +73,7 @@ const ConsumablesLandingPage = () => {
     { label: "Reorder / Saved Devices", icon: RefreshCw, link: "/consumables/reorder" },
     { label: "Bulk / SME Quote", icon: FileText, link: "/consumables/bulk" },
     { label: "Verify SmartFix QR", icon: QrCode, link: "/consumables/qr-verify" },
-    { label: "Need Help Matching?", icon: HelpCircle, link: "/consumables/finder" },
+    { label: "Need Help Matching?", icon: MessageCircle, link: whatsappLink(SUPPORT_WHATSAPP, "Hi LankaFix, I need help finding the right toner/cartridge for my printer."), external: true },
   ];
 
   return (
@@ -113,7 +124,7 @@ const ConsumablesLandingPage = () => {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Input
-                  placeholder="e.g. Canon E410, LBP6030, PG-47, HP 85A..."
+                  placeholder="e.g. Canon E410, MG2570, PG-47, HP 682..."
                   value={query}
                   onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }}
                   onKeyDown={(e) => { if (e.key === "Enter") { setShowSuggestions(false); handleSearch(); } }}
@@ -121,7 +132,6 @@ const ConsumablesLandingPage = () => {
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   className="pr-3"
                 />
-                {/* Autocomplete dropdown */}
                 {showSuggestions && suggestions.length > 0 && (
                   <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {suggestions.map((s, i) => (
@@ -161,18 +171,30 @@ const ConsumablesLandingPage = () => {
           {/* Secondary Actions */}
           <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-border">
             <Button variant="outline" size="sm" className="text-xs justify-start" onClick={() => navigate("/consumables/finder")}>
-              <HelpCircle className="w-3.5 h-3.5 mr-1.5" /> Browse by Brand
+              <Printer className="w-3.5 h-3.5 mr-1.5" /> Browse by Brand
             </Button>
-            <Button variant="outline" size="sm" className="text-xs justify-start gap-1.5">
+            <Button variant="outline" size="sm" className="text-xs justify-start gap-1.5" onClick={handlePhotoUpload}>
               <Camera className="w-3.5 h-3.5" /> Upload Photo
             </Button>
             <Button variant="outline" size="sm" className="text-xs justify-start gap-1.5" onClick={() => navigate("/consumables/qr-verify")}>
               <ScanLine className="w-3.5 h-3.5" /> Scan QR / Barcode
             </Button>
-            <Button variant="outline" size="sm" className="text-xs justify-start" onClick={() => navigate("/consumables/finder")}>
-              <Printer className="w-3.5 h-3.5 mr-1.5" /> Guided Finder
+            <Button variant="outline" size="sm" className="text-xs justify-start gap-1.5" asChild>
+              <a href={whatsappLink(SUPPORT_WHATSAPP, "Hi LankaFix, I need help finding the right toner/cartridge for my printer.")} target="_blank" rel="noopener noreferrer">
+                <HelpCircle className="w-3.5 h-3.5" /> Need Help?
+              </a>
             </Button>
           </div>
+
+          {/* Hidden file input for photo upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={handleFileChange}
+          />
         </motion.div>
 
         {/* Segment Cards */}
@@ -200,12 +222,21 @@ const ConsumablesLandingPage = () => {
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-2">
           {quickActions.map((a) => (
-            <Link key={a.label} to={a.link}>
-              <div className="rounded-lg border border-border bg-card p-3 flex items-center gap-2 hover:bg-muted/50 transition-colors">
-                <a.icon className="w-4 h-4 text-primary" />
-                <span className="text-xs font-medium text-foreground">{a.label}</span>
-              </div>
-            </Link>
+            a.external ? (
+              <a key={a.label} href={a.link} target="_blank" rel="noopener noreferrer">
+                <div className="rounded-lg border border-border bg-card p-3 flex items-center gap-2 hover:bg-muted/50 transition-colors">
+                  <a.icon className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-medium text-foreground">{a.label}</span>
+                </div>
+              </a>
+            ) : (
+              <Link key={a.label} to={a.link}>
+                <div className="rounded-lg border border-border bg-card p-3 flex items-center gap-2 hover:bg-muted/50 transition-colors">
+                  <a.icon className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-medium text-foreground">{a.label}</span>
+                </div>
+              </Link>
+            )
           ))}
         </div>
 
