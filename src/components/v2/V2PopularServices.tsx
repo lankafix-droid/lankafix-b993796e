@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { track } from "@/lib/analytics";
+import { trackCategoryClick } from "@/lib/marketplaceAnalytics";
 import { CONSUMER_CATEGORIES } from "@/data/consumerBookingCategories";
 import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
 
