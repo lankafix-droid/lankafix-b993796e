@@ -1,6 +1,7 @@
 /**
  * Full Booking Detail Page — /booking/:bookingId
  * Premium view with service summary, lifecycle tracker, pricing, technician, notes, and actions.
+ * Uses deriveBookingDisplayState for DB-aligned state derivation.
  */
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -13,9 +14,10 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft, Calendar, MapPin, CreditCard, Wrench, Shield,
-  MessageCircle, Phone, ChevronRight, Star, AlertTriangle, Clock, FileText,
+  MessageCircle, ChevronRight, Star, AlertTriangle, Clock, FileText,
 } from "lucide-react";
 import { LIFECYCLE_STAGES, mapBookingStatusToStage, getProgressStages } from "@/lib/bookingLifecycleModel";
+import { deriveBookingDisplayState } from "@/lib/stateAlignment";
 import { CONSUMER_CATEGORIES } from "@/data/consumerBookingCategories";
 import { SUPPORT_WHATSAPP } from "@/config/contact";
 import { trackLifecycleStageView } from "@/lib/marketplaceAnalytics";
@@ -28,7 +30,7 @@ export default function BookingDetailPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { data: booking, isLoading } = useQuery({
+  const { data: booking, isLoading, error } = useQuery({
     queryKey: ["booking-detail", bookingId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -40,6 +42,7 @@ export default function BookingDetailPage() {
       return data;
     },
     enabled: !!bookingId,
+    retry: 1,
   });
 
   const { data: partner } = useQuery({
@@ -88,20 +91,29 @@ export default function BookingDetailPage() {
             <Skeleton className="h-8 w-32" />
             <Skeleton className="h-48 rounded-2xl" />
             <Skeleton className="h-32 rounded-2xl" />
+            <Skeleton className="h-24 rounded-2xl" />
           </div>
         </div>
       </PageTransition>
     );
   }
 
-  if (!booking) {
+  if (error || !booking) {
     return (
       <PageTransition>
         <div className="min-h-screen bg-background">
           <Header />
-          <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-            <p className="text-muted-foreground">Booking not found</p>
-            <Button variant="outline" className="mt-4" onClick={() => navigate("/service-history")}>
+          <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full bg-muted/60 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">
+              {error ? "Unable to load booking" : "Booking not found"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {error ? "Please check your connection and try again." : "This booking may have been removed or the link is incorrect."}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => navigate("/service-history")}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to My Bookings
             </Button>
           </div>
@@ -110,11 +122,11 @@ export default function BookingDetailPage() {
     );
   }
 
-  const stage = mapBookingStatusToStage(booking.status, booking.dispatch_status);
-  const stageInfo = LIFECYCLE_STAGES[stage];
+  // Use centralized state derivation
+  const display = deriveBookingDisplayState(booking);
+  const { stage, stageInfo } = display;
   const category = CONSUMER_CATEGORIES.find((c) => c.code === booking.category_code);
   const progress = getProgressStages(stage);
-  const price = booking.final_price_lkr ?? booking.estimated_price_lkr;
   const isActive = !["completed", "cancelled"].includes(stage);
   const isCompleted = stage === "completed";
 
@@ -134,7 +146,9 @@ export default function BookingDetailPage() {
               <Badge variant="outline" className={`text-xs font-bold ${stageInfo.badgeBg} border-0`}>
                 {stageInfo.label}
               </Badge>
-              <span className="text-[10px] font-medium opacity-70">Next: {stageInfo.actorLabel}</span>
+              {isActive && (
+                <span className="text-[10px] font-medium opacity-70">Next: {stageInfo.actorLabel}</span>
+              )}
             </div>
             <p className="text-sm text-foreground/80 leading-relaxed">{stageInfo.description}</p>
           </div>
@@ -167,17 +181,18 @@ export default function BookingDetailPage() {
                   <span>{booking.zone_code}</span>
                 </div>
               )}
-              {price != null && price > 0 && (
+              {display.displayPrice != null && display.displayPrice > 0 && (
                 <div className="flex items-center gap-2 font-semibold text-foreground">
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>LKR {price.toLocaleString()}</span>
+                  <span>
+                    LKR {display.displayPrice.toLocaleString()}
+                    {display.priceIsEstimate && <span className="text-[10px] font-normal text-muted-foreground ml-1">(estimate)</span>}
+                  </span>
                 </div>
               )}
               {booking.payment_status && (
                 <div className="flex items-center gap-2">
-                  <span className={`font-medium ${
-                    ["paid", "cash_collected", "payment_verified"].includes(booking.payment_status) ? "text-success" : "text-warning"
-                  }`}>
+                  <span className={`font-medium ${display.isPaid ? "text-success" : "text-warning"}`}>
                     {booking.payment_status.replace(/_/g, " ")}
                   </span>
                 </div>
@@ -225,7 +240,7 @@ export default function BookingDetailPage() {
           </div>
 
           {/* Technician */}
-          {partner && (
+          {display.hasTechnician && partner && (
             <div className="bg-card rounded-2xl border border-border/50 p-5 shadow-[var(--shadow-card)]">
               <h2 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-primary" /> Assigned Technician
@@ -285,7 +300,7 @@ export default function BookingDetailPage() {
                 Track Live <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             )}
-            {isCompleted && !booking.customer_rating && (
+            {display.canRate && !booking.customer_rating && (
               <Button className="flex-1 h-10" onClick={() => setShowRating(true)}>
                 <Star className="w-4 h-4 mr-1" /> Rate Experience
               </Button>
@@ -295,6 +310,11 @@ export default function BookingDetailPage() {
                 <Star className="w-4 h-4 text-success fill-success" />
                 <span className="text-sm font-bold text-success">{booking.customer_rating}/5 Rated</span>
               </div>
+            )}
+            {display.canRebook && (
+              <Button variant="outline" className="h-10" onClick={() => navigate(`/book/${booking.category_code}`)}>
+                Rebook
+              </Button>
             )}
             <a
               href={`https://wa.me/${SUPPORT_WHATSAPP.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Hi, I need help with booking ${booking.id.slice(0, 8)}`)}`}

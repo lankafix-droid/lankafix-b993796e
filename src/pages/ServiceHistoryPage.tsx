@@ -1,6 +1,7 @@
 /**
  * My Bookings — Premium consumer dashboard for booking history.
  * Shows active and past requests with lifecycle awareness, next actions, and trust-first design.
+ * Uses centralized lifecycle model and state alignment for consistency.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,31 +17,25 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
   ArrowLeft, Calendar, Wrench, History, Star,
-  ChevronRight, CreditCard, Clock, CheckCircle2, XCircle, AlertTriangle,
-  Shield, ArrowRight, FileText, Phone, Loader2,
+  ChevronRight, CreditCard, Clock, AlertTriangle,
+  Shield, ArrowRight,
 } from "lucide-react";
 import { CATEGORY_LABELS, type CategoryCode } from "@/types/booking";
 import { mapBookingStatusToStage, LIFECYCLE_STAGES } from "@/lib/bookingLifecycleModel";
 import { motion } from "framer-motion";
 
-/* ── Status display config ── */
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  completed:    { label: "Completed",     color: "bg-green-500/10 text-green-700 border-green-500/20", icon: CheckCircle2 },
-  in_progress:  { label: "In Progress",   color: "bg-primary/10 text-primary border-primary/20",       icon: Loader2 },
-  confirmed:    { label: "Confirmed",     color: "bg-primary/10 text-primary border-primary/20",       icon: Clock },
-  requested:    { label: "Requested",     color: "bg-amber-500/10 text-amber-700 border-amber-500/20", icon: Clock },
-  tech_assigned:{ label: "Tech Assigned", color: "bg-accent/10 text-accent-foreground border-accent/20", icon: Wrench },
-  tech_en_route:{ label: "En Route",      color: "bg-primary/10 text-primary border-primary/20",       icon: Clock },
-  cancelled:    { label: "Cancelled",     color: "bg-destructive/10 text-destructive border-destructive/20", icon: XCircle },
-  escalated:    { label: "Escalated",     color: "bg-destructive/10 text-destructive border-destructive/20", icon: AlertTriangle },
-  quote_submitted: { label: "Quote Ready", color: "bg-amber-500/10 text-amber-700 border-amber-500/20", icon: FileText },
-};
+/* ── Status display — derived from lifecycle model for consistency ── */
+function getStatusDisplay(status: string, dispatchStatus?: string | null) {
+  const stage = mapBookingStatusToStage(status, dispatchStatus);
+  const info = LIFECYCLE_STAGES[stage];
+  return { label: info.label, badgeBg: info.badgeBg };
+}
 
 const PAYMENT_BADGE: Record<string, { label: string; color: string }> = {
-  paid:             { label: "Paid",     color: "text-green-700" },
-  payment_verified: { label: "Verified", color: "text-green-700" },
-  cash_collected:   { label: "Cash",     color: "text-green-700" },
-  payment_pending:  { label: "Pending",  color: "text-amber-600" },
+  paid:             { label: "Paid",     color: "text-success" },
+  payment_verified: { label: "Verified", color: "text-success" },
+  cash_collected:   { label: "Cash",     color: "text-success" },
+  payment_pending:  { label: "Pending",  color: "text-warning" },
   failed:           { label: "Failed",   color: "text-destructive" },
 };
 
@@ -203,8 +198,7 @@ function ActiveBookingCard({ booking, onClick }: { booking: any; onClick: () => 
   const catLabel = CATEGORY_LABELS[booking.category_code as CategoryCode] || booking.category_code;
   const stage = mapBookingStatusToStage(booking.status, booking.dispatch_status);
   const stageInfo = LIFECYCLE_STAGES[stage];
-  const statusCfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG.requested;
-  const StatusIcon = statusCfg.icon;
+  const statusDisplay = getStatusDisplay(booking.status, booking.dispatch_status);
 
   return (
     <Card
@@ -219,9 +213,8 @@ function ActiveBookingCard({ booking, onClick }: { booking: any; onClick: () => 
               <p className="text-[11px] text-muted-foreground truncate">{booking.service_type}</p>
             )}
           </div>
-          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusCfg.color}`}>
-            <StatusIcon className={`w-3 h-3 mr-0.5 ${booking.status === "in_progress" ? "animate-spin" : ""}`} />
-            {statusCfg.label}
+          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusDisplay.badgeBg} border-0`}>
+            {statusDisplay.label}
           </Badge>
         </div>
 
@@ -245,10 +238,9 @@ function ActiveBookingCard({ booking, onClick }: { booking: any; onClick: () => 
 /* ── Standard booking card ── */
 function BookingCard({ booking, onClick }: { booking: any; onClick: () => void }) {
   const catLabel = CATEGORY_LABELS[booking.category_code as CategoryCode] || booking.category_code;
-  const statusCfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG.requested;
+  const statusDisplay = getStatusDisplay(booking.status, booking.dispatch_status);
   const price = booking.final_price_lkr || booking.estimated_price_lkr;
   const payStatus = booking.payment_status ? PAYMENT_BADGE[booking.payment_status] : null;
-  const StatusIcon = statusCfg.icon;
   const actionHint = getNextActionHint(booking.status);
 
   return (
@@ -261,9 +253,8 @@ function BookingCard({ booking, onClick }: { booking: any; onClick: () => void }
               <p className="text-[11px] text-muted-foreground truncate">{booking.service_type}</p>
             )}
           </div>
-          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusCfg.color}`}>
-            <StatusIcon className="w-3 h-3 mr-0.5" />
-            {statusCfg.label}
+          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusDisplay.badgeBg} border-0`}>
+            {statusDisplay.label}
           </Badge>
         </div>
 
@@ -284,8 +275,8 @@ function BookingCard({ booking, onClick }: { booking: any; onClick: () => void }
             </span>
           )}
           {booking.customer_rating && (
-            <span className="flex items-center gap-1 text-amber-600">
-              <Star className="w-3 h-3 fill-amber-500" /> {booking.customer_rating}
+            <span className="flex items-center gap-1 text-warning">
+              <Star className="w-3 h-3 fill-warning" /> {booking.customer_rating}
             </span>
           )}
           {actionHint && (
