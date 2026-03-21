@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import PartnerReviewsPanel from "@/components/partner/PartnerReviewsPanel";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner";
