@@ -19,9 +19,9 @@ const HumanSupportAvailableCard = () => (
         href={whatsappLink(SUPPORT_WHATSAPP, "I need help with my booking")}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0"
+        className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center shrink-0"
       >
-        <MessageCircle className="w-4 h-4 text-green-600" />
+        <MessageCircle className="w-4 h-4 text-success" />
       </a>
     </div>
   </div>

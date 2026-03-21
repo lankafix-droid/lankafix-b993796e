@@ -28,7 +28,7 @@ const QuoteApprovalPage = lazy(() => import("./pages/V2QuoteApprovalPage"));
 const DiagnosePage = lazy(() => import("./pages/DiagnosePage"));
 const TrackJob = lazy(() => import("./pages/TrackJob"));
 const TrackerPage = lazy(() => import("./pages/TrackerPage"));
-// BookingTracker removed — TrackerPage is the unified tracker with DB-first state
+
 const WaitlistPage = lazy(() => import("./pages/WaitlistPage"));
 const DemandRequestPage = lazy(() => import("./pages/DemandRequestPage"));
 const SubmitRequirementPage = lazy(() => import("./pages/SubmitRequirementPage"));
