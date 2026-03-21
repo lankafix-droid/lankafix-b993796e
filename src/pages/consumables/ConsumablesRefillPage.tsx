@@ -215,7 +215,7 @@ const ConsumablesRefillPage = () => {
     const derivedEligibility = deriveRefillEligibility(form.condition, selectedCartridge.isColor);
 
     if (derivedEligibility === "not_recommended") {
-      toast.error("This cartridge condition is not recommended for refill. Please contact us for assistance.");
+      setStep("rejected");
       return;
     }
 
