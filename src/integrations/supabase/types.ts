@@ -1038,6 +1038,39 @@ export type Database = {
         }
         Relationships: []
       }
+      consent_records: {
+        Row: {
+          accepted: boolean
+          consent_key: string
+          consent_type: string
+          context: Json | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          user_id: string
+        }
+        Insert: {
+          accepted?: boolean
+          consent_key: string
+          consent_type: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_id: string
+        }
+        Update: {
+          accepted?: boolean
+          consent_key?: string
+          consent_type?: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       consumable_compatibility: {
         Row: {
           consumable_product_id: string
@@ -1832,50 +1865,107 @@ export type Database = {
         }
         Relationships: []
       }
+      coverage_waitlist: {
+        Row: {
+          city: string | null
+          created_at: string
+          district: string | null
+          email: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          phone: string | null
+          requested_category: string | null
+          user_id: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          phone?: string | null
+          requested_category?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          district?: string | null
+          email?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          phone?: string | null
+          requested_category?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       customer_addresses: {
         Row: {
+          access_notes: string | null
           address_line_1: string | null
           address_line_2: string | null
           city: string | null
           created_at: string
           customer_id: string
           district: string | null
+          floor_or_unit: string | null
           id: string
           is_default: boolean | null
           label: string
           landmark: string | null
           latitude: number | null
           longitude: number | null
+          parking_notes: string | null
+          phase1_serviceable: boolean | null
+          service_zone: string | null
           zone_code: string | null
         }
         Insert: {
+          access_notes?: string | null
           address_line_1?: string | null
           address_line_2?: string | null
           city?: string | null
           created_at?: string
           customer_id: string
           district?: string | null
+          floor_or_unit?: string | null
           id?: string
           is_default?: boolean | null
           label?: string
           landmark?: string | null
           latitude?: number | null
           longitude?: number | null
+          parking_notes?: string | null
+          phase1_serviceable?: boolean | null
+          service_zone?: string | null
           zone_code?: string | null
         }
         Update: {
+          access_notes?: string | null
           address_line_1?: string | null
           address_line_2?: string | null
           city?: string | null
           created_at?: string
           customer_id?: string
           district?: string | null
+          floor_or_unit?: string | null
           id?: string
           is_default?: boolean | null
           label?: string
           landmark?: string | null
           latitude?: number | null
           longitude?: number | null
+          parking_notes?: string | null
+          phase1_serviceable?: boolean | null
+          service_zone?: string | null
           zone_code?: string | null
         }
         Relationships: []
@@ -4151,16 +4241,22 @@ export type Database = {
           ai_preferences: Json | null
           auth_providers: string[] | null
           avatar_url: string | null
+          consent_flags: Json | null
           created_at: string
           default_address: Json | null
           district: string | null
           email: string | null
+          email_verified: boolean | null
           full_name: string | null
           id: string
+          last_selected_service_category: string | null
           onboarding_completed: boolean | null
           phone: string | null
+          phone_verified: boolean | null
           preferred_contact_method: string | null
+          primary_address_id: string | null
           profile_completion_pct: number | null
+          serviceability_status: string | null
           updated_at: string
           user_id: string
           whatsapp_number: string | null
@@ -4169,16 +4265,22 @@ export type Database = {
           ai_preferences?: Json | null
           auth_providers?: string[] | null
           avatar_url?: string | null
+          consent_flags?: Json | null
           created_at?: string
           default_address?: Json | null
           district?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name?: string | null
           id?: string
+          last_selected_service_category?: string | null
           onboarding_completed?: boolean | null
           phone?: string | null
+          phone_verified?: boolean | null
           preferred_contact_method?: string | null
+          primary_address_id?: string | null
           profile_completion_pct?: number | null
+          serviceability_status?: string | null
           updated_at?: string
           user_id: string
           whatsapp_number?: string | null
@@ -4187,21 +4289,35 @@ export type Database = {
           ai_preferences?: Json | null
           auth_providers?: string[] | null
           avatar_url?: string | null
+          consent_flags?: Json | null
           created_at?: string
           default_address?: Json | null
           district?: string | null
           email?: string | null
+          email_verified?: boolean | null
           full_name?: string | null
           id?: string
+          last_selected_service_category?: string | null
           onboarding_completed?: boolean | null
           phone?: string | null
+          phone_verified?: boolean | null
           preferred_contact_method?: string | null
+          primary_address_id?: string | null
           profile_completion_pct?: number | null
+          serviceability_status?: string | null
           updated_at?: string
           user_id?: string
           whatsapp_number?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_primary_address_id_fkey"
+            columns: ["primary_address_id"]
+            isOneToOne: false
+            referencedRelation: "customer_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       properties: {
         Row: {
