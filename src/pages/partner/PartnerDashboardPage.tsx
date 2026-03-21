@@ -5,6 +5,7 @@ import { useCurrentPartner, usePartnerBookings } from "@/hooks/useCurrentPartner
 import { track } from "@/lib/analytics";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
+import OnboardingStatusBanner from "@/components/v2/partner/OnboardingStatusBanner";
 import {
   Briefcase, Clock, CheckCircle2, AlertTriangle, Users,
   MapPin, ArrowRight, Wrench, BarChart3, Wallet,
