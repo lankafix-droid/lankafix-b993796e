@@ -1,64 +1,68 @@
-import { MousePointerClick, UserCheck, ShieldCheck, FileCheck } from "lucide-react";
+import { Search, FileCheck, UserCheck, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 
 const steps = [
-  { icon: <MousePointerClick className="w-5 h-5" />, title: "Diagnose Problem", desc: "Describe your issue or pick a service", num: "1", gradient: "from-primary/15 to-primary/5" },
-  { icon: <FileCheck className="w-5 h-5" />, title: "See Price Range", desc: "Get transparent pricing before you commit", num: "2", gradient: "from-success/15 to-success/5" },
-  { icon: <UserCheck className="w-5 h-5" />, title: "Confirm Booking", desc: "Verified technician matched to your job", num: "3", gradient: "from-warning/15 to-warning/5" },
-  { icon: <ShieldCheck className="w-5 h-5" />, title: "Technician Assigned", desc: "Track arrival, approve quote, pay after completion", num: "4", gradient: "from-accent/15 to-accent/5" },
+  { icon: <Search className="w-5 h-5" />, title: "Describe Your Issue", desc: "Tell us what's wrong or pick a service category" },
+  { icon: <FileCheck className="w-5 h-5" />, title: "See Pricing", desc: "Get a transparent price range before you commit" },
+  { icon: <UserCheck className="w-5 h-5" />, title: "Get Matched", desc: "A verified technician is assigned to your job" },
+  { icon: <ShieldCheck className="w-5 h-5" />, title: "Approve & Pay", desc: "Approve the final quote. Pay only after completion" },
 ];
 
 const V2HowItWorks = () => {
   return (
-    <section className="py-12 md:py-20 bg-card border-t border-border/30">
-      <div className="container">
+    <section className="py-14 md:py-20 bg-card border-t border-border/20">
+      <div className="container max-w-2xl">
         <motion.div
-          className="text-center mb-12"
-          initial={{ opacity: 0, y: 16 }}
+          className="text-center mb-10"
+          initial={{ opacity: 0, y: 12 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.4 }}
         >
-          <h2 className="font-heading text-xl md:text-3xl font-bold text-foreground mb-2">How LankaFix Works</h2>
-          <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Simple, transparent, trusted — 4 easy steps
-          </p>
+          <h2 className="font-heading text-xl md:text-2xl font-bold text-foreground mb-1.5">How It Works</h2>
+          <p className="text-sm text-muted-foreground">Four steps. No surprises.</p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-4xl mx-auto">
+        <div className="space-y-0">
           {steps.map((step, i) => (
             <motion.div
               key={i}
-              className="text-center space-y-4 group"
-              initial={{ opacity: 0, y: 20 }}
+              className="flex items-start gap-4 relative"
+              initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ delay: i * 0.12, duration: 0.45, ease: "easeOut" }}
+              viewport={{ once: true, margin: "-30px" }}
+              transition={{ delay: i * 0.08, duration: 0.4 }}
             >
-              <div className="relative inline-block">
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${step.gradient} text-primary mx-auto flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+              {/* Connecting line */}
+              {i < steps.length - 1 && (
+                <div className="absolute left-[23px] top-[48px] w-px h-[calc(100%-16px)] bg-border/50" />
+              )}
+              
+              <div className="relative z-10 shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-primary/8 text-primary flex items-center justify-center">
                   {step.icon}
                 </div>
-                <span className="absolute -top-1.5 -right-1.5 text-[10px] font-bold w-6 h-6 rounded-full flex items-center justify-center shadow-sm font-heading bg-gradient-brand text-primary-foreground">
-                  {step.num}
+                <span className="absolute -top-1 -right-1 text-[9px] font-bold w-5 h-5 rounded-full flex items-center justify-center bg-primary text-primary-foreground font-heading">
+                  {i + 1}
                 </span>
               </div>
-              <div>
-                <h3 className="font-heading font-bold text-foreground text-sm">{step.title}</h3>
-                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{step.desc}</p>
+
+              <div className="pb-8">
+                <h3 className="font-heading font-bold text-sm text-foreground mb-0.5">{step.title}</h3>
+                <p className="text-[12px] text-muted-foreground leading-relaxed">{step.desc}</p>
               </div>
             </motion.div>
           ))}
         </div>
 
         <motion.p
-          className="text-center text-xs text-muted-foreground mt-12 max-w-sm mx-auto leading-relaxed"
+          className="text-center text-xs text-muted-foreground/70 mt-4 max-w-sm mx-auto"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.6, duration: 0.5 }}
+          transition={{ delay: 0.4 }}
         >
-          Don't worry if you're unsure — LankaFix will help confirm the issue. No work starts without your approval.
+          Not sure what's wrong? No worries — we'll help you figure it out. No work starts without your approval.
         </motion.p>
       </div>
     </section>
