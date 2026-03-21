@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  ArrowLeft, Search, ShieldCheck, Package, RotateCcw, Truck, AlertTriangle,
+  Search, ShieldCheck, Package, RotateCcw, Truck, AlertTriangle,
   Scale, QrCode, ShoppingCart, ArrowRight, Printer, CheckCircle2, HelpCircle,
-  Camera, MessageCircle, Phone, Upload
+  Camera, MessageCircle, Phone, ChevronRight
 } from "lucide-react";
 import { searchConsumables, type FinderResult, type SearchResultGroup, type MatchConfidence } from "@/lib/consumableSearch";
 import { useCart } from "@/hooks/useConsumables";
@@ -32,20 +32,14 @@ const confidenceBadge = (c: MatchConfidence) => {
 function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: number }) {
   const navigate = useNavigate();
   const isInk = group.consumableType.toLowerCase().includes("ink");
-
   const smartfixImage = isInk ? smartfixInkBox : smartfixTonerBox;
 
-  // Determine cartridge type label
-  const typeLabel = group.isColor ? "Color" : "Black";
+  const typeLabel = group.isColor ? "Colour" : "Black";
   const categoryLabel = group.category.includes("Ink Tank") ? "Ink Bottle" :
     group.consumableType.includes("Toner") ? "Toner Cartridge" : "Ink Cartridge";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
-    >
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
       <Card className="overflow-hidden">
         <CardContent className="p-0">
           {/* Header */}
@@ -62,16 +56,14 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
               {group.brand} · {group.consumableType} · {group.category}
             </p>
             {group.yieldStr && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Yield: {group.yieldStr}
-              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Yield: {group.yieldStr}</p>
             )}
           </div>
 
           {/* Compatible printers */}
           <div className="px-4 py-2.5 border-b border-border">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
-              Works With
+              Compatible Printer Models
             </p>
             <div className="flex flex-wrap gap-1">
               {group.matchedPrinters.slice(0, 6).map((p) => (
@@ -97,7 +89,7 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
                   <ShieldCheck className="w-3.5 h-3.5 text-accent" />
                   <span className="text-[11px] font-semibold text-accent">SmartFix Compatible</span>
                 </div>
-                <div className="w-full h-24 rounded-md bg-white flex items-center justify-center mb-2 overflow-hidden">
+                <div className="w-full h-24 rounded-md bg-white dark:bg-muted flex items-center justify-center mb-2 overflow-hidden">
                   <img src={smartfixImage} alt="SmartFix Compatible" className="h-20 w-auto object-contain" />
                 </div>
                 <div className="space-y-1 text-[10px] text-muted-foreground">
@@ -105,7 +97,7 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
                   <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Warranty Backed</div>
                   <div className="flex items-center gap-1"><Scale className="w-2.5 h-2.5" /> Yield & Weight Declared</div>
                 </div>
-                <Button size="sm" className="w-full mt-3 text-xs h-8">
+                <Button size="sm" className="w-full mt-3 text-xs h-8" onClick={() => navigate("/consumables/compatible")}>
                   <ShoppingCart className="w-3 h-3 mr-1" /> View SmartFix Option
                 </Button>
               </div>
@@ -123,7 +115,7 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
                   <div className="flex items-center gap-1"><Package className="w-2.5 h-2.5" /> Original Manufacturer</div>
                   <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Manufacturer Warranty</div>
                 </div>
-                <Button size="sm" variant="outline" className="w-full mt-3 text-xs h-8">
+                <Button size="sm" variant="outline" className="w-full mt-3 text-xs h-8" onClick={() => navigate("/consumables/oem")}>
                   View OEM Option
                 </Button>
               </div>
@@ -131,11 +123,11 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
 
             {/* Actions row */}
             <div className="flex flex-wrap gap-2 mt-3">
-              <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2">
+              <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2" onClick={() => navigate("/consumables/compare")}>
                 <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare Options
               </Button>
               {group.refillEligible && (
-                <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2 text-orange-600">
+                <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2 text-orange-600" onClick={() => navigate("/consumables/refill")}>
                   <RotateCcw className="w-2.5 h-2.5 mr-0.5" /> Refill This Cartridge
                 </Button>
               )}
@@ -165,10 +157,9 @@ function LeadCaptureSection({ query }: { query: string }) {
       </div>
       <h3 className="text-base font-semibold text-foreground mb-1">We couldn't find an exact match</h3>
       <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">
-        No results for "<span className="font-medium text-foreground">{query}</span>". Don't worry — we can still help you find the right supply.
+        No results for "<span className="font-medium text-foreground">{query}</span>". Don't worry — we can still help.
       </p>
 
-      {/* Suggestions */}
       <div className="text-xs text-muted-foreground space-y-1 mb-5 max-w-sm mx-auto text-left bg-muted/30 rounded-lg p-3">
         <p className="font-medium text-foreground mb-1.5">💡 Try searching with:</p>
         <p>• Full printer model — e.g. <span className="font-medium text-foreground">Canon PIXMA E410</span></p>
@@ -176,7 +167,6 @@ function LeadCaptureSection({ query }: { query: string }) {
         <p>• Brand + model — e.g. <span className="font-medium text-foreground">Brother HL-L2321D</span></p>
       </div>
 
-      {/* Lead Capture Actions */}
       <div className="space-y-2 max-w-xs mx-auto">
         <Button className="w-full" size="sm" asChild>
           <a href={whatsappLink(SUPPORT_WHATSAPP, whatsappMsg)} target="_blank" rel="noopener noreferrer">
@@ -222,16 +212,21 @@ const ConsumablesResultsPage = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="max-w-2xl mx-auto px-4 py-6 pb-24">
-        <div className="flex items-center justify-between mb-4">
-          <Link to="/consumables" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="w-4 h-4" /> Back
-          </Link>
+        {/* Breadcrumb */}
+        <nav className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap">
+            <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+            <ChevronRight className="w-3 h-3" />
+            <Link to="/consumables" className="hover:text-foreground transition-colors">Printer Supplies</Link>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-foreground font-medium">Results</span>
+          </div>
           {cart.count > 0 && (
             <Button size="sm" variant="outline" className="text-xs" onClick={() => navigate("/consumables/cart")}>
               <ShoppingCart className="w-3.5 h-3.5 mr-1" /> Cart ({cart.count})
             </Button>
           )}
-        </div>
+        </nav>
 
         {/* Search bar */}
         <div className="flex gap-2 mb-4">
@@ -270,7 +265,7 @@ const ConsumablesResultsPage = () => {
             <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
             <div>
               <p className="text-xs text-orange-800 dark:text-orange-200">
-                Please confirm your printer model matches before ordering. Try entering the full model name or exact toner code for an exact match.
+                Please confirm your printer model matches before ordering. Try entering the full model name or exact supply code for an exact match.
               </p>
               <a
                 href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, I searched for "${searchQ}" and want to verify the match before ordering.`)}
@@ -292,7 +287,7 @@ const ConsumablesResultsPage = () => {
           </div>
         )}
 
-        {/* No results — Lead capture */}
+        {/* No results */}
         {searchQ && result.groups.length === 0 && (
           <LeadCaptureSection query={searchQ} />
         )}

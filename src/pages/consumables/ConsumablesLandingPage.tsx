@@ -14,7 +14,7 @@ import { whatsappLink, SUPPORT_WHATSAPP } from "@/config/contact";
 import {
   Search, Printer, ShieldCheck, RotateCcw, QrCode, Camera, ScanLine,
   Package, ArrowRight, RefreshCw, FileText, HelpCircle, ShoppingCart,
-  MessageCircle, Phone, Upload
+  MessageCircle, ChevronRight
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -51,22 +51,17 @@ const ConsumablesLandingPage = () => {
     navigate(`/consumables/results?q=${encodeURIComponent(label)}`);
   };
 
-  const handlePhotoUpload = () => {
-    fileInputRef.current?.click();
-  };
+  const handlePhotoUpload = () => fileInputRef.current?.click();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // For now, navigate to results with a photo-upload indicator
-      navigate(`/consumables/results?photo=pending`);
-    }
+    if (file) navigate(`/consumables/results?photo=pending`);
   };
 
   const segments = [
-    { title: "SmartFix Verified Compatible", desc: "QR-backed, warranty-protected, better value", icon: ShieldCheck, color: "text-accent", link: "/consumables/compatible" },
+    { title: "SmartFix Compatible", desc: "QR-backed, warranty-protected, better value", icon: ShieldCheck, color: "text-accent", link: "/consumables/compatible" },
     { title: "Genuine OEM Supplies", desc: "Original manufacturer cartridges & toner", icon: Package, color: "text-primary", link: "/consumables/oem" },
-    { title: "SmartFix Premium Refill", desc: "Pickup → Inspect → Refill → Test → Return", icon: RotateCcw, color: "text-orange-600", link: "/consumables/refill" },
+    { title: "SmartFix Refill", desc: "Refill eligible ink cartridges with premium ink", icon: RotateCcw, color: "text-orange-600", link: "/consumables/refill" },
   ];
 
   const quickActions: Array<{ label: string; icon: typeof RefreshCw; link: string; external?: boolean }> = [
@@ -80,8 +75,15 @@ const ConsumablesLandingPage = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="max-w-2xl mx-auto px-4 py-6 pb-24">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-5 flex-wrap">
+          <Link to="/" className="hover:text-foreground transition-colors">Home</Link>
+          <ChevronRight className="w-3 h-3" />
+          <span className="text-foreground font-medium">Printer Supplies</span>
+        </nav>
+
         {/* Hero Title */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Printer className="w-6 h-6 text-primary" />
@@ -130,7 +132,6 @@ const ConsumablesLandingPage = () => {
                   onKeyDown={(e) => { if (e.key === "Enter") { setShowSuggestions(false); handleSearch(); } }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  className="pr-3"
                 />
                 {showSuggestions && suggestions.length > 0 && (
                   <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -149,8 +150,7 @@ const ConsumablesLandingPage = () => {
                 )}
               </div>
               <Button onClick={() => { setShowSuggestions(false); handleSearch(); }} className="px-5">
-                <Search className="w-4 h-4 mr-1.5" />
-                Find
+                <Search className="w-4 h-4 mr-1.5" /> Find
               </Button>
             </div>
           </div>
@@ -186,18 +186,13 @@ const ConsumablesLandingPage = () => {
             </Button>
           </div>
 
-          {/* Hidden file input for photo upload */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFileChange}
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
         </motion.div>
 
-        {/* Segment Cards */}
+        {/* 3 Segment Cards */}
+        <div className="mb-1">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Browse by Category</p>
+        </div>
         <div className="space-y-3 mb-6">
           {segments.map((seg, i) => (
             <motion.div key={seg.title} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 + i * 0.05 }}>
