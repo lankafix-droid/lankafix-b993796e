@@ -337,8 +337,8 @@ export function useCustomerProfile() {
         }
 
         // Check escalation rules
-        const { checkEscalationRules } = require("@/lib/categoryOnboardingConfig");
-        const fired = checkEscalationRules(categoryCode, categoryAnswers);
+        const { checkEscalationRules: checkRules } = await import("@/lib/categoryOnboardingConfig");
+        const fired = checkRules(categoryCode, categoryAnswers);
         for (const rule of fired) {
           escalations.push({ action: rule.action, message: rule.message, severity: rule.severity });
         }
