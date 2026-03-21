@@ -5,110 +5,165 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Search, ShieldCheck, Package, RotateCcw, Truck, AlertTriangle, Scale, QrCode, ShoppingCart, ArrowRight } from "lucide-react";
-import { useConsumableSearch, useCart, type ConsumableResult, type MatchConfidence } from "@/hooks/useConsumables";
+import {
+  ArrowLeft, Search, ShieldCheck, Package, RotateCcw, Truck, AlertTriangle,
+  Scale, QrCode, ShoppingCart, ArrowRight, Printer, CheckCircle2, HelpCircle, Camera
+} from "lucide-react";
+import { searchConsumables, type FinderResult, type SearchResultGroup, type MatchConfidence } from "@/lib/consumableSearch";
+import { useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import smartfixTonerBox from "@/assets/smartfix-toner-box.png";
+import smartfixInkBox from "@/assets/smartfix-ink-box.png";
 
 const confidenceBadge = (c: MatchConfidence) => {
   switch (c) {
-    case "exact": return <Badge className="bg-accent text-accent-foreground text-[10px]">Exact Match</Badge>;
-    case "likely": return <Badge variant="secondary" className="text-[10px]">Likely Match</Badge>;
-    default: return <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600">Needs Verification</Badge>;
+    case "exact":
+      return <Badge className="bg-accent text-accent-foreground text-[10px]"><CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />Exact Match</Badge>;
+    case "likely":
+      return <Badge variant="secondary" className="text-[10px]">Likely Match</Badge>;
+    default:
+      return <Badge variant="outline" className="text-[10px] border-orange-300 text-orange-600"><AlertTriangle className="w-2.5 h-2.5 mr-0.5" />Needs Verification</Badge>;
   }
 };
 
-const rangeBadge = (range: string) => {
-  if (range === "smartfix_compatible") return <Badge className="bg-accent/10 text-accent text-[10px] border border-accent/20"><ShieldCheck className="w-2.5 h-2.5 mr-0.5" />SmartFix Verified</Badge>;
-  return <Badge className="bg-primary/10 text-primary text-[10px] border border-primary/20"><Package className="w-2.5 h-2.5 mr-0.5" />Genuine OEM</Badge>;
-};
+function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: number }) {
+  const navigate = useNavigate();
+  const isInk = group.consumableType.toLowerCase().includes("ink");
+  const isToner = group.consumableType.toLowerCase().includes("toner");
 
-const ProductCard = ({ product, onAddToCart, navigate }: { product: ConsumableResult; onAddToCart: () => void; navigate: any }) => (
-  <Card className="hover:shadow-md transition-shadow">
-    <CardContent className="p-4">
-      <div className="flex items-start gap-3">
-        <div className="w-14 h-14 rounded-lg bg-muted flex items-center justify-center text-2xl shrink-0">🖨️</div>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap gap-1 mb-1.5">
-            {rangeBadge(product.range_type)}
-            {confidenceBadge(product.confidence)}
-          </div>
-          <h3 className="text-sm font-semibold text-foreground leading-tight">{product.title}</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">{product.sku_code} · {product.brand}</p>
+  // Choose correct SmartFix image
+  const smartfixImage = isInk ? smartfixInkBox : smartfixTonerBox;
 
-          {/* Trust Badges */}
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {product.warranty_days && <Badge variant="outline" className="text-[9px] border-accent/30 text-accent">Warranty {product.warranty_days}d</Badge>}
-            {product.qr_enabled && <Badge variant="outline" className="text-[9px]"><QrCode className="w-2 h-2 mr-0.5" />QR Verified</Badge>}
-            {product.yield_pages && <Badge variant="outline" className="text-[9px]">Yield Declared</Badge>}
-            {product.net_weight_grams && <Badge variant="outline" className="text-[9px]"><Scale className="w-2 h-2 mr-0.5" />Weight Declared</Badge>}
-            {product.express_delivery_eligible && <Badge variant="outline" className="text-[9px]"><Truck className="w-2 h-2 mr-0.5" />Express</Badge>}
-            {product.stock_qty > 0 ? <Badge variant="secondary" className="text-[9px]">In Stock</Badge> : <Badge variant="destructive" className="text-[9px]">Out of Stock</Badge>}
-          </div>
-
-          {/* Specs row */}
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-2 text-[11px] text-muted-foreground">
-            {product.yield_pages && <span>Yield: {product.yield_pages.toLocaleString()} pages</span>}
-            {product.net_weight_grams && <span>Weight: {product.net_weight_grams}g</span>}
-          </div>
-
-          {/* Matched models */}
-          {product.matched_models.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              <span className="text-[10px] text-muted-foreground">Fits:</span>
-              {product.matched_models.slice(0, 3).map((m) => (
-                <Badge key={m.id} variant="outline" className="text-[9px]">{m.model_name}</Badge>
-              ))}
-              {product.matched_models.length > 3 && <Badge variant="outline" className="text-[9px]">+{product.matched_models.length - 3} more</Badge>}
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+    >
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          {/* Header: Supply code + confidence */}
+          <div className="px-4 pt-4 pb-2 border-b border-border bg-muted/30">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-bold text-foreground">{group.supplyCode}</span>
+                <Badge variant="outline" className="text-[9px]">{group.isColor ? "Color" : "Black"}</Badge>
+              </div>
+              {confidenceBadge(group.confidence)}
             </div>
-          )}
+            <p className="text-xs text-muted-foreground">
+              {group.brand} · {group.consumableType} · {group.category}
+            </p>
+            {group.yieldStr && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Yield: {group.yieldStr}
+              </p>
+            )}
+          </div>
 
-          <div className="flex items-center justify-between mt-3">
-            <span className="text-base font-bold text-foreground">LKR {Number(product.price).toLocaleString()}</span>
-            <div className="flex gap-1.5">
-              <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => navigate(`/consumables/product/${product.id}`)}>Details</Button>
-              <Button size="sm" className="text-xs h-8" onClick={onAddToCart} disabled={product.stock_qty <= 0}>
-                <ShoppingCart className="w-3 h-3 mr-1" />Add
+          {/* Compatible printers */}
+          <div className="px-4 py-2.5 border-b border-border">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+              Works With
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {group.matchedPrinters.slice(0, 6).map((p) => (
+                <Badge key={p} variant="outline" className="text-[10px] font-normal">
+                  <Printer className="w-2.5 h-2.5 mr-0.5" />{group.brand} {p}
+                </Badge>
+              ))}
+              {group.matchedPrinters.length > 6 && (
+                <Badge variant="outline" className="text-[10px]">+{group.matchedPrinters.length - 6} more</Badge>
+              )}
+            </div>
+          </div>
+
+          {/* SmartFix + OEM Options side by side */}
+          <div className="p-4">
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
+              Available Options
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* SmartFix Compatible */}
+              <div className="rounded-lg border-2 border-accent/30 bg-accent/5 p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-accent" />
+                  <span className="text-[11px] font-semibold text-accent">SmartFix Compatible</span>
+                </div>
+                <div className="w-full h-24 rounded-md bg-white flex items-center justify-center mb-2 overflow-hidden">
+                  <img src={smartfixImage} alt="SmartFix Compatible" className="h-20 w-auto object-contain" />
+                </div>
+                <div className="space-y-1 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-1"><QrCode className="w-2.5 h-2.5" /> QR Verified</div>
+                  <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Warranty Backed</div>
+                  <div className="flex items-center gap-1"><Scale className="w-2.5 h-2.5" /> Yield & Weight Declared</div>
+                </div>
+                <Button size="sm" className="w-full mt-3 text-xs h-8">
+                  <ShoppingCart className="w-3 h-3 mr-1" /> View SmartFix Option
+                </Button>
+              </div>
+
+              {/* Genuine OEM */}
+              <div className="rounded-lg border border-border bg-card p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Package className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[11px] font-semibold text-primary">Genuine OEM</span>
+                </div>
+                <div className="w-full h-24 rounded-md bg-muted flex items-center justify-center mb-2">
+                  <Package className="w-10 h-10 text-muted-foreground/30" />
+                </div>
+                <div className="space-y-1 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-1"><Package className="w-2.5 h-2.5" /> Original Manufacturer</div>
+                  <div className="flex items-center gap-1"><ShieldCheck className="w-2.5 h-2.5" /> Manufacturer Warranty</div>
+                </div>
+                <Button size="sm" variant="outline" className="w-full mt-3 text-xs h-8">
+                  View OEM Option
+                </Button>
+              </div>
+            </div>
+
+            {/* Actions row */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2">
+                <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare Options
+              </Button>
+              <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2">
+                <RotateCcw className="w-2.5 h-2.5 mr-0.5" /> Refill This Cartridge
               </Button>
             </div>
           </div>
 
-          {/* Compare link */}
-          {product.alternative_id && (
-            <Button variant="ghost" size="sm" className="text-[10px] h-6 mt-1 px-0 text-primary"
-              onClick={() => navigate(`/consumables/compare?sf=${product.range_type === "smartfix_compatible" ? product.id : product.alternative_id}&oem=${product.range_type === "genuine_oem" ? product.id : product.alternative_id}`)}>
-              <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare SmartFix vs OEM
-            </Button>
+          {/* Notes */}
+          {group.notes && (
+            <div className="px-4 pb-3">
+              <p className="text-[10px] text-muted-foreground italic bg-muted/30 rounded p-2">{group.notes}</p>
+            </div>
           )}
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
 
 const ConsumablesResultsPage = () => {
   const [params] = useSearchParams();
   const initialQ = params.get("q") || "";
+  const initialBrand = params.get("brand") || "";
   const [query, setQuery] = useState(initialQ);
   const [searchQ, setSearchQ] = useState(initialQ);
-  const { data, isLoading } = useConsumableSearch(searchQ);
   const navigate = useNavigate();
   const cart = useCart();
 
-  const handleSearch = () => { if (query.trim()) setSearchQ(query.trim()); };
+  const result: FinderResult = useMemo(() => {
+    if (!searchQ || searchQ.length < 2) {
+      return { query: searchQ, groups: [], confidence: "needs_verification" as const, matchType: "no_match" as const };
+    }
+    return searchConsumables(searchQ, initialBrand || undefined);
+  }, [searchQ, initialBrand]);
 
-  const addToCart = (p: ConsumableResult) => {
-    cart.addItem({
-      productId: p.id,
-      title: p.title,
-      sku_code: p.sku_code,
-      brand: p.brand,
-      range_type: p.range_type,
-      price: p.price,
-      stock_qty: p.stock_qty,
-      express_eligible: !!p.express_delivery_eligible,
-      confidence: p.confidence,
-    });
+  const handleSearch = () => {
+    if (query.trim()) setSearchQ(query.trim());
   };
 
   return (
@@ -126,40 +181,91 @@ const ConsumablesResultsPage = () => {
           )}
         </div>
 
+        {/* Search bar */}
         <div className="flex gap-2 mb-4">
-          <Input placeholder="Search printer model or toner code..." value={query} onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()} className="flex-1" />
+          <Input
+            placeholder="Search printer model or toner code..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="flex-1"
+          />
           <Button onClick={handleSearch} size="icon"><Search className="w-4 h-4" /></Button>
         </div>
 
-        {/* Confirmation Banner */}
-        <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 flex items-start gap-2">
-          <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-          <p className="text-xs text-orange-800 dark:text-orange-200">
-            Please confirm your printer matches one of the supported models before ordering.
-          </p>
-        </div>
-
-        {isLoading && <div className="text-center py-8 text-sm text-muted-foreground">Searching...</div>}
-
-        {data && data.results.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-sm text-muted-foreground mb-3">No matches found for "{searchQ}"</p>
-            <div className="flex flex-col items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => navigate("/consumables/finder")}>Try Guided Finder</Button>
-              <p className="text-[10px] text-muted-foreground">Or upload a photo / contact LankaFix for help</p>
+        {/* Match summary */}
+        {result.groups.length > 0 && (
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-sm font-medium text-foreground">
+                {result.groups.length} supply code{result.groups.length !== 1 ? "s" : ""} found
+              </p>
+              {confidenceBadge(result.confidence)}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {result.matchType === "exact_code" && "Matched by supply code"}
+              {result.matchType === "exact_model" && "Matched by printer model"}
+              {result.matchType === "alias_match" && "Matched by model alias"}
+              {result.matchType === "fuzzy" && "Partial match — please verify"}
+            </p>
           </div>
         )}
 
-        {data && data.results.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">{data.results.length} result(s) · {data.matchType.replace(/_/g, " ")}</p>
-            {data.results.map((product, i) => (
-              <motion.div key={product.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                <ProductCard product={product} onAddToCart={() => addToCart(product)} navigate={navigate} />
-              </motion.div>
+        {/* Verification Banner for non-exact */}
+        {result.groups.length > 0 && result.confidence !== "exact" && (
+          <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
+            <p className="text-xs text-orange-800 dark:text-orange-200">
+              Please confirm your printer model matches before ordering. Try entering the full model name or exact toner code for an exact match.
+            </p>
+          </div>
+        )}
+
+        {/* Results */}
+        {result.groups.length > 0 && (
+          <div className="space-y-4">
+            {result.groups.map((group, i) => (
+              <SupplyResultCard key={`${group.brand}-${group.supplyCode}`} group={group} index={i} />
             ))}
+          </div>
+        )}
+
+        {/* No results */}
+        {searchQ && result.groups.length === 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+              <Search className="w-7 h-7 text-muted-foreground" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground mb-1">We couldn't find an exact match</h3>
+            <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+              No results for "<span className="font-medium">{searchQ}</span>". Try searching with the full printer model name or exact toner/cartridge code.
+            </p>
+            <div className="space-y-2 max-w-xs mx-auto">
+              <div className="text-xs text-muted-foreground space-y-1 mb-4">
+                <p>💡 Try: <span className="font-medium text-foreground">Canon PIXMA E410</span></p>
+                <p>💡 Try: <span className="font-medium text-foreground">HP 85A</span> or <span className="font-medium text-foreground">CE285A</span></p>
+                <p>💡 Try: <span className="font-medium text-foreground">Brother TN-2305</span></p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate("/consumables/finder")}>
+                <HelpCircle className="w-3.5 h-3.5 mr-1.5" /> Need Help Matching?
+              </Button>
+              <Button variant="ghost" size="sm" className="text-xs">
+                <Camera className="w-3.5 h-3.5 mr-1.5" /> Upload a Photo Instead
+              </Button>
+              <Button variant="ghost" size="sm" className="text-xs" asChild>
+                <a href="https://wa.me/94XXXXXXXXX" target="_blank" rel="noopener noreferrer">
+                  Contact LankaFix
+                </a>
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Initial state */}
+        {!searchQ && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Printer className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Enter a printer model or supply code to find matching consumables</p>
           </div>
         )}
       </main>
