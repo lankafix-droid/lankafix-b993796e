@@ -1,13 +1,13 @@
 /**
- * useCustomerProfile — Enhanced profile hook with Phase-1 serviceability,
- * weighted completion engine, consent management, and booking readiness checks.
+ * useCustomerProfile — Production-grade profile hook with Phase-1 serviceability,
+ * weighted completion, consent management, and category-aware booking readiness.
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { checkServiceability, type ServiceabilityResult } from "@/lib/serviceabilityEngine";
-import { getCategoryOnboarding, BASE_BOOKING_REQUIREMENTS } from "@/lib/categoryOnboardingConfig";
+import { getCategoryRules, type AddressVerificationState } from "@/lib/categoryOnboardingConfig";
 
 export interface CustomerProfile {
   id: string;
@@ -52,7 +52,17 @@ export interface SavedAddress {
   floor_or_unit: string | null;
   parking_notes: string | null;
   access_notes: string | null;
+  verification_state: AddressVerificationState;
+  admin_serviceability_override: boolean | null;
   created_at: string;
+}
+
+export interface BookingReadiness {
+  ready: boolean;
+  missing: string[];
+  errors: string[];
+  serviceability: ServiceabilityResult | null;
+  escalations: { action: string; message: string; severity: string }[];
 }
 
 export function useCustomerProfile() {
@@ -89,6 +99,21 @@ export function useCustomerProfile() {
     enabled: !!user,
   });
 
+  const consentsQuery = useQuery({
+    queryKey: ["customer-consents", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data, error } = await supabase
+        .from("consent_records")
+        .select("consent_key, accepted")
+        .eq("user_id", user.id)
+        .eq("accepted", true);
+      if (error) throw error;
+      return (data || []).map(r => r.consent_key);
+    },
+    enabled: !!user,
+  });
+
   const updateProfile = useMutation({
     mutationFn: async (updates: Partial<CustomerProfile>) => {
       if (!user) throw new Error("Not authenticated");
@@ -102,22 +127,25 @@ export function useCustomerProfile() {
       queryClient.invalidateQueries({ queryKey: ["customer-profile", user?.id] });
       toast.success("Profile updated");
     },
-    onError: (err: any) => {
-      toast.error(err.message || "Failed to update profile");
-    },
+    onError: (err: any) => toast.error(err.message || "Failed to update profile"),
   });
 
   const saveAddress = useMutation({
-    mutationFn: async (address: Omit<SavedAddress, "id" | "customer_id" | "created_at">) => {
+    mutationFn: async (address: Omit<SavedAddress, "id" | "customer_id" | "created_at" | "verification_state" | "admin_serviceability_override">) => {
       if (!user) throw new Error("Not authenticated");
-      // Auto-determine serviceability
       let serviceZone: string | null = null;
       let phase1Serviceable = false;
+      let verificationState: AddressVerificationState = "needs_verification";
+
       if (address.latitude && address.longitude) {
         const result = checkServiceability(address.latitude, address.longitude);
         serviceZone = result.serviceZone;
         phase1Serviceable = result.phase1Serviceable;
+        verificationState = result.status === "inside" ? "verified_serviceable"
+          : result.status === "edge" ? "edge_serviceable"
+          : "outside_coverage";
       }
+
       const { error } = await supabase
         .from("customer_addresses")
         .insert({
@@ -125,6 +153,7 @@ export function useCustomerProfile() {
           customer_id: user.id,
           service_zone: serviceZone,
           phase1_serviceable: phase1Serviceable,
+          verification_state: verificationState,
         } as any);
       if (error) throw error;
     },
@@ -136,12 +165,13 @@ export function useCustomerProfile() {
 
   const updateAddress = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<SavedAddress> & { id: string }) => {
-      // Re-check serviceability if coordinates changed
       let extra: any = {};
       if (updates.latitude && updates.longitude) {
         const result = checkServiceability(updates.latitude, updates.longitude);
         extra.service_zone = result.serviceZone;
         extra.phase1_serviceable = result.phase1Serviceable;
+        extra.verification_state = result.status === "inside" ? "verified_serviceable"
+          : result.status === "edge" ? "edge_serviceable" : "outside_coverage";
       }
       const { error } = await supabase
         .from("customer_addresses")
@@ -157,36 +187,28 @@ export function useCustomerProfile() {
 
   const deleteAddress = useMutation({
     mutationFn: async (addressId: string) => {
-      const { error } = await supabase
-        .from("customer_addresses")
-        .delete()
-        .eq("id", addressId);
+      const addresses = addressesQuery.data || [];
+      const target = addresses.find(a => a.id === addressId);
+      if (target?.is_default && addresses.filter(a => a.phase1_serviceable).length <= 1) {
+        throw new Error("Cannot delete your only serviceable default address. Add another address first.");
+      }
+      const { error } = await supabase.from("customer_addresses").delete().eq("id", addressId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customer-addresses", user?.id] });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customer-addresses", user?.id] }),
+    onError: (err: any) => toast.error(err.message),
   });
 
   const setDefaultAddress = useMutation({
     mutationFn: async (addressId: string) => {
       if (!user) throw new Error("Not authenticated");
-      // Unset all defaults first
-      await supabase
-        .from("customer_addresses")
-        .update({ is_default: false } as any)
-        .eq("customer_id", user.id);
-      // Set the new default
-      const { error } = await supabase
-        .from("customer_addresses")
-        .update({ is_default: true } as any)
-        .eq("id", addressId);
+      const { data, error } = await supabase.rpc("set_default_address_safe", {
+        _user_id: user.id,
+        _address_id: addressId,
+      });
       if (error) throw error;
-      // Update profile primary_address_id
-      await supabase
-        .from("profiles")
-        .update({ primary_address_id: addressId } as any)
-        .eq("user_id", user.id);
+      const result = data as any;
+      if (!result?.success) throw new Error(result?.error || "Failed to set default");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer-addresses", user?.id] });
@@ -195,21 +217,17 @@ export function useCustomerProfile() {
     },
   });
 
-  // Record consent
   const recordConsent = useMutation({
     mutationFn: async (params: { consentType: string; consentKey: string; accepted: boolean; context?: any }) => {
       if (!user) throw new Error("Not authenticated");
-      const { error } = await supabase
-        .from("consent_records")
-        .insert({
-          user_id: user.id,
-          consent_type: params.consentType,
-          consent_key: params.consentKey,
-          accepted: params.accepted,
-          context: params.context || {},
-        } as any);
+      const { error } = await supabase.from("consent_records").insert({
+        user_id: user.id,
+        consent_type: params.consentType,
+        consent_key: params.consentKey,
+        accepted: params.accepted,
+        context: params.context || {},
+      } as any);
       if (error) throw error;
-      // Also update consent_flags on profile
       const flags = profileQuery.data?.consent_flags || {};
       await supabase
         .from("profiles")
@@ -218,15 +236,19 @@ export function useCustomerProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer-profile", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["customer-consents", user?.id] });
     },
   });
 
-  // Calculate weighted completion
+  // Derived state
   const p = profileQuery.data;
   const addresses = addressesQuery.data || [];
+  const acceptedConsents = consentsQuery.data || [];
   const hasAddress = addresses.length > 0;
   const defaultAddr = addresses.find(a => a.is_default) || addresses[0];
-  const hasServiceableAddress = addresses.some(a => a.phase1_serviceable);
+  const hasServiceableAddress = addresses.some(a =>
+    a.phase1_serviceable || a.admin_serviceability_override
+  );
 
   const missingFields: string[] = [];
   if (p) {
@@ -237,62 +259,117 @@ export function useCustomerProfile() {
   }
   if (!hasAddress) missingFields.push("address");
 
-  // Weighted completion
   const completionPct = p
     ? Math.min(100,
-        (p.full_name ? 15 : 0) +
-        (p.email ? 15 : 0) +
-        (p.phone ? 20 : 0) +
-        (p.avatar_url ? 5 : 0) +
-        (p.district ? 5 : 0) +
-        (hasAddress ? 15 : 0) +
-        (hasServiceableAddress ? 10 : 0) +
-        (p.preferred_contact_method ? 5 : 0) +
+        (p.full_name ? 15 : 0) + (p.email ? 15 : 0) + (p.phone ? 20 : 0) +
+        (p.avatar_url ? 5 : 0) + (p.district ? 5 : 0) + (hasAddress ? 15 : 0) +
+        (hasServiceableAddress ? 10 : 0) + (p.preferred_contact_method ? 5 : 0) +
         (p.onboarding_completed ? 10 : 0)
       )
     : 0;
 
-  // Booking readiness for a given category
-  function getBookingReadiness(categoryCode?: string): {
-    ready: boolean;
-    missing: string[];
-    serviceability: ServiceabilityResult | null;
-  } {
+  /** Category-aware booking readiness check */
+  function getBookingReadiness(categoryCode?: string, categoryAnswers?: Record<string, any>): BookingReadiness {
     const missing: string[] = [];
+    const errors: string[] = [];
+    const escalations: { action: string; message: string; severity: string }[] = [];
 
     if (!user) missing.push("authentication");
     if (!p?.full_name) missing.push("full_name");
     if (!p?.phone) missing.push("phone");
     if (!hasAddress) missing.push("address");
 
-    // Serviceability check
+    // Serviceability
     let serviceability: ServiceabilityResult | null = null;
     if (defaultAddr?.latitude && defaultAddr?.longitude) {
       serviceability = checkServiceability(defaultAddr.latitude, defaultAddr.longitude);
-      if (!serviceability.phase1Serviceable) missing.push("serviceable_address");
+      if (!serviceability.phase1Serviceable && !defaultAddr.admin_serviceability_override) {
+        errors.push("address_outside_coverage");
+      }
+    } else if (defaultAddr && !defaultAddr.admin_serviceability_override) {
+      missing.push("address_coordinates");
     } else if (!hasServiceableAddress) {
       missing.push("serviceable_address");
     }
 
-    // Category-specific requirements
+    // Address verification state
+    if (defaultAddr?.verification_state === "needs_verification" && !defaultAddr.admin_serviceability_override) {
+      missing.push("address_verification");
+    }
+
+    // Category rules
     if (categoryCode) {
-      const catConfig = getCategoryOnboarding(categoryCode);
-      if (catConfig) {
-        const consentFlags = p?.consent_flags || {};
-        for (const field of catConfig.fields) {
-          if (field.required && field.consentType && !consentFlags[field.consentType]) {
-            missing.push(`consent:${field.consentType}`);
+      const rules = getCategoryRules(categoryCode);
+
+      // Required profile fields
+      for (const field of rules.requiredProfileFields) {
+        if (!p?.[field as keyof CustomerProfile] && !missing.includes(field)) {
+          missing.push(field);
+        }
+      }
+
+      // Required address fields
+      if (defaultAddr) {
+        for (const field of rules.requiredAddressFields) {
+          if (!defaultAddr[field as keyof SavedAddress]) {
+            missing.push(`address_${field}`);
           }
+        }
+      }
+
+      // Required consents
+      for (const consentKey of rules.requiredConsents) {
+        if (!acceptedConsents.includes(consentKey) && !(p?.consent_flags as any)?.[consentKey]) {
+          missing.push(`consent:${consentKey}`);
+        }
+      }
+
+      // Required category answers
+      if (categoryAnswers) {
+        const requiredFields = rules.fields.filter(f => f.required);
+        for (const field of requiredFields) {
+          // Skip conditional fields that shouldn't be visible
+          if (field.showWhen && !field.showWhen.values.includes(categoryAnswers[field.showWhen.field])) continue;
+          if (field.consentType) continue; // handled by consents above
+          if (!categoryAnswers[field.key]) {
+            missing.push(`category:${field.key}`);
+          }
+        }
+
+        // Check escalation rules
+        const { checkEscalationRules } = require("@/lib/categoryOnboardingConfig");
+        const fired = checkEscalationRules(categoryCode, categoryAnswers);
+        for (const rule of fired) {
+          escalations.push({ action: rule.action, message: rule.message, severity: rule.severity });
         }
       }
     }
 
-    return { ready: missing.length === 0, missing, serviceability };
+    return {
+      ready: missing.length === 0 && errors.length === 0,
+      missing,
+      errors,
+      serviceability,
+      escalations,
+    };
+  }
+
+  /** Validate booking readiness via backend RPC */
+  async function validateBookingBackend(categoryCode: string, addressId?: string) {
+    if (!user) return { ready: false, missing: ["authentication"], errors: [] };
+    const { data, error } = await supabase.rpc("validate_booking_readiness", {
+      _user_id: user.id,
+      _category_code: categoryCode,
+      _address_id: addressId || null,
+    });
+    if (error) throw error;
+    return data as { ready: boolean; missing: string[]; errors: string[]; admin_override: boolean };
   }
 
   return {
     profile: profileQuery.data,
     addresses,
+    acceptedConsents,
     isLoading: profileQuery.isLoading,
     updateProfile,
     saveAddress,
@@ -306,5 +383,6 @@ export function useCustomerProfile() {
     hasServiceableAddress,
     defaultAddress: defaultAddr ?? null,
     getBookingReadiness,
+    validateBookingBackend,
   };
 }
