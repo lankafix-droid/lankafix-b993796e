@@ -167,7 +167,7 @@ const ConsumablesRefillPage = () => {
       service_fee: 800,
       pickup_fee: pickupFee,
       total: 800 + pickupFee,
-      condition_data: {},
+      condition_data: { is_original: true, refilled_before: false, physical_damage: false, leakage: false, color_type: "black", print_issue: "", urgency: "standard" },
       derived_eligibility: "eligible",
     }, {
       onSuccess: () => setStep("submitted"),
