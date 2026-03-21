@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Search, Zap, ArrowRight, ShieldCheck, Eye, Award, FileText, MapPin, CheckCircle2, Clock, Snowflake, Smartphone, Monitor, Tv, KeyRound, Wallet } from "lucide-react";
+import { Search, ArrowRight, ShieldCheck, Eye, Wallet, Award, MapPin, CheckCircle2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { track } from "@/lib/analytics";
 import { searchServices, type SearchResult } from "@/data/v2CategoryFlows";
 import LocationBar from "@/components/v2/location/LocationBar";
-import AtmosphereBadge from "@/components/atmosphere/AtmosphereBadge";
 
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
@@ -15,38 +13,22 @@ import heroIT from "@/assets/hero-it-repair.jpg";
 import heroTechnician from "@/assets/hero-technician.jpg";
 
 const BANNERS = [
-  { image: heroTechnician, headline: "Sri Lanka's Trusted\nService Platform", sub: "Verified technicians · Transparent pricing · Warranty-backed repairs" },
-  { image: heroMobile, headline: "Broken Phone?\nFixed Today", sub: "Genuine parts · Same-day repair · Data-safe process" },
-  { image: heroAC, headline: "Expert AC Repair\nin 2 Hours", sub: "Same-day service across Greater Colombo" },
-  { image: heroCCTV, headline: "Professional CCTV\nInstallation", sub: "Site inspection included · Residential & commercial" },
-  { image: heroIT, headline: "IT Problems?\nExpert Help Fast", sub: "Remote & on-site support for homes and businesses" },
+  { image: heroTechnician, headline: "Verified Tech.\nFixed Fast.", sub: "Background-checked technicians · Transparent pricing · Service warranty" },
+  { image: heroMobile, headline: "Phone Broken?\nFixed Today.", sub: "Genuine parts · Same-day screen repair · Data-safe process" },
+  { image: heroAC, headline: "AC Not Cooling?\n2-Hour Fix.", sub: "Gas top-up, repair & servicing across Greater Colombo" },
+  { image: heroCCTV, headline: "Professional\nCCTV Setup.", sub: "Site inspection included · Residential & commercial" },
+  { image: heroIT, headline: "IT Problems?\nSorted Fast.", sub: "Remote & on-site support for homes and businesses" },
 ];
 
 const TRUST_PILLS = [
-  { icon: <KeyRound className="w-3.5 h-3.5" />, label: "OTP Verified Visit" },
-  { icon: <Eye className="w-3.5 h-3.5" />, label: "Transparent Pricing" },
-  { icon: <Award className="w-3.5 h-3.5" />, label: "Service Warranty" },
-  { icon: <Wallet className="w-3.5 h-3.5" />, label: "Pay After Service" },
-  { icon: <FileText className="w-3.5 h-3.5" />, label: "Digital Invoice" },
-];
-
-const CATEGORY_SHORTCUTS = [
-  { icon: <Snowflake className="w-4 h-4" />, label: "AC", link: "/book/AC" },
-  { icon: <Smartphone className="w-4 h-4" />, label: "Mobile", link: "/book/MOBILE" },
-  { icon: <Monitor className="w-4 h-4" />, label: "IT", link: "/book/IT" },
-  { icon: <Tv className="w-4 h-4" />, label: "Electronics", link: "/book/CONSUMER_ELEC" },
+  { icon: <ShieldCheck className="w-3 h-3" />, label: "Verified Technicians" },
+  { icon: <Eye className="w-3 h-3" />, label: "Upfront Pricing" },
+  { icon: <Wallet className="w-3 h-3" />, label: "Pay After Service" },
 ];
 
 const SEARCH_SUGGESTIONS = [
-  "AC not cooling", "AC leaking water", "AC gas top-up",
-  "phone screen cracked", "laptop slow", "WiFi not working",
-  "CCTV not recording", "solar panel cleaning",
-];
-
-const AVAILABILITY_MESSAGES = [
-  { icon: <MapPin className="w-3.5 h-3.5 text-primary" />, text: "Greater Colombo coverage" },
-  { icon: <CheckCircle2 className="w-3.5 h-3.5 text-success" />, text: "Verified technicians" },
-  { icon: <Clock className="w-3.5 h-3.5 text-warning" />, text: "Same-day available" },
+  "AC not cooling", "phone screen cracked", "laptop slow",
+  "WiFi not working", "CCTV not recording", "AC gas top-up",
 ];
 
 interface Props {
@@ -91,8 +73,8 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
 
   return (
     <section className="relative">
-      {/* Hero banner */}
-      <div className="relative h-[420px] sm:h-[480px] md:h-[540px] overflow-hidden">
+      {/* Hero banner — taller for impact, simpler content */}
+      <div className="relative h-[380px] sm:h-[440px] md:h-[500px] overflow-hidden">
         {BANNERS.map((b, i) => (
           <motion.img
             key={i}
@@ -100,122 +82,83 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
             alt={b.headline}
             className="absolute inset-0 w-full h-full object-cover"
             initial={false}
-            animate={{ opacity: i === active ? 1 : 0, scale: i === active ? 1.03 : 1 }}
-            transition={{ opacity: { duration: 1 }, scale: { duration: 8, ease: "linear" } }}
+            animate={{ opacity: i === active ? 1 : 0, scale: i === active ? 1.02 : 1 }}
+            transition={{ opacity: { duration: 1.2 }, scale: { duration: 10, ease: "linear" } }}
             loading={i === 0 ? "eager" : "lazy"}
           />
         ))}
+        {/* Premium gradient overlay — deeper at bottom for readability */}
         <div className="absolute inset-0" style={{
-          background: "linear-gradient(to top, hsl(213 75% 8% / 0.95) 0%, hsl(213 75% 8% / 0.65) 40%, hsl(213 75% 8% / 0.25) 70%, hsl(213 75% 8% / 0.15) 100%)"
+          background: "linear-gradient(to top, hsl(213 75% 5% / 0.92) 0%, hsl(213 75% 5% / 0.55) 45%, hsl(213 75% 5% / 0.15) 80%, transparent 100%)"
         }} />
 
-        <div className="container relative h-full flex flex-col justify-end pb-20 sm:pb-24 md:pb-28">
-          {/* Atmosphere Badge */}
-          <div className="mb-3">
-            <AtmosphereBadge />
-          </div>
-
-          {/* Location + Emergency */}
-          <div className="flex items-center justify-between mb-6">
+        <div className="container relative h-full flex flex-col justify-end pb-16 sm:pb-20">
+          {/* Location bar — minimal */}
+          <div className="mb-5">
             <LocationBar onSetupLocation={onSetupLocation} />
-            <Link
-              to="/diagnose?emergency=true"
-              onClick={() => track("homepage_emergency_click")}
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold shadow-lg active:scale-95 transition-spring bg-destructive text-destructive-foreground"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive-foreground opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive-foreground" />
-              </span>
-              Emergency
-            </Link>
           </div>
 
-          {/* Headline */}
+          {/* Headline — bold, clear, Apple-level restraint */}
           <AnimatePresence mode="wait">
             <motion.div
               key={active}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
-              <h1 className="font-heading text-[26px] sm:text-4xl md:text-5xl font-extrabold leading-[1.08] mb-2.5 text-white drop-shadow-lg whitespace-pre-line tracking-tight">
+              <h1 className="font-heading text-[28px] sm:text-4xl md:text-5xl font-extrabold leading-[1.05] mb-2 text-white tracking-tight whitespace-pre-line">
                 {banner.headline}
               </h1>
-              <p className="text-[13px] sm:text-sm mb-5 max-w-sm text-white/70 font-medium leading-relaxed">
+              <p className="text-[13px] sm:text-sm max-w-sm text-white/60 font-medium leading-relaxed">
                 {banner.sub}
               </p>
             </motion.div>
           </AnimatePresence>
 
-          {/* Category shortcuts */}
-          <div className="flex gap-2.5 mb-5">
-            {CATEGORY_SHORTCUTS.map((cat, i) => (
-              <motion.div
-                key={cat.label}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + i * 0.06, duration: 0.3 }}
-              >
-                <Link
-                  to={cat.link}
-                  onClick={() => track("homepage_hero_category", { category: cat.label })}
-                  className="flex flex-col items-center gap-1.5 w-16 py-2 rounded-xl active:scale-95 transition-spring"
-                  style={{ background: "rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}
-                >
-                  <span className="text-white/90">{cat.icon}</span>
-                  <span className="text-[10px] font-semibold text-white/80">{cat.label}</span>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Trust pills */}
-          <div className="flex flex-wrap gap-1.5 mb-3">
+          {/* Trust pills — compact, 3 only */}
+          <div className="flex gap-2 mt-4">
             {TRUST_PILLS.map((pill, i) => (
               <motion.span
                 key={pill.label}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + i * 0.06, duration: 0.3 }}
-                className="inline-flex items-center gap-1 text-[9px] font-semibold rounded-full px-2.5 py-1 text-white/85 border border-white/10"
-                style={{ background: "rgba(14,76,146,0.3)", backdropFilter: "blur(16px)" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 + i * 0.08 }}
+                className="inline-flex items-center gap-1 text-[10px] font-medium text-white/70 tracking-wide"
               >
-                {pill.icon}
+                <span className="text-white/50">{pill.icon}</span>
                 {pill.label}
+                {i < TRUST_PILLS.length - 1 && <span className="ml-2 text-white/20">·</span>}
               </motion.span>
             ))}
           </div>
 
-          {/* Dots */}
-          <div className="flex gap-1.5 mt-2">
+          {/* Banner dots — minimal */}
+          <div className="flex gap-1.5 mt-4">
             {BANNERS.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setActive(i)}
                 aria-label={`Banner ${i + 1}`}
-                className={`rounded-full transition-all duration-500 ${i === active ? "w-7 h-1.5 bg-gradient-brand" : "w-2.5 h-1.5 bg-white/20 hover:bg-white/30"}`}
+                className={`rounded-full transition-all duration-500 ${i === active ? "w-6 h-1 bg-white/80" : "w-1.5 h-1 bg-white/20"}`}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Search bar */}
+      {/* Search bar — floating, prominent */}
       <div className="container -mt-7 relative z-10">
         <div className="relative">
           <div
-            className="bg-card rounded-2xl border border-border/40 flex items-center gap-3 px-4"
-            style={{ minHeight: "54px", boxShadow: "0 8px 32px -8px hsl(213 75% 8% / 0.12)" }}
+            className="bg-card rounded-2xl border border-border/50 flex items-center gap-3 px-4"
+            style={{ minHeight: "52px", boxShadow: "0 8px 32px -8px hsl(213 75% 8% / 0.15)" }}
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-brand flex items-center justify-center shrink-0">
-              <Search className="w-4.5 h-4.5 text-primary-foreground" />
-            </div>
+            <Search className="w-4.5 h-4.5 text-muted-foreground/50 shrink-0" />
             <input
               ref={searchRef}
               type="text"
-              placeholder="What do you need fixed?"
+              placeholder="Describe your issue..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onFocus={() => {
@@ -224,7 +167,7 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
                 if (searchResults.length > 0) setShowResults(true);
               }}
               onBlur={() => setTimeout(() => { setShowResults(false); setSearchFocused(false); }, 200)}
-              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 outline-none min-h-[54px] font-medium"
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none min-h-[52px] font-medium"
             />
             {searchQuery && (
               <button onClick={() => { setSearchQuery(""); setShowResults(false); }} className="text-xs text-muted-foreground hover:text-foreground px-2 py-2 font-medium">
@@ -244,13 +187,13 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
                 className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl border border-border/40 overflow-hidden z-50 p-4"
                 style={{ boxShadow: "0 12px 40px -12px hsl(213 75% 8% / 0.15)" }}
               >
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">Try searching</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">Common issues</p>
                 <div className="flex flex-wrap gap-2">
                   {SEARCH_SUGGESTIONS.map((term) => (
                     <button
                       key={term}
                       onMouseDown={() => handleSuggestionClick(term)}
-                      className="text-xs font-medium px-3 py-1.5 rounded-full border border-border/50 bg-secondary/50 text-foreground hover:bg-primary/5 hover:border-primary/30 transition-colors active:scale-95"
+                      className="text-xs font-medium px-3 py-1.5 rounded-full border border-border/50 bg-secondary/50 text-foreground hover:bg-primary/5 hover:border-primary/20 transition-colors active:scale-95"
                     >
                       {term}
                     </button>
@@ -290,15 +233,23 @@ const V2HeroSection = ({ onSetupLocation }: Props) => {
         </div>
       </div>
 
-      {/* Availability strip */}
-      <div className="container mt-4 mb-1">
-        <div className="flex items-center gap-5 overflow-x-auto scrollbar-hide py-2 px-1">
-          {AVAILABILITY_MESSAGES.map((item) => (
-            <span key={item.text} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground whitespace-nowrap shrink-0">
-              {item.icon}
-              {item.text}
-            </span>
-          ))}
+      {/* Availability indicators — subtle, below search */}
+      <div className="container mt-3 mb-1">
+        <div className="flex items-center justify-center gap-4 py-1">
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/70">
+            <CheckCircle2 className="w-3 h-3 text-success/60" />
+            Verified technicians
+          </span>
+          <span className="text-muted-foreground/20">·</span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/70">
+            <Clock className="w-3 h-3 text-primary/50" />
+            Same-day available
+          </span>
+          <span className="text-muted-foreground/20">·</span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground/70">
+            <MapPin className="w-3 h-3 text-primary/50" />
+            Greater Colombo
+          </span>
         </div>
       </div>
     </section>

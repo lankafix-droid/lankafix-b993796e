@@ -4,8 +4,6 @@ import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2PopularServices from "@/components/v2/V2PopularServices";
 import V2CategoryGrid from "@/components/v2/V2CategoryGrid";
-import SuperAppShortcuts from "@/components/v2/SuperAppShortcuts";
-import SPSPromoBanner from "@/components/v2/SPSPromoBanner";
 import Footer from "@/components/landing/Footer";
 import LocationSetupFlow from "@/components/v2/location/LocationSetupFlow";
 import { useLocationStore } from "@/store/locationStore";
@@ -13,7 +11,7 @@ import SmartCampaignSection from "@/components/campaigns/SmartCampaignSection";
 import ContentIntelligenceLayer from "@/components/content/ContentIntelligenceLayer";
 import AtmosphereGlow from "@/components/atmosphere/AtmosphereGlow";
 
-// Lazy-load below-fold sections for mobile performance
+// Lazy-load below-fold sections
 const V2TrustStrip = lazy(() => import("@/components/v2/V2TrustStrip"));
 const V2NearbyTechnicians = lazy(() => import("@/components/v2/V2NearbyTechnicians"));
 const V2BookAgain = lazy(() => import("@/components/v2/V2BookAgain"));
@@ -23,7 +21,7 @@ const V2SocialProof = lazy(() => import("@/components/v2/V2SocialProof"));
 const V2HomeFAQ = lazy(() => import("@/components/v2/V2HomeFAQ"));
 const V2SupportEntry = lazy(() => import("@/components/v2/V2SupportEntry"));
 
-const SectionFallback = () => <div className="h-24" aria-hidden />;
+const SectionFallback = () => <div className="h-16" aria-hidden />;
 
 const V2HomePage = () => {
   const { locationSetupComplete } = useLocationStore();
@@ -48,73 +46,65 @@ const V2HomePage = () => {
 
   return (
     <PageTransition className="min-h-screen flex flex-col bg-background relative">
-      {/* Living Atmosphere — ambient weather glow */}
       <AtmosphereGlow />
       <Header />
       <main className="flex-1 relative z-[1]">
-        {/* 1. Hero — search, location, emergency, trust pills */}
+        {/* 1. Hero — search, location, trust */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
-        {/* 1.5 Smart Campaign Engine */}
-        <SmartCampaignSection />
-
-        {/* 2. Trust Strip — immediate confidence builder */}
+        {/* 2. Trust strip — immediate confidence */}
         <Suspense fallback={<SectionFallback />}>
           <V2TrustStrip />
         </Suspense>
 
-        {/* 3. Popular Services — high-conversion quick links */}
+        {/* 3. Popular services — high-conversion */}
         <V2PopularServices />
 
-        {/* 3.5 Super App Shortcuts — Devices, Care Plans, SPS, Supplies */}
-        <SuperAppShortcuts />
-
-        {/* 3.7 SPS Promo Banner */}
-        <SPSPromoBanner />
-
-        {/* 4. Book Again — returning users only */}
+        {/* 4. Book again — returning users */}
         <Suspense fallback={<SectionFallback />}>
           <V2BookAgain />
         </Suspense>
 
-        {/* 5. Category Grid — Launch → More Solutions → Coming Soon */}
+        {/* 5. Smart campaigns — contextual */}
+        <SmartCampaignSection />
+
+        {/* 6. All categories */}
         <V2CategoryGrid />
 
-        {/* 5.5 Content Intelligence Layer */}
+        {/* 7. Content intelligence */}
         <ContentIntelligenceLayer />
 
-        {/* 6. Nearby Verified Technicians — trust + social proof */}
-        <Suspense fallback={<SectionFallback />}>
-          <V2NearbyTechnicians />
-        </Suspense>
-
-        {/* 7. Why LankaFix — trust differentiators */}
-        <Suspense fallback={<SectionFallback />}>
-          <V2WhyLankaFix />
-        </Suspense>
-
-        {/* 8. How It Works — 5-step booking explainer */}
+        {/* 8. How it works */}
         <Suspense fallback={<SectionFallback />}>
           <V2HowItWorks />
         </Suspense>
 
-        {/* 9. Support — WhatsApp, help, track */}
+        {/* 9. Nearby technicians */}
         <Suspense fallback={<SectionFallback />}>
-          <V2SupportEntry />
+          <V2NearbyTechnicians />
         </Suspense>
 
-        {/* 10. Social Proof — testimonials */}
+        {/* 10. Why LankaFix */}
+        <Suspense fallback={<SectionFallback />}>
+          <V2WhyLankaFix />
+        </Suspense>
+
+        {/* 11. Social proof + guarantees */}
         <Suspense fallback={<SectionFallback />}>
           <V2SocialProof />
         </Suspense>
 
-        {/* 11. FAQ */}
+        {/* 12. FAQ */}
         <Suspense fallback={<SectionFallback />}>
           <V2HomeFAQ />
         </Suspense>
+
+        {/* 13. Support */}
+        <Suspense fallback={<SectionFallback />}>
+          <V2SupportEntry />
+        </Suspense>
       </main>
 
-      {/* 12. Footer */}
       <Footer />
     </PageTransition>
   );

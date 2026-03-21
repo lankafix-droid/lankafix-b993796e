@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
-import { Snowflake, Smartphone, Monitor, Tv, ArrowRight, TrendingUp, Clock } from "lucide-react";
+import { Snowflake, Smartphone, Monitor, Tv, ArrowRight, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { track } from "@/lib/analytics";
 
 const POPULAR = [
-  { icon: <Snowflake className="w-5 h-5" />, label: "AC Gas Top-Up", price: "From Rs 4,500", duration: "60–90 min", link: "/book/AC", gradient: "from-primary/15 to-primary/5", color: "text-primary" },
-  { icon: <Smartphone className="w-5 h-5" />, label: "Phone Screen Fix", price: "From Rs 5,000", duration: "45–90 min", link: "/book/MOBILE", gradient: "from-destructive/15 to-destructive/5", color: "text-destructive" },
-  { icon: <Monitor className="w-5 h-5" />, label: "Laptop Repair", price: "From Rs 3,000", duration: "60–120 min", link: "/book/IT", gradient: "from-accent/15 to-accent/5", color: "text-accent" },
-  { icon: <Tv className="w-5 h-5" />, label: "TV / Electronics", price: "Diagnosis first", duration: "60–120 min", link: "/book/CONSUMER_ELEC", gradient: "from-warning/15 to-warning/5", color: "text-warning" },
+  { icon: <Snowflake className="w-5 h-5" />, label: "AC Repair & Service", price: "From Rs 2,500", duration: "60–90 min", link: "/book/AC" },
+  { icon: <Smartphone className="w-5 h-5" />, label: "Phone Screen Repair", price: "From Rs 3,000", duration: "45–90 min", link: "/book/MOBILE" },
+  { icon: <Monitor className="w-5 h-5" />, label: "Laptop & IT Support", price: "From Rs 2,000", duration: "60–120 min", link: "/book/IT" },
+  { icon: <Tv className="w-5 h-5" />, label: "Electronics Repair", price: "Diagnosis first", duration: "60–120 min", link: "/book/CONSUMER_ELEC" },
 ];
 
 const V2PopularServices = () => {
@@ -19,15 +19,10 @@ const V2PopularServices = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-40px" }}
           transition={{ duration: 0.35 }}
-          className="flex items-center gap-2.5 mb-5"
+          className="mb-5"
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-warning/15 to-warning/5 flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-warning" />
-          </div>
-          <div>
-            <h2 className="font-heading text-base md:text-lg font-bold text-foreground">Popular Services</h2>
-            <p className="text-[11px] text-muted-foreground">Most booked across Greater Colombo</p>
-          </div>
+          <h2 className="font-heading text-base md:text-lg font-bold text-foreground">Most Booked</h2>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Top services across Greater Colombo</p>
         </motion.div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -44,15 +39,15 @@ const V2PopularServices = () => {
                 onClick={() => track("homepage_popular_click", { label: service.label })}
                 className="group block bg-card rounded-2xl border border-border/40 p-4 hover:border-primary/20 hover:shadow-card-hover transition-all duration-300 active:scale-[0.97]"
               >
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${service.gradient} ${service.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
+                <div className="w-10 h-10 rounded-xl bg-primary/8 text-primary flex items-center justify-center mb-3 group-hover:bg-primary/12 transition-colors duration-300">
                   {service.icon}
                 </div>
                 <p className="text-sm font-bold text-foreground font-heading leading-tight mb-1">{service.label}</p>
-                <p className="text-[10px] font-semibold text-gradient bg-gradient-brand bg-clip-text text-transparent mb-1">{service.price}</p>
-                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-medium mb-2">
+                <p className="text-[11px] font-semibold text-primary/80 mb-1">{service.price}</p>
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
                   <Clock className="w-3 h-3" />{service.duration}
                 </span>
-                <div className="flex items-center gap-1 text-[11px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-primary mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   Book now <ArrowRight className="w-3 h-3" />
                 </div>
               </Link>
