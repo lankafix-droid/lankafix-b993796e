@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { track } from "@/lib/analytics";
+import { trackFunnelStep, trackFunnelDrop, trackBookingSubmitted, trackCategoryClick } from "@/lib/marketplaceAnalytics";
 
 type Step = "category" | "issue" | "photos" | "description" | "confirm";
 
@@ -42,12 +43,26 @@ const ConsumerBookingPage = () => {
   const currentStep = STEPS[stepIndex];
   const progress = (stepIndex / (STEPS.length - 1)) * 100;
 
+  // Track step views
+  useEffect(() => {
+    trackFunnelStep(`consumer_${currentStep}`, categoryCode || undefined);
+  }, [currentStep, categoryCode]);
+
+  // Idle abandonment detection per step
+  useEffect(() => {
+    if (currentStep === "confirm") return;
+    const timer = setTimeout(() => {
+      trackFunnelDrop(`consumer_${currentStep}`, categoryCode || undefined, "idle_timeout");
+    }, 3 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [currentStep, categoryCode]);
+
   const canProceed = () => {
     switch (currentStep) {
       case "category": return !!categoryCode;
       case "issue": return !!issueType;
-      case "photos": return true; // optional
-      case "description": return true; // optional
+      case "photos": return true;
+      case "description": return true;
       default: return false;
     }
   };
@@ -60,12 +75,18 @@ const ConsumerBookingPage = () => {
   };
 
   const goBack = () => {
-    if (stepIndex > 0) setStepIndex(stepIndex - 1);
-    else navigate("/");
+    if (stepIndex > 0) {
+      trackFunnelDrop(`consumer_${currentStep}`, categoryCode || undefined, "back_navigation");
+      setStepIndex(stepIndex - 1);
+    } else {
+      trackFunnelDrop("consumer_category", undefined, "back_to_home");
+      navigate("/");
+    }
   };
 
   const submitBooking = async () => {
     if (!user) {
+      trackFunnelDrop("consumer_description", categoryCode, "auth_required");
       toast({ title: "Please sign in", description: "You need to be signed in to create a booking.", variant: "destructive" });
       navigate("/login");
       return;
@@ -91,10 +112,12 @@ const ConsumerBookingPage = () => {
 
       setBookingId(data.id);
       setStepIndex(STEPS.indexOf("confirm"));
+      trackBookingSubmitted(data.id, categoryCode, false);
       track("consumer_booking_created", { categoryCode, issueType, photoCount: photos.length });
       toast({ title: "Booking created!", description: "We'll find you a technician shortly." });
     } catch (err: any) {
       console.error("Booking failed:", err);
+      trackFunnelDrop("consumer_description", categoryCode, "submission_error");
       toast({ title: "Booking failed", description: err.message || "Please try again.", variant: "destructive" });
     } finally {
       setSubmitting(false);
@@ -193,7 +216,8 @@ const ConsumerBookingPage = () => {
                   selected={categoryCode}
                   onSelect={(code) => {
                     setCategoryCode(code);
-                    setIssueType(""); // reset issue when category changes
+                    setIssueType("");
+                    trackCategoryClick(code, "consumer_booking");
                     goNext();
                   }}
                 />
