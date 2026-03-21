@@ -178,7 +178,7 @@ export default function ServiceHistoryPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                 >
-                  <BookingCard booking={b} onClick={() => navigate(`/tracker/${b.id}`)} />
+                  <BookingCard booking={b} onClick={() => navigate(`/booking/${b.id}`)} />
                 </motion.div>
               ))}
             </div>
