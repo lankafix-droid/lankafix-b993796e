@@ -539,6 +539,46 @@ const ConsumablesRefillPage = () => {
               </Card>
             </motion.div>
           )}
+
+          {/* STEP: Rejected — cartridge not recommended for refill */}
+          {step === "rejected" && (
+            <motion.div key="rejected" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto mb-3">
+                    <AlertTriangle className="w-7 h-7 text-destructive" />
+                  </div>
+                  <h2 className="text-lg font-bold text-foreground mb-1">Refill Not Recommended</h2>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Based on the reported condition ({form.condition || "unknown"}), this cartridge is not recommended for refill.
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-5">
+                    {form.condition === "leaking"
+                      ? "Leaking cartridges may have internal damage that prevents a safe refill."
+                      : "This condition requires professional assessment before refill."}
+                  </p>
+
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Consider these alternatives</p>
+                  <div className="flex flex-col gap-2">
+                    <Button className="w-full" onClick={() => navigate("/consumables/compatible")}>
+                      <ShieldCheck className="w-4 h-4 mr-1.5" /> View SmartFix Compatible Replacement
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => navigate("/consumables/oem")}>
+                      <Droplets className="w-4 h-4 mr-1.5" /> View Genuine OEM Replacement
+                    </Button>
+                    <Button variant="outline" className="w-full" asChild>
+                      <a href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, my ${selectedCartridge?.code || "cartridge"} is ${form.condition}. Can you help me find a replacement or alternative?`)} target="_blank" rel="noopener noreferrer">
+                        <MessageCircle className="w-4 h-4 mr-1.5" /> WhatsApp LankaFix for Help
+                      </a>
+                    </Button>
+                    <Button variant="ghost" size="sm" className="mt-1" onClick={() => { setStep("request"); setForm(prev => ({ ...prev, condition: "" })); }}>
+                      <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Change Condition & Try Again
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </AnimatePresence>
 
         {/* Need Help Section */}
