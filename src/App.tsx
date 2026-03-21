@@ -141,6 +141,7 @@ const PilotValidationPage = lazy(() => import("./pages/ops/PilotValidationPage")
 const LaunchBlockersV2Page = lazy(() => import("./pages/ops/LaunchBlockersV2Page"));
 const AdminSetupPage = lazy(() => import("./pages/ops/AdminSetupPage"));
 const PartnerProvisioningPage = lazy(() => import("./pages/ops/PartnerProvisioningPage"));
+const PartnerOnboardingReviewPage = lazy(() => import("./pages/ops/PartnerOnboardingReviewPage"));
 const PilotProofDashboardPage = lazy(() => import("./pages/ops/PilotProofDashboardPage"));
 const OperatorExecutionBoardPage = lazy(() => import("./pages/ops/OperatorExecutionBoardPage"));
 const TrainingCompletionPage = lazy(() => import("./pages/ops/TrainingCompletionPage"));
