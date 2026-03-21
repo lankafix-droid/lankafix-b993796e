@@ -2353,6 +2353,58 @@ export const PRINTER_MAPPINGS: PrinterMapping[] =
   },
   {
     "brand": "Canon",
+    "printerModel": "PIXMA MG2570",
+    "modelGroup": "PIXMA MG2570 / MG2570S",
+    "category": "Inkjet",
+    "consumableType": "Ink / Cartridge",
+    "consumableCodes": "PG-745 / CL-746",
+    "codes": [
+      "PG-745",
+      "CL-746"
+    ],
+    "yieldStr": "180 (Bk) / 180 (Cl)",
+    "notes": "Market-verified: Canon PIXMA MG2570/MG2570S uses PG-745 (Black) and CL-746 (Color) cartridges.",
+    "aliases": [
+      "mg2570",
+      "mg2570s",
+      "mg 2570",
+      "pixma mg2570",
+      "pixma mg2570s",
+      "canon mg2570",
+      "canon mg2570s",
+      "canonpixmamg2570",
+      "canonpixmamg2570s",
+      "pixmamg2570",
+      "pixmamg2570s",
+      "pg-745",
+      "pg745",
+      "cl-746",
+      "cl746"
+    ]
+  },
+  {
+    "brand": "Canon",
+    "printerModel": "PIXMA MG2570S",
+    "modelGroup": "PIXMA MG2570 / MG2570S",
+    "category": "Inkjet",
+    "consumableType": "Ink / Cartridge",
+    "consumableCodes": "PG-745 / CL-746",
+    "codes": [
+      "PG-745",
+      "CL-746"
+    ],
+    "yieldStr": "180 (Bk) / 180 (Cl)",
+    "notes": "Market-verified: Canon PIXMA MG2570S uses PG-745 (Black) and CL-746 (Color) cartridges.",
+    "aliases": [
+      "mg2570s",
+      "pixma mg2570s",
+      "canon mg2570s",
+      "canonpixmamg2570s",
+      "pixmamg2570s"
+    ]
+  },
+  {
+    "brand": "Canon",
     "printerModel": "PIXMA G1010",
     "modelGroup": "PIXMA G1010 / G2010 / G3010",
     "category": "Ink Tank",

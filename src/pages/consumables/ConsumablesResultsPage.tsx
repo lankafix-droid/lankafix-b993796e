@@ -7,12 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, Search, ShieldCheck, Package, RotateCcw, Truck, AlertTriangle,
-  Scale, QrCode, ShoppingCart, ArrowRight, Printer, CheckCircle2, HelpCircle, Camera
+  Scale, QrCode, ShoppingCart, ArrowRight, Printer, CheckCircle2, HelpCircle,
+  Camera, MessageCircle, Phone, Upload
 } from "lucide-react";
 import { searchConsumables, type FinderResult, type SearchResultGroup, type MatchConfidence } from "@/lib/consumableSearch";
 import { useCart } from "@/hooks/useConsumables";
+import { whatsappLink, SUPPORT_WHATSAPP } from "@/config/contact";
 import { motion } from "framer-motion";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import smartfixTonerBox from "@/assets/smartfix-toner-box.png";
 import smartfixInkBox from "@/assets/smartfix-ink-box.png";
 
@@ -30,10 +32,13 @@ const confidenceBadge = (c: MatchConfidence) => {
 function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: number }) {
   const navigate = useNavigate();
   const isInk = group.consumableType.toLowerCase().includes("ink");
-  const isToner = group.consumableType.toLowerCase().includes("toner");
 
-  // Choose correct SmartFix image
   const smartfixImage = isInk ? smartfixInkBox : smartfixTonerBox;
+
+  // Determine cartridge type label
+  const typeLabel = group.isColor ? "Color" : "Black";
+  const categoryLabel = group.category.includes("Ink Tank") ? "Ink Bottle" :
+    group.consumableType.includes("Toner") ? "Toner Cartridge" : "Ink Cartridge";
 
   return (
     <motion.div
@@ -43,12 +48,13 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
     >
       <Card className="overflow-hidden">
         <CardContent className="p-0">
-          {/* Header: Supply code + confidence */}
+          {/* Header */}
           <div className="px-4 pt-4 pb-2 border-b border-border bg-muted/30">
             <div className="flex items-center justify-between gap-2 mb-1">
               <div className="flex items-center gap-2">
                 <span className="text-base font-bold text-foreground">{group.supplyCode}</span>
-                <Badge variant="outline" className="text-[9px]">{group.isColor ? "Color" : "Black"}</Badge>
+                <Badge variant="outline" className="text-[9px]">{typeLabel}</Badge>
+                <Badge variant="outline" className="text-[9px]">{categoryLabel}</Badge>
               </div>
               {confidenceBadge(group.confidence)}
             </div>
@@ -79,7 +85,7 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
             </div>
           </div>
 
-          {/* SmartFix + OEM Options side by side */}
+          {/* SmartFix + OEM Options */}
           <div className="p-4">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-3">
               Available Options
@@ -128,9 +134,11 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
               <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2">
                 <ArrowRight className="w-2.5 h-2.5 mr-0.5" /> Compare Options
               </Button>
-              <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2">
-                <RotateCcw className="w-2.5 h-2.5 mr-0.5" /> Refill This Cartridge
-              </Button>
+              {group.refillEligible && (
+                <Button variant="ghost" size="sm" className="text-[10px] h-7 px-2 text-orange-600">
+                  <RotateCcw className="w-2.5 h-2.5 mr-0.5" /> Refill This Cartridge
+                </Button>
+              )}
             </div>
           </div>
 
@@ -142,6 +150,50 @@ function SupplyResultCard({ group, index }: { group: SearchResultGroup; index: n
           )}
         </CardContent>
       </Card>
+    </motion.div>
+  );
+}
+
+function LeadCaptureSection({ query }: { query: string }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const whatsappMsg = `Hi LankaFix, I'm looking for the right toner/cartridge. I searched for "${query}" but couldn't find a match. Can you help?`;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-10">
+      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+        <Search className="w-7 h-7 text-muted-foreground" />
+      </div>
+      <h3 className="text-base font-semibold text-foreground mb-1">We couldn't find an exact match</h3>
+      <p className="text-sm text-muted-foreground mb-5 max-w-sm mx-auto">
+        No results for "<span className="font-medium text-foreground">{query}</span>". Don't worry — we can still help you find the right supply.
+      </p>
+
+      {/* Suggestions */}
+      <div className="text-xs text-muted-foreground space-y-1 mb-5 max-w-sm mx-auto text-left bg-muted/30 rounded-lg p-3">
+        <p className="font-medium text-foreground mb-1.5">💡 Try searching with:</p>
+        <p>• Full printer model — e.g. <span className="font-medium text-foreground">Canon PIXMA E410</span></p>
+        <p>• Toner/cartridge code — e.g. <span className="font-medium text-foreground">PG-47</span> or <span className="font-medium text-foreground">HP 85A</span></p>
+        <p>• Brand + model — e.g. <span className="font-medium text-foreground">Brother HL-L2321D</span></p>
+      </div>
+
+      {/* Lead Capture Actions */}
+      <div className="space-y-2 max-w-xs mx-auto">
+        <Button className="w-full" size="sm" asChild>
+          <a href={whatsappLink(SUPPORT_WHATSAPP, whatsappMsg)} target="_blank" rel="noopener noreferrer">
+            <MessageCircle className="w-4 h-4 mr-1.5" /> WhatsApp LankaFix for Help
+          </a>
+        </Button>
+        <Button variant="outline" size="sm" className="w-full" onClick={() => fileInputRef.current?.click()}>
+          <Camera className="w-3.5 h-3.5 mr-1.5" /> Upload a Photo for Review
+        </Button>
+        <Button variant="outline" size="sm" className="w-full" asChild>
+          <a href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, please call me back about finding the right toner/cartridge. I searched for "${query}".`)} target="_blank" rel="noopener noreferrer">
+            <Phone className="w-3.5 h-3.5 mr-1.5" /> Request Callback
+          </a>
+        </Button>
+      </div>
+
+      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" />
     </motion.div>
   );
 }
@@ -207,17 +259,27 @@ const ConsumablesResultsPage = () => {
               {result.matchType === "exact_model" && "Matched by printer model"}
               {result.matchType === "alias_match" && "Matched by model alias"}
               {result.matchType === "fuzzy" && "Partial match — please verify"}
+              {result.matchType === "semantic" && "Intelligent match — please verify"}
             </p>
           </div>
         )}
 
-        {/* Verification Banner for non-exact */}
+        {/* Verification Banner */}
         {result.groups.length > 0 && result.confidence !== "exact" && (
           <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 mb-4 flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-orange-800 dark:text-orange-200">
-              Please confirm your printer model matches before ordering. Try entering the full model name or exact toner code for an exact match.
-            </p>
+            <div>
+              <p className="text-xs text-orange-800 dark:text-orange-200">
+                Please confirm your printer model matches before ordering. Try entering the full model name or exact toner code for an exact match.
+              </p>
+              <a
+                href={whatsappLink(SUPPORT_WHATSAPP, `Hi LankaFix, I searched for "${searchQ}" and want to verify the match before ordering.`)}
+                target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] text-orange-700 dark:text-orange-300 font-medium mt-1 hover:underline"
+              >
+                <MessageCircle className="w-3 h-3" /> Not sure? WhatsApp us to verify
+              </a>
+            </div>
           </div>
         )}
 
@@ -230,35 +292,9 @@ const ConsumablesResultsPage = () => {
           </div>
         )}
 
-        {/* No results */}
+        {/* No results — Lead capture */}
         {searchQ && result.groups.length === 0 && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              <Search className="w-7 h-7 text-muted-foreground" />
-            </div>
-            <h3 className="text-base font-semibold text-foreground mb-1">We couldn't find an exact match</h3>
-            <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
-              No results for "<span className="font-medium">{searchQ}</span>". Try searching with the full printer model name or exact toner/cartridge code.
-            </p>
-            <div className="space-y-2 max-w-xs mx-auto">
-              <div className="text-xs text-muted-foreground space-y-1 mb-4">
-                <p>💡 Try: <span className="font-medium text-foreground">Canon PIXMA E410</span></p>
-                <p>💡 Try: <span className="font-medium text-foreground">HP 85A</span> or <span className="font-medium text-foreground">CE285A</span></p>
-                <p>💡 Try: <span className="font-medium text-foreground">Brother TN-2305</span></p>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate("/consumables/finder")}>
-                <HelpCircle className="w-3.5 h-3.5 mr-1.5" /> Need Help Matching?
-              </Button>
-              <Button variant="ghost" size="sm" className="text-xs">
-                <Camera className="w-3.5 h-3.5 mr-1.5" /> Upload a Photo Instead
-              </Button>
-              <Button variant="ghost" size="sm" className="text-xs" asChild>
-                <a href="https://wa.me/94XXXXXXXXX" target="_blank" rel="noopener noreferrer">
-                  Contact LankaFix
-                </a>
-              </Button>
-            </div>
-          </motion.div>
+          <LeadCaptureSection query={searchQ} />
         )}
 
         {/* Initial state */}
