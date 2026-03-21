@@ -691,7 +691,6 @@ export const useBookingStore = create<BookingStore>()(
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking) return s;
           track("technician_travel_started", { jobId, category: booking.categoryCode });
-          const { createTrackingData } = require("@/lib/trackingEngine");
           const trackingData = createTrackingData(techLat, techLng, custLat, custLng);
           let updated = s.bookings.map((b) =>
             b.jobId === jobId ? { ...b, trackingData, dispatchStatus: "dispatched" as const, dispatchedAt: new Date().toISOString() } : b
