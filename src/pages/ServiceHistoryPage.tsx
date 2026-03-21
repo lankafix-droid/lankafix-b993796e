@@ -238,10 +238,9 @@ function ActiveBookingCard({ booking, onClick }: { booking: any; onClick: () => 
 /* ── Standard booking card ── */
 function BookingCard({ booking, onClick }: { booking: any; onClick: () => void }) {
   const catLabel = CATEGORY_LABELS[booking.category_code as CategoryCode] || booking.category_code;
-  const statusCfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG.requested;
+  const statusDisplay = getStatusDisplay(booking.status, booking.dispatch_status);
   const price = booking.final_price_lkr || booking.estimated_price_lkr;
   const payStatus = booking.payment_status ? PAYMENT_BADGE[booking.payment_status] : null;
-  const StatusIcon = statusCfg.icon;
   const actionHint = getNextActionHint(booking.status);
 
   return (
@@ -254,9 +253,8 @@ function BookingCard({ booking, onClick }: { booking: any; onClick: () => void }
               <p className="text-[11px] text-muted-foreground truncate">{booking.service_type}</p>
             )}
           </div>
-          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusCfg.color}`}>
-            <StatusIcon className="w-3 h-3 mr-0.5" />
-            {statusCfg.label}
+          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusDisplay.badgeBg} border-0`}>
+            {statusDisplay.label}
           </Badge>
         </div>
 
