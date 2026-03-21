@@ -198,8 +198,7 @@ function ActiveBookingCard({ booking, onClick }: { booking: any; onClick: () => 
   const catLabel = CATEGORY_LABELS[booking.category_code as CategoryCode] || booking.category_code;
   const stage = mapBookingStatusToStage(booking.status, booking.dispatch_status);
   const stageInfo = LIFECYCLE_STAGES[stage];
-  const statusCfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG.requested;
-  const StatusIcon = statusCfg.icon;
+  const statusDisplay = getStatusDisplay(booking.status, booking.dispatch_status);
 
   return (
     <Card
@@ -214,9 +213,8 @@ function ActiveBookingCard({ booking, onClick }: { booking: any; onClick: () => 
               <p className="text-[11px] text-muted-foreground truncate">{booking.service_type}</p>
             )}
           </div>
-          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusCfg.color}`}>
-            <StatusIcon className={`w-3 h-3 mr-0.5 ${booking.status === "in_progress" ? "animate-spin" : ""}`} />
-            {statusCfg.label}
+          <Badge variant="outline" className={`text-[10px] shrink-0 ml-2 ${statusDisplay.badgeBg} border-0`}>
+            {statusDisplay.label}
           </Badge>
         </div>
 
