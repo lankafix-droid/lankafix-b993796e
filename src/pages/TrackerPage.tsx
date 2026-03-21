@@ -696,8 +696,8 @@ const TrackerPage = () => {
               </div>
             </motion.div>
 
-            {/* Booking progress timeline */}
-            <BookingProgressTimeline currentStage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} compact />
+            {/* Premium lifecycle timeline */}
+            <ConsumerLifecycleTracker status={dbBooking.status} dispatchStatus={dbBooking.dispatch_status} />
 
             {/* Lifecycle status card */}
             <PostBookingStatusCard stage={mapBookingStatusToStage(dbBooking.status, dbBooking.dispatch_status)} />
