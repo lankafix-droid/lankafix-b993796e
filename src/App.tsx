@@ -217,9 +217,17 @@ const OpsRoute = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute requiredRole="admin">{children}</ProtectedRoute>
 );
 
+/** Hooks that require Router context */
+function NativeShell({ children }: { children: React.ReactNode }) {
+  useNativeBackButton();
+  useExternalLinks();
+  return <>{children}</>;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <GoogleMapsProvider>
+    <NativeSplash>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -227,6 +235,7 @@ const App = () => (
       <PilotModeBanner />
       <ChatWidget />
       <BrowserRouter>
+        <NativeShell>
         <TermsGuard>
         <Suspense fallback={<PageLoader />}>
           <Routes>
