@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense } from "react";
 import PageTransition from "@/components/motion/PageTransition";
+import ProfileCompletionPrompt from "@/components/profile/ProfileCompletionPrompt";
 import Header from "@/components/layout/Header";
 import V2HeroSection from "@/components/v2/V2HeroSection";
 import V2PopularServices from "@/components/v2/V2PopularServices";
