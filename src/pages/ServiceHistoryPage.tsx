@@ -126,7 +126,7 @@ export default function ServiceHistoryPage() {
               </p>
               <div className="space-y-2">
                 {activeBookings.slice(0, 3).map((b: any) => (
-                  <ActiveBookingCard key={b.id} booking={b} onClick={() => navigate(`/tracker/${b.id}`)} />
+                  <ActiveBookingCard key={b.id} booking={b} onClick={() => navigate(`/booking/${b.id}`)} />
                 ))}
               </div>
               {activeBookings.length > 3 && (
