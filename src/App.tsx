@@ -337,6 +337,7 @@ const App = () => (
             <Route path="/ops/expansion" element={<OpsRoute><ExpansionRoadmapPage /></OpsRoute>} />
             <Route path="/ops/revenue" element={<OpsRoute><RevenueEnginePage /></OpsRoute>} />
             <Route path="/ops/intelligence" element={<OpsRoute><MarketplaceIntelligencePage /></OpsRoute>} />
+            <Route path="/ops/marketplace-overview" element={<OpsRoute><MarketplaceOverviewPage /></OpsRoute>} />
             <Route path="/ops/retention" element={<OpsRoute><RetentionDashboardPage /></OpsRoute>} />
             <Route path="/ops/launch" element={<OpsRoute><LaunchReadinessPage /></OpsRoute>} />
             <Route path="/ops/pilot-simulation" element={<OpsRoute><PilotSimulationPage /></OpsRoute>} />
