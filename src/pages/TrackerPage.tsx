@@ -1009,7 +1009,7 @@ const TrackerPage = () => {
               <div className="bg-card rounded-2xl border border-border/60 p-4 shadow-[var(--shadow-card)] space-y-3">
                 <p className="text-xs font-semibold text-foreground">How was the service?</p>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1 h-10 rounded-xl text-xs border-amber-500/30 text-amber-600 hover:bg-amber-500/5" onClick={() => setShowReportIssue(true)}>
+                  <Button variant="outline" className="flex-1 h-10 rounded-xl text-xs border-warning/30 text-warning hover:bg-warning/5" onClick={() => setShowReportIssue(true)}>
                     <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
                     Something's Wrong
                   </Button>
