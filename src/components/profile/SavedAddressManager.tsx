@@ -293,9 +293,9 @@ export default function SavedAddressManager({ onSelect, selectable }: Props) {
                 {[addr.floor_or_unit && `Floor: ${addr.floor_or_unit}`, addr.parking_notes && `Parking: ${addr.parking_notes}`].filter(Boolean).join(" · ")}
               </p>
             )}
-            {svcStatus && (
+            {vState && (
               <div className="mt-1.5">
-                <ServiceabilityBadge status={svcStatus} compact />
+                <ServiceabilityBadge verificationState={vState as any} compact />
               </div>
             )}
           </div>

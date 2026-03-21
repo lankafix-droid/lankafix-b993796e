@@ -88,10 +88,14 @@ const MOBILE: CategoryRequirements = {
     { key: "pin_sharing_ack", label: "I may need to share my PIN for diagnosis", type: "boolean", required: true, consentType: "pin_sharing" },
   ],
   escalationRules: [
-    { triggerField: "service_type", triggerValues: ["water_damage"], action: "warn", severity: "warning",
-      message: "Water damage repairs have variable success rates. A diagnostic fee may apply." },
+    { triggerField: "service_type", triggerValues: ["water_damage"], action: "inspection_required", severity: "critical",
+      message: "Water damage repairs require physical inspection. Success rates vary — a diagnostic fee applies." },
     { triggerField: "service_type", triggerValues: ["motherboard"], action: "inspection_required", severity: "critical",
-      message: "Motherboard issues require physical inspection before quoting." },
+      message: "Motherboard issues require physical inspection before quoting. Diagnostic fee applies." },
+    { triggerField: "service_type", triggerValues: ["charging_port"], action: "warn", severity: "warning",
+      message: "Charging port repairs may reveal deeper issues. Final quote may vary after diagnosis." },
+    { triggerField: "service_type", triggerValues: ["other"], action: "diagnostic_fee", severity: "warning",
+      message: "Unspecified issues require a diagnostic assessment. A diagnostic fee will apply." },
   ],
 };
 
