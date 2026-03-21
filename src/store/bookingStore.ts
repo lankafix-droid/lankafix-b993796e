@@ -711,7 +711,6 @@ export const useBookingStore = create<BookingStore>()(
         set((s) => {
           const booking = s.bookings.find((b) => b.jobId === jobId);
           if (!booking?.trackingData) return s;
-          const { stopTracking } = require("@/lib/trackingEngine");
           const stoppedTracking = stopTracking(booking.trackingData);
           return { bookings: s.bookings.map((b) => b.jobId === jobId ? { ...b, trackingData: stoppedTracking } : b) };
         }),

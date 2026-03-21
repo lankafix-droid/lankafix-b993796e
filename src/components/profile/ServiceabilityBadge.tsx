@@ -1,33 +1,49 @@
 /**
- * ServiceabilityBadge — Shows Phase-1 coverage status for an address.
+ * ServiceabilityBadge — Shows address verification/coverage status.
+ * Supports both serviceability status and verification state labels.
  */
-import { MapPin, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { MapPin, CheckCircle2, Clock, AlertTriangle, HelpCircle } from "lucide-react";
+import type { AddressVerificationState } from "@/lib/categoryOnboardingConfig";
 
 interface Props {
-  status: "inside" | "edge" | "outside" | null;
+  status?: "inside" | "edge" | "outside" | null;
+  verificationState?: AddressVerificationState;
   compact?: boolean;
 }
 
-export default function ServiceabilityBadge({ status, compact }: Props) {
-  if (!status) return null;
+export default function ServiceabilityBadge({ status, verificationState, compact }: Props) {
+  // Prefer verificationState if provided
+  const resolvedKey = verificationState
+    ? verificationState
+    : status === "inside" ? "verified_serviceable"
+    : status === "edge" ? "edge_serviceable"
+    : status === "outside" ? "outside_coverage"
+    : null;
+
+  if (!resolvedKey) return null;
 
   const config = {
-    inside: {
-      label: "Phase-1 Covered",
+    verified_serviceable: {
+      label: "Verified Serviceable",
       icon: CheckCircle2,
       className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
     },
-    edge: {
-      label: "Extended Zone",
+    edge_serviceable: {
+      label: "Edge Serviceable",
       icon: Clock,
       className: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
     },
-    outside: {
-      label: "Outside Launch Zone",
+    needs_verification: {
+      label: "Needs Verification",
+      icon: HelpCircle,
+      className: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+    },
+    outside_coverage: {
+      label: "Outside Coverage",
       icon: AlertTriangle,
       className: "bg-destructive/10 text-destructive border-destructive/20",
     },
-  }[status];
+  }[resolvedKey];
 
   const Icon = config.icon;
 

@@ -160,7 +160,7 @@ export const useProviderERPStore = create<ProviderERPStore>()(
 
       getFleetSummary: (providerId) => {
         const techs = get().technicians.filter((t) => t.providerId === providerId);
-        const storedAvail = require("@/store/bookingStore").useBookingStore.getState().techAvailability;
+        const storedAvail = useBookingStore.getState().techAvailability;
         const online = techs.filter((t) => (storedAvail[t.technicianId] || "available") === "available").length;
         const busy = techs.filter((t) => (storedAvail[t.technicianId] || "available") === "busy").length;
         const offline = techs.filter((t) => (storedAvail[t.technicianId]) === "offline").length;
