@@ -284,6 +284,9 @@ export default function PartnerDashboardPage() {
           </motion.div>
         )}
 
+        {/* Reviews & Ratings */}
+        <PartnerReviewsPanel partnerId={partner.id} ratingAverage={partner.rating_average} />
+
         {/* Quick Actions */}
         <div className="space-y-2">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</p>
