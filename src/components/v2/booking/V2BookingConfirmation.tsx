@@ -56,7 +56,7 @@ function SummaryRow({ label, value, bold }: { label: string; value: React.ReactN
   );
 }
 
-const V2BookingConfirmation = ({ flow, booking }: Props) => {
+const V2BookingConfirmation = ({ flow, booking, onEditStep }: Props) => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { getActiveAddress } = useLocationStore();
