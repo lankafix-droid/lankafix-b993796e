@@ -1090,20 +1090,24 @@ function StepReview() {
         </CardContent>
       </Card>
 
-      {/* Tier info */}
-      <Card>
+      {/* What Happens Next */}
+      <Card className="border-primary/15 bg-primary/5">
         <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-5 h-5 text-warning" />
-            <p className="font-semibold text-foreground">Provider Tiers</p>
-          </div>
-          <div className="space-y-2">
-            {Object.entries(TIER_CONFIG).map(([key, tier]) => (
-              <div key={key} className="flex items-center justify-between text-sm">
-                <Badge className={tier.color}>{tier.label}</Badge>
-                <span className="text-muted-foreground text-xs">
-                  {tier.minJobs === 0 ? "Starting tier" : `${tier.minJobs}+ jobs, ${tier.minRating}+ rating`}
-                </span>
+          <p className="font-semibold text-foreground mb-3 text-sm">What happens after you submit?</p>
+          <div className="space-y-3">
+            {[
+              { step: "1", label: "Application Review", desc: "Our team reviews your profile within 24–48 hours" },
+              { step: "2", label: "Document Verification", desc: "We verify your NIC and any professional certifications" },
+              { step: "3", label: "Profile Activation", desc: "Once verified, you'll start receiving job offers in your zones" },
+            ].map((item) => (
+              <div key={item.step} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                  {item.step}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
