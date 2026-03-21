@@ -450,8 +450,10 @@ const App = () => (
         {/* Mobile bottom navigation */}
         <MobileBottomNav />
         </TermsGuard>
+        </NativeShell>
       </BrowserRouter>
     </TooltipProvider>
+    </NativeSplash>
     </GoogleMapsProvider>
   </QueryClientProvider>
 );
