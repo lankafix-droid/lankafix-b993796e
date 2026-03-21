@@ -147,13 +147,12 @@ export default function SavedAddressManager({ onSelect, selectable }: Props) {
     deleteAddress.mutate(addr.id);
   };
 
-  const serviceabilityFor = (addr: SavedAddress) => {
-    if (addr.phase1_serviceable === true) return "inside";
-    if (addr.phase1_serviceable === false) return "outside";
-    if (addr.latitude && addr.longitude) {
-      return checkServiceability(addr.latitude, addr.longitude).status;
-    }
-    return null;
+  const verificationStateFor = (addr: SavedAddress): string => {
+    return addr.verification_state || (
+      addr.admin_serviceability_override ? "verified_serviceable" :
+      !addr.latitude || !addr.longitude ? "needs_verification" :
+      addr.phase1_serviceable ? "verified_serviceable" : "outside_coverage"
+    );
   };
 
   const AddressFormFields = () => (
