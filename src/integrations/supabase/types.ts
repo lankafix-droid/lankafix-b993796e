@@ -531,6 +531,45 @@ export type Database = {
           },
         ]
       }
+      booking_readiness_overrides: {
+        Row: {
+          booking_id: string | null
+          category_code: string | null
+          created_at: string
+          customer_id: string
+          expires_at: string | null
+          id: string
+          metadata: Json | null
+          overridden_by: string
+          override_reason: string | null
+          override_type: string
+        }
+        Insert: {
+          booking_id?: string | null
+          category_code?: string | null
+          created_at?: string
+          customer_id: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          overridden_by: string
+          override_reason?: string | null
+          override_type: string
+        }
+        Update: {
+          booking_id?: string | null
+          category_code?: string | null
+          created_at?: string
+          customer_id?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json | null
+          overridden_by?: string
+          override_reason?: string | null
+          override_type?: string
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           actual_arrival_at: string | null
@@ -1869,6 +1908,7 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
+          created_from_booking_gate: boolean | null
           district: string | null
           email: string | null
           id: string
@@ -1876,12 +1916,17 @@ export type Database = {
           longitude: number | null
           name: string | null
           phone: string | null
+          reason_code: string | null
           requested_category: string | null
+          requested_zone: string | null
+          serviceability_status: string | null
+          source_screen: string | null
           user_id: string | null
         }
         Insert: {
           city?: string | null
           created_at?: string
+          created_from_booking_gate?: boolean | null
           district?: string | null
           email?: string | null
           id?: string
@@ -1889,12 +1934,17 @@ export type Database = {
           longitude?: number | null
           name?: string | null
           phone?: string | null
+          reason_code?: string | null
           requested_category?: string | null
+          requested_zone?: string | null
+          serviceability_status?: string | null
+          source_screen?: string | null
           user_id?: string | null
         }
         Update: {
           city?: string | null
           created_at?: string
+          created_from_booking_gate?: boolean | null
           district?: string | null
           email?: string | null
           id?: string
@@ -1902,7 +1952,11 @@ export type Database = {
           longitude?: number | null
           name?: string | null
           phone?: string | null
+          reason_code?: string | null
           requested_category?: string | null
+          requested_zone?: string | null
+          serviceability_status?: string | null
+          source_screen?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -1912,6 +1966,9 @@ export type Database = {
           access_notes: string | null
           address_line_1: string | null
           address_line_2: string | null
+          admin_override_at: string | null
+          admin_override_by: string | null
+          admin_serviceability_override: boolean | null
           city: string | null
           created_at: string
           customer_id: string
@@ -1926,12 +1983,16 @@ export type Database = {
           parking_notes: string | null
           phase1_serviceable: boolean | null
           service_zone: string | null
+          verification_state: string
           zone_code: string | null
         }
         Insert: {
           access_notes?: string | null
           address_line_1?: string | null
           address_line_2?: string | null
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_serviceability_override?: boolean | null
           city?: string | null
           created_at?: string
           customer_id: string
@@ -1946,12 +2007,16 @@ export type Database = {
           parking_notes?: string | null
           phase1_serviceable?: boolean | null
           service_zone?: string | null
+          verification_state?: string
           zone_code?: string | null
         }
         Update: {
           access_notes?: string | null
           address_line_1?: string | null
           address_line_2?: string | null
+          admin_override_at?: string | null
+          admin_override_by?: string | null
+          admin_serviceability_override?: boolean | null
           city?: string | null
           created_at?: string
           customer_id?: string
@@ -1966,6 +2031,7 @@ export type Database = {
           parking_notes?: string | null
           phase1_serviceable?: boolean | null
           service_zone?: string | null
+          verification_state?: string
           zone_code?: string | null
         }
         Relationships: []
@@ -7121,6 +7187,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      set_default_address_safe: {
+        Args: { _address_id: string; _user_id: string }
+        Returns: Json
+      }
+      validate_booking_readiness: {
+        Args: { _address_id?: string; _category_code: string; _user_id: string }
+        Returns: Json
       }
     }
     Enums: {
