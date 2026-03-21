@@ -155,6 +155,7 @@ const InsightDetailPage = lazy(() => import("./pages/InsightDetailPage"));
 const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelligenceOpsPage"));
 const SPSIntelligenceDashboardPage = lazy(() => import("./pages/ops/SPSIntelligenceDashboardPage"));
 const ConsumablesAdminPage = lazy(() => import("./pages/ops/ConsumablesAdminPage"));
+const MarketplaceOverviewPage = lazy(() => import("./pages/ops/MarketplaceOverviewPage"));
 
 // Consumables Ecosystem
 const ConsumablesLandingPage = lazy(() => import("./pages/consumables/ConsumablesLandingPage"));
@@ -336,6 +337,7 @@ const App = () => (
             <Route path="/ops/expansion" element={<OpsRoute><ExpansionRoadmapPage /></OpsRoute>} />
             <Route path="/ops/revenue" element={<OpsRoute><RevenueEnginePage /></OpsRoute>} />
             <Route path="/ops/intelligence" element={<OpsRoute><MarketplaceIntelligencePage /></OpsRoute>} />
+            <Route path="/ops/marketplace-overview" element={<OpsRoute><MarketplaceOverviewPage /></OpsRoute>} />
             <Route path="/ops/retention" element={<OpsRoute><RetentionDashboardPage /></OpsRoute>} />
             <Route path="/ops/launch" element={<OpsRoute><LaunchReadinessPage /></OpsRoute>} />
             <Route path="/ops/pilot-simulation" element={<OpsRoute><PilotSimulationPage /></OpsRoute>} />
