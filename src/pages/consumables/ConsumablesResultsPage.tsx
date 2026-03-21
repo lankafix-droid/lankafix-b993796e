@@ -243,27 +243,62 @@ function LeadCaptureSection({ query }: { query: string }) {
   );
 }
 
-/** Resolve DB product IDs for each supply code group */
+/** Normalize a code for fuzzy matching: lowercase, strip hyphens/spaces */
+function normCode(s: string): string {
+  return s.toLowerCase().replace(/[\s\-_./\\,()]+/g, "");
+}
+
+/** Resolve DB product IDs for each supply code group using multi-strategy lookup */
 async function resolveProductIds(groups: SearchResultGroup[]): Promise<Map<string, ResolvedProducts>> {
   const map = new Map<string, ResolvedProducts>();
   if (groups.length === 0) return map;
 
-  // Collect unique supply codes
   const codes = [...new Set(groups.map(g => g.supplyCode))];
+  const brands = [...new Set(groups.map(g => g.brand))];
 
-  const { data } = await supabase
+  // Fetch a broad set: exact sku match OR same brand products (for fallback)
+  const { data: allProducts } = await supabase
     .from("consumable_products")
-    .select("id, sku_code, range_type, price, stock_qty")
+    .select("id, sku_code, range_type, price, stock_qty, compare_group, brand")
     .eq("is_active", true)
-    .in("sku_code", codes);
+    .in("brand", brands)
+    .limit(500);
 
-  if (!data) return map;
+  if (!allProducts || allProducts.length === 0) return map;
 
-  // Group by sku_code
-  for (const code of codes) {
-    const matching = data.filter(p => p.sku_code === code);
-    const sf = matching.find(p => p.range_type === "smartfix_compatible");
-    const oem = matching.find(p => p.range_type === "genuine_oem");
+  for (const group of groups) {
+    const code = group.supplyCode;
+    const brand = group.brand;
+    const normTarget = normCode(code);
+
+    // Strategy 1: Exact sku_code match
+    let candidates = allProducts.filter(p => p.sku_code === code && p.brand === brand);
+
+    // Strategy 2: Normalized sku_code match
+    if (candidates.length === 0) {
+      candidates = allProducts.filter(p => normCode(p.sku_code) === normTarget && p.brand === brand);
+    }
+
+    // Strategy 3: compare_group match (e.g. "canon_325" family)
+    if (candidates.length === 0) {
+      const codeFamily = normTarget.replace(/\d+$/, ""); // strip trailing digits for family
+      candidates = allProducts.filter(p =>
+        p.compare_group && p.brand === brand &&
+        (normCode(p.compare_group).includes(normTarget) || normCode(p.compare_group) === codeFamily)
+      );
+    }
+
+    // Strategy 4: Brand + code substring fallback
+    if (candidates.length === 0) {
+      candidates = allProducts.filter(p =>
+        p.brand === brand &&
+        (normCode(p.sku_code).includes(normTarget) || normTarget.includes(normCode(p.sku_code)))
+      );
+    }
+
+    const sf = candidates.find(p => p.range_type === "smartfix_compatible");
+    const oem = candidates.find(p => p.range_type === "genuine_oem");
+
     map.set(code, {
       smartfixId: sf?.id ?? null,
       oemId: oem?.id ?? null,

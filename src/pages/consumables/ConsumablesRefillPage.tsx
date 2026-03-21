@@ -133,7 +133,7 @@ function buildConditionNotes(condition: string, printerInfo: string, userNotes: 
   return parts.join(" ");
 }
 
-type FlowStep = "select" | "results" | "request" | "submitted";
+type FlowStep = "select" | "results" | "request" | "submitted" | "rejected";
 
 const ConsumablesRefillPage = () => {
   const [searchParams] = useSearchParams();
@@ -158,6 +158,25 @@ const ConsumablesRefillPage = () => {
     return ALL_REFILLABLE.filter(p => p.brand === selectedBrand)
       .sort((a, b) => a.model.localeCompare(b.model));
   }, [selectedBrand]);
+
+  // Auto-prefill from URL params: find matching printer + cartridge and jump to results
+  useMemo(() => {
+    if (preBrand && preCode && step === "select") {
+      const normTarget = preCode.toLowerCase().replace(/[\s\-_]+/g, "");
+      // Find printer that has this cartridge code
+      const match = ALL_REFILLABLE.find(p => {
+        if (p.brand.toLowerCase() !== preBrand.toLowerCase()) return false;
+        return p.cartridges.some(c => c.code.toLowerCase().replace(/[\s\-_]+/g, "") === normTarget);
+      });
+      if (match) {
+        setSelectedBrand(match.brand);
+        setSelectedModel(match.model);
+        setSelectedPrinter(match);
+        setSelectedCartridges(match.cartridges);
+        setStep("results");
+      }
+    }
+  }, []);
 
   const handleBrandChange = (brand: string) => {
     setSelectedBrand(brand);
