@@ -53,6 +53,9 @@ const V2HomePage = () => {
         {/* 1. Hero — search, location, trust */}
         <V2HeroSection onSetupLocation={() => setShowLocationSetup(true)} />
 
+        {/* Progressive profile completion prompt */}
+        <ProfileCompletionPrompt />
+
         {/* 2. Trust strip — immediate confidence */}
         <Suspense fallback={<SectionFallback />}>
           <V2TrustStrip />
