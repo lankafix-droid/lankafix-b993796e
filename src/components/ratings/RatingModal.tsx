@@ -10,6 +10,7 @@ import { Star, CheckCircle2, Loader2, Shield, ThumbsUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { submitRating } from "@/services/ratingService";
 import { toast } from "sonner";
+import { trackRatingSubmitted } from "@/lib/marketplaceAnalytics";
 
 interface RatingModalProps {
   open: boolean;
@@ -60,6 +61,7 @@ export default function RatingModal({ open, onClose, bookingId, partnerId, custo
     });
     setSubmitting(false);
 
+    trackRatingSubmitted(bookingId, rating);
     if (result.error) {
       toast.error(
         result.error.includes("duplicate") || result.error.includes("unique")

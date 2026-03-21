@@ -2,6 +2,7 @@ import { CONSUMER_CATEGORIES, type BookingCategory } from "@/data/consumerBookin
 import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
 import { motion } from "framer-motion";
 import { Clock, ArrowRight } from "lucide-react";
+import { trackCategoryClick } from "@/lib/marketplaceAnalytics";
 
 interface Props {
   selected: string;
@@ -33,7 +34,7 @@ const CategorySelectionStep = ({ selected, onSelect }: Props) => (
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03, duration: 0.2 }}
-            onClick={() => !isComingSoon && onSelect(cat.code)}
+            onClick={() => { if (!isComingSoon) { trackCategoryClick(cat.code, "booking_flow"); onSelect(cat.code); } }}
             disabled={isComingSoon}
             className={`flex items-center gap-3.5 p-3.5 rounded-2xl border text-left transition-all active:scale-[0.98] ${
               isComingSoon

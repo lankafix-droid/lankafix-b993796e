@@ -156,6 +156,8 @@ const ContentIntelligenceOpsPage = lazy(() => import("./pages/ops/ContentIntelli
 const SPSIntelligenceDashboardPage = lazy(() => import("./pages/ops/SPSIntelligenceDashboardPage"));
 const ConsumablesAdminPage = lazy(() => import("./pages/ops/ConsumablesAdminPage"));
 const MarketplaceOverviewPage = lazy(() => import("./pages/ops/MarketplaceOverviewPage"));
+const BookingDetailPage = lazy(() => import("./pages/BookingDetailPage"));
+const NotificationPreferencesPage = lazy(() => import("./pages/NotificationPreferencesPage"));
 
 // Consumables Ecosystem
 const ConsumablesLandingPage = lazy(() => import("./pages/consumables/ConsumablesLandingPage"));
@@ -272,6 +274,8 @@ const App = () => (
             <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
             <Route path="/service-history" element={<ProtectedRoute><ServiceHistoryPage /></ProtectedRoute>} />
+            <Route path="/booking/:bookingId" element={<ProtectedRoute><BookingDetailPage /></ProtectedRoute>} />
+            <Route path="/notification-preferences" element={<ProtectedRoute><NotificationPreferencesPage /></ProtectedRoute>} />
 
             {/* ─── Property Digital Twin ─── */}
             <Route path="/property" element={<ProtectedRoute><PropertyDashboardPage /></ProtectedRoute>} />

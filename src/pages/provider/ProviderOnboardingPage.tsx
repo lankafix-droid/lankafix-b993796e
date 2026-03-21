@@ -31,6 +31,7 @@ import {
   Shield, Star, Send, BookOpen, Scale, Loader2, Sparkles, TrendingUp,
   Zap, Heart, BarChart3, LogIn, Upload, X, AlertTriangle,
 } from "lucide-react";
+import { trackOnboardingStep } from "@/lib/marketplaceAnalytics";
 
 export default function ProviderOnboardingPage() {
   const store = useProviderOnboardingStore();
@@ -466,7 +467,7 @@ export default function ProviderOnboardingPage() {
               )}
             </Button>
           ) : (
-            <Button onClick={store.nextStep} className="flex-1">
+            <Button onClick={() => { trackOnboardingStep(step.key); store.nextStep(); }} className="flex-1">
               Continue <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           )}
