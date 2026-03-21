@@ -7,10 +7,13 @@ import { lazy, Suspense } from "react";
 import TermsGuard from "@/components/consent/TermsGuard";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
 import OfflineBanner from "@/components/layout/OfflineBanner";
+import NativeSplash from "@/components/layout/NativeSplash";
 import ChatWidget from "./components/chat/ChatWidget";
 import PilotModeBanner from "./components/ops/PilotModeBanner";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PartnerRoute from "@/components/auth/PartnerRoute";
+import { useNativeBackButton } from "@/hooks/useNativeBackButton";
+import { useExternalLinks } from "@/hooks/useExternalLinks";
 // Eager-load homepage for fast first paint
 import HomePage from "./pages/V2HomePage";
 import GoogleMapsProvider from "./components/maps/GoogleMapsProvider";
