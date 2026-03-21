@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, ShieldCheck, Package, Truck, QrCode, RotateCcw, Scale, FileText, HelpCircle, ShoppingCart, ArrowRight } from "lucide-react";
+import smartfixTonerBox from "@/assets/smartfix-toner-box.png";
+import smartfixInkBox from "@/assets/smartfix-ink-box.png";
 import { useConsumableProduct, useCart } from "@/hooks/useConsumables";
 import { motion } from "framer-motion";
 
@@ -52,7 +54,20 @@ const ConsumableProductPage = () => {
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* Product Image */}
-          <div className="w-full h-48 bg-muted rounded-xl flex items-center justify-center text-5xl mb-4">🖨️</div>
+          <div className="w-full h-48 bg-white dark:bg-muted rounded-xl flex items-center justify-center mb-4 overflow-hidden">
+            {isSmartFix ? (
+              <img
+                src={product.product_type === "cartridge" || product.product_type === "ink_bottle" ? smartfixInkBox : smartfixTonerBox}
+                alt="SmartFix Compatible"
+                className="h-40 w-auto object-contain"
+              />
+            ) : (
+              <div className="text-center">
+                <Package className="w-12 h-12 text-muted-foreground/30 mx-auto mb-1" />
+                <p className="text-[10px] text-muted-foreground">Genuine OEM Product</p>
+              </div>
+            )}
+          </div>
 
           {/* Badges */}
           <div className="flex flex-wrap gap-1.5 mb-3">
