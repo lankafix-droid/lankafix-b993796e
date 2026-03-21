@@ -1,30 +1,27 @@
 /**
- * ProfileCompletionPrompt — shows a gentle, non-blocking prompt for the next missing profile field.
- * Used progressively after login, not a full form wall.
+ * ProfileCompletionPrompt — Smart, non-blocking prompt for the next missing field.
+ * Now service-aware with booking readiness context.
  */
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { X, User, Phone, Mail, MapPin, ChevronRight } from "lucide-react";
+import { X, User, Phone, Mail, MapPin, ChevronRight, CheckCircle2, Shield } from "lucide-react";
 import { useCustomerProfile } from "@/hooks/useCustomerProfile";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function ProfileCompletionPrompt() {
-  const { profile, missingFields, completionPct, updateProfile } = useCustomerProfile();
+  const { profile, missingFields, completionPct, updateProfile, hasServiceableAddress } = useCustomerProfile();
   const [dismissed, setDismissed] = useState(false);
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Don't show if fully complete, dismissed, or loading
-  if (!profile || missingFields.length === 0 || completionPct >= 80 || dismissed) return null;
+  if (!profile || missingFields.length === 0 || completionPct >= 85 || dismissed) return null;
 
-  // Get the next most important field to ask for
   const priorityOrder = ["full_name", "phone", "email", "district"];
   const nextField = priorityOrder.find((f) => missingFields.includes(f)) || missingFields[0];
 
-  if (!nextField || nextField === "address") return null; // address has its own flow
+  if (!nextField || nextField === "address") return null;
 
   const fieldConfig: Record<string, { label: string; placeholder: string; icon: React.ReactNode; type: string }> = {
     full_name: { label: "What's your name?", placeholder: "Your full name", icon: <User className="w-4 h-4" />, type: "text" },
@@ -87,7 +84,17 @@ export default function ProfileCompletionPrompt() {
           <Progress value={completionPct} className="h-1.5 flex-1" />
           <span className="text-xs text-muted-foreground">{completionPct}%</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">Complete your profile for faster bookings</p>
+
+        {/* Booking readiness hint */}
+        {hasServiceableAddress ? (
+          <p className="text-xs text-primary flex items-center gap-1 mt-1.5">
+            <CheckCircle2 className="w-3 h-3" /> Address verified for Phase-1
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1.5">
+            <Shield className="w-3 h-3" /> Complete your profile for faster bookings
+          </p>
+        )}
       </motion.div>
     </AnimatePresence>
   );
