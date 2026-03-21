@@ -4,7 +4,6 @@
  * and next-step explanations. All advisory, no fake certainty.
  */
 
-import { CATEGORY_PROBLEMS, PROBLEM_SERVICE_MAP_PUBLIC } from "@/engines/diagnoseEngine";
 import type { CategoryCode } from "@/types/booking";
 
 // ─── Problem Guidance ──────────────────────────────────
