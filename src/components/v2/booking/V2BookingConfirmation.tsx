@@ -389,7 +389,14 @@ const V2BookingConfirmation = ({ flow, booking, onEditStep }: Props) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08, duration: 0.3 }}
         >
-          <h3 className="font-bold text-foreground text-sm mb-1">Device Details</h3>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="font-bold text-foreground text-sm">Device Details</h3>
+            {onEditStep && (
+              <button onClick={() => onEditStep("device_details")} className="text-[11px] font-medium text-primary hover:underline">
+                Edit
+              </button>
+            )}
+          </div>
           {Object.entries(booking.deviceAnswers).map(([key, value]) => {
             const question = flow.deviceQuestions.find((q) => q.key === key);
             const rawValue = typeof value === "boolean" ? (value ? "Yes" : "No") : value;
