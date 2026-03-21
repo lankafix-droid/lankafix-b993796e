@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft, RotateCcw, ChevronRight, ShieldCheck, Droplets, MessageCircle,
-  Truck, ClipboardCheck, TestTube, PackageCheck, HelpCircle, Phone, AlertTriangle
+  Truck, ClipboardCheck, TestTube, PackageCheck, HelpCircle, Phone, AlertTriangle, CheckCircle2
 } from "lucide-react";
 import { PRINTER_MAPPINGS, BRANDS } from "@/data/printerMappings";
 import { whatsappLink, SUPPORT_WHATSAPP, SUPPORT_PHONE } from "@/config/contact";
