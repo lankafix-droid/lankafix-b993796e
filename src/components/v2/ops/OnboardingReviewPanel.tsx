@@ -28,7 +28,7 @@ export default function OnboardingReviewPanel() {
       const { data, error } = await supabase
         .from("partners")
         .select("id, full_name, business_name, phone_number, email, provider_type, categories_supported, service_zones, experience_years, verification_status, created_at, profile_photo_url")
-        .eq("verification_status", filter)
+        .eq("verification_status", filter as "pending" | "verified" | "suspended")
         .order("created_at", { ascending: true })
         .limit(50);
       if (error) throw error;
