@@ -83,12 +83,16 @@ export default function NotificationPreferencesPage() {
       localStorage.setItem("lf_notification_prefs", JSON.stringify(map));
 
       if (user) {
-        const dbPayload: Record<string, any> = { user_id: user.id };
-        PREF_KEYS.forEach(k => { dbPayload[k] = map[k] ?? true; });
-
         supabase
           .from("notification_preferences")
-          .upsert(dbPayload, { onConflict: "user_id" })
+          .upsert({
+            user_id: user.id,
+            booking_updates: map["booking_updates"] ?? true,
+            quote_alerts: map["quote_alerts"] ?? true,
+            reminders: map["reminders"] ?? true,
+            onboarding_status: map["onboarding_status"] ?? true,
+            promotions: map["promotions"] ?? false,
+          } as any, { onConflict: "user_id" })
           .then(({ error }) => {
             if (error) console.error("Failed to save preferences:", error);
           });
