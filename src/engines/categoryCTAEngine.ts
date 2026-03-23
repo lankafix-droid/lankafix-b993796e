@@ -101,11 +101,11 @@ export function getCategoryCTA(
 
   const cta = CTA_MATRIX[archetype][effectiveLevel];
   const isFallback = effectiveLevel === 'none';
+  // Route to category landing page for education-first experience
+  // Fallback routes still go to request page for callback flow
   const route = isFallback
     ? `/request/${categoryCode}`
-    : cta.action === 'submit'
-      ? `/submit/${categoryCode}`
-      : `/book/${categoryCode}`;
+    : `/category/${categoryCode.toLowerCase()}`;
 
   const result: CategoryCTA = {
     label: cta.label,

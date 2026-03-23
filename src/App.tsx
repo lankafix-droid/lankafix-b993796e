@@ -31,6 +31,8 @@ const QuoteApprovalPage = lazy(() => import("./pages/V2QuoteApprovalPage"));
 const DiagnosePage = lazy(() => import("./pages/DiagnosePage"));
 const TrackJob = lazy(() => import("./pages/TrackJob"));
 const TrackerPage = lazy(() => import("./pages/TrackerPage"));
+const CategoryLandingPage = lazy(() => import("./pages/CategoryLandingPage"));
+const ServiceRequestFlow = lazy(() => import("./pages/ServiceRequestFlow"));
 
 const WaitlistPage = lazy(() => import("./pages/WaitlistPage"));
 const DemandRequestPage = lazy(() => import("./pages/DemandRequestPage"));
@@ -249,6 +251,8 @@ const App = () => (
             {/* ─── V3 Customer Marketplace ─── */}
             <Route path="/" element={<HomePage />} />
             <Route path="/services" element={<ConsumerBookingPage />} />
+            <Route path="/category/:code" element={<CategoryLandingPage />} />
+            <Route path="/service-flow/:code" element={<ServiceRequestFlow />} />
             <Route path="/book/:category" element={<BookingPage />} />
             <Route path="/quote/:jobId" element={<QuoteApprovalPage />} />
             <Route path="/diagnose" element={<DiagnosePage />} />
