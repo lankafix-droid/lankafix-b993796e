@@ -77,7 +77,7 @@ const DemandRequestPage = () => {
     try {
       const normalizedPhone = normalizeSLPhone(phone);
       const { error } = await supabase.from("demand_requests" as any).insert({
-        user_id: userId,
+        user_id: user?.id || null,
         category_code: category || "UNKNOWN",
         request_type: "callback",
         name: name.trim(),
