@@ -57,7 +57,7 @@ export default function LoginPage() {
           </div>
 
           {/* Social Sign-In */}
-          <SocialSignInButtons onError={setError} disabled={loading} />
+          <SocialSignInButtons onError={setError} disabled={loading} redirectTo={redirectTo} />
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
