@@ -1,11 +1,13 @@
 /**
  * Social Sign-In Buttons — Google + Apple via Lovable Cloud
- * Supports redirect preservation for post-login navigation.
+ * Persists redirectTo in sessionStorage before OAuth redirect so it
+ * survives the full-page round-trip. Prevents duplicate toasts.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
+import { saveAuthRedirect } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,25 +26,33 @@ export default function SocialSignInButtons({ onError, disabled, redirectTo = "/
   const handleSocialLogin = async (provider: "google" | "apple") => {
     setLoadingProvider(provider);
     try {
+      // Persist redirect so it survives the full-page OAuth round-trip
+      saveAuthRedirect(redirectTo);
+      sessionStorage.setItem("lankafix_oauth_pending", "1");
+
       const result = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri: window.location.origin,
       });
 
       if (result.error) {
+        // Clear stored redirect on error
+        sessionStorage.removeItem("lankafix_oauth_pending");
         onError?.(result.error.message || `${provider} sign-in failed`);
         return;
       }
 
-      // If not redirected (session set inline), navigate immediately
+      // If session was set inline (no full redirect), navigate now
       if (!result.redirected) {
-        // Check if session was set successfully
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          sessionStorage.removeItem("lankafix_oauth_pending");
           toast.success("Welcome to LankaFix!");
           navigate(redirectTo, { replace: true });
         }
       }
+      // If redirected === true, the page will reload and useAuth handles recovery
     } catch (err: any) {
+      sessionStorage.removeItem("lankafix_oauth_pending");
       onError?.(err?.message || `${provider} sign-in failed`);
     } finally {
       setLoadingProvider(null);
