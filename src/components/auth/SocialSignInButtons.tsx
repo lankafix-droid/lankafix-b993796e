@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+type OAuthProvider = "google" | "apple";
+
 interface SocialSignInButtonsProps {
   onError?: (msg: string) => void;
   disabled?: boolean;
@@ -20,13 +22,13 @@ interface SocialSignInButtonsProps {
 }
 
 export default function SocialSignInButtons({ onError, disabled, redirectTo = "/" }: SocialSignInButtonsProps) {
-  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [loadingProvider, setLoadingProvider] = useState<OAuthProvider | null>(null);
   const navigate = useNavigate();
 
-  const handleSocialLogin = async (provider: "google" | "apple") => {
+  const handleSocialLogin = async (provider: OAuthProvider) => {
     setLoadingProvider(provider);
     try {
-      // Persist redirect so it survives the full-page OAuth round-trip
+      // Persist redirect + pending flag before the page reloads
       saveAuthRedirect(redirectTo);
       sessionStorage.setItem("lankafix_oauth_pending", "1");
 
@@ -35,24 +37,26 @@ export default function SocialSignInButtons({ onError, disabled, redirectTo = "/
       });
 
       if (result.error) {
-        // Clear stored redirect on error
         sessionStorage.removeItem("lankafix_oauth_pending");
+        sessionStorage.removeItem("lankafix_auth_redirect");
         onError?.(result.error.message || `${provider} sign-in failed`);
         return;
       }
 
       // If session was set inline (no full redirect), navigate now
       if (!result.redirected) {
+        sessionStorage.removeItem("lankafix_oauth_pending");
+        sessionStorage.removeItem("lankafix_auth_redirect");
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          sessionStorage.removeItem("lankafix_oauth_pending");
           toast.success("Welcome to LankaFix!");
           navigate(redirectTo, { replace: true });
         }
       }
-      // If redirected === true, the page will reload and useAuth handles recovery
+      // If redirected === true, the page reloads and useAuth handles recovery
     } catch (err: any) {
       sessionStorage.removeItem("lankafix_oauth_pending");
+      sessionStorage.removeItem("lankafix_auth_redirect");
       onError?.(err?.message || `${provider} sign-in failed`);
     } finally {
       setLoadingProvider(null);
