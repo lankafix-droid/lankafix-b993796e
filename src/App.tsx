@@ -31,6 +31,8 @@ const QuoteApprovalPage = lazy(() => import("./pages/V2QuoteApprovalPage"));
 const DiagnosePage = lazy(() => import("./pages/DiagnosePage"));
 const TrackJob = lazy(() => import("./pages/TrackJob"));
 const TrackerPage = lazy(() => import("./pages/TrackerPage"));
+const CategoryLandingPage = lazy(() => import("./pages/CategoryLandingPage"));
+const ServiceRequestFlow = lazy(() => import("./pages/ServiceRequestFlow"));
 
 const WaitlistPage = lazy(() => import("./pages/WaitlistPage"));
 const DemandRequestPage = lazy(() => import("./pages/DemandRequestPage"));
