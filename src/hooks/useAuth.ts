@@ -5,27 +5,58 @@
  * sessionStorage and navigates after SIGNED_IN event.
  */
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { User, Session } from "@supabase/supabase-js";
 
-/** Key used to persist the post-login redirect path across OAuth redirects */
+// ─── Redirect persistence helpers ────────────────────────────
+
 const REDIRECT_STORAGE_KEY = "lankafix_auth_redirect";
+const OAUTH_PENDING_KEY = "lankafix_oauth_pending";
+
+/** Paths that should never be stored as redirect targets */
+const BLOCKED_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password"];
+
+/**
+ * Sanitize a redirect path: only allow internal, relative paths.
+ * Returns "/" for anything invalid.
+ */
+function sanitizeRedirect(raw: string | null | undefined): string {
+  if (!raw || typeof raw !== "string") return "/";
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length === 0) return "/";
+  // Block external URLs (protocol-relative or absolute)
+  if (trimmed.startsWith("//") || trimmed.includes("://")) return "/";
+  // Must start with /
+  if (!trimmed.startsWith("/")) return "/";
+  // Block auth pages
+  if (BLOCKED_PATHS.some(p => trimmed.startsWith(p))) return "/";
+  return trimmed;
+}
 
 /** Save the desired post-login route (call before OAuth redirect) */
 export function saveAuthRedirect(path: string) {
-  if (path && path !== "/login" && path !== "/signup") {
-    sessionStorage.setItem(REDIRECT_STORAGE_KEY, path);
+  const safe = sanitizeRedirect(path);
+  if (safe !== "/") {
+    sessionStorage.setItem(REDIRECT_STORAGE_KEY, safe);
   }
 }
 
-/** Consume (read + clear) the saved redirect path */
+/** Read and clear the saved redirect path (consume once) */
 function consumeAuthRedirect(): string {
   const saved = sessionStorage.getItem(REDIRECT_STORAGE_KEY);
   sessionStorage.removeItem(REDIRECT_STORAGE_KEY);
-  return saved || "/";
+  return sanitizeRedirect(saved);
 }
+
+/** Check and clear the pending OAuth flag */
+function consumeOAuthPending(): boolean {
+  const pending = sessionStorage.getItem(OAUTH_PENDING_KEY);
+  sessionStorage.removeItem(OAUTH_PENDING_KEY);
+  return pending === "1";
+}
+
+// ─── Auth hook ───────────────────────────────────────────────
 
 interface AuthState {
   user: User | null;
@@ -41,35 +72,40 @@ export function useAuth(): AuthState {
   const handledSignIn = useRef(false);
 
   useEffect(() => {
-    // Set up listener BEFORE getSession per Supabase best practices
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
       setIsLoading(false);
 
+      // Reset sign-in guard on sign-out or null session
+      if (event === "SIGNED_OUT" || !newSession) {
+        handledSignIn.current = false;
+        return;
+      }
+
       // Handle post-OAuth recovery: navigate + toast exactly once per sign-in
-      if (event === "SIGNED_IN" && session && !handledSignIn.current) {
+      if (event === "SIGNED_IN" && newSession && !handledSignIn.current) {
         handledSignIn.current = true;
-        // Use setTimeout to avoid calling navigate during render
-        setTimeout(() => {
-          const redirectTo = consumeAuthRedirect();
-          // Only show welcome toast if coming from an OAuth redirect (page reload)
-          // The saved redirect key existing means this was an OAuth flow
-          if (redirectTo !== "/" || sessionStorage.getItem("lankafix_oauth_pending")) {
-            sessionStorage.removeItem("lankafix_oauth_pending");
+
+        // Read both values before clearing anything
+        const wasPending = consumeOAuthPending();
+        const redirectTo = consumeAuthRedirect();
+
+        if (wasPending) {
+          // Defer to avoid calling navigate during render cycle
+          setTimeout(() => {
             toast.success("Welcome to LankaFix!");
-            // Navigate via window.location for OAuth returns (no React Router context guaranteed)
             if (window.location.pathname !== redirectTo) {
               window.location.replace(redirectTo);
             }
-          }
-        }, 50);
+          }, 50);
+        }
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: existing } }) => {
+      setSession(existing);
+      setUser(existing?.user ?? null);
       setIsLoading(false);
     });
 

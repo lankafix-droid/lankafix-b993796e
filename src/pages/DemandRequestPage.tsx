@@ -1,6 +1,7 @@
 /**
  * /request/:category — Callback/Request Flow
  * Captures demand when no supply is available for a category.
+ * Uses useProfileAutoFill for pre-populating form fields.
  */
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -9,6 +10,8 @@ import { categories } from "@/data/categories";
 import { logFallbackDemand } from "@/lib/demandCapture";
 import { whatsappLink, SUPPORT_WHATSAPP } from "@/config/contact";
 import { isValidSLPhone, normalizeSLPhone, canSubmitRequest, recordSubmission, isDuplicateRequest, recordRequest } from "@/lib/phoneValidation";
+import { useProfileAutoFill } from "@/hooks/useProfileAutoFill";
+import { useAuth } from "@/hooks/useAuth";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
 import { Button } from "@/components/ui/button";
@@ -27,6 +30,8 @@ const DemandRequestPage = () => {
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
   const cat = categories.find((c) => c.code === category);
+  const { user } = useAuth();
+  const autoFill = useProfileAutoFill();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -35,39 +40,19 @@ const DemandRequestPage = () => {
   const [preferredTime, setPreferredTime] = useState("asap");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
   const [honeypot, setHoneypot] = useState("");
+  const [autoFilled, setAutoFilled] = useState(false);
 
+  // Auto-fill from profile hook — run once when data is available
   useEffect(() => {
-    let cancelled = false;
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (cancelled || !user) return;
-      setUserId(user.id);
-      // Auto-fill from profile
-      supabase.from("profiles").select("full_name, phone, district").eq("user_id", user.id).single()
-        .then(({ data }) => {
-          if (cancelled || !data) return;
-          if (data.full_name) setName(prev => prev || data.full_name);
-          if (data.phone) setPhone(prev => prev || data.phone);
-        });
-      // Auto-fill location: try default address first, then any address
-      supabase.from("customer_addresses")
-        .select("city, district, address_line_1, is_default")
-        .eq("customer_id", user.id)
-        .order("is_default", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (cancelled || !data) return;
-          setLocation(prev => {
-            if (prev) return prev;
-            const parts = [data.address_line_1, data.city, data.district].filter(Boolean);
-            return parts.length > 0 ? parts.join(", ") : "";
-          });
-        });
-    });
-    return () => { cancelled = true; };
-  }, []);
+    if (autoFilled || autoFill.isLoading) return;
+    if (autoFill.hasProfileData || autoFill.hasAddressData) {
+      setName(prev => prev || autoFill.name);
+      setPhone(prev => prev || autoFill.phone);
+      setLocation(prev => prev || autoFill.addressDisplayString);
+      setAutoFilled(true);
+    }
+  }, [autoFill.isLoading, autoFill.hasProfileData, autoFill.hasAddressData, autoFilled]);
 
   const handleSubmit = async () => {
     if (honeypot) return; // bot trap
@@ -92,7 +77,7 @@ const DemandRequestPage = () => {
     try {
       const normalizedPhone = normalizeSLPhone(phone);
       const { error } = await supabase.from("demand_requests" as any).insert({
-        user_id: userId,
+        user_id: user?.id || null,
         category_code: category || "UNKNOWN",
         request_type: "callback",
         name: name.trim(),
