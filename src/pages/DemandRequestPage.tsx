@@ -42,10 +42,19 @@ const DemandRequestPage = () => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
-        // Auto-fill name from profile
-        supabase.from("profiles").select("full_name").eq("user_id", user.id).single()
+        // Auto-fill name, phone, and location from profile
+        supabase.from("profiles").select("full_name, phone, district").eq("user_id", user.id).single()
           .then(({ data }) => {
-            if (data?.full_name) setName(data.full_name);
+            if (data?.full_name && !name) setName(data.full_name);
+            if (data?.phone && !phone) setPhone(data.phone);
+          });
+        // Auto-fill location from default address
+        supabase.from("customer_addresses").select("city, district, address_line_1").eq("customer_id", user.id).eq("is_default", true).limit(1).single()
+          .then(({ data }) => {
+            if (data && !location) {
+              const parts = [data.address_line_1, data.city, data.district].filter(Boolean);
+              if (parts.length > 0) setLocation(parts.join(", "));
+            }
           });
       }
     });

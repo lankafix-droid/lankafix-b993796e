@@ -1,18 +1,25 @@
 /**
  * Social Sign-In Buttons — Google + Apple via Lovable Cloud
+ * Supports redirect preservation for post-login navigation.
  */
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface SocialSignInButtonsProps {
   onError?: (msg: string) => void;
   disabled?: boolean;
+  /** Where to navigate after successful sign-in (defaults to "/") */
+  redirectTo?: string;
 }
 
-export default function SocialSignInButtons({ onError, disabled }: SocialSignInButtonsProps) {
+export default function SocialSignInButtons({ onError, disabled, redirectTo = "/" }: SocialSignInButtonsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleSocialLogin = async (provider: "google" | "apple") => {
     setLoadingProvider(provider);
@@ -20,8 +27,20 @@ export default function SocialSignInButtons({ onError, disabled }: SocialSignInB
       const result = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri: window.location.origin,
       });
+
       if (result.error) {
         onError?.(result.error.message || `${provider} sign-in failed`);
+        return;
+      }
+
+      // If not redirected (session set inline), navigate immediately
+      if (!result.redirected) {
+        // Check if session was set successfully
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          toast.success("Welcome to LankaFix!");
+          navigate(redirectTo, { replace: true });
+        }
       }
     } catch (err: any) {
       onError?.(err?.message || `${provider} sign-in failed`);

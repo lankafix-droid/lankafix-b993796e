@@ -16,10 +16,11 @@ export default function ProfileCompletionPrompt() {
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
 
-  if (!profile || missingFields.length === 0 || completionPct >= 85 || dismissed) return null;
+  // Only prompt for critical missing fields (name, phone) — skip email/district until needed
+  const criticalMissing = missingFields.filter(f => f === "full_name" || f === "phone");
+  if (!profile || criticalMissing.length === 0 || dismissed) return null;
 
-  const priorityOrder = ["full_name", "phone", "email", "district"];
-  const nextField = priorityOrder.find((f) => missingFields.includes(f)) || missingFields[0];
+  const nextField = criticalMissing[0];
 
   if (!nextField || nextField === "address") return null;
 
