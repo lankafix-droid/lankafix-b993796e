@@ -22,7 +22,7 @@ export default function ProfileCompletionPrompt() {
 
   const nextField = criticalMissing[0];
 
-  if (!nextField || nextField === "address") return null;
+  if (!nextField) return null;
 
   const fieldConfig: Record<string, { label: string; placeholder: string; icon: React.ReactNode; type: string }> = {
     full_name: { label: "What's your name?", placeholder: "Your full name", icon: <User className="w-4 h-4" />, type: "text" },
