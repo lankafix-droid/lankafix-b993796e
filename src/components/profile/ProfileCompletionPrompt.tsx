@@ -37,9 +37,14 @@ export default function ProfileCompletionPrompt() {
   const handleSave = async () => {
     if (!value.trim()) return;
     setSaving(true);
-    await updateProfile.mutateAsync({ [nextField]: value.trim() } as any);
-    setValue("");
-    setSaving(false);
+    try {
+      await updateProfile.mutateAsync({ [nextField]: value.trim() } as any);
+      setValue("");
+    } catch {
+      // Error handled by mutation's onError
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
