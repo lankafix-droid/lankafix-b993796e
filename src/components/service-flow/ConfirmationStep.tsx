@@ -90,12 +90,12 @@ export default function ConfirmationStep(props: ConfirmationStepProps) {
         </p>
       </div>
 
-      {/* Flow Family Outcome */}
-      <div className="flex items-center gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/15">
-        <span className="text-lg">{familyMeta.icon}</span>
+      {/* Flow Family Outcome — what happens next */}
+      <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-primary/5 border border-primary/15">
+        <span className="text-lg mt-0.5">{familyMeta.icon}</span>
         <div className="flex-1">
           <p className="text-xs font-semibold text-primary">{familyMeta.label}</p>
-          <p className="text-[10px] text-muted-foreground">{familyMeta.description}</p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">{familyMeta.nextStep}</p>
         </div>
       </div>
 

@@ -19,7 +19,7 @@ export default function FlowFamilyBanner({ flowFamily, className = "" }: FlowFam
       <span className="text-base mt-0.5">{meta.icon}</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-foreground">{meta.label}</p>
-        <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">{meta.description}</p>
+        <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">{meta.nextStep}</p>
       </div>
     </div>
   );

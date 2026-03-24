@@ -65,12 +65,13 @@ describe("Category Flow Engine", () => {
       });
       expect(result).toBe("direct_booking");
     });
-    it("requires pin_passcode and data_risk consents", () => {
+    it("requires pin_passcode, data_risk, and backup_responsibility consents", () => {
       const config = getCategoryFlowConfig("MOBILE");
       expect(config?.requiredConsents).toContain("pin_passcode");
       expect(config?.requiredConsents).toContain("data_risk");
-      expect(config?.requiredConsents).toContain("data_safety");
       expect(config?.requiredConsents).toContain("backup_responsibility");
+      expect(config?.requiredConsents).not.toContain("data_safety");
+      expect(config?.requiredConsents).toHaveLength(3);
     });
     it("shows water damage critical disclaimer", () => {
       const disclaimers = getActiveDisclaimers("MOBILE", { phone_condition: "water_exposed" });

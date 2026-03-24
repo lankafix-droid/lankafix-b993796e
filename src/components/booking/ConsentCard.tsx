@@ -57,18 +57,16 @@ export default function ConsentCard({ variant, checked, onCheckedChange, customT
   const Icon = config.icon;
 
   return (
-    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-border hover:bg-muted/30 cursor-pointer transition-colors">
+    <label className="flex items-center gap-2.5 p-3 rounded-xl border border-border/60 hover:bg-muted/30 cursor-pointer transition-colors">
       <Checkbox
         checked={checked}
         onCheckedChange={(v) => onCheckedChange(!!v)}
-        className="mt-0.5"
+        className="shrink-0"
       />
+      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-          <p className="text-sm font-medium text-foreground">{config.title}</p>
-        </div>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{config.description}</p>
+        <p className="text-xs font-medium text-foreground leading-snug">{config.title}</p>
+        <p className="text-[10px] text-muted-foreground leading-relaxed">{config.description}</p>
       </div>
     </label>
   );
