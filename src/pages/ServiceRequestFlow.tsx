@@ -303,7 +303,7 @@ export default function ServiceRequestFlow() {
             <div className="flex items-center gap-2 mt-1">
               <Progress value={progress} className="h-1 flex-1" />
               <span className="text-[10px] text-muted-foreground font-medium">
-                {stepIndex + 1}/{STEPS.length}
+                {effectiveIndex + 1}/{effectiveSteps.length}
               </span>
             </div>
           </div>
