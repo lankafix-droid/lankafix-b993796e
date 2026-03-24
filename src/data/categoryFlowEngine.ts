@@ -700,7 +700,7 @@ const SOLAR_FLOW: CategoryFlowConfig = {
     { key: "heavy_shade", message: "Heavy shading significantly reduces solar output. A site assessment will determine feasibility.", severity: "info", showWhen: { field: "shading", values: ["heavy"] } },
   ],
   requiredConsents: ["inspection_first"],
-  photoUploadEnabled: true,
+  photoUploadEnabled: false,
   dataDisclaimerRequired: false,
   adultPresenceRequired: true,
   accessDetailsRequired: true,
