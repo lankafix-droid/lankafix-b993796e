@@ -184,7 +184,7 @@ const AC_FLOW: CategoryFlowConfig = {
         { value: "unsure", label: "Not Sure" },
       ],
     },
-    { key: "photo_unit", label: "Photo of Unit", type: "photo", required: false, hint: "Helps with faster diagnosis" },
+    // Photo upload hidden for launch — will be enabled when storage integration is live
   ],
   commercial: {
     expectations: ["quote_after_inspection", "parts_additional"],
