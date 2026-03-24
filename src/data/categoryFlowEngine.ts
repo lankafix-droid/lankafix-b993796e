@@ -34,9 +34,7 @@ export type ServiceOutcome =
 export interface DiagnosticOption {
   value: string;
   label: string;
-  /** Emoji or icon hint */
   icon?: string;
-  /** If selecting this triggers a flow family override */
   flowOverride?: FlowFamily;
 }
 
@@ -47,11 +45,8 @@ export interface DiagnosticField {
   options?: DiagnosticOption[];
   placeholder?: string;
   required: boolean;
-  /** Show only when condition met */
   showWhen?: { field: string; values: string[] };
-  /** Helper text below the field */
   hint?: string;
-  /** Grid cols for options (2 or 3) */
   columns?: number;
 }
 
@@ -68,7 +63,6 @@ export interface RiskDisclaimer {
   key: string;
   message: string;
   severity: "info" | "warning" | "critical";
-  /** When to show this disclaimer */
   showWhen?: { field: string; values: string[] };
 }
 
@@ -79,7 +73,6 @@ export interface CommercialInfo {
   commitmentFeeRange?: string;
   warrantyHint?: string;
   priceVisibility: "transparent" | "quote_based" | "after_inspection";
-  /** Short user-facing label for commercial expectation */
   expectationLabel: string;
 }
 
@@ -88,27 +81,16 @@ export interface CommercialInfo {
 export interface CategoryFlowConfig {
   code: string;
   label: string;
-  /** Default flow family for this category */
   defaultFlowFamily: FlowFamily;
-  /** Service-specific flow overrides */
   serviceFlowMap: Record<string, FlowFamily>;
-  /** Category-specific diagnostic fields for Interface 3 */
   diagnosticFields: DiagnosticField[];
-  /** Commercial and pricing info */
   commercial: CommercialInfo;
-  /** Trust signals shown in the flow */
   trustSignals: TrustSignal[];
-  /** Risk disclaimers */
   riskDisclaimers: RiskDisclaimer[];
-  /** Consents required before submission */
   requiredConsents: string[];
-  /** Photo upload supported */
   photoUploadEnabled: boolean;
-  /** Data-related disclaimers needed */
   dataDisclaimerRequired: boolean;
-  /** Adult presence required */
   adultPresenceRequired: boolean;
-  /** Access details collection (floor, parking, etc.) */
   accessDetailsRequired: boolean;
 }
 
@@ -179,6 +161,18 @@ const AC_FLOW: CategoryFlowConfig = {
         { value: "1", label: "1 Unit" },
         { value: "2", label: "2 Units" },
         { value: "3_plus", label: "3+" },
+      ],
+    },
+    {
+      key: "issue_type", label: "Primary Issue", type: "select", required: false, columns: 2,
+      hint: "What's the main problem?",
+      options: [
+        { value: "not_cooling", label: "Not Cooling" },
+        { value: "water_leaking", label: "Water Leaking" },
+        { value: "strange_noise", label: "Strange Noise" },
+        { value: "bad_smell", label: "Bad Smell" },
+        { value: "no_power", label: "Not Turning On" },
+        { value: "high_consumption", label: "High Power Bill" },
       ],
     },
     {
@@ -260,11 +254,54 @@ const MOBILE_FLOW: CategoryFlowConfig = {
       ],
     },
     {
+      key: "touch_working", label: "Is touch working?", type: "select", required: false, columns: 3,
+      showWhen: { field: "phone_condition", values: ["works_partially", "screen_cracked"] },
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "partial", label: "Partially" },
+        { value: "no", label: "No" },
+      ],
+    },
+    {
+      key: "display_visible", label: "Can you see the display?", type: "select", required: false, columns: 3,
+      showWhen: { field: "phone_condition", values: ["works_partially", "screen_cracked"] },
+      options: [
+        { value: "yes", label: "Yes, clearly" },
+        { value: "partial", label: "Partially" },
+        { value: "no", label: "No / black" },
+      ],
+    },
+    {
+      key: "previously_repaired", label: "Previously repaired?", type: "select", required: false, columns: 3,
+      options: [
+        { value: "no", label: "No" },
+        { value: "yes_same", label: "Yes, same issue" },
+        { value: "yes_other", label: "Yes, other issue" },
+      ],
+    },
+    {
+      key: "screen_quality", label: "Screen Quality Preference", type: "select", required: false, columns: 2,
+      showWhen: { field: "phone_condition", values: ["screen_cracked"] },
+      hint: "Higher quality = better colour & durability",
+      options: [
+        { value: "compatible", label: "Compatible (Budget)" },
+        { value: "original", label: "Original Quality" },
+        { value: "genuine", label: "Genuine (if available)" },
+      ],
+    },
+    {
       key: "data_backed_up", label: "Is your data backed up?", type: "select", required: true, columns: 2,
       options: [
         { value: "yes", label: "Yes" },
         { value: "no", label: "No" },
         { value: "need_help", label: "Need help" },
+      ],
+    },
+    {
+      key: "important_data", label: "Important data on device?", type: "select", required: false, columns: 2,
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
       ],
     },
     { key: "photo_damage", label: "Photo of Damage", type: "photo", required: false, hint: "Upload for faster diagnosis", showWhen: { field: "phone_condition", values: ["screen_cracked", "water_exposed"] } },
@@ -285,6 +322,7 @@ const MOBILE_FLOW: CategoryFlowConfig = {
     { key: "water", message: "Water damage recovery has variable success rates. A diagnostic fee of LKR 500 applies before repair assessment.", severity: "critical", showWhen: { field: "phone_condition", values: ["water_exposed"] } },
     { key: "no_backup", message: "We recommend backing up your data before any repair. LankaFix is not responsible for data loss.", severity: "warning", showWhen: { field: "data_backed_up", values: ["no"] } },
     { key: "dead_phone", message: "Non-responsive devices require physical diagnosis. Final quote may differ from estimate.", severity: "info", showWhen: { field: "phone_condition", values: ["not_turning_on"] } },
+    { key: "prev_repair", message: "Previously repaired devices may have non-standard parts. This can affect repair cost and warranty coverage.", severity: "info", showWhen: { field: "previously_repaired", values: ["yes_same", "yes_other"] } },
   ],
   requiredConsents: ["data_safety", "backup_responsibility"],
   photoUploadEnabled: true,
@@ -354,6 +392,15 @@ const IT_FLOW: CategoryFlowConfig = {
         { value: "no", label: "No" },
       ],
     },
+    {
+      key: "business_impact", label: "Business Impact", type: "select", required: false, columns: 2,
+      showWhen: { field: "environment", values: ["office"] },
+      options: [
+        { value: "low", label: "Low – can wait" },
+        { value: "medium", label: "Medium – slowing work" },
+        { value: "high", label: "High – work stopped" },
+      ],
+    },
   ],
   commercial: {
     expectations: ["fixed_price"],
@@ -413,6 +460,17 @@ const CCTV_FLOW: CategoryFlowConfig = {
       ],
     },
     {
+      key: "coverage_area", label: "Coverage Area", type: "select", required: false, columns: 2,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      options: [
+        { value: "entrance", label: "Entrance Only" },
+        { value: "perimeter", label: "Full Perimeter" },
+        { value: "indoor", label: "Indoor Areas" },
+        { value: "full", label: "Full Property" },
+        { value: "unsure", label: "Need Assessment" },
+      ],
+    },
+    {
       key: "camera_count", label: "Number of Cameras", type: "select", required: false, columns: 3,
       showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
       options: [
@@ -435,6 +493,16 @@ const CCTV_FLOW: CategoryFlowConfig = {
       ],
     },
     {
+      key: "storage_pref", label: "Storage Preference", type: "select", required: false, columns: 2,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      options: [
+        { value: "local_dvr", label: "Local DVR/NVR" },
+        { value: "cloud", label: "Cloud Storage" },
+        { value: "both", label: "Both" },
+        { value: "unsure", label: "Not Sure" },
+      ],
+    },
+    {
       key: "existing_issue", label: "What's the issue?", type: "select", required: false, columns: 2,
       showWhen: { field: "request_type", values: ["repair"] },
       options: [
@@ -446,6 +514,7 @@ const CCTV_FLOW: CategoryFlowConfig = {
         { value: "other", label: "Other" },
       ],
     },
+    { key: "photo_site", label: "Photo of Installation Area", type: "photo", required: false, hint: "Helps with site assessment planning", showWhen: { field: "request_type", values: ["new_install", "upgrade"] } },
   ],
   commercial: {
     expectations: ["site_assessment_free", "quote_after_inspection"],
@@ -521,6 +590,26 @@ const SOLAR_FLOW: CategoryFlowConfig = {
       ],
     },
     {
+      key: "roof_condition", label: "Roof Condition", type: "select", required: false, columns: 3,
+      showWhen: { field: "solar_need", values: ["new_system"] },
+      options: [
+        { value: "good", label: "Good" },
+        { value: "needs_repair", label: "Needs Repair" },
+        { value: "unsure", label: "Not Sure" },
+      ],
+    },
+    {
+      key: "shading", label: "Any shading on roof?", type: "select", required: false, columns: 3,
+      showWhen: { field: "solar_need", values: ["new_system"] },
+      hint: "Trees, buildings, or structures casting shadows",
+      options: [
+        { value: "none", label: "No Shading" },
+        { value: "partial", label: "Some Shading" },
+        { value: "heavy", label: "Heavy Shading" },
+        { value: "unsure", label: "Not Sure" },
+      ],
+    },
+    {
       key: "backup_need", label: "Need Battery Backup?", type: "select", required: false, columns: 3,
       showWhen: { field: "solar_need", values: ["new_system", "consultation"] },
       options: [
@@ -555,6 +644,8 @@ const SOLAR_FLOW: CategoryFlowConfig = {
   ],
   riskDisclaimers: [
     { key: "asbestos", message: "Asbestos roofing may require additional structural assessment before installation.", severity: "warning", showWhen: { field: "roof_type", values: ["asbestos"] } },
+    { key: "roof_repair", message: "Roof repairs should be completed before solar installation to avoid reinstallation costs.", severity: "warning", showWhen: { field: "roof_condition", values: ["needs_repair"] } },
+    { key: "heavy_shade", message: "Heavy shading significantly reduces solar output. A site assessment will determine feasibility.", severity: "info", showWhen: { field: "shading", values: ["heavy"] } },
   ],
   requiredConsents: ["inspection_first"],
   photoUploadEnabled: true,
@@ -615,6 +706,18 @@ const CONSUMER_ELEC_FLOW: CategoryFlowConfig = {
         { value: "other", label: "Other" },
       ],
     },
+    {
+      key: "appliance_location", label: "Where is the appliance?", type: "select", required: false, columns: 2,
+      hint: "Helps technician prepare for access",
+      options: [
+        { value: "ground_floor", label: "Ground Floor" },
+        { value: "upper_floor", label: "Upper Floor" },
+        { value: "kitchen", label: "Kitchen" },
+        { value: "outdoor", label: "Outdoor / Garage" },
+        { value: "other", label: "Other" },
+      ],
+    },
+    { key: "photo_appliance", label: "Photo of Appliance", type: "photo", required: false, hint: "Photo of the issue or error display" },
   ],
   commercial: {
     expectations: ["quote_after_inspection", "parts_additional"],
@@ -679,6 +782,16 @@ const COPIER_FLOW: CategoryFlowConfig = {
         { value: "low", label: "Low – can wait" },
         { value: "medium", label: "Medium – slowing work" },
         { value: "high", label: "High – business stopped" },
+      ],
+    },
+    {
+      key: "print_volume", label: "Monthly Print Volume", type: "select", required: false, columns: 2,
+      hint: "Helps determine wear patterns",
+      options: [
+        { value: "low", label: "< 500 pages" },
+        { value: "medium", label: "500 – 2,000 pages" },
+        { value: "high", label: "2,000 – 10,000 pages" },
+        { value: "very_high", label: "10,000+ pages" },
       ],
     },
     {
