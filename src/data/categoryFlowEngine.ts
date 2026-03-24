@@ -570,7 +570,7 @@ const CCTV_FLOW: CategoryFlowConfig = {
     expectations: ["site_assessment_free", "quote_after_inspection"],
     warrantyHint: "1-year installation warranty",
     priceVisibility: "quote_based",
-    expectationLabel: "Free site assessment • Custom quote provided",
+    expectationLabel: "Professional site assessment • Custom quote provided",
   },
   trustSignals: [
     { key: "site_visit", label: "Site Assessment", description: "Professional assessment for new installations", icon: "check" },
