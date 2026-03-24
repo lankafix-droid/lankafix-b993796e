@@ -5,6 +5,7 @@ import { track } from "@/lib/analytics";
 import { trackCategoryClick } from "@/lib/marketplaceAnalytics";
 import { CONSUMER_CATEGORIES } from "@/data/consumerBookingCategories";
 import { getCategoryLaunchState } from "@/config/categoryLaunchConfig";
+import { shouldUseGuidedFlow } from "@/data/categoryRolloutConfig";
 
 const FEATURED_CODES = ["AC", "MOBILE", "IT", "CONSUMER_ELEC", "CCTV", "COPIER"];
 
