@@ -64,7 +64,7 @@ export default function CategoryLandingPage() {
 
   const handleQuickAction = (action: string) => {
     if (action === "start_flow" || action === "inspection" || action === "diagnosis" || action === "remote") {
-      navigate(`/service-flow/${config.code.toLowerCase()}`);
+      navigate(`/book/${config.code.toLowerCase()}`);
     } else if (action === "callback") {
       navigate(`/request/${config.code}`);
     }
@@ -136,7 +136,7 @@ export default function CategoryLandingPage() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.12 + i * 0.03 }}
-                onClick={() => navigate(`/service-flow/${config.code.toLowerCase()}?service=${svc.id}`)}
+                onClick={() => navigate(`/book/${config.code.toLowerCase()}`)}
                 className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl bg-card border border-border/40 hover:border-primary/20 hover:shadow-sm transition-all text-left active:scale-[0.98]"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
@@ -159,7 +159,7 @@ export default function CategoryLandingPage() {
             {config.commonIssues.map((issue) => (
               <button
                 key={issue.id}
-                onClick={() => navigate(`/service-flow/${config.code.toLowerCase()}?issue=${issue.id}`)}
+                onClick={() => navigate(`/book/${config.code.toLowerCase()}`)}
                 className="flex items-center gap-2.5 p-3 rounded-xl bg-card border border-border/40 hover:border-primary/20 hover:shadow-sm transition-all text-left active:scale-[0.97]"
               >
                 <span className="text-lg">{issue.emoji}</span>

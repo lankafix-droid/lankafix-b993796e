@@ -194,6 +194,7 @@ const SPSBillingPage = lazy(() => import("./pages/sps/SPSBillingPage"));
 const RedirectBooking = () => { const { category } = useParams(); return <Navigate to={`/book/${category}`} replace />; };
 const RedirectQuote = () => { const { jobId } = useParams(); return <Navigate to={`/quote/${jobId}`} replace />; };
 const RedirectCategory = () => { const { code } = useParams(); return <Navigate to={`/book/${code}`} replace />; };
+const RedirectServiceFlow = () => { const { code } = useParams(); return <Navigate to={`/book/${code?.toLowerCase() || ""}`} replace />; };
 const RedirectTracker = () => { const { jobId } = useParams(); return <Navigate to={`/tracker/${jobId}`} replace />; };
 
 const queryClient = new QueryClient();
@@ -252,7 +253,7 @@ const App = () => (
             <Route path="/" element={<HomePage />} />
             <Route path="/services" element={<ConsumerBookingPage />} />
             <Route path="/category/:code" element={<CategoryLandingPage />} />
-            <Route path="/service-flow/:code" element={<ServiceRequestFlow />} />
+            <Route path="/service-flow/:code" element={<RedirectServiceFlow />} />
             <Route path="/book/:category" element={<BookingPage />} />
             <Route path="/quote/:jobId" element={<QuoteApprovalPage />} />
             <Route path="/diagnose" element={<DiagnosePage />} />
