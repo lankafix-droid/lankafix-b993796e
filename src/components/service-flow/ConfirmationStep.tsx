@@ -1,7 +1,7 @@
 /**
  * ConfirmationStep — Interface 4 combined confirmation layer.
  * Shows partner match preview, flow family outcome, address capture,
- * access details, commitment/fee info, and final review.
+ * access details, required consents, commitment/fee info, and final review.
  */
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -12,6 +12,7 @@ import {
   Clock, Star, ChevronDown, AlertTriangle,
 } from "lucide-react";
 import { type FlowFamily, FLOW_FAMILY_LABELS, type CommercialInfo } from "@/data/categoryFlowEngine";
+import ConsentCard, { type ConsentVariant } from "@/components/booking/ConsentCard";
 
 interface ConfirmationStepProps {
   flowFamily: FlowFamily;
@@ -48,7 +49,16 @@ interface ConfirmationStepProps {
   accessDetailsRequired: boolean;
   adultPresenceConfirmed: boolean;
   onAdultPresenceChange: (v: boolean) => void;
+  /** Consents */
+  requiredConsents: string[];
+  consentState: Record<string, boolean>;
+  onConsentChange: (key: string, checked: boolean) => void;
 }
+
+const VALID_CONSENT_VARIANTS: ConsentVariant[] = [
+  "data_safety", "backup_responsibility", "inspection_first",
+  "quote_variance", "pin_passcode", "data_risk",
+];
 
 export default function ConfirmationStep(props: ConfirmationStepProps) {
   const {
@@ -58,11 +68,16 @@ export default function ConfirmationStep(props: ConfirmationStepProps) {
     floorOrUnit, parkingNotes, savedAddressId, savedAddress, savedAddressDisplay,
     onLocationMethodChange, onFieldChange, onEditStep,
     adultPresenceRequired, accessDetailsRequired, adultPresenceConfirmed, onAdultPresenceChange,
+    requiredConsents, consentState, onConsentChange,
   } = props;
 
   const familyMeta = FLOW_FAMILY_LABELS[flowFamily];
-  const locationDisplay = [addressLine1, city, district].filter(Boolean).join(", ");
   const [showAccess, setShowAccess] = useState(false);
+
+  // Filter to only known consent variants
+  const validConsents = requiredConsents.filter(
+    (c) => VALID_CONSENT_VARIANTS.includes(c as ConsentVariant)
+  );
 
   return (
     <div className="space-y-5">
@@ -198,12 +213,32 @@ export default function ConfirmationStep(props: ConfirmationStepProps) {
         </button>
       )}
 
+      {/* Required Consents */}
+      {validConsents.length > 0 && (
+        <div className="space-y-2.5">
+          <h3 className="text-sm font-semibold text-foreground">Acknowledgements</h3>
+          {validConsents.map((consent) => (
+            <ConsentCard
+              key={consent}
+              variant={consent as ConsentVariant}
+              checked={!!consentState[consent]}
+              onCheckedChange={(v) => onConsentChange(consent, v)}
+            />
+          ))}
+        </div>
+      )}
+
       {/* Commercial Info */}
       <div className="p-3.5 rounded-xl bg-secondary/50 border border-border/40">
         <p className="text-xs font-medium text-foreground">{commercial.expectationLabel}</p>
         {commercial.commitmentFeeRange && (
           <p className="text-[11px] text-muted-foreground mt-1">
             Commitment fee: {commercial.commitmentFeeRange}
+          </p>
+        )}
+        {commercial.warrantyHint && (
+          <p className="text-[11px] text-primary mt-1 font-medium">
+            ✓ {commercial.warrantyHint}
           </p>
         )}
       </div>

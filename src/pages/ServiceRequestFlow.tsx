@@ -61,6 +61,7 @@ interface FlowState {
   savedAddressId: string;
   adultPresenceConfirmed: boolean;
   diagnosticAnswers: Record<string, string>;
+  consentState: Record<string, boolean>;
 }
 
 const INITIAL_STATE: FlowState = {
@@ -71,6 +72,7 @@ const INITIAL_STATE: FlowState = {
   floorOrUnit: "", parkingNotes: "", savedAddressId: "",
   adultPresenceConfirmed: false,
   diagnosticAnswers: {},
+  consentState: {},
 };
 
 const slideVariants = {
@@ -148,6 +150,12 @@ export default function ServiceRequestFlow() {
       diagnosticAnswers: { ...p.diagnosticAnswers, [key]: value },
     }));
 
+  const updateConsent = (key: string, checked: boolean) =>
+    setState((p) => ({
+      ...p,
+      consentState: { ...p.consentState, [key]: checked },
+    }));
+
   const shouldSkipStep = (step: FlowStep): boolean => {
     if (step === "identity" && isAuthenticated && state.name && state.phone) return true;
     if (step === "diagnostic" && !flowConfig) return true;
@@ -191,7 +199,12 @@ export default function ServiceRequestFlow() {
       }
       case "urgency": return !!state.urgency;
       case "identity": return !!state.name.trim() && !!state.phone.trim();
-      case "confirm": return !!(state.addressLine1.trim() || state.savedAddressId || state.locationMethod === "current");
+      case "confirm": {
+        const hasLocation = !!(state.addressLine1.trim() || state.savedAddressId || state.locationMethod === "current");
+        const requiredConsents = flowConfig?.requiredConsents || [];
+        const allConsented = requiredConsents.every(c => !!state.consentState[c]);
+        return hasLocation && allConsented;
+      }
       default: return false;
     }
   };
@@ -414,6 +427,9 @@ export default function ServiceRequestFlow() {
                 accessDetailsRequired={flowConfig?.accessDetailsRequired ?? true}
                 adultPresenceConfirmed={state.adultPresenceConfirmed}
                 onAdultPresenceChange={(v) => update("adultPresenceConfirmed", v)}
+                requiredConsents={flowConfig?.requiredConsents || []}
+                consentState={state.consentState}
+                onConsentChange={updateConsent}
               />
             )}
           </motion.div>

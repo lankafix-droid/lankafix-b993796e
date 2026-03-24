@@ -224,6 +224,9 @@ const MOBILE_FLOW: CategoryFlowConfig = {
     software_issue: "direct_booking",
     water_damage: "diagnosis_first",
     full_diagnosis: "diagnosis_first",
+    no_power: "diagnosis_first",
+    motherboard: "diagnosis_first",
+    charging_ic: "diagnosis_first",
   },
   diagnosticFields: [
     {
@@ -249,8 +252,8 @@ const MOBILE_FLOW: CategoryFlowConfig = {
       options: [
         { value: "works_partially", label: "Works but has issues" },
         { value: "screen_cracked", label: "Screen cracked/broken" },
-        { value: "not_turning_on", label: "Not turning on" },
-        { value: "water_exposed", label: "Water/liquid exposed" },
+        { value: "not_turning_on", label: "Not turning on", flowOverride: "diagnosis_first" },
+        { value: "water_exposed", label: "Water/liquid exposed", flowOverride: "diagnosis_first" },
       ],
     },
     {
@@ -321,10 +324,10 @@ const MOBILE_FLOW: CategoryFlowConfig = {
   riskDisclaimers: [
     { key: "water", message: "Water damage recovery has variable success rates. A diagnostic fee of LKR 500 applies before repair assessment.", severity: "critical", showWhen: { field: "phone_condition", values: ["water_exposed"] } },
     { key: "no_backup", message: "We recommend backing up your data before any repair. LankaFix is not responsible for data loss.", severity: "warning", showWhen: { field: "data_backed_up", values: ["no"] } },
-    { key: "dead_phone", message: "Non-responsive devices require physical diagnosis. Final quote may differ from estimate.", severity: "info", showWhen: { field: "phone_condition", values: ["not_turning_on"] } },
+    { key: "dead_phone", message: "Non-responsive devices require physical diagnosis. Final quote may differ from estimate.", severity: "warning", showWhen: { field: "phone_condition", values: ["not_turning_on"] } },
     { key: "prev_repair", message: "Previously repaired devices may have non-standard parts. This can affect repair cost and warranty coverage.", severity: "info", showWhen: { field: "previously_repaired", values: ["yes_same", "yes_other"] } },
   ],
-  requiredConsents: ["data_safety", "backup_responsibility"],
+  requiredConsents: ["data_safety", "backup_responsibility", "pin_passcode", "data_risk"],
   photoUploadEnabled: true,
   dataDisclaimerRequired: true,
   adultPresenceRequired: false,
@@ -345,6 +348,9 @@ const IT_FLOW: CategoryFlowConfig = {
     remote_support: "direct_booking",
     printer_support: "direct_booking",
     data_recovery: "diagnosis_first",
+    server_support: "diagnosis_first",
+    motherboard_repair: "diagnosis_first",
+    hardware_no_power: "diagnosis_first",
   },
   diagnosticFields: [
     {
@@ -361,7 +367,7 @@ const IT_FLOW: CategoryFlowConfig = {
         { value: "desktop", label: "Desktop", icon: "🖥️" },
         { value: "printer", label: "Printer", icon: "🖨️" },
         { value: "network_device", label: "Router/Switch", icon: "📡" },
-        { value: "server", label: "Server/NAS", icon: "🗄️" },
+        { value: "server", label: "Server/NAS", icon: "🗄️", flowOverride: "diagnosis_first" },
         { value: "other", label: "Other", icon: "❓" },
       ],
     },
@@ -372,12 +378,15 @@ const IT_FLOW: CategoryFlowConfig = {
         { value: "software", label: "Software / OS" },
         { value: "network", label: "Network / WiFi" },
         { value: "virus", label: "Virus / Malware" },
-        { value: "data", label: "Data Recovery" },
+        { value: "data", label: "Data Recovery", flowOverride: "diagnosis_first" },
+        { value: "no_power", label: "No Power / Dead", flowOverride: "diagnosis_first" },
+        { value: "motherboard", label: "Motherboard Suspicion", flowOverride: "diagnosis_first" },
         { value: "setup", label: "New Setup" },
       ],
     },
     {
       key: "remote_possible", label: "Can this be fixed remotely?", type: "select", required: false, columns: 3,
+      showWhen: { field: "issue_branch", values: ["software", "network", "virus"] },
       options: [
         { value: "yes", label: "Yes, try remote" },
         { value: "no", label: "Need on-site" },
@@ -390,6 +399,15 @@ const IT_FLOW: CategoryFlowConfig = {
       options: [
         { value: "yes", label: "Yes" },
         { value: "no", label: "No" },
+      ],
+    },
+    {
+      key: "data_sensitivity", label: "Sensitive/critical data on device?", type: "select", required: false, columns: 2,
+      showWhen: { field: "issue_branch", values: ["data", "motherboard", "no_power"] },
+      options: [
+        { value: "yes", label: "Yes, critical" },
+        { value: "some", label: "Some important files" },
+        { value: "no", label: "No / already backed up" },
       ],
     },
     {
@@ -417,6 +435,9 @@ const IT_FLOW: CategoryFlowConfig = {
   riskDisclaimers: [
     { key: "data_recovery", message: "Data recovery requires a mandatory diagnostic fee. Success is not guaranteed depending on damage severity.", severity: "warning", showWhen: { field: "issue_branch", values: ["data"] } },
     { key: "virus_critical", message: "Severe malware may require OS reinstallation. Back up important data before service.", severity: "warning", showWhen: { field: "issue_branch", values: ["virus"] } },
+    { key: "no_power_hw", message: "No-power devices require physical diagnosis. May involve motherboard-level repair.", severity: "warning", showWhen: { field: "issue_branch", values: ["no_power"] } },
+    { key: "motherboard_warn", message: "Motherboard-level repairs have variable success rates. Diagnostic fee applies before assessment.", severity: "critical", showWhen: { field: "issue_branch", values: ["motherboard"] } },
+    { key: "server_complexity", message: "Server/NAS diagnostics require specialist assessment. Pricing quoted after diagnosis.", severity: "info", showWhen: { field: "device_type", values: ["server"] } },
   ],
   requiredConsents: ["data_safety", "data_risk"],
   photoUploadEnabled: false,
@@ -493,12 +514,41 @@ const CCTV_FLOW: CategoryFlowConfig = {
       ],
     },
     {
+      key: "indoor_outdoor", label: "Indoor or Outdoor?", type: "select", required: false, columns: 3,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      options: [
+        { value: "indoor", label: "Indoor Only" },
+        { value: "outdoor", label: "Outdoor Only" },
+        { value: "both", label: "Both" },
+      ],
+    },
+    {
       key: "storage_pref", label: "Storage Preference", type: "select", required: false, columns: 2,
       showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
       options: [
         { value: "local_dvr", label: "Local DVR/NVR" },
         { value: "cloud", label: "Cloud Storage" },
         { value: "both", label: "Both" },
+        { value: "unsure", label: "Not Sure" },
+      ],
+    },
+    {
+      key: "remote_viewing", label: "Need remote viewing?", type: "select", required: false, columns: 3,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      hint: "View cameras on your phone/laptop from anywhere",
+      options: [
+        { value: "yes", label: "Yes, essential" },
+        { value: "nice_to_have", label: "Nice to have" },
+        { value: "no", label: "Not needed" },
+      ],
+    },
+    {
+      key: "ups_backup", label: "Need UPS / power backup?", type: "select", required: false, columns: 3,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      hint: "Keeps cameras running during power cuts",
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
         { value: "unsure", label: "Not Sure" },
       ],
     },
@@ -527,7 +577,9 @@ const CCTV_FLOW: CategoryFlowConfig = {
     { key: "clean_wiring", label: "Clean Installation", description: "Professional cable management standards", icon: "star" },
     { key: "remote_setup", label: "Remote Viewing", description: "Mobile app setup included", icon: "shield" },
   ],
-  riskDisclaimers: [],
+  riskDisclaimers: [
+    { key: "large_property", message: "Properties requiring 8+ cameras will receive a detailed custom quote after site assessment.", severity: "info", showWhen: { field: "camera_count", values: ["8_plus"] } },
+  ],
   requiredConsents: ["inspection_first"],
   photoUploadEnabled: true,
   dataDisclaimerRequired: false,

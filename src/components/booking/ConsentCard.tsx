@@ -1,11 +1,12 @@
 /**
  * ConsentCard — Reusable consent acknowledgement card for booking flows.
- * Covers data safety, backup responsibility, inspection-first, quote variance.
+ * Covers data safety, backup responsibility, inspection-first, quote variance,
+ * PIN/passcode acknowledgement, and data-risk acknowledgement.
  */
 import { Checkbox } from "@/components/ui/checkbox";
-import { Shield, AlertTriangle, FileSearch, Receipt } from "lucide-react";
+import { Shield, AlertTriangle, FileSearch, Receipt, Lock, Database } from "lucide-react";
 
-export type ConsentVariant = "data_safety" | "backup_responsibility" | "inspection_first" | "quote_variance" | "custom";
+export type ConsentVariant = "data_safety" | "backup_responsibility" | "inspection_first" | "quote_variance" | "pin_passcode" | "data_risk" | "custom";
 
 interface Props {
   variant: ConsentVariant;
@@ -35,6 +36,16 @@ const CONSENT_CONFIGS: Record<Exclude<ConsentVariant, "custom">, { title: string
     title: "Quote May Vary After Diagnosis",
     description: "Final pricing may differ from the initial estimate based on actual findings during diagnosis.",
     icon: Receipt,
+  },
+  pin_passcode: {
+    title: "PIN / Passcode Acknowledgement",
+    description: "If your device requires a PIN, pattern, or passcode for access, you may need to share it with the technician. LankaFix partners are bound by data-handling agreements.",
+    icon: Lock,
+  },
+  data_risk: {
+    title: "Data Risk Acknowledgement",
+    description: "Repair or diagnostic procedures may carry a risk of data loss. LankaFix is not responsible for data that has not been backed up prior to service.",
+    icon: Database,
   },
 };
 
