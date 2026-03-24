@@ -690,7 +690,7 @@ const SOLAR_FLOW: CategoryFlowConfig = {
     expectationLabel: "Free site assessment • ROI calculation included",
   },
   trustSignals: [
-    { key: "assessment", label: "Free Assessment", description: "No-obligation energy assessment", icon: "check" },
+    { key: "assessment", label: "Site Assessment", description: "Professional energy assessment", icon: "check" },
     { key: "certified", label: "Certified Installers", description: "Government-approved solar installers", icon: "shield" },
     { key: "roi", label: "ROI Guidance", description: "Payback period calculation included", icon: "star" },
   ],
