@@ -102,7 +102,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     valueProposition: "Certified mobile technicians, genuine parts, 30-day repair warranty",
     trustPoints: [
       { label: "Genuine Parts" },
-      { label: "45-Min Response" },
+      { label: "Fast Response" },
       { label: "All Brands" },
       { label: "30-Day Warranty" },
     ],
