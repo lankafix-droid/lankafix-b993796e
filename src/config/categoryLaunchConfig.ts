@@ -17,6 +17,10 @@ export interface CategoryLaunchConfig {
   label?: string;
 }
 
+function normalizeCategoryCode(categoryCode: string): string {
+  return categoryCode.trim().toUpperCase();
+}
+
 const CATEGORY_LAUNCH_MAP: Record<string, CategoryLaunchState> = {
   // ─── Operational — full booking & dispatch ───
   IT: "operational",
@@ -54,7 +58,7 @@ const CATEGORY_LAUNCH_MAP: Record<string, CategoryLaunchState> = {
 };
 
 export function getCategoryLaunchState(categoryCode: string): CategoryLaunchState {
-  return CATEGORY_LAUNCH_MAP[categoryCode] || "coming_soon";
+  return CATEGORY_LAUNCH_MAP[normalizeCategoryCode(categoryCode)] || "coming_soon";
 }
 
 export function isCategoryOperational(categoryCode: string): boolean {
