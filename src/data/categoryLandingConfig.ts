@@ -149,7 +149,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     valueProposition: "Expert IT support, remote or on-site, fast turnaround",
     trustPoints: [
       { label: "Remote + On-Site" },
-      { label: "60-Min Response" },
+      { label: "Fast Response" },
       { label: "Data Protection" },
       { label: "Business Ready" },
     ],
