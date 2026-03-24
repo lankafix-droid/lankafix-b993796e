@@ -199,7 +199,12 @@ export default function ServiceRequestFlow() {
       }
       case "urgency": return !!state.urgency;
       case "identity": return !!state.name.trim() && !!state.phone.trim();
-      case "confirm": return !!(state.addressLine1.trim() || state.savedAddressId || state.locationMethod === "current");
+      case "confirm": {
+        const hasLocation = !!(state.addressLine1.trim() || state.savedAddressId || state.locationMethod === "current");
+        const requiredConsents = flowConfig?.requiredConsents || [];
+        const allConsented = requiredConsents.every(c => !!state.consentState[c]);
+        return hasLocation && allConsented;
+      }
       default: return false;
     }
   };
