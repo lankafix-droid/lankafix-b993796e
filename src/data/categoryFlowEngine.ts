@@ -581,7 +581,7 @@ const CCTV_FLOW: CategoryFlowConfig = {
     { key: "large_property", message: "Properties requiring 8+ cameras will receive a detailed custom quote after site assessment.", severity: "info", showWhen: { field: "camera_count", values: ["8_plus"] } },
   ],
   requiredConsents: ["inspection_first"],
-  photoUploadEnabled: true,
+  photoUploadEnabled: false,
   dataDisclaimerRequired: false,
   adultPresenceRequired: true,
   accessDetailsRequired: true,
