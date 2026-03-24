@@ -1056,9 +1056,9 @@ export function getActiveDisclaimers(
 }
 
 /** Flow family display labels */
-export const FLOW_FAMILY_LABELS: Record<FlowFamily, { label: string; description: string; icon: string }> = {
-  direct_booking: { label: "Book Service", description: "Confirmed booking with a matched technician", icon: "⚡" },
-  inspection_first: { label: "Inspection First", description: "On-site inspection, then quote before repair", icon: "🔍" },
-  diagnosis_first: { label: "Diagnosis Required", description: "Professional diagnosis needed before repair", icon: "🩺" },
-  consultation_first: { label: "Site Assessment", description: "Free consultation and custom quote", icon: "📋" },
+export const FLOW_FAMILY_LABELS: Record<FlowFamily, { label: string; description: string; icon: string; nextStep: string }> = {
+  direct_booking: { label: "Book Service", description: "Confirmed booking with a matched technician", icon: "⚡", nextStep: "A verified technician will be assigned and scheduled for you." },
+  inspection_first: { label: "Inspection First", description: "A technician will inspect on-site, then provide a quote before any repair work begins.", icon: "🔍", nextStep: "We'll schedule a quick inspection visit first — no commitment until you approve the quote." },
+  diagnosis_first: { label: "Diagnosis Required", description: "A professional diagnostic is needed to assess the issue before we can quote a repair.", icon: "🩺", nextStep: "We'll run a diagnostic first. You'll get a clear report and quote before any work starts." },
+  consultation_first: { label: "Site Assessment", description: "A specialist will visit to assess your requirements and provide a tailored quote.", icon: "📋", nextStep: "We'll arrange a free site visit to understand your needs and prepare a custom quote." },
 };

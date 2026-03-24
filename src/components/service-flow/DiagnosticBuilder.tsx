@@ -63,12 +63,12 @@ export default function DiagnosticBuilder({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex items-center gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/15"
+            className="flex items-start gap-2.5 p-3.5 rounded-xl bg-primary/5 border border-primary/15"
           >
-            <span className="text-base">{rerouteMeta.icon}</span>
+            <span className="text-base mt-0.5">{rerouteMeta.icon}</span>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold text-primary">{rerouteMeta.label}</p>
-              <p className="text-[10px] text-muted-foreground">{rerouteMeta.description}</p>
+              <p className="text-[10px] text-muted-foreground leading-relaxed mt-0.5">{rerouteMeta.nextStep}</p>
             </div>
           </motion.div>
         )}
