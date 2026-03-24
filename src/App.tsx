@@ -252,7 +252,7 @@ const App = () => (
             <Route path="/" element={<HomePage />} />
             <Route path="/services" element={<ConsumerBookingPage />} />
             <Route path="/category/:code" element={<CategoryLandingPage />} />
-            <Route path="/service-flow/:code" element={<ServiceRequestFlow />} />
+            <Route path="/service-flow/:code" element={<RedirectServiceFlow />} />
             <Route path="/book/:category" element={<BookingPage />} />
             <Route path="/quote/:jobId" element={<QuoteApprovalPage />} />
             <Route path="/diagnose" element={<DiagnosePage />} />
