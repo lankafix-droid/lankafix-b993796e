@@ -348,6 +348,9 @@ const IT_FLOW: CategoryFlowConfig = {
     remote_support: "direct_booking",
     printer_support: "direct_booking",
     data_recovery: "diagnosis_first",
+    server_support: "diagnosis_first",
+    motherboard_repair: "diagnosis_first",
+    hardware_no_power: "diagnosis_first",
   },
   diagnosticFields: [
     {
@@ -364,7 +367,7 @@ const IT_FLOW: CategoryFlowConfig = {
         { value: "desktop", label: "Desktop", icon: "🖥️" },
         { value: "printer", label: "Printer", icon: "🖨️" },
         { value: "network_device", label: "Router/Switch", icon: "📡" },
-        { value: "server", label: "Server/NAS", icon: "🗄️" },
+        { value: "server", label: "Server/NAS", icon: "🗄️", flowOverride: "diagnosis_first" },
         { value: "other", label: "Other", icon: "❓" },
       ],
     },
@@ -375,12 +378,15 @@ const IT_FLOW: CategoryFlowConfig = {
         { value: "software", label: "Software / OS" },
         { value: "network", label: "Network / WiFi" },
         { value: "virus", label: "Virus / Malware" },
-        { value: "data", label: "Data Recovery" },
+        { value: "data", label: "Data Recovery", flowOverride: "diagnosis_first" },
+        { value: "no_power", label: "No Power / Dead", flowOverride: "diagnosis_first" },
+        { value: "motherboard", label: "Motherboard Suspicion", flowOverride: "diagnosis_first" },
         { value: "setup", label: "New Setup" },
       ],
     },
     {
       key: "remote_possible", label: "Can this be fixed remotely?", type: "select", required: false, columns: 3,
+      showWhen: { field: "issue_branch", values: ["software", "network", "virus"] },
       options: [
         { value: "yes", label: "Yes, try remote" },
         { value: "no", label: "Need on-site" },
@@ -393,6 +399,15 @@ const IT_FLOW: CategoryFlowConfig = {
       options: [
         { value: "yes", label: "Yes" },
         { value: "no", label: "No" },
+      ],
+    },
+    {
+      key: "data_sensitivity", label: "Sensitive/critical data on device?", type: "select", required: false, columns: 2,
+      showWhen: { field: "issue_branch", values: ["data", "motherboard", "no_power"] },
+      options: [
+        { value: "yes", label: "Yes, critical" },
+        { value: "some", label: "Some important files" },
+        { value: "no", label: "No / already backed up" },
       ],
     },
     {
@@ -420,6 +435,9 @@ const IT_FLOW: CategoryFlowConfig = {
   riskDisclaimers: [
     { key: "data_recovery", message: "Data recovery requires a mandatory diagnostic fee. Success is not guaranteed depending on damage severity.", severity: "warning", showWhen: { field: "issue_branch", values: ["data"] } },
     { key: "virus_critical", message: "Severe malware may require OS reinstallation. Back up important data before service.", severity: "warning", showWhen: { field: "issue_branch", values: ["virus"] } },
+    { key: "no_power_hw", message: "No-power devices require physical diagnosis. May involve motherboard-level repair.", severity: "warning", showWhen: { field: "issue_branch", values: ["no_power"] } },
+    { key: "motherboard_warn", message: "Motherboard-level repairs have variable success rates. Diagnostic fee applies before assessment.", severity: "critical", showWhen: { field: "issue_branch", values: ["motherboard"] } },
+    { key: "server_complexity", message: "Server/NAS diagnostics require specialist assessment. Pricing quoted after diagnosis.", severity: "info", showWhen: { field: "device_type", values: ["server"] } },
   ],
   requiredConsents: ["data_safety", "data_risk"],
   photoUploadEnabled: false,
