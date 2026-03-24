@@ -307,7 +307,7 @@ const MOBILE_FLOW: CategoryFlowConfig = {
         { value: "no", label: "No" },
       ],
     },
-    { key: "photo_damage", label: "Photo of Damage", type: "photo", required: false, hint: "Upload for faster diagnosis", showWhen: { field: "phone_condition", values: ["screen_cracked", "water_exposed"] } },
+    // Photo upload hidden for launch — will be enabled when storage integration is live
   ],
   commercial: {
     expectations: ["fixed_price", "parts_additional"],
