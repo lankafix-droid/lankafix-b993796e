@@ -102,11 +102,13 @@ export function getCategoryCTA(
 
   const cta = CTA_MATRIX[archetype][effectiveLevel];
   const isFallback = effectiveLevel === 'none';
-  // Route to category landing page for education-first experience
-  // Fallback routes still go to request page for callback flow
+  // Route to guided flow only if rollout config allows it
+  const useGuided = shouldUseGuidedFlow(categoryCode);
   const route = isFallback
     ? `/request/${categoryCode}`
-    : `/category/${categoryCode.toLowerCase()}`;
+    : useGuided
+      ? `/category/${categoryCode.toLowerCase()}`
+      : `/request/${categoryCode}`;
 
   const result: CategoryCTA = {
     label: cta.label,
