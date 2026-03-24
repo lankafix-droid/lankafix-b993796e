@@ -252,7 +252,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { id: "new_setup", label: "Need new system", emoji: "🏠" },
     ],
     whyLankaFix: [
-      "Free site assessment before any commitment",
+      "Professional site assessment before any commitment",
       "Clean, professional cable management",
       "Remote viewing setup included",
       "Ongoing support and maintenance plans",
