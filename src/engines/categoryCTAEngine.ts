@@ -4,6 +4,7 @@
  * based on category archetype and real-time supply state.
  */
 import type { ServiceArchetype, AvailabilityLevel } from '@/hooks/useSupplyIntelligence';
+import { shouldUseGuidedFlow } from '@/data/categoryRolloutConfig';
 
 export type CTAAction = 'book' | 'inspect' | 'consult' | 'submit' | 'order' | 'waitlist' | 'callback' | 'chat' | 'navigate';
 
