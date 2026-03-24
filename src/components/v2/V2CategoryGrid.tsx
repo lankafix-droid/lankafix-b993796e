@@ -56,7 +56,7 @@ const PRICING_MICROCOPY: Record<string, string> = {
   AC: "Inspection from Rs 2,500", MOBILE: "Repair from Rs 3,000",
   IT: "Diagnosis from Rs 2,000", CONSUMER_ELEC: "Quote after diagnosis",
   CCTV: "Quote after site visit", SMART_HOME_OFFICE: "Project quote after assessment",
-  SOLAR: "Free site inspection",
+  SOLAR: "Professional site assessment",
   ELECTRICAL: "Visit from Rs 1,500", PLUMBING: "Visit from Rs 1,500",
   NETWORK: "Setup from Rs 2,000",
   HOME_SECURITY: "Equipment quoted separately", POWER_BACKUP: "From Rs 3,000",
@@ -65,9 +65,9 @@ const PRICING_MICROCOPY: Record<string, string> = {
 };
 
 // Phase-1 launch priority: primary categories first, then secondary, then coming soon
-const PRIMARY_CATS = ["AC", "MOBILE", "CONSUMER_ELEC", "IT"];
-const SECONDARY_CATS = ["CCTV", "SOLAR", "SMART_HOME_OFFICE", "PRINT_SUPPLIES"];
-const COMING_SOON_CATS = ["ELECTRICAL", "PLUMBING", "NETWORK", "HOME_SECURITY", "POWER_BACKUP", "COPIER", "APPLIANCE_INSTALL"];
+const PRIMARY_CATS = ["AC", "MOBILE", "IT", "COPIER"];
+const SECONDARY_CATS = ["NETWORK", "CCTV", "SOLAR", "CONSUMER_ELEC", "PRINT_SUPPLIES"];
+const COMING_SOON_CATS = ["ELECTRICAL", "PLUMBING", "HOME_SECURITY", "POWER_BACKUP", "APPLIANCE_INSTALL"];
 
 /** Reorder categories by user behavior — recently used categories first */
 function reorderByBehavior(codes: string[], rankedCategories: string[]): string[] {

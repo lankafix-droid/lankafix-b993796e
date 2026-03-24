@@ -52,7 +52,7 @@ export const CONSUMER_CATEGORIES: BookingCategory[] = [
     code: "CCTV", label: "CCTV & Security", icon: "📹",
     description: "Installation, wiring & configuration",
     priceHint: "Site visit first", archetype: "consultation",
-    archetypeLabel: "Free consultation", etaHint: "Scheduled",
+    archetypeLabel: "Professional consultation", etaHint: "Scheduled",
   },
   {
     code: "CONSUMER_ELEC", label: "Electronics Repair", icon: "📺",
@@ -63,8 +63,8 @@ export const CONSUMER_CATEGORIES: BookingCategory[] = [
   {
     code: "SOLAR", label: "Solar Solutions", icon: "☀️",
     description: "Panels, inverters & batteries",
-    priceHint: "Free assessment", archetype: "consultation",
-    archetypeLabel: "Free consultation", etaHint: "Scheduled",
+    priceHint: "Professional assessment", archetype: "consultation",
+    archetypeLabel: "Professional consultation", etaHint: "Scheduled",
   },
   {
     code: "SMART_HOME_OFFICE", label: "Smart Home & Office", icon: "🏠",
