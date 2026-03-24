@@ -380,7 +380,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { id: "toner_issue", label: "Toner/ink issue", emoji: "🎨" },
     ],
     whyLankaFix: [
-      "Business-critical response times",
+      "Priority response for business environments",
       "All major copier and printer brands",
       "Genuine consumables and parts",
       "Network and cloud printing expertise",
