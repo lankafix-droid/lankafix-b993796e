@@ -102,13 +102,11 @@ export function getCategoryCTA(
 
   const cta = CTA_MATRIX[archetype][effectiveLevel];
   const isFallback = effectiveLevel === 'none';
-  // Route to guided flow only if rollout config allows it
+  // Route to guided flow if rollout config allows — regardless of supply level
   const useGuided = shouldUseGuidedFlow(categoryCode);
-  const route = isFallback
-    ? `/request/${categoryCode}`
-    : useGuided
-      ? `/category/${categoryCode.toLowerCase()}`
-      : `/request/${categoryCode}`;
+  const route = useGuided
+    ? `/category/${categoryCode.toLowerCase()}`
+    : `/request/${categoryCode}`;
 
   const result: CategoryCTA = {
     label: cta.label,
