@@ -224,6 +224,9 @@ const MOBILE_FLOW: CategoryFlowConfig = {
     software_issue: "direct_booking",
     water_damage: "diagnosis_first",
     full_diagnosis: "diagnosis_first",
+    no_power: "diagnosis_first",
+    motherboard: "diagnosis_first",
+    charging_ic: "diagnosis_first",
   },
   diagnosticFields: [
     {
@@ -249,8 +252,8 @@ const MOBILE_FLOW: CategoryFlowConfig = {
       options: [
         { value: "works_partially", label: "Works but has issues" },
         { value: "screen_cracked", label: "Screen cracked/broken" },
-        { value: "not_turning_on", label: "Not turning on" },
-        { value: "water_exposed", label: "Water/liquid exposed" },
+        { value: "not_turning_on", label: "Not turning on", flowOverride: "diagnosis_first" },
+        { value: "water_exposed", label: "Water/liquid exposed", flowOverride: "diagnosis_first" },
       ],
     },
     {
@@ -321,10 +324,10 @@ const MOBILE_FLOW: CategoryFlowConfig = {
   riskDisclaimers: [
     { key: "water", message: "Water damage recovery has variable success rates. A diagnostic fee of LKR 500 applies before repair assessment.", severity: "critical", showWhen: { field: "phone_condition", values: ["water_exposed"] } },
     { key: "no_backup", message: "We recommend backing up your data before any repair. LankaFix is not responsible for data loss.", severity: "warning", showWhen: { field: "data_backed_up", values: ["no"] } },
-    { key: "dead_phone", message: "Non-responsive devices require physical diagnosis. Final quote may differ from estimate.", severity: "info", showWhen: { field: "phone_condition", values: ["not_turning_on"] } },
+    { key: "dead_phone", message: "Non-responsive devices require physical diagnosis. Final quote may differ from estimate.", severity: "warning", showWhen: { field: "phone_condition", values: ["not_turning_on"] } },
     { key: "prev_repair", message: "Previously repaired devices may have non-standard parts. This can affect repair cost and warranty coverage.", severity: "info", showWhen: { field: "previously_repaired", values: ["yes_same", "yes_other"] } },
   ],
-  requiredConsents: ["data_safety", "backup_responsibility"],
+  requiredConsents: ["data_safety", "backup_responsibility", "pin_passcode", "data_risk"],
   photoUploadEnabled: true,
   dataDisclaimerRequired: true,
   adultPresenceRequired: false,
