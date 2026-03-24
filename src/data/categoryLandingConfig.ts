@@ -231,7 +231,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     code: "CCTV",
     heroTitle: "CCTV & Security",
     heroSubtitle: "Professional installation, wiring, and configuration for homes and businesses",
-    valueProposition: "Expert site assessment, quality equipment, clean installation",
+    valueProposition: "Professional site assessment, quality equipment, clean installation",
     trustPoints: [
       { label: "Site Assessment" },
       { label: "All Brands" },
