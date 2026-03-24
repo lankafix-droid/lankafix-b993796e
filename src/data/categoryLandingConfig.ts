@@ -292,7 +292,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { id: "battery_issue", label: "Battery issue", emoji: "🔋" },
     ],
     whyLankaFix: [
-      "Free energy assessment and ROI calculation",
+      "Professional energy assessment and ROI calculation",
       "Certified solar installers with warranty",
       "Post-installation monitoring support",
       "Government subsidy guidance included",
