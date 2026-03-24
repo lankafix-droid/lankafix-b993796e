@@ -514,12 +514,41 @@ const CCTV_FLOW: CategoryFlowConfig = {
       ],
     },
     {
+      key: "indoor_outdoor", label: "Indoor or Outdoor?", type: "select", required: false, columns: 3,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      options: [
+        { value: "indoor", label: "Indoor Only" },
+        { value: "outdoor", label: "Outdoor Only" },
+        { value: "both", label: "Both" },
+      ],
+    },
+    {
       key: "storage_pref", label: "Storage Preference", type: "select", required: false, columns: 2,
       showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
       options: [
         { value: "local_dvr", label: "Local DVR/NVR" },
         { value: "cloud", label: "Cloud Storage" },
         { value: "both", label: "Both" },
+        { value: "unsure", label: "Not Sure" },
+      ],
+    },
+    {
+      key: "remote_viewing", label: "Need remote viewing?", type: "select", required: false, columns: 3,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      hint: "View cameras on your phone/laptop from anywhere",
+      options: [
+        { value: "yes", label: "Yes, essential" },
+        { value: "nice_to_have", label: "Nice to have" },
+        { value: "no", label: "Not needed" },
+      ],
+    },
+    {
+      key: "ups_backup", label: "Need UPS / power backup?", type: "select", required: false, columns: 3,
+      showWhen: { field: "request_type", values: ["new_install", "upgrade"] },
+      hint: "Keeps cameras running during power cuts",
+      options: [
+        { value: "yes", label: "Yes" },
+        { value: "no", label: "No" },
         { value: "unsure", label: "Not Sure" },
       ],
     },
@@ -548,7 +577,9 @@ const CCTV_FLOW: CategoryFlowConfig = {
     { key: "clean_wiring", label: "Clean Installation", description: "Professional cable management standards", icon: "star" },
     { key: "remote_setup", label: "Remote Viewing", description: "Mobile app setup included", icon: "shield" },
   ],
-  riskDisclaimers: [],
+  riskDisclaimers: [
+    { key: "large_property", message: "Properties requiring 8+ cameras will receive a detailed custom quote after site assessment.", severity: "info", showWhen: { field: "camera_count", values: ["8_plus"] } },
+  ],
   requiredConsents: ["inspection_first"],
   photoUploadEnabled: true,
   dataDisclaimerRequired: false,
