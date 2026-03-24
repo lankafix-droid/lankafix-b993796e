@@ -404,7 +404,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { label: "Business Grade" },
       { label: "Secure Setup" },
       { label: "Remote + On-Site" },
-      { label: "24/7 Support" },
+      { label: "Extended Support" },
     ],
     services: [
       { id: "wifi_setup", label: "WiFi Setup", description: "Router, extender, or mesh setup", outcome: "booking" },
