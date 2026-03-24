@@ -687,7 +687,7 @@ const SOLAR_FLOW: CategoryFlowConfig = {
     expectations: ["site_assessment_free", "quote_after_inspection"],
     warrantyHint: "Installer warranty + panel manufacturer warranty",
     priceVisibility: "quote_based",
-    expectationLabel: "Free site assessment • ROI calculation included",
+    expectationLabel: "Professional site assessment • ROI calculation included",
   },
   trustSignals: [
     { key: "assessment", label: "Site Assessment", description: "Professional energy assessment", icon: "check" },
