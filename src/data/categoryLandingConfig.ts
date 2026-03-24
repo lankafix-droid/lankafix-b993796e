@@ -54,10 +54,10 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     code: "AC",
     heroTitle: "AC Service & Repair",
     heroSubtitle: "Expert cooling solutions for homes and offices across Greater Colombo",
-    valueProposition: "Certified AC technicians, transparent pricing, same-day service",
+    valueProposition: "Certified AC technicians, transparent pricing, fast response",
     trustPoints: [
       { label: "Verified Technicians" },
-      { label: "Same-Day Available" },
+      { label: "Fast Response" },
       { label: "All Brands Covered" },
       { label: "90-Day Warranty" },
     ],
