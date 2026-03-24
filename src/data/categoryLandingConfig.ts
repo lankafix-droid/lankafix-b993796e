@@ -54,10 +54,10 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     code: "AC",
     heroTitle: "AC Service & Repair",
     heroSubtitle: "Expert cooling solutions for homes and offices across Greater Colombo",
-    valueProposition: "Certified AC technicians, transparent pricing, same-day service",
+    valueProposition: "Certified AC technicians, transparent pricing, fast response",
     trustPoints: [
       { label: "Verified Technicians" },
-      { label: "Same-Day Available" },
+      { label: "Fast Response" },
       { label: "All Brands Covered" },
       { label: "90-Day Warranty" },
     ],
@@ -102,7 +102,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     valueProposition: "Certified mobile technicians, genuine parts, 30-day repair warranty",
     trustPoints: [
       { label: "Genuine Parts" },
-      { label: "45-Min Response" },
+      { label: "Fast Response" },
       { label: "All Brands" },
       { label: "30-Day Warranty" },
     ],
@@ -149,7 +149,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     valueProposition: "Expert IT support, remote or on-site, fast turnaround",
     trustPoints: [
       { label: "Remote + On-Site" },
-      { label: "60-Min Response" },
+      { label: "Fast Response" },
       { label: "Data Protection" },
       { label: "Business Ready" },
     ],
@@ -231,9 +231,9 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     code: "CCTV",
     heroTitle: "CCTV & Security",
     heroSubtitle: "Professional installation, wiring, and configuration for homes and businesses",
-    valueProposition: "Expert site assessment, quality equipment, clean installation",
+    valueProposition: "Professional site assessment, quality equipment, clean installation",
     trustPoints: [
-      { label: "Free Site Visit" },
+      { label: "Site Assessment" },
       { label: "All Brands" },
       { label: "Clean Wiring" },
       { label: "Remote Setup" },
@@ -252,7 +252,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { id: "new_setup", label: "Need new system", emoji: "🏠" },
     ],
     whyLankaFix: [
-      "Free site assessment before any commitment",
+      "Professional site assessment before any commitment",
       "Clean, professional cable management",
       "Remote viewing setup included",
       "Ongoing support and maintenance plans",
@@ -271,12 +271,12 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     code: "SOLAR",
     heroTitle: "Solar Solutions",
     heroSubtitle: "Panels, inverters, batteries — installation, maintenance & repair",
-    valueProposition: "Free site assessment, certified installers, ROI-focused advice",
+    valueProposition: "Professional site assessment, certified installers, ROI-focused advice",
     trustPoints: [
-      { label: "Free Assessment" },
+      { label: "Site Assessment" },
       { label: "Certified Installers" },
       { label: "ROI Guidance" },
-      { label: "5-Year Support" },
+      { label: "Long-Term Support" },
     ],
     services: [
       { id: "new_installation", label: "New Solar System", description: "Full system design and installation", outcome: "consultation" },
@@ -292,7 +292,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { id: "battery_issue", label: "Battery issue", emoji: "🔋" },
     ],
     whyLankaFix: [
-      "Free energy assessment and ROI calculation",
+      "Professional energy assessment and ROI calculation",
       "Certified solar installers with warranty",
       "Post-installation monitoring support",
       "Government subsidy guidance included",
@@ -363,7 +363,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     valueProposition: "Fast diagnosis, genuine parts, business-ready support",
     trustPoints: [
       { label: "All Brands" },
-      { label: "Same-Day" },
+      { label: "Fast Turnaround" },
       { label: "Genuine Parts" },
       { label: "Business Ready" },
     ],
@@ -380,7 +380,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { id: "toner_issue", label: "Toner/ink issue", emoji: "🎨" },
     ],
     whyLankaFix: [
-      "Business-critical response times",
+      "Priority response for business environments",
       "All major copier and printer brands",
       "Genuine consumables and parts",
       "Network and cloud printing expertise",
@@ -404,7 +404,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
       { label: "Business Grade" },
       { label: "Secure Setup" },
       { label: "Remote + On-Site" },
-      { label: "24/7 Support" },
+      { label: "Extended Support" },
     ],
     services: [
       { id: "wifi_setup", label: "WiFi Setup", description: "Router, extender, or mesh setup", outcome: "booking" },
