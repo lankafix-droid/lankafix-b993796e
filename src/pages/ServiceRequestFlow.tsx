@@ -61,6 +61,7 @@ interface FlowState {
   savedAddressId: string;
   adultPresenceConfirmed: boolean;
   diagnosticAnswers: Record<string, string>;
+  consentState: Record<string, boolean>;
 }
 
 const INITIAL_STATE: FlowState = {
