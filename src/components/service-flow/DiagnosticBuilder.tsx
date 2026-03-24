@@ -1,9 +1,9 @@
 /**
  * DiagnosticBuilder — Interface 3 step component.
  * Renders category-specific diagnostic fields with conditional visibility,
- * risk disclaimers, commercial expectations, and photo upload.
+ * risk disclaimers, commercial expectations, photo upload, and flow-family reroute indicator.
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,9 +12,9 @@ import {
   AlertTriangle, Camera, CheckCircle2, Info, Upload, X,
 } from "lucide-react";
 import type {
-  DiagnosticField, RiskDisclaimer, CommercialInfo, TrustSignal,
+  DiagnosticField, RiskDisclaimer, CommercialInfo, TrustSignal, FlowFamily,
 } from "@/data/categoryFlowEngine";
-import { getVisibleDiagnosticFields, getActiveDisclaimers } from "@/data/categoryFlowEngine";
+import { getVisibleDiagnosticFields, getActiveDisclaimers, resolveFlowFamily, FLOW_FAMILY_LABELS } from "@/data/categoryFlowEngine";
 import FlowTrustSignals from "./FlowTrustSignals";
 
 interface DiagnosticBuilderProps {
@@ -24,13 +24,26 @@ interface DiagnosticBuilderProps {
   commercial: CommercialInfo;
   trustSignals: TrustSignal[];
   photoUploadEnabled: boolean;
+  /** Current service selection for flow resolution */
+  serviceId?: string;
+  /** Default flow family before any diagnostic overrides */
+  defaultFlowFamily?: FlowFamily;
 }
 
 export default function DiagnosticBuilder({
   categoryCode, answers, onAnswer, commercial, trustSignals, photoUploadEnabled,
+  serviceId, defaultFlowFamily,
 }: DiagnosticBuilderProps) {
   const fields = getVisibleDiagnosticFields(categoryCode, answers);
   const disclaimers = getActiveDisclaimers(categoryCode, answers);
+
+  // Detect if diagnostic answers have rerouted the flow family
+  const resolvedFamily = useMemo(
+    () => resolveFlowFamily(categoryCode, serviceId, answers),
+    [categoryCode, serviceId, answers]
+  );
+  const wasRerouted = defaultFlowFamily && resolvedFamily !== defaultFlowFamily;
+  const rerouteMeta = wasRerouted ? FLOW_FAMILY_LABELS[resolvedFamily] : null;
 
   return (
     <div className="space-y-6">
@@ -42,6 +55,24 @@ export default function DiagnosticBuilder({
           This helps us prepare the right technician and parts
         </p>
       </div>
+
+      {/* Flow-family reroute indicator */}
+      <AnimatePresence>
+        {wasRerouted && rerouteMeta && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/15"
+          >
+            <span className="text-base">{rerouteMeta.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-primary">{rerouteMeta.label}</p>
+              <p className="text-[10px] text-muted-foreground">{rerouteMeta.description}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Diagnostic Fields */}
       <div className="space-y-5">
@@ -124,7 +155,6 @@ export default function DiagnosticBuilder({
     </div>
   );
 }
-
 function DiagnosticFieldRenderer({
   field, value, onChange,
 }: {

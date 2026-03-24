@@ -100,7 +100,6 @@ export default function ServiceRequestFlow() {
   const [autoFilled, setAutoFilled] = useState(false);
 
   const currentStep = STEPS[stepIndex];
-  const progress = ((stepIndex + 1) / STEPS.length) * 100;
 
   const activeFlowFamily = useMemo<FlowFamily>(() => {
     return resolveFlowFamily(categoryCode, state.serviceId, state.diagnosticAnswers);
@@ -161,6 +160,11 @@ export default function ServiceRequestFlow() {
     if (step === "diagnostic" && !flowConfig) return true;
     return false;
   };
+
+  // Effective steps for progress display (excludes skipped)
+  const effectiveSteps = STEPS.filter(s => !shouldSkipStep(s));
+  const effectiveIndex = effectiveSteps.indexOf(currentStep);
+  const progress = ((effectiveIndex + 1) / effectiveSteps.length) * 100;
 
   const goNext = () => {
     let next = stepIndex + 1;
@@ -299,7 +303,7 @@ export default function ServiceRequestFlow() {
             <div className="flex items-center gap-2 mt-1">
               <Progress value={progress} className="h-1 flex-1" />
               <span className="text-[10px] text-muted-foreground font-medium">
-                {stepIndex + 1}/{STEPS.length}
+                {effectiveIndex + 1}/{effectiveSteps.length}
               </span>
             </div>
           </div>
@@ -366,6 +370,8 @@ export default function ServiceRequestFlow() {
                 commercial={flowConfig.commercial}
                 trustSignals={flowConfig.trustSignals}
                 photoUploadEnabled={flowConfig.photoUploadEnabled}
+                serviceId={state.serviceId}
+                defaultFlowFamily={flowConfig.serviceFlowMap[state.serviceId] || flowConfig.defaultFlowFamily}
               />
             )}
             {currentStep === "urgency" && (
