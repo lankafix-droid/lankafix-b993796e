@@ -427,6 +427,9 @@ export default function ServiceRequestFlow() {
                 accessDetailsRequired={flowConfig?.accessDetailsRequired ?? true}
                 adultPresenceConfirmed={state.adultPresenceConfirmed}
                 onAdultPresenceChange={(v) => update("adultPresenceConfirmed", v)}
+                requiredConsents={flowConfig?.requiredConsents || []}
+                consentState={state.consentState}
+                onConsentChange={updateConsent}
               />
             )}
           </motion.div>
