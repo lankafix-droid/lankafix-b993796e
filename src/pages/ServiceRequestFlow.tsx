@@ -1,7 +1,7 @@
 /**
  * ServiceRequestFlow — Production-grade multi-step guided booking flow.
  * Integrates the Category Flow Engine (Interfaces 2→3→4).
- * Steps: Service → Details → Diagnostic → Urgency → Identity → Confirm (Location+Review)
+ * Steps: Service → Details → Diagnostic → Urgency → Identity → Confirm
  */
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
@@ -19,17 +19,15 @@ import Header from "@/components/layout/Header";
 import PageTransition from "@/components/motion/PageTransition";
 import DiagnosticBuilder from "@/components/service-flow/DiagnosticBuilder";
 import ConfirmationStep from "@/components/service-flow/ConfirmationStep";
-import FlowFamilyBanner from "@/components/service-flow/FlowFamilyBanner";
+import ServiceStep from "@/components/service-flow/ServiceStep";
+import DetailsStep from "@/components/service-flow/DetailsStep";
+import UrgencyStep from "@/components/service-flow/UrgencyStep";
+import IdentityStep from "@/components/service-flow/IdentityStep";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, Loader2,
-  Phone, Send, Shield, Sparkles, User, Wrench,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Send } from "lucide-react";
 
 type FlowStep = "service" | "details" | "diagnostic" | "urgency" | "identity" | "confirm";
 
@@ -102,7 +100,6 @@ export default function ServiceRequestFlow() {
   const currentStep = STEPS[stepIndex];
   const progress = ((stepIndex + 1) / STEPS.length) * 100;
 
-  // Resolve active flow family based on service + diagnostic answers
   const activeFlowFamily = useMemo<FlowFamily>(() => {
     return resolveFlowFamily(categoryCode, state.serviceId, state.diagnosticAnswers);
   }, [categoryCode, state.serviceId, state.diagnosticAnswers]);
@@ -151,7 +148,6 @@ export default function ServiceRequestFlow() {
       diagnosticAnswers: { ...p.diagnosticAnswers, [key]: value },
     }));
 
-  // Step navigation with smart skipping
   const shouldSkipStep = (step: FlowStep): boolean => {
     if (step === "identity" && isAuthenticated && state.name && state.phone) return true;
     if (step === "diagnostic" && !flowConfig) return true;
@@ -449,201 +445,5 @@ export default function ServiceRequestFlow() {
         </div>
       </div>
     </PageTransition>
-  );
-}
-
-/* ─── Step Components ─── */
-
-function ServiceStep({
-  services, selected, onSelect, flowFamily,
-}: {
-  services: ServiceOption[];
-  selected: string;
-  onSelect: (svc: ServiceOption) => void;
-  flowFamily: FlowFamily;
-}) {
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="font-heading text-xl font-bold text-foreground">What do you need?</h2>
-        <p className="text-sm text-muted-foreground mt-1">Select the service that best matches your need</p>
-      </div>
-      <div className="space-y-2.5">
-        {services.map((svc) => (
-          <button
-            key={svc.id}
-            onClick={() => onSelect(svc)}
-            className={`w-full flex items-center gap-3.5 p-4 rounded-2xl border transition-all text-left active:scale-[0.98] ${
-              selected === svc.id ? "border-primary bg-primary/5 shadow-sm" : "border-border/40 bg-card hover:border-primary/20"
-            }`}
-          >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${selected === svc.id ? "bg-primary/15" : "bg-secondary"}`}>
-              <Wrench className={`w-4.5 h-4.5 ${selected === svc.id ? "text-primary" : "text-muted-foreground"}`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">{svc.label}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{svc.description}</p>
-              {svc.outcome && svc.outcome !== "booking" && (
-                <span className="text-[9px] font-medium text-primary/80 mt-1 inline-block">
-                  {svc.outcome === "inspection" ? "🔍 Inspection first" :
-                   svc.outcome === "diagnosis" ? "🩺 Diagnosis required" :
-                   svc.outcome === "consultation" ? "📋 Site assessment" : ""}
-                </span>
-              )}
-            </div>
-            {selected === svc.id && <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />}
-          </button>
-        ))}
-      </div>
-      {selected && <FlowFamilyBanner flowFamily={flowFamily} />}
-    </div>
-  );
-}
-
-function DetailsStep({
-  issues, selectedIssue, description, onSelectIssue, onDescriptionChange,
-}: {
-  issues: { id: string; label: string; hint?: string }[];
-  selectedIssue: string;
-  description: string;
-  onSelectIssue: (id: string, label: string) => void;
-  onDescriptionChange: (v: string) => void;
-}) {
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="font-heading text-xl font-bold text-foreground">Describe the issue</h2>
-        <p className="text-sm text-muted-foreground mt-1">Select the closest match or describe your problem</p>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {issues.map((issue) => (
-          <button
-            key={issue.id}
-            onClick={() => onSelectIssue(issue.id, issue.label)}
-            className={`p-3 rounded-xl border text-left transition-all active:scale-[0.97] ${
-              selectedIssue === issue.id ? "border-primary bg-primary/5" : "border-border/40 bg-card hover:border-primary/20"
-            }`}
-          >
-            <p className="text-xs font-semibold text-foreground">{issue.label}</p>
-            {issue.hint && <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{issue.hint}</p>}
-          </button>
-        ))}
-      </div>
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-foreground">
-          Additional details <span className="text-muted-foreground">(optional)</span>
-        </label>
-        <Textarea
-          placeholder="Tell us more about the issue..."
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          className="rounded-xl min-h-[80px] text-sm resize-none"
-        />
-      </div>
-    </div>
-  );
-}
-
-function UrgencyStep({
-  urgencyOptions, serviceModes, selectedUrgency, selectedMode, onSelectUrgency, onSelectMode,
-}: {
-  urgencyOptions: { id: string; label: string; hint?: string }[];
-  serviceModes: { id: string; label: string; available: boolean }[];
-  selectedUrgency: string;
-  selectedMode: string;
-  onSelectUrgency: (v: string) => void;
-  onSelectMode: (v: string) => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="font-heading text-xl font-bold text-foreground">When do you need this?</h2>
-        <p className="text-sm text-muted-foreground mt-1">This helps us match the right technician</p>
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {urgencyOptions.map((opt) => (
-          <button
-            key={opt.id}
-            onClick={() => onSelectUrgency(opt.id)}
-            className={`p-4 rounded-xl border text-left transition-all active:scale-[0.97] ${
-              selectedUrgency === opt.id ? "border-primary bg-primary/5" : "border-border/40 bg-card hover:border-primary/20"
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className={`w-4 h-4 ${selectedUrgency === opt.id ? "text-primary" : "text-muted-foreground"}`} />
-              <span className="text-sm font-semibold text-foreground">{opt.label}</span>
-            </div>
-            {opt.hint && <p className="text-[10px] text-muted-foreground">{opt.hint}</p>}
-          </button>
-        ))}
-      </div>
-      {serviceModes.length > 1 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Service Mode</h3>
-          <div className="flex gap-2.5 flex-wrap">
-            {serviceModes.filter((m) => m.available).map((mode) => (
-              <button
-                key={mode.id}
-                onClick={() => onSelectMode(mode.id)}
-                className={`px-4 py-2.5 rounded-xl border text-xs font-medium transition-all ${
-                  selectedMode === mode.id ? "border-primary bg-primary/5 text-primary" : "border-border/40 bg-card text-foreground hover:border-primary/20"
-                }`}
-              >
-                {mode.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function IdentityStep({
-  name, phone, onNameChange, onPhoneChange, isAuthenticated,
-}: {
-  name: string; phone: string; onNameChange: (v: string) => void; onPhoneChange: (v: string) => void; isAuthenticated: boolean;
-}) {
-  return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="font-heading text-xl font-bold text-foreground">Your details</h2>
-        <p className="text-sm text-muted-foreground mt-1">So we can coordinate your service</p>
-      </div>
-      {isAuthenticated && name && phone ? (
-        <div className="p-4 rounded-2xl bg-primary/5 border border-primary/15">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center">
-              <User className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">{name}</p>
-              <p className="text-xs text-muted-foreground">{phone}</p>
-            </div>
-            <CheckCircle2 className="w-5 h-5 text-primary ml-auto" />
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-foreground">Your name</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="What should we call you?" value={name} onChange={(e) => onNameChange(e.target.value)} className="pl-10 h-11 rounded-xl" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-foreground">Phone number</label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input type="tel" placeholder="07X XXX XXXX" value={phone} onChange={(e) => onPhoneChange(e.target.value)} className="pl-10 h-11 rounded-xl" />
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-            <Shield className="w-3 h-3" /> Your phone is used for coordination only
-          </p>
-        </div>
-      )}
-    </div>
   );
 }

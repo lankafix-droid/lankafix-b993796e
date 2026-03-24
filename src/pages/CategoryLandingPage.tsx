@@ -1,10 +1,10 @@
 /**
- * CategoryLandingPage — Reusable, premium category showcase page.
+ * CategoryLandingPage — Interface 2: Category landing / service discovery.
  * Educates the user about LankaFix services before entering a booking flow.
- * Driven by categoryLandingConfig.ts — works for all categories.
  */
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getCategoryLandingConfig } from "@/data/categoryLandingConfig";
+import { getCategoryFlowConfig } from "@/data/categoryFlowEngine";
 import { motion } from "framer-motion";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/landing/Footer";
@@ -12,11 +12,9 @@ import PageTransition from "@/components/motion/PageTransition";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft, ArrowRight, Shield, CheckCircle2, Phone, Wrench,
-  Clock, Star, ChevronRight, Sparkles,
+  ArrowLeft, Shield, ChevronRight, Sparkles, Phone, Wrench, CheckCircle2, Info,
 } from "lucide-react";
 
-// Hero images already imported in V2CategoryGrid — reuse the mapping
 import heroAC from "@/assets/hero-ac-service.jpg";
 import heroCCTV from "@/assets/hero-cctv-service.jpg";
 import heroMobile from "@/assets/hero-mobile-repair.jpg";
@@ -42,7 +40,9 @@ const fadeUp = {
 export default function CategoryLandingPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const config = code ? getCategoryLandingConfig(code.toUpperCase()) : null;
+  const categoryCode = code?.toUpperCase() || "";
+  const config = getCategoryLandingConfig(categoryCode);
+  const flowConfig = getCategoryFlowConfig(categoryCode);
 
   if (!config) {
     return (
@@ -78,11 +78,7 @@ export default function CategoryLandingPage() {
         <section className="relative overflow-hidden">
           <div className="relative h-48 sm:h-56">
             {heroImg ? (
-              <img
-                src={heroImg}
-                alt={config.heroTitle}
-                className="w-full h-full object-cover"
-              />
+              <img src={heroImg} alt={config.heroTitle} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5" />
             )}
@@ -115,11 +111,7 @@ export default function CategoryLandingPage() {
         </section>
 
         {/* ─── Trust Strip ─── */}
-        <motion.section
-          {...fadeUp}
-          transition={{ ...fadeUp.transition, delay: 0.05 }}
-          className="container pb-6"
-        >
+        <motion.section {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }} className="container pb-6">
           <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
             {config.trustPoints.map((tp, i) => (
               <Badge
@@ -135,14 +127,8 @@ export default function CategoryLandingPage() {
         </motion.section>
 
         {/* ─── Services We Offer ─── */}
-        <motion.section
-          {...fadeUp}
-          transition={{ ...fadeUp.transition, delay: 0.1 }}
-          className="container pb-8"
-        >
-          <h2 className="font-heading text-lg font-bold text-foreground mb-4">
-            What We Offer
-          </h2>
+        <motion.section {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} className="container pb-8">
+          <h2 className="font-heading text-lg font-bold text-foreground mb-4">What We Offer</h2>
           <div className="space-y-2.5">
             {config.services.map((svc, i) => (
               <motion.button
@@ -150,9 +136,7 @@ export default function CategoryLandingPage() {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.12 + i * 0.03 }}
-                onClick={() =>
-                  navigate(`/service-flow/${config.code.toLowerCase()}?service=${svc.id}`)
-                }
+                onClick={() => navigate(`/service-flow/${config.code.toLowerCase()}?service=${svc.id}`)}
                 className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl bg-card border border-border/40 hover:border-primary/20 hover:shadow-sm transition-all text-left active:scale-[0.98]"
               >
                 <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
@@ -160,9 +144,7 @@ export default function CategoryLandingPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">{svc.label}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                    {svc.description}
-                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{svc.description}</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
               </motion.button>
@@ -171,41 +153,52 @@ export default function CategoryLandingPage() {
         </motion.section>
 
         {/* ─── Common Issues ─── */}
-        <motion.section
-          {...fadeUp}
-          transition={{ ...fadeUp.transition, delay: 0.15 }}
-          className="container pb-8"
-        >
-          <h2 className="font-heading text-lg font-bold text-foreground mb-4">
-            Common Issues
-          </h2>
+        <motion.section {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }} className="container pb-8">
+          <h2 className="font-heading text-lg font-bold text-foreground mb-4">Common Issues</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
             {config.commonIssues.map((issue) => (
               <button
                 key={issue.id}
-                onClick={() =>
-                  navigate(`/service-flow/${config.code.toLowerCase()}?issue=${issue.id}`)
-                }
+                onClick={() => navigate(`/service-flow/${config.code.toLowerCase()}?issue=${issue.id}`)}
                 className="flex items-center gap-2.5 p-3 rounded-xl bg-card border border-border/40 hover:border-primary/20 hover:shadow-sm transition-all text-left active:scale-[0.97]"
               >
                 <span className="text-lg">{issue.emoji}</span>
-                <span className="text-xs font-medium text-foreground leading-tight">
-                  {issue.label}
-                </span>
+                <span className="text-xs font-medium text-foreground leading-tight">{issue.label}</span>
               </button>
             ))}
           </div>
         </motion.section>
 
+        {/* ─── Commercial Expectation ─── */}
+        {flowConfig && (
+          <motion.section {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.17 }} className="container pb-8">
+            <div className="p-4 rounded-2xl bg-secondary/50 border border-border/40">
+              <div className="flex items-start gap-2.5">
+                <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Pricing Transparency</p>
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    {flowConfig.commercial.expectationLabel}
+                  </p>
+                  {flowConfig.commercial.inspectionFeeRange && (
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      Inspection fee: {flowConfig.commercial.inspectionFeeRange}
+                    </p>
+                  )}
+                  {flowConfig.commercial.warrantyHint && (
+                    <p className="text-[11px] text-primary mt-1 font-medium">
+                      ✓ {flowConfig.commercial.warrantyHint}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.section>
+        )}
+
         {/* ─── Why LankaFix ─── */}
-        <motion.section
-          {...fadeUp}
-          transition={{ ...fadeUp.transition, delay: 0.2 }}
-          className="container pb-8"
-        >
-          <h2 className="font-heading text-lg font-bold text-foreground mb-4">
-            Why LankaFix
-          </h2>
+        <motion.section {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }} className="container pb-8">
+          <h2 className="font-heading text-lg font-bold text-foreground mb-4">Why LankaFix</h2>
           <div className="space-y-3">
             {config.whyLankaFix.map((point, i) => (
               <div key={i} className="flex items-start gap-3">
@@ -223,9 +216,7 @@ export default function CategoryLandingPage() {
               <Button
                 key={qa.action}
                 variant={qa.primary ? "default" : "outline"}
-                className={`flex-1 h-11 rounded-xl font-semibold text-sm gap-2 ${
-                  qa.primary ? "" : ""
-                }`}
+                className="flex-1 h-11 rounded-xl font-semibold text-sm gap-2"
                 onClick={() => handleQuickAction(qa.action)}
               >
                 {qa.primary && <Sparkles className="w-4 h-4" />}
