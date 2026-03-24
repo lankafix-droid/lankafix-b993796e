@@ -233,7 +233,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     heroSubtitle: "Professional installation, wiring, and configuration for homes and businesses",
     valueProposition: "Expert site assessment, quality equipment, clean installation",
     trustPoints: [
-      { label: "Free Site Visit" },
+      { label: "Site Assessment" },
       { label: "All Brands" },
       { label: "Clean Wiring" },
       { label: "Remote Setup" },
