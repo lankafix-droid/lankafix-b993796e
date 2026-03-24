@@ -203,7 +203,7 @@ const AC_FLOW: CategoryFlowConfig = {
     { key: "high_install", message: "High-installation units may require additional equipment. Surcharge may apply.", severity: "info", showWhen: { field: "installation_height", values: ["high"] } },
     { key: "multi_unit", message: "Multi-unit service pricing is per unit. Discounts may apply for 3+ units.", severity: "info", showWhen: { field: "unit_count", values: ["3_plus"] } },
   ],
-  requiredConsents: ["adult_presence"],
+  requiredConsents: [],
   photoUploadEnabled: true,
   dataDisclaimerRequired: false,
   adultPresenceRequired: true,

@@ -213,10 +213,12 @@ export default function ConfirmationStep(props: ConfirmationStepProps) {
         </button>
       )}
 
-      {/* Required Consents */}
+      {/* Required Consents — compact inline style */}
       {validConsents.length > 0 && (
-        <div className="space-y-2.5">
-          <h3 className="text-sm font-semibold text-foreground">Acknowledgements</h3>
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Acknowledgements
+          </p>
           {validConsents.map((consent) => (
             <ConsentCard
               key={consent}
