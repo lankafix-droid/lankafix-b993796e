@@ -271,7 +271,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     code: "SOLAR",
     heroTitle: "Solar Solutions",
     heroSubtitle: "Panels, inverters, batteries — installation, maintenance & repair",
-    valueProposition: "Free site assessment, certified installers, ROI-focused advice",
+    valueProposition: "Professional site assessment, certified installers, ROI-focused advice",
     trustPoints: [
       { label: "Site Assessment" },
       { label: "Certified Installers" },
