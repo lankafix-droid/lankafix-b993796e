@@ -787,7 +787,7 @@ const CONSUMER_ELEC_FLOW: CategoryFlowConfig = {
     { key: "major_appliance", message: "Large appliance repairs require an on-site inspection before quoting. Parts may need to be ordered.", severity: "info", showWhen: { field: "appliance_type", values: ["washing_machine", "fridge"] } },
   ],
   requiredConsents: ["quote_variance"],
-  photoUploadEnabled: true,
+  photoUploadEnabled: false,
   dataDisclaimerRequired: false,
   adultPresenceRequired: true,
   accessDetailsRequired: true,
