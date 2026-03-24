@@ -56,7 +56,7 @@ const PRICING_MICROCOPY: Record<string, string> = {
   AC: "Inspection from Rs 2,500", MOBILE: "Repair from Rs 3,000",
   IT: "Diagnosis from Rs 2,000", CONSUMER_ELEC: "Quote after diagnosis",
   CCTV: "Quote after site visit", SMART_HOME_OFFICE: "Project quote after assessment",
-  SOLAR: "Free site inspection",
+  SOLAR: "Professional site assessment",
   ELECTRICAL: "Visit from Rs 1,500", PLUMBING: "Visit from Rs 1,500",
   NETWORK: "Setup from Rs 2,000",
   HOME_SECURITY: "Equipment quoted separately", POWER_BACKUP: "From Rs 3,000",

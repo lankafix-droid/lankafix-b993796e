@@ -40,7 +40,7 @@ const V2PopularServices = () => {
                 transition={{ delay: i * 0.04, duration: 0.3 }}
               >
                 <Link
-                  to={`/book/${cat.code}`}
+                  to={shouldUseGuidedFlow(cat.code) ? `/category/${cat.code.toLowerCase()}` : `/request/${cat.code}`}
                   onClick={() => { track("homepage_popular_click", { label: cat.label }); trackCategoryClick(cat.code, "homepage_popular"); }}
                   className="group block bg-card rounded-2xl border border-border/40 p-4 hover:border-primary/20 hover:shadow-card-hover transition-all duration-300 active:scale-[0.97]"
                 >
