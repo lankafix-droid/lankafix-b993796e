@@ -327,7 +327,7 @@ const MOBILE_FLOW: CategoryFlowConfig = {
     { key: "dead_phone", message: "Non-responsive devices require physical diagnosis. Final quote may differ from estimate.", severity: "warning", showWhen: { field: "phone_condition", values: ["not_turning_on"] } },
     { key: "prev_repair", message: "Previously repaired devices may have non-standard parts. This can affect repair cost and warranty coverage.", severity: "info", showWhen: { field: "previously_repaired", values: ["yes_same", "yes_other"] } },
   ],
-  requiredConsents: ["data_safety", "backup_responsibility", "pin_passcode", "data_risk"],
+  requiredConsents: ["pin_passcode", "data_risk", "backup_responsibility"],
   photoUploadEnabled: true,
   dataDisclaimerRequired: true,
   adultPresenceRequired: false,
