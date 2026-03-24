@@ -161,6 +161,11 @@ export default function ServiceRequestFlow() {
     return false;
   };
 
+  // Effective steps for progress display (excludes skipped)
+  const effectiveSteps = STEPS.filter(s => !shouldSkipStep(s));
+  const effectiveIndex = effectiveSteps.indexOf(currentStep);
+  const progress = ((effectiveIndex + 1) / effectiveSteps.length) * 100;
+
   const goNext = () => {
     let next = stepIndex + 1;
     while (next < STEPS.length && shouldSkipStep(STEPS[next])) next++;
