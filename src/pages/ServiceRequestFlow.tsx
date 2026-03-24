@@ -150,6 +150,12 @@ export default function ServiceRequestFlow() {
       diagnosticAnswers: { ...p.diagnosticAnswers, [key]: value },
     }));
 
+  const updateConsent = (key: string, checked: boolean) =>
+    setState((p) => ({
+      ...p,
+      consentState: { ...p.consentState, [key]: checked },
+    }));
+
   const shouldSkipStep = (step: FlowStep): boolean => {
     if (step === "identity" && isAuthenticated && state.name && state.phone) return true;
     if (step === "diagnostic" && !flowConfig) return true;
