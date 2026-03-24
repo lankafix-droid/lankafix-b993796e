@@ -370,6 +370,8 @@ export default function ServiceRequestFlow() {
                 commercial={flowConfig.commercial}
                 trustSignals={flowConfig.trustSignals}
                 photoUploadEnabled={flowConfig.photoUploadEnabled}
+                serviceId={state.serviceId}
+                defaultFlowFamily={flowConfig.serviceFlowMap[state.serviceId] || flowConfig.defaultFlowFamily}
               />
             )}
             {currentStep === "urgency" && (
