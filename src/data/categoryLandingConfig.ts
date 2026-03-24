@@ -273,10 +273,10 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     heroSubtitle: "Panels, inverters, batteries — installation, maintenance & repair",
     valueProposition: "Free site assessment, certified installers, ROI-focused advice",
     trustPoints: [
-      { label: "Free Assessment" },
+      { label: "Site Assessment" },
       { label: "Certified Installers" },
       { label: "ROI Guidance" },
-      { label: "5-Year Support" },
+      { label: "Long-Term Support" },
     ],
     services: [
       { id: "new_installation", label: "New Solar System", description: "Full system design and installation", outcome: "consultation" },
