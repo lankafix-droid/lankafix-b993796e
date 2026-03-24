@@ -328,7 +328,7 @@ const MOBILE_FLOW: CategoryFlowConfig = {
     { key: "prev_repair", message: "Previously repaired devices may have non-standard parts. This can affect repair cost and warranty coverage.", severity: "info", showWhen: { field: "previously_repaired", values: ["yes_same", "yes_other"] } },
   ],
   requiredConsents: ["pin_passcode", "data_risk", "backup_responsibility"],
-  photoUploadEnabled: true,
+  photoUploadEnabled: false,
   dataDisclaimerRequired: true,
   adultPresenceRequired: false,
   accessDetailsRequired: false,
