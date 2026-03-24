@@ -573,7 +573,7 @@ const CCTV_FLOW: CategoryFlowConfig = {
     expectationLabel: "Free site assessment • Custom quote provided",
   },
   trustSignals: [
-    { key: "site_visit", label: "Free Site Visit", description: "No-obligation assessment for new installations", icon: "check" },
+    { key: "site_visit", label: "Site Assessment", description: "Professional assessment for new installations", icon: "check" },
     { key: "clean_wiring", label: "Clean Installation", description: "Professional cable management standards", icon: "star" },
     { key: "remote_setup", label: "Remote Viewing", description: "Mobile app setup included", icon: "shield" },
   ],
