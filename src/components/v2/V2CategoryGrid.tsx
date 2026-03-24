@@ -65,9 +65,9 @@ const PRICING_MICROCOPY: Record<string, string> = {
 };
 
 // Phase-1 launch priority: primary categories first, then secondary, then coming soon
-const PRIMARY_CATS = ["AC", "MOBILE", "CONSUMER_ELEC", "IT"];
-const SECONDARY_CATS = ["CCTV", "SOLAR", "SMART_HOME_OFFICE", "PRINT_SUPPLIES"];
-const COMING_SOON_CATS = ["ELECTRICAL", "PLUMBING", "NETWORK", "HOME_SECURITY", "POWER_BACKUP", "COPIER", "APPLIANCE_INSTALL"];
+const PRIMARY_CATS = ["AC", "MOBILE", "IT", "COPIER"];
+const SECONDARY_CATS = ["NETWORK", "CCTV", "SOLAR", "CONSUMER_ELEC", "PRINT_SUPPLIES"];
+const COMING_SOON_CATS = ["ELECTRICAL", "PLUMBING", "HOME_SECURITY", "POWER_BACKUP", "APPLIANCE_INSTALL"];
 
 /** Reorder categories by user behavior — recently used categories first */
 function reorderByBehavior(codes: string[], rankedCategories: string[]): string[] {
