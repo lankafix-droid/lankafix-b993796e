@@ -100,7 +100,11 @@ export default function ServiceRequestFlow() {
   const [autoFilled, setAutoFilled] = useState(false);
 
   const currentStep = STEPS[stepIndex];
-  const progress = ((stepIndex + 1) / STEPS.length) * 100;
+
+  // Compute effective steps (excluding skipped)
+  const effectiveSteps = STEPS.filter(s => !shouldSkipStepStatic(s, isAuthenticated, state, flowConfig));
+  const effectiveIndex = effectiveSteps.indexOf(currentStep);
+  const progress = ((effectiveIndex + 1) / effectiveSteps.length) * 100;
 
   const activeFlowFamily = useMemo<FlowFamily>(() => {
     return resolveFlowFamily(categoryCode, state.serviceId, state.diagnosticAnswers);
