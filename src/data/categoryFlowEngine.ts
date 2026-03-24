@@ -204,7 +204,7 @@ const AC_FLOW: CategoryFlowConfig = {
     { key: "multi_unit", message: "Multi-unit service pricing is per unit. Discounts may apply for 3+ units.", severity: "info", showWhen: { field: "unit_count", values: ["3_plus"] } },
   ],
   requiredConsents: [],
-  photoUploadEnabled: true,
+  photoUploadEnabled: false,
   dataDisclaimerRequired: false,
   adultPresenceRequired: true,
   accessDetailsRequired: true,
