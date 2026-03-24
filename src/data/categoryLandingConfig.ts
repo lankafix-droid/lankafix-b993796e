@@ -363,7 +363,7 @@ export const CATEGORY_LANDING_CONFIG: Record<string, CategoryLandingContent> = {
     valueProposition: "Fast diagnosis, genuine parts, business-ready support",
     trustPoints: [
       { label: "All Brands" },
-      { label: "Same-Day" },
+      { label: "Fast Turnaround" },
       { label: "Genuine Parts" },
       { label: "Business Ready" },
     ],
