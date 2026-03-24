@@ -307,7 +307,6 @@ const App = () => (
 
             {/* ─── Legacy V1 redirects ─── */}
             <Route path="/categories" element={<Navigate to="/" replace />} />
-            <Route path="/category/:code" element={<RedirectCategory />} />
 
             {/* ─── Provider onboarding ─── */}
             <Route path="/join" element={<ProviderOnboardingPage />} />
