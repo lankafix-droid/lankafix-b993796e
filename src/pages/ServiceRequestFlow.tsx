@@ -72,6 +72,7 @@ const INITIAL_STATE: FlowState = {
   floorOrUnit: "", parkingNotes: "", savedAddressId: "",
   adultPresenceConfirmed: false,
   diagnosticAnswers: {},
+  consentState: {},
 };
 
 const slideVariants = {
